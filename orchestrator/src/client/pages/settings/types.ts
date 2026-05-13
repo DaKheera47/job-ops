@@ -42,16 +42,12 @@ export type EnvSettingsValues = {
   readable: {
     ukvisajobsEmail: string;
     adzunaAppId: string;
-    basicAuthUser: string;
-    basicAuthPassword: string;
   };
   private: {
     ukvisajobsPasswordHint: string | null;
     adzunaAppKeyHint: string | null;
-    basicAuthPasswordHint: string | null;
     webhookSecretHint: string | null;
   };
-  basicAuthActive: boolean;
 };
 
 export type BackupValues = {

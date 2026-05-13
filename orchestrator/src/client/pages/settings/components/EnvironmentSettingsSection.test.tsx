@@ -25,13 +25,10 @@ const EnvironmentSettingsHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
     defaultValues: {
       ukvisajobsEmail: "visa@example.com",
-      basicAuthUser: "admin",
       ukvisajobsPassword: "",
       adzunaAppId: "adzuna-id",
       adzunaAppKey: "",
-      basicAuthPassword: "super-secret",
       webhookSecret: "",
-      enableBasicAuth: true,
     },
   });
 
@@ -44,16 +41,12 @@ const EnvironmentSettingsHarness = () => {
               readable: {
                 ukvisajobsEmail: "visa@example.com",
                 adzunaAppId: "adzuna-id",
-                basicAuthUser: "admin",
-                basicAuthPassword: "super-secret",
               },
               private: {
                 ukvisajobsPasswordHint: "pass",
                 adzunaAppKeyHint: "adzu",
-                basicAuthPasswordHint: "abcd",
                 webhookSecretHint: "sec-",
               },
-              basicAuthActive: true,
             }}
             isLoading={false}
             isSaving={false}
@@ -100,10 +93,10 @@ describe("EnvironmentSettingsSection", () => {
 
     expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/adzu\*{8}/)).toBeInTheDocument();
-    // Authentication
-    expect(screen.getByLabelText("Enable authentication")).toBeChecked();
-    expect(screen.getByDisplayValue("admin")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("super-secret")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Enable authentication"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("username")).not.toBeInTheDocument();
 
     // Sections
     expect(screen.getByText("Service Accounts")).toBeInTheDocument();

@@ -1,20 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  hasCompletedBasicAuthOnboarding,
   hasSavedSearchTermsOnboarding,
   isOnboardingComplete,
 } from "./onboarding";
 
 describe("onboarding helpers", () => {
-  it("treats a skipped basic-auth decision as complete", () => {
-    expect(
-      hasCompletedBasicAuthOnboarding({
-        basicAuthActive: false,
-        onboardingBasicAuthDecision: "skipped",
-      } as any),
-    ).toBe(true);
-  });
-
   it("requires an explicit saved search-terms override by default", () => {
     expect(
       hasSavedSearchTermsOnboarding({
@@ -30,8 +20,6 @@ describe("onboarding helpers", () => {
       isOnboardingComplete({
         demoMode: false,
         settings: {
-          basicAuthActive: false,
-          onboardingBasicAuthDecision: "skipped",
           searchTerms: {
             value: ["Software Engineer"],
             default: ["Software Engineer"],
@@ -49,8 +37,6 @@ describe("onboarding helpers", () => {
       isOnboardingComplete({
         demoMode: false,
         settings: {
-          basicAuthActive: false,
-          onboardingBasicAuthDecision: "skipped",
           searchTerms: {
             value: ["Platform Engineer"],
             default: ["Software Engineer"],
@@ -69,8 +55,6 @@ describe("onboarding helpers", () => {
       isOnboardingComplete({
         demoMode: false,
         settings: {
-          basicAuthActive: false,
-          onboardingBasicAuthDecision: "skipped",
           searchTerms: {
             value: ["Platform Engineer"],
             default: ["Software Engineer"],
@@ -86,8 +70,6 @@ describe("onboarding helpers", () => {
       isOnboardingComplete({
         demoMode: false,
         settings: {
-          basicAuthActive: false,
-          onboardingBasicAuthDecision: "skipped",
           searchTerms: {
             value: ["Platform Engineer"],
             default: ["Software Engineer"],

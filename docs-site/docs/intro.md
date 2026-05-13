@@ -63,7 +63,7 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
 
 - **[Settings](/docs/next/features/settings)**
   - LLM provider/model and task-specific overrides
-  - Webhooks, service accounts, and basic auth controls
+  - Webhooks, service accounts, and workspace user management
   - Backup scheduling, scoring thresholds, and danger-zone cleanup tools
 
 - **[Reactive Resume](/docs/next/features/reactive-resume)**

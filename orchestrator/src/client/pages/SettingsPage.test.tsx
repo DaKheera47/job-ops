@@ -961,50 +961,13 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("enables save button when the authentication toggle is changed", async () => {
+  it("does not render legacy Basic Auth controls in environment settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = getSaveButton();
 
     await openEnvironmentSection();
-    const authCheckbox = screen.getByLabelText(/enable authentication/i);
-    fireEvent.click(authCheckbox);
-    expect(saveButton).toBeEnabled();
-  });
-
-  it("wipes auth credentials when the toggle is disabled and saved", async () => {
-    // Initial state: authentication is active
-    const activeSettings = {
-      ...baseSettings,
-      basicAuthActive: true,
-      basicAuthUser: "admin",
-      basicAuthPasswordHint: "pass",
-    };
-    vi.mocked(api.getSettings).mockResolvedValue(activeSettings);
-    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
-
-    renderPage();
-
-    await openEnvironmentSection();
-
-    const authCheckbox = screen.getByLabelText(/enable authentication/i);
-    expect(authCheckbox).toBeChecked();
-
-    // Disable it
-    fireEvent.click(authCheckbox);
-    expect(authCheckbox).not.toBeChecked();
-
-    const saveButton = getSaveButton();
-    expect(saveButton).toBeEnabled();
-    fireEvent.click(saveButton);
-
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        basicAuthUser: null,
-        basicAuthPassword: null,
-      }),
-    );
+    expect(screen.queryByLabelText(/enable authentication/i)).toBeNull();
+    expect(screen.queryByPlaceholderText("username")).toBeNull();
   });
 
   it("saves blocked company keywords from scoring settings", async () => {

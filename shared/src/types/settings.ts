@@ -243,12 +243,9 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
-  onboardingBasicAuthDecision: "enabled" | "skipped" | null;
   rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;
-  basicAuthUser: string | null;
-  basicAuthPassword: string | null;
 
   // Secret hints:
   llmApiKeyHint: string | null;
@@ -257,10 +254,8 @@ export interface AppSettings {
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;
   apifyTokenHint: string | null;
-  basicAuthPasswordHint: string | null;
   webhookSecretHint: string | null;
 
   // Computed:
-  basicAuthActive: boolean;
   profileProjects: ResumeProjectCatalogItem[];
 }

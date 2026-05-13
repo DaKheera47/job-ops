@@ -47,7 +47,7 @@ describe("useOnboardingRequirement", () => {
     });
   });
 
-  it("treats the persisted onboarding basic-auth decision as the source of truth", async () => {
+  it("treats saved search terms as the onboarding completion source of truth", async () => {
     let currentSettings: any = {
       llmProvider: { value: "lmstudio", default: "lmstudio", override: null },
       llmBaseUrl: {
@@ -61,8 +61,6 @@ describe("useOnboardingRequirement", () => {
         override: null,
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: null,
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -90,7 +88,6 @@ describe("useOnboardingRequirement", () => {
         default: ["web developer"],
         override: ["Platform Engineer"],
       },
-      onboardingBasicAuthDecision: "skipped",
     };
     rerender();
 
@@ -118,8 +115,6 @@ describe("useOnboardingRequirement", () => {
         override: ["Platform Engineer"],
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -179,8 +174,6 @@ describe("useOnboardingRequirement", () => {
         override: ["Platform Engineer"],
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -251,8 +244,6 @@ describe("useOnboardingRequirement", () => {
         override: ["Platform Engineer"],
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -304,8 +295,6 @@ describe("useOnboardingRequirement", () => {
         override: ["Platform Engineer"],
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -353,8 +342,6 @@ describe("useOnboardingRequirement", () => {
       },
       rxresumeBaseResumeId: "resume-1",
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({
@@ -401,8 +388,6 @@ describe("useOnboardingRequirement", () => {
         override: null,
       },
       rxresumeUrl: null,
-      basicAuthActive: false,
-      onboardingBasicAuthDecision: "skipped",
     };
 
     vi.mocked(useSettings).mockImplementation(() => ({

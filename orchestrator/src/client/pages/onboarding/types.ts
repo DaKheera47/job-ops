@@ -16,12 +16,9 @@ export type OnboardingFormData = {
   rxresumeBaseResumeId: string | null;
   searchTerms: string[];
   searchTermDraft: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
 };
 
-export type StepId = "llm" | "baseresume" | "searchterms" | "basicauth";
-export type BasicAuthChoice = "enable" | "skip" | null;
+export type StepId = "llm" | "baseresume" | "searchterms";
 export type ResumeSetupMode = "upload" | "rxresume";
 
 export type OnboardingStep = {

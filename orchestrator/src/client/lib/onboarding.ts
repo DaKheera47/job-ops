@@ -1,14 +1,6 @@
 import type { AppSettings } from "@shared/types";
 
-type OnboardingStepId = "llm" | "baseresume" | "searchterms" | "basicauth";
-
-export function hasCompletedBasicAuthOnboarding(
-  settings: AppSettings | null | undefined,
-): boolean {
-  return Boolean(
-    settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
-  );
-}
+type OnboardingStepId = "llm" | "baseresume" | "searchterms";
 
 export function hasSavedSearchTermsOnboarding(
   settings: AppSettings | null | undefined,
@@ -39,10 +31,5 @@ export function isOnboardingComplete(input: {
       : (input.searchTermsValid ??
         hasSavedSearchTermsOnboarding(input.settings));
 
-  return Boolean(
-    llmValid &&
-      baseResumeValid &&
-      searchTermsValid &&
-      hasCompletedBasicAuthOnboarding(input.settings),
-  );
+  return Boolean(llmValid && baseResumeValid && searchTermsValid);
 }

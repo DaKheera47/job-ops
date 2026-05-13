@@ -3,10 +3,7 @@ import { fileToDataUrl } from "@client/components/design-resume/utils";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
-import {
-  hasCompletedBasicAuthOnboarding,
-  isOnboardingComplete,
-} from "@client/lib/onboarding";
+import { isOnboardingComplete } from "@client/lib/onboarding";
 import { queryKeys } from "@client/lib/queryKeys";
 import {
   getRxResumeCredentialDrafts,
@@ -33,7 +30,6 @@ import { formatUserFacingError } from "@/client/lib/error-format";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
-  BasicAuthChoice,
   OnboardingFormData,
   OnboardingStep,
   ResumeSetupMode,
@@ -63,8 +59,6 @@ export function useOnboardingFlow() {
   );
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
-  const [basicAuthChoice, setBasicAuthChoice] =
-    useState<BasicAuthChoice>("enable");
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [resumeSetupMode, setResumeSetupMode] =
     useState<ResumeSetupMode>("upload");
@@ -93,8 +87,6 @@ export function useOnboardingFlow() {
         rxresumeBaseResumeId: null,
         searchTerms: [],
         searchTermDraft: "",
-        basicAuthUser: "",
-        basicAuthPassword: "",
       },
     });
 
@@ -127,16 +119,7 @@ export function useOnboardingFlow() {
       rxresumeBaseResumeId: selectedId,
       searchTerms: settings.searchTerms?.value ?? [],
       searchTermDraft: "",
-      basicAuthUser: settings.basicAuthUser ?? "",
-      basicAuthPassword: "",
     });
-    setBasicAuthChoice(
-      settings.basicAuthActive
-        ? "enable"
-        : settings.onboardingBasicAuthDecision === "skipped"
-          ? "skip"
-          : "enable",
-    );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
     if (!resumeSetupModeTouchedRef.current) {
       setResumeSetupMode(selectedId ? "rxresume" : "upload");
@@ -171,7 +154,6 @@ export function useOnboardingFlow() {
     Array.isArray(searchTermsOverride) && searchTermsOverride.length > 0,
   );
   const searchTermsComplete = searchTermsSaved && !searchTermsStale;
-  const basicAuthComplete = hasCompletedBasicAuthOnboarding(settings);
 
   const toValidationState = useCallback(
     (
@@ -348,20 +330,8 @@ export function useOnboardingFlow() {
         complete: searchTermsComplete,
         disabled: false,
       },
-      {
-        id: "basicauth",
-        label: "Basic auth",
-        subtitle: "Protect write actions or skip",
-        complete: basicAuthComplete,
-        disabled: false,
-      },
     ],
-    [
-      basicAuthComplete,
-      baseResumeValidation.valid,
-      llmValidated,
-      searchTermsComplete,
-    ],
+    [baseResumeValidation.valid, llmValidated, searchTermsComplete],
   );
 
   useEffect(() => {
@@ -734,66 +704,6 @@ export function useOnboardingFlow() {
     }
   }, [getValues, setValue, syncSettingsCache]);
 
-  const handleCompleteBasicAuth = useCallback(async () => {
-    if (basicAuthChoice === "skip") {
-      try {
-        setIsSaving(true);
-        const nextSettings = await api.updateSettings({
-          onboardingBasicAuthDecision: "skipped",
-        });
-        syncSettingsCache(nextSettings);
-        toast.success("Authentication skipped for now");
-        return nextSettings;
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to save onboarding progress",
-        );
-        return null;
-      } finally {
-        setIsSaving(false);
-      }
-    }
-
-    if (basicAuthChoice !== "enable") {
-      toast.info("Choose whether to enable authentication or skip it for now");
-      return null;
-    }
-
-    const { basicAuthUser, basicAuthPassword } = getValues();
-    const normalizedUser = basicAuthUser.trim();
-    const normalizedPassword = basicAuthPassword.trim();
-
-    if (!normalizedUser || !normalizedPassword) {
-      toast.info("Enter both a username and password to enable authentication");
-      return null;
-    }
-
-    try {
-      setIsSaving(true);
-      const nextSettings = await api.updateSettings({
-        enableBasicAuth: true,
-        basicAuthUser: normalizedUser,
-        basicAuthPassword: normalizedPassword,
-        onboardingBasicAuthDecision: "enabled",
-      });
-      syncSettingsCache(nextSettings);
-      setValue("basicAuthPassword", "");
-      toast.success("Authentication enabled");
-      return nextSettings;
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to save authentication credentials",
-      );
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [basicAuthChoice, getValues, setValue, syncSettingsCache]);
-
   const handlePrimaryAction = useCallback(async () => {
     if (!currentStep) return null;
     if (currentStep === "llm") {
@@ -808,10 +718,9 @@ export function useOnboardingFlow() {
     if (currentStep === "searchterms") {
       return await handleSaveSearchTerms();
     }
-    return await handleCompleteBasicAuth();
+    return null;
   }, [
     currentStep,
-    handleCompleteBasicAuth,
     handleSaveBaseResume,
     handleSaveLlm,
     handleSaveSearchTerms,
@@ -854,16 +763,11 @@ export function useOnboardingFlow() {
           ? hasSavedSearchTermsInSession
             ? "Update search terms"
             : "Save search terms"
-          : basicAuthChoice === "enable"
-            ? "Enable authentication"
-            : basicAuthChoice === "skip"
-              ? "Finish onboarding"
-              : "Choose an option";
+          : "Continue";
 
   return {
     baseResumeValidation,
     baseResumeValue,
-    basicAuthChoice,
     canGoBack,
     complete,
     control,
@@ -893,7 +797,6 @@ export function useOnboardingFlow() {
     steps,
     watch,
     setCurrentStep,
-    setBasicAuthChoice,
     setResumeSetupMode: handleResumeSetupModeChange,
     setValue,
     setBaseResumeId,

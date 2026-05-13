@@ -1,23 +1,14 @@
 import type { LlmProviderId } from "@client/pages/settings/utils";
 import type { SearchTermsSuggestionResponse } from "@shared/types.js";
 import type React from "react";
-import type {
-  BasicAuthChoice,
-  ResumeSetupMode,
-  StepId,
-  ValidationState,
-} from "../types";
+import type { ResumeSetupMode, StepId, ValidationState } from "../types";
 import { BaseResumeStep } from "./BaseResumeStep";
-import { BasicAuthStep } from "./BasicAuthStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
 import { SearchTermsStep } from "./SearchTermsStep";
 
 export const OnboardingStepContent: React.FC<{
   baseResumeValidation: ValidationState;
   baseResumeValue: string | null;
-  basicAuthChoice: BasicAuthChoice;
-  basicAuthPassword: string;
-  basicAuthUser: string;
   currentStep: StepId;
   defaultModel: string | null | undefined;
   effectiveModel: string | null | undefined;
@@ -48,9 +39,6 @@ export const OnboardingStepContent: React.FC<{
   onLlmBaseUrlChange: (value: string) => void;
   onLlmModelChange: (value: string) => void;
   onLlmProviderChange: (value: string) => void;
-  onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
-  onBasicAuthPasswordChange: (value: string) => void;
-  onBasicAuthUserChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
   onRegenerateSearchTerms: () => Promise<void>;
   onRxresumeApiKeyChange: (value: string) => void;
@@ -125,15 +113,5 @@ export const OnboardingStepContent: React.FC<{
     );
   }
 
-  return (
-    <BasicAuthStep
-      basicAuthChoice={props.basicAuthChoice}
-      basicAuthPassword={props.basicAuthPassword}
-      basicAuthUser={props.basicAuthUser}
-      isBusy={props.isBusy}
-      onBasicAuthChoiceChange={props.onBasicAuthChoiceChange}
-      onBasicAuthPasswordChange={props.onBasicAuthPasswordChange}
-      onBasicAuthUserChange={props.onBasicAuthUserChange}
-    />
-  );
+  return null;
 };

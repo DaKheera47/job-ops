@@ -50,7 +50,8 @@ The onboarding wizard helps you validate and save:
 1. **LLM Provider**: OpenRouter by default (or OpenAI/Gemini/local URL).
 2. **Import your current resume**: Either upload a PDF/DOCX into JobOps or choose the Reactive Resume option and connect with your v5 API key.
 3. **Search terms**: JobOps generates a first list of job-title search terms from your selected resume. Edit or regenerate them before saving.
-4. **First-run account**: Create the first username/password account. This account becomes the system admin and owns the initial private workspace.
+
+Create the first username/password account from the sign-in screen before opening private APIs. This first account becomes the system admin and owns the initial private workspace.
 
 Settings and user accounts are saved to the local database. If you are upgrading an older single-user install, JobOps migrates existing rows into one default private workspace. When `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are present during that migration, they seed the first system admin account; otherwise the sign-in screen requires first-run setup before private APIs are usable.
 

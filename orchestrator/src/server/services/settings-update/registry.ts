@@ -83,8 +83,6 @@ const RXRESUME_CACHE_INVALIDATION_KEYS = new Set<keyof UpdateSettingsInput>([
 ]);
 
 for (const [key, def] of Object.entries(settingsRegistry)) {
-  if (def.kind === "virtual") continue;
-
   const targetKey =
     def.kind === "alias" ? (def.target as SettingKey) : (key as SettingKey);
   const isBackup = key.startsWith("backup");

@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { updateSettingsSchema } from "./settings-schema";
 
 describe("updateSettingsSchema", () => {
+  it("does not expose legacy Basic Auth update fields", () => {
+    expect(
+      updateSettingsSchema.parse({
+        enableBasicAuth: true,
+        basicAuthUser: "admin",
+        basicAuthPassword: "secret",
+        onboardingBasicAuthDecision: "enabled",
+      }),
+    ).toEqual({});
+  });
+
   it("accepts supported PDF renderer values and rejects unsupported ones", () => {
     expect(
       updateSettingsSchema.parse({

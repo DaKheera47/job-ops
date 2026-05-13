@@ -105,9 +105,6 @@ export const OnboardingPage: React.FC = () => {
                   <OnboardingStepContent
                     baseResumeValidation={flow.baseResumeValidation}
                     baseResumeValue={flow.baseResumeValue}
-                    basicAuthChoice={flow.basicAuthChoice}
-                    basicAuthPassword={flow.watch("basicAuthPassword")}
-                    basicAuthUser={flow.watch("basicAuthUser")}
                     currentStep={flow.currentStep}
                     defaultModel={flow.settings?.model?.default}
                     effectiveModel={flow.settings?.model?.value}
@@ -149,13 +146,6 @@ export const OnboardingPage: React.FC = () => {
                       flow.setValue("llmProvider", value, {
                         shouldDirty: true,
                       })
-                    }
-                    onBasicAuthChoiceChange={flow.setBasicAuthChoice}
-                    onBasicAuthPasswordChange={(value) =>
-                      flow.setValue("basicAuthPassword", value)
-                    }
-                    onBasicAuthUserChange={(value) =>
-                      flow.setValue("basicAuthUser", value)
                     }
                     onImportResumeFile={flow.handleImportResumeFile}
                     onRegenerateSearchTerms={flow.handleRegenerateSearchTerms}

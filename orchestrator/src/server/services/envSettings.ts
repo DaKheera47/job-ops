@@ -51,17 +51,5 @@ export async function getEnvSettingsData(
     }
   }
 
-  const basicAuthUser = normalizeEnvInput(
-    activeOverrides.basicAuthUser ?? getOriginalEnvValue("BASIC_AUTH_USER"),
-  );
-  const basicAuthPassword = normalizeEnvInput(
-    activeOverrides.basicAuthPassword ??
-      getOriginalEnvValue("BASIC_AUTH_PASSWORD"),
-  );
-  const basicAuthActive = Boolean(basicAuthUser && basicAuthPassword);
-
-  values.basicAuthActive = basicAuthActive;
-  values.basicAuthPassword = basicAuthActive ? basicAuthPassword : null;
-
   return values;
 }

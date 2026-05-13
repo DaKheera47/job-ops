@@ -93,14 +93,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleManualLanguage: null,
   rxresumeUrl: "",
   rxresumeApiKey: "",
-  basicAuthUser: "",
-  basicAuthPassword: "",
   ukvisajobsEmail: "",
   ukvisajobsPassword: "",
   adzunaAppId: "",
   adzunaAppKey: "",
   webhookSecret: "",
-  enableBasicAuth: false,
   backupEnabled: null,
   backupHour: null,
   backupMaxCount: null,
@@ -334,9 +331,6 @@ const SECTION_FIELD_MAP: Record<
     "ukvisajobsPassword",
     "adzunaAppId",
     "adzunaAppKey",
-    "enableBasicAuth",
-    "basicAuthUser",
-    "basicAuthPassword",
   ],
   display: ["showSponsorInfo", "renderMarkdownInJobDescriptions"],
   backup: ["backupEnabled", "backupHour", "backupMaxCount"],
@@ -422,15 +416,12 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleManualLanguage: null,
   rxresumeUrl: null,
   rxresumeApiKey: null,
-  basicAuthUser: null,
-  basicAuthPassword: null,
   ukvisajobsEmail: null,
   ukvisajobsPassword: null,
   adzunaAppId: null,
   adzunaAppKey: null,
   adzunaMaxJobsPerTerm: null,
   webhookSecret: null,
-  enableBasicAuth: undefined,
   backupEnabled: null,
   backupHour: null,
   backupMaxCount: null,
@@ -476,14 +467,11 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleManualLanguage: data.chatStyleManualLanguage.override ?? null,
   rxresumeUrl: data.rxresumeUrl ?? "",
   rxresumeApiKey: "",
-  basicAuthUser: data.basicAuthUser ?? "",
-  basicAuthPassword: data.basicAuthPassword ?? "",
   ukvisajobsEmail: data.ukvisajobsEmail ?? "",
   ukvisajobsPassword: "",
   adzunaAppId: data.adzunaAppId ?? "",
   adzunaAppKey: "",
   webhookSecret: "",
-  enableBasicAuth: data.basicAuthActive,
   backupEnabled: data.backupEnabled.override,
   backupHour: data.backupHour.override,
   backupMaxCount: data.backupMaxCount.override,
@@ -678,16 +666,12 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       readable: {
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
         adzunaAppId: settings?.adzunaAppId ?? "",
-        basicAuthUser: settings?.basicAuthUser ?? "",
-        basicAuthPassword: settings?.basicAuthPassword ?? "",
       },
       private: {
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
         adzunaAppKeyHint: settings?.adzunaAppKeyHint ?? null,
-        basicAuthPasswordHint: settings?.basicAuthPasswordHint ?? null,
         webhookSecretHint: settings?.webhookSecretHint ?? null,
       },
-      basicAuthActive: settings?.basicAuthActive ?? false,
     },
     defaultResumeProjects: settings?.resumeProjects?.default ?? null,
 
@@ -1071,16 +1055,6 @@ export const SettingsPage: React.FC = () => {
 
   const onSave = async (data: UpdateSettingsInput) => {
     if (!settings) return;
-    if (data.enableBasicAuth && !settings.basicAuthActive) {
-      const password = data.basicAuthPassword?.trim() ?? "";
-      if (!password) {
-        setError("basicAuthPassword", {
-          type: "manual",
-          message: "Password is required when authentication is enabled",
-        });
-        return;
-      }
-    }
     try {
       setIsSaving(true);
 
@@ -1105,24 +1079,6 @@ export const SettingsPage: React.FC = () => {
 
       if (dirtyFields.adzunaAppId || dirtyFields.adzunaAppKey) {
         envPayload.adzunaAppId = normalizeString(data.adzunaAppId);
-      }
-
-      if (data.enableBasicAuth === false) {
-        envPayload.basicAuthUser = null;
-        envPayload.basicAuthPassword = null;
-      } else if (
-        dirtyFields.enableBasicAuth ||
-        dirtyFields.basicAuthUser ||
-        dirtyFields.basicAuthPassword
-      ) {
-        // If enabling authentication or changing either field, ensure we send at least the username
-        // to keep the pair consistent in the backend.
-        envPayload.basicAuthUser = normalizeString(data.basicAuthUser);
-
-        if (dirtyFields.basicAuthPassword) {
-          const value = normalizePrivateInput(data.basicAuthPassword);
-          if (value !== undefined) envPayload.basicAuthPassword = value;
-        }
       }
 
       if (dirtyFields.llmProvider) {
@@ -1525,8 +1481,7 @@ export const SettingsPage: React.FC = () => {
             : { label: "Not configured", variant: "secondary" as const };
       case "environment":
         return envSettings.readable.ukvisajobsEmail ||
-          envSettings.readable.adzunaAppId ||
-          envSettings.basicAuthActive
+          envSettings.readable.adzunaAppId
           ? { label: "Configured", variant: "outline" as const }
           : null;
       case "display":

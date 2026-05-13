@@ -110,8 +110,11 @@ describe.sequential("Settings API routes", () => {
     expect(body.data.pdfRenderer.value).toBe("rxresume");
     expect(body.data.pdfRenderer.default).toBe("rxresume");
     expect(body.data.llmApiKeyHint).toBe("secr");
-    expect(body.data.basicAuthPassword).toBeNull();
-    expect(body.data.basicAuthActive).toBe(false);
+    expect(body.data).not.toHaveProperty("basicAuthUser");
+    expect(body.data).not.toHaveProperty("basicAuthPassword");
+    expect(body.data).not.toHaveProperty("basicAuthPasswordHint");
+    expect(body.data).not.toHaveProperty("basicAuthActive");
+    expect(body.data).not.toHaveProperty("onboardingBasicAuthDecision");
     expect(body.data.ghostwriterSystemPromptTemplate.value).toBe(
       getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
     );
@@ -123,26 +126,27 @@ describe.sequential("Settings API routes", () => {
     );
   });
 
-  it("does not expose the basic auth password when only the password is configured", async () => {
-    const partialBasicAuth = await startServer({
+  it("does not expose Basic Auth env values through settings", async () => {
+    const legacyBasicAuth = await startServer({
       env: {
-        BASIC_AUTH_PASSWORD: "secret-only",
-        BASIC_AUTH_USER: "",
+        BASIC_AUTH_PASSWORD: "legacy-secret",
+        BASIC_AUTH_USER: "legacy-admin",
         LLM_API_KEY: "secret-key",
         RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
     try {
-      const res = await fetch(`${partialBasicAuth.baseUrl}/api/settings`);
+      const res = await fetch(`${legacyBasicAuth.baseUrl}/api/settings`);
       const body = await res.json();
 
       expect(body.ok).toBe(true);
-      expect(body.data.basicAuthActive).toBe(false);
-      expect(body.data.basicAuthPassword).toBeNull();
-      expect(body.data.basicAuthPasswordHint).toBe("secr");
+      expect(body.data).not.toHaveProperty("basicAuthUser");
+      expect(body.data).not.toHaveProperty("basicAuthPassword");
+      expect(body.data).not.toHaveProperty("basicAuthPasswordHint");
+      expect(body.data).not.toHaveProperty("basicAuthActive");
     } finally {
-      await stopServer(partialBasicAuth);
+      await stopServer(legacyBasicAuth);
     }
   });
 
@@ -280,8 +284,8 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.rxresumeApiKeyHint).toBe("upda");
     expect(patchBody.data.rxresumeUrl).toBe("https://resume.example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
-    expect(patchBody.data.basicAuthUser).toBe("admin");
-    expect(patchBody.data.basicAuthPassword).toBe("letmein");
+    expect(patchBody.data).not.toHaveProperty("basicAuthUser");
+    expect(patchBody.data).not.toHaveProperty("basicAuthPassword");
     expect(patchBody.data.ghostwriterSystemPromptTemplate.override).toBe(
       "Custom Ghostwriter {{tone}}",
     );
@@ -414,7 +418,7 @@ describe.sequential("Settings API routes", () => {
     expect(validateCredentials).not.toHaveBeenCalled();
   });
 
-  it("validates basic auth requirements", async () => {
+  it("ignores removed Basic Auth settings fields", async () => {
     const res = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -423,10 +427,12 @@ describe.sequential("Settings API routes", () => {
         basicAuthUser: "",
       }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.ok).toBe(false);
-    expect(body.error.message).toContain("Username is required");
+    expect(body.ok).toBe(true);
+    expect(body.data).not.toHaveProperty("basicAuthUser");
+    expect(body.data).not.toHaveProperty("basicAuthPassword");
+    expect(body.data).not.toHaveProperty("basicAuthActive");
   });
 
   it("handles salary penalty settings with validation", async () => {

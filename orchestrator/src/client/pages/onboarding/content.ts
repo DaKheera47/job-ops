@@ -33,10 +33,4 @@ export const STEP_COPY: Record<
     description:
       "Start from titles generated from your current resume, then edit the list so Job Ops searches for the roles you actually want next.",
   },
-  basicauth: {
-    eyebrow: "Step 4",
-    title: "Secure your workspace",
-    description:
-      "Add a username and password so only signed-in users can access protected parts of Job Ops. You can always set this up later in Settings.",
-  },
 };

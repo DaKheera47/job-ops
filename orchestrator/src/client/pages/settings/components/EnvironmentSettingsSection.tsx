@@ -7,12 +7,11 @@ import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
@@ -238,13 +237,9 @@ export const EnvironmentSettingsSection: React.FC<
 > = ({ values, isLoading, isSaving, layoutMode }) => {
   const {
     register,
-    control,
-    watch,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
   const { private: privateValues } = values;
-
-  const isBasicAuthEnabled = watch("enableBasicAuth");
 
   return (
     <SettingsSectionFrame
@@ -310,54 +305,6 @@ export const EnvironmentSettingsSection: React.FC<
             Security
           </div>
           <AccountManagementSection />
-          <Separator />
-          <div className="flex items-start space-x-3">
-            <Controller
-              name="enableBasicAuth"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="enableBasicAuth"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isLoading || isSaving}
-                />
-              )}
-            />
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="enableBasicAuth"
-                className="cursor-pointer text-sm font-medium leading-none"
-              >
-                Enable authentication
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Require a username and password to sign in and access protected
-                routes.
-              </p>
-            </div>
-          </div>
-
-          {isBasicAuthEnabled && (
-            <div className="grid gap-4 pt-2 md:grid-cols-2">
-              <SettingsInput
-                label="Username"
-                inputProps={register("basicAuthUser")}
-                placeholder="username"
-                disabled={isLoading || isSaving}
-                error={errors.basicAuthUser?.message as string | undefined}
-              />
-
-              <SettingsInput
-                label="Password"
-                inputProps={register("basicAuthPassword")}
-                type="password"
-                placeholder="Enter new password"
-                disabled={isLoading || isSaving}
-                error={errors.basicAuthPassword?.message as string | undefined}
-              />
-            </div>
-          )}
         </div>
       </div>
     </SettingsSectionFrame>

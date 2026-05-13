@@ -772,10 +772,6 @@ export const settingsRegistry = {
     kind: "string" as const,
     schema: z.string().trim().max(200),
   },
-  onboardingBasicAuthDecision: {
-    kind: "string" as const,
-    schema: z.enum(["enabled", "skipped"]),
-  },
   rxresumeUrl: {
     kind: "string" as const,
     envKey: "RXRESUME_URL",
@@ -792,11 +788,6 @@ export const settingsRegistry = {
   adzunaAppId: {
     kind: "string" as const,
     envKey: "ADZUNA_APP_ID",
-    schema: z.string().trim().max(200),
-  },
-  basicAuthUser: {
-    kind: "string" as const,
-    envKey: "BASIC_AUTH_USER",
     schema: z.string().trim().max(200),
   },
 
@@ -836,11 +827,6 @@ export const settingsRegistry = {
     envKey: "APIFY_TOKEN",
     schema: z.string().trim().max(2000),
   },
-  basicAuthPassword: {
-    kind: "secret" as const,
-    envKey: "BASIC_AUTH_PASSWORD",
-    schema: z.string().trim().max(2000),
-  },
   webhookSecret: {
     kind: "secret" as const,
     envKey: "WEBHOOK_SECRET",
@@ -852,12 +838,6 @@ export const settingsRegistry = {
     kind: "alias" as const,
     schema: z.string().trim().max(100),
     target: "searchCities" as const,
-  },
-
-  // --- Virtual ---
-  enableBasicAuth: {
-    kind: "virtual" as const,
-    schema: z.boolean(),
   },
 } as const;
 
