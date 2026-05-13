@@ -154,7 +154,8 @@ const llmPurposeOverrideSchema = z.object({
     z.enum(LLM_PROVIDER_VALUES).nullable().optional(),
   ),
   baseUrl: z.preprocess(
-    (value) => (value === "" ? null : value),
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? null : value,
     z.string().trim().url().max(2000).nullable().optional(),
   ),
   model: z.preprocess(

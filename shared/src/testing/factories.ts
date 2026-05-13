@@ -142,8 +142,8 @@ export const createAppSettings = (
   modelProjectSelection: { value: "gpt-4o", override: null },
   llmProvider: { value: "openai", default: "openai", override: null },
   llmBaseUrl: {
-    value: "https://api.openai.com/v1",
-    default: "https://api.openai.com/v1",
+    value: "https://api.openai.com",
+    default: "https://api.openai.com",
     override: null,
   },
   llmPurposeOverrides: { value: {}, default: {}, override: null },

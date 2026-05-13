@@ -419,6 +419,53 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("treats blank purpose API key input as a no-op", async () => {
+    const localSettings = createAppSettings({
+      model: {
+        value: "llama3.2",
+        default: "llama3.2",
+        override: "llama3.2",
+      },
+      llmProvider: {
+        value: "ollama",
+        default: "ollama",
+        override: "ollama",
+      },
+      llmBaseUrl: {
+        value: "http://localhost:11434",
+        default: "http://localhost:11434",
+        override: null,
+      },
+    });
+    vi.mocked(api.getSettings).mockResolvedValue(localSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(localSettings);
+
+    renderPage();
+    await openModelSection();
+    await clickLastButtonByName(/tailoring/i);
+
+    const providerSelectors = await screen.findAllByRole("combobox", {
+      name: /provider/i,
+    });
+    fireEvent.click(providerSelectors.at(-1) as HTMLElement);
+    fireEvent.click(await screen.findByText("OpenAI"));
+    fireEvent.change(screen.getByLabelText(/^api key$/i), {
+      target: { value: "   " },
+    });
+
+    fireEvent.click(getSaveButton());
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmPurposeOverrides: {
+          tailoring: { provider: "openai" },
+        },
+        llmPurposeApiKeys: {},
+      }),
+    );
+  });
+
   it("shows the selected purpose provider base URL as current", async () => {
     const localSettings = createAppSettings({
       llmProvider: {

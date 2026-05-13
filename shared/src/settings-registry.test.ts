@@ -391,6 +391,17 @@ describe("settingsRegistry helpers", () => {
       ).toBeNull();
     });
 
+    it("normalizes whitespace-only purpose override base URLs as empty", () => {
+      expect(
+        settingsRegistry.llmPurposeOverrides.parse(
+          JSON.stringify({
+            scoring: { baseUrl: "   ", model: "  llama3.2  " },
+            tailoring: { baseUrl: "\t\n" },
+          }),
+        ),
+      ).toEqual({ scoring: { model: "llama3.2" } });
+    });
+
     it("returns null for malformed stored purpose API keys", () => {
       expect(
         settingsRegistry.llmPurposeApiKeys.parse(

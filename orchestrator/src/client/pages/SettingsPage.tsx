@@ -551,11 +551,11 @@ const normalizePurposeApiKeys = (
   >) {
     if (!Object.hasOwn(value, purpose)) continue;
     const normalized = normalizePrivateInput(value[purpose] ?? null);
-    if (normalized !== undefined) {
+    if (typeof normalized === "string") {
       out[purpose] = normalized;
     }
   }
-  return Object.keys(out).length > 0 ? out : null;
+  return out;
 };
 
 const stringArraysEqual = (left: string[], right: string[]): boolean => {
