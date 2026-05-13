@@ -1,6 +1,7 @@
 import type { JobSource } from "./types";
 
 const COUNTRY_ALIASES: Record<string, string> = {
+  eg: "egypt",
   uk: "united kingdom",
   us: "united states",
   usa: "united states",
@@ -37,6 +38,7 @@ export const SUPPORTED_COUNTRY_INPUTS = [
   "czechia",
   "denmark",
   "ecuador",
+  "eg",
   "egypt",
   "estonia",
   "finland",
@@ -107,6 +109,7 @@ const NAUKRI_SUPPORTED_COUNTRIES = new Set(["india"].map(normalizeCountryKey));
 const JOBINDEX_SUPPORTED_COUNTRIES = new Set(
   ["denmark"].map(normalizeCountryKey),
 );
+const WAZZUF_SUPPORTED_COUNTRIES = new Set(["egypt"].map(normalizeCountryKey));
 const GLASSDOOR_SUPPORTED_COUNTRIES = new Set(
   [
     "australia",
@@ -200,6 +203,8 @@ export function isSourceAllowedForCountry(
     return NAUKRI_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   if (source === "jobindex")
     return JOBINDEX_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
+  if (source === "wazzuf")
+    return WAZZUF_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   if (source === "glassdoor") return isGlassdoorCountry(country);
   if (source === "adzuna") return getAdzunaCountryCode(country) !== null;
   return true;
