@@ -362,6 +362,7 @@ function DesignResumeDock({
   const magnification = 70;
   const baseItemSize = 46;
   const distance = 200;
+  const railPadding = 12;
   const [scrollOffset, setScrollOffset] = useState(0);
   const [railHeight, setRailHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
@@ -380,7 +381,10 @@ function DesignResumeDock({
     }),
   );
 
-  const maxScrollOffset = Math.max(0, contentHeight - railHeight);
+  const maxScrollOffset = Math.max(
+    0,
+    contentHeight + railPadding * 2 - railHeight,
+  );
 
   useEffect(() => {
     const rail = railRef.current;
@@ -432,13 +436,13 @@ function DesignResumeDock({
           }}
           onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
           onWheel={handleWheel}
-          className="pointer-events-auto relative h-[calc(100vh-8rem)] w-[70px] overflow-visible rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          className="pointer-events-auto relative h-[calc(100vh-8rem)] w-[70px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Design Resume sections"
         >
           <motion.div
             ref={contentRef}
-            className="absolute right-3 top-3 flex flex-col items-end gap-2"
+            className="absolute left-0 right-0 top-3 flex flex-col items-center gap-2"
             style={{ y: -scrollOffset }}
           >
             {items.map((item) => (
