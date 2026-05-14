@@ -784,6 +784,29 @@ export async function deleteJobsBelowScore(threshold: number): Promise<number> {
   return result.changes;
 }
 
+/**
+ * Delete stale jobs not updated in olderThanDays days.
+ * Only targets safe-to-prune statuses (discovered, skipped, expired) —
+ * never touches applied, in_progress, or ready jobs.
+ */
+export async function deleteStaleJobs(olderThanDays: number): Promise<number> {
+  const tenantId = getActiveTenantId();
+  const cutoff = new Date(
+    Date.now() - olderThanDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const result = await db
+    .delete(jobs)
+    .where(
+      and(
+        eq(jobs.tenantId, tenantId),
+        inArray(jobs.status, ["discovered", "skipped", "expired"]),
+        lt(jobs.updatedAt, cutoff),
+      ),
+    )
+    .run();
+  return result.changes;
+}
+
 // Helper to map database row to Job type
 function mapRowToJob(row: typeof jobs.$inferSelect): Job {
   return {

@@ -22,6 +22,7 @@ import { initializePipelineScheduler } from "./services/pipeline-scheduler";
 import { initializeTelegramBot } from "./services/telegram-bot";
 import { applyStoredEnvOverrides } from "./services/envSettings";
 import { initializeHistoricalServerEventReplaySafely } from "./services/historical-product-analytics";
+import { initializeStaleJobsCleanup } from "./services/stale-jobs-cleanup";
 import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
 
 const AUTH_SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
@@ -168,6 +169,15 @@ async function startServer() {
       await initializeGmailSyncScheduler();
     } catch (error) {
       logger.warn("Failed to initialize Gmail sync scheduler", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    // Initialize stale job cleanup scheduler (daily at 3 AM UTC)
+    try {
+      initializeStaleJobsCleanup();
+    } catch (error) {
+      logger.warn("Failed to initialize stale job cleanup scheduler", {
         error: sanitizeUnknown(error),
       });
     }
