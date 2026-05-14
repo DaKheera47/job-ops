@@ -1,4 +1,8 @@
 import type { ApplicationStage } from "@shared/types";
+import {
+  type AnalyticsPayload,
+  withAnalyticsMetadata,
+} from "@/lib/analytics-metadata";
 
 declare const __APP_VERSION__: string;
 
@@ -14,16 +18,10 @@ declare global {
 
 export function trackEvent(event: string, data?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
-  const analyticsUserId = getAnalyticsUserId();
-  const appVersion = getAnalyticsAppVersion();
-  const payload =
-    analyticsUserId === null && appVersion === null
-      ? data
-      : {
-          ...(data ?? {}),
-          ...(analyticsUserId ? { analytics_user_id: analyticsUserId } : {}),
-          ...(appVersion ? { app_version: appVersion } : {}),
-        };
+  const payload = withAnalyticsMetadata(data as AnalyticsPayload | undefined, {
+    analyticsUserId: getAnalyticsUserId(),
+    appVersion: getAnalyticsAppVersion(),
+  });
   window.umami?.track(event, payload);
 }
 
@@ -140,11 +138,55 @@ type ProductEventMap = {
     min_score?: number;
     country?: string;
   };
+  resume_studio_import_completed: {
+    source: "file" | "rxresume";
+    file_type?: "pdf" | "docx" | "unknown";
+    result: "success" | "error";
+    was_reimport: boolean;
+    section_count_bucket: string;
+    item_count_bucket: string;
+  };
+  resume_studio_activation_completed: {
+    source: "file" | "rxresume";
+  };
+  resume_studio_section_edited: {
+    section: string;
+    action: "add" | "edit" | "delete" | "reorder" | "hide" | "unhide";
+    item_count_bucket: string;
+    device_layout: "mobile" | "desktop";
+  };
+  resume_studio_ai_field_suggestion_completed: {
+    section: string;
+    field_type: "plain_text" | "html" | "string_list";
+    result: "generated" | "applied" | "auto_applied" | "error";
+    was_empty: boolean;
+    prompt_length_bucket: string;
+  };
+  resume_studio_pdf_preview_completed: {
+    renderer: string;
+    theme: string;
+    result: "success" | "error";
+    latency_bucket: string;
+  };
+  resume_studio_pdf_downloaded: {
+    renderer: string;
+    theme: string;
+    after_edit: boolean;
+    result: "success" | "error";
+  };
+  resume_studio_export_completed: {
+    result: "success" | "error";
+  };
+  resume_studio_project_policy_changed: {
+    from_mode: "manual" | "ai-selectable" | "must-include";
+    to_mode: "manual" | "ai-selectable" | "must-include";
+    project_count_bucket: string;
+  };
 };
 
 type ProductEventName = keyof ProductEventMap;
 type Primitive = string | number | boolean | null;
-type SanitizedPayload = Record<string, Primitive>;
+type SanitizedPayload = AnalyticsPayload;
 
 function generateAnalyticsUserId() {
   if (

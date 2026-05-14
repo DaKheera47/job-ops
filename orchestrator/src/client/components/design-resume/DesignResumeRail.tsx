@@ -10,6 +10,7 @@ import type {
   ResumeProjectsSettings,
 } from "@shared/types";
 import { Accordion } from "@/components/ui/accordion";
+import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import {
   BasicsCustomFieldsSection,
   BasicsSection,
@@ -282,6 +283,7 @@ export function DesignResumeRail({
                   items,
                   settings?.resumeProjects?.value ?? null,
                 );
+                const fromMode = getProjectTailoringMode(current, projectId);
                 updateSettingsMutation.mutate({
                   resumeProjects: setProjectTailoringMode({
                     settings: current,
@@ -289,6 +291,11 @@ export function DesignResumeRail({
                     mode,
                     maxProjectsTotal: items.length,
                   }),
+                });
+                trackProductEvent("resume_studio_project_policy_changed", {
+                  from_mode: fromMode,
+                  to_mode: mode,
+                  project_count_bucket: bucketCount(items.length),
                 });
               },
               disabled: !settings || updateSettingsMutation.isPending,

@@ -1,5 +1,6 @@
 import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-analytics";
 import umamiModule from "@umami/node";
+import { withAnalyticsMetadata } from "@/lib/analytics-metadata";
 
 import { logger } from "./logger";
 import { getRequestContext } from "./request-context";
@@ -101,6 +102,14 @@ function sanitizeAnalyticsPayload(
   return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
+function getServerAnalyticsAppVersion(): string | null {
+  const envVersion = process.env.JOBOPS_APP_VERSION?.trim();
+  if (envVersion) return envVersion;
+  const npmVersion = process.env.npm_package_version?.trim();
+  if (!npmVersion) return null;
+  return npmVersion.startsWith("v") ? npmVersion : `v${npmVersion}`;
+}
+
 function resolveBaseUrl(requestOrigin?: string | null): string {
   return (
     normalizeBaseUrl(process.env.JOBOPS_PUBLIC_BASE_URL) ??
@@ -176,6 +185,10 @@ export async function trackServerProductEvent(
     const installState = options?.distinctId
       ? { distinctId: options.distinctId }
       : await getOrCreateAnalyticsInstallState();
+    const payload = withAnalyticsMetadata(sanitized, {
+      analyticsUserId: installState.distinctId,
+      appVersion: getServerAnalyticsAppVersion(),
+    });
     const umami = getUmamiClient();
     umami.init({
       websiteId: UMAMI_WEBSITE_ID,
@@ -191,7 +204,7 @@ export async function trackServerProductEvent(
       hostname: page.hostname,
       url: page.url,
       name: event,
-      ...(sanitized ? { data: sanitized } : {}),
+      ...(payload ? { data: payload } : {}),
     });
 
     if (!response.ok) {

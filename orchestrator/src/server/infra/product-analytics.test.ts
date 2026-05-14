@@ -29,6 +29,7 @@ vi.mock("@server/repositories/product-analytics", () => ({
 describe("server product analytics", () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+  const originalAppVersion = process.env.JOBOPS_APP_VERSION;
   const getMockUmami = () =>
     (typeof umamiModule === "object" &&
     umamiModule !== null &&
@@ -42,6 +43,7 @@ describe("server product analytics", () => {
   beforeEach(() => {
     process.env.NODE_ENV = "development";
     process.env.JOBOPS_PUBLIC_BASE_URL = "https://jobops.example";
+    process.env.JOBOPS_APP_VERSION = "v0.test";
     vi.clearAllMocks();
     vi.mocked(getMockUmami().track).mockResolvedValue(
       new Response(null, { status: 202 }),
@@ -54,6 +56,11 @@ describe("server product analytics", () => {
       delete process.env.JOBOPS_PUBLIC_BASE_URL;
     } else {
       process.env.JOBOPS_PUBLIC_BASE_URL = originalBaseUrl;
+    }
+    if (originalAppVersion === undefined) {
+      delete process.env.JOBOPS_APP_VERSION;
+    } else {
+      process.env.JOBOPS_APP_VERSION = originalAppVersion;
     }
   });
 
@@ -94,6 +101,8 @@ describe("server product analytics", () => {
         source: "tracking_inbox_auto",
         stage: "offer",
         sessionId: "session-123",
+        analytics_user_id: "install-distinct-id",
+        app_version: "v0.test",
       },
     });
     expect(logger.warn).not.toHaveBeenCalled();
@@ -185,6 +194,8 @@ describe("server product analytics", () => {
       name: "application_marked_applied",
       data: {
         sessionId: "session-commonjs",
+        analytics_user_id: "install-distinct-id",
+        app_version: "v0.test",
       },
     });
   });

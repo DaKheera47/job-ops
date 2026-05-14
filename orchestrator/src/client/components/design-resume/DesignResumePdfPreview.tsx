@@ -7,6 +7,7 @@ import type {
 } from "@shared/types";
 import { FileText, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackProductEvent } from "@/lib/analytics";
 
 type DesignResumePdfPreviewProps = {
   draft: DesignResumeDocument;
@@ -18,6 +19,15 @@ type DesignResumePdfPreviewProps = {
 };
 
 type PreviewState = "idle" | "waiting-for-save" | "loading" | "ready" | "error";
+
+function bucketLatencyMs(latencyMs: number): string {
+  if (!Number.isFinite(latencyMs) || latencyMs < 0) return "unknown";
+  if (latencyMs < 500) return "lt_500ms";
+  if (latencyMs < 1_000) return "500_1000ms";
+  if (latencyMs < 2_500) return "1000_2500ms";
+  if (latencyMs < 5_000) return "2500_5000ms";
+  return "5000ms_plus";
+}
 
 export function DesignResumePdfPreview({
   draft,
@@ -61,6 +71,7 @@ export function DesignResumePdfPreview({
     }
 
     const requestId = ++requestSequence.current;
+    const startedAt = Date.now();
     lastLoadedKey.current = revisionKey;
     setPreviewState("loading");
     setPreviewError(null);
@@ -82,6 +93,12 @@ export function DesignResumePdfPreview({
         pdfObjectUrlRef.current = objectUrl;
         setPdfUrl(`${objectUrl}#toolbar=0&navpanes=0&view=FitH`);
         setPreviewState("ready");
+        trackProductEvent("resume_studio_pdf_preview_completed", {
+          renderer: pdfRenderer,
+          theme: typstTheme,
+          result: "success",
+          latency_bucket: bucketLatencyMs(Date.now() - startedAt),
+        });
       })
       .catch((error: unknown) => {
         if (requestSequence.current !== requestId) return;
@@ -93,8 +110,21 @@ export function DesignResumePdfPreview({
         );
         setPreviewState("error");
         setIsFrameLoading(false);
+        trackProductEvent("resume_studio_pdf_preview_completed", {
+          renderer: pdfRenderer,
+          theme: typstTheme,
+          result: "error",
+          latency_bucket: bucketLatencyMs(Date.now() - startedAt),
+        });
       });
-  }, [isDirty, isUpdatingRenderer, revisionKey, saveState]);
+  }, [
+    isDirty,
+    isUpdatingRenderer,
+    pdfRenderer,
+    revisionKey,
+    saveState,
+    typstTheme,
+  ]);
 
   useEffect(() => {
     return () => {

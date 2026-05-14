@@ -88,6 +88,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import {
   ITEM_DEFINITIONS,
@@ -267,6 +268,43 @@ const DESIGN_RESUME_ICON_ITEM_BY_SECTION_ID = new Map(
 
 function getDesignResumeSectionIcon(sectionId: DesignResumeSectionId) {
   return DESIGN_RESUME_ICON_ITEM_BY_SECTION_ID.get(sectionId)?.icon ?? BookOpen;
+}
+
+function bucketResumeSectionItemCounts(document: DesignResumeJson): {
+  sectionCountBucket: string;
+  itemCountBucket: string;
+} {
+  const sections = asRecord(document.sections) ?? {};
+  const sectionCount = Object.keys(sections).length;
+  const itemCount = Object.values(sections).reduce<number>((count, section) => {
+    const sectionRecord = asRecord(section) ?? {};
+    return count + asArray(sectionRecord.items).length;
+  }, 0);
+  return {
+    sectionCountBucket: bucketCount(sectionCount),
+    itemCountBucket: bucketCount(itemCount),
+  };
+}
+
+function getImportFileType(file: File): "pdf" | "docx" | "unknown" {
+  const mimeType = file.type.toLowerCase();
+  if (mimeType === "application/pdf") return "pdf";
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return "docx";
+  }
+  const fileName = file.name.toLowerCase();
+  if (fileName.endsWith(".pdf")) return "pdf";
+  if (fileName.endsWith(".docx")) return "docx";
+  return "unknown";
+}
+
+function getDeviceLayout(): "mobile" | "desktop" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return "desktop";
+  return window.matchMedia("(max-width: 639px)").matches ? "mobile" : "desktop";
 }
 
 const useDockItemSize = (
@@ -693,14 +731,35 @@ export const DesignResumePage: React.FC = () => {
   }, [dialogState, draft]);
 
   const handleImport = async () => {
+    const wasReimport = Boolean(status?.exists);
     try {
       setResumeImporting(true);
       const imported = await api.importDesignResumeFromRxResume();
       setDesignResume(imported);
       setSaveState("saved");
+      const counts = bucketResumeSectionItemCounts(imported.resumeJson);
+      trackProductEvent("resume_studio_import_completed", {
+        source: "rxresume",
+        result: "success",
+        was_reimport: wasReimport,
+        section_count_bucket: counts.sectionCountBucket,
+        item_count_bucket: counts.itemCountBucket,
+      });
+      if (!wasReimport) {
+        trackProductEvent("resume_studio_activation_completed", {
+          source: "rxresume",
+        });
+      }
       toast.success("Imported your resume.");
       notifyReadyPdfRefresh();
     } catch (importError) {
+      trackProductEvent("resume_studio_import_completed", {
+        source: "rxresume",
+        result: "error",
+        was_reimport: wasReimport,
+        section_count_bucket: "0",
+        item_count_bucket: "0",
+      });
       showErrorToast(importError, "Failed to import your resume.");
     } finally {
       setResumeImporting(false);
@@ -716,6 +775,8 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const handleImportFile = async (file: File) => {
+    const wasReimport = Boolean(status?.exists);
+    const fileType = getImportFileType(file);
     try {
       setResumeImporting(true);
       const dataUrl = await fileToDataUrl(file);
@@ -732,10 +793,32 @@ export const DesignResumePage: React.FC = () => {
       });
       setDesignResume(imported);
       setSaveState("saved");
+      const counts = bucketResumeSectionItemCounts(imported.resumeJson);
+      trackProductEvent("resume_studio_import_completed", {
+        source: "file",
+        file_type: fileType,
+        result: "success",
+        was_reimport: wasReimport,
+        section_count_bucket: counts.sectionCountBucket,
+        item_count_bucket: counts.itemCountBucket,
+      });
+      if (!wasReimport) {
+        trackProductEvent("resume_studio_activation_completed", {
+          source: "file",
+        });
+      }
       toast.success("Imported your resume file.");
       notifyReadyPdfRefresh();
     } catch (importError) {
       setSaveState("error");
+      trackProductEvent("resume_studio_import_completed", {
+        source: "file",
+        file_type: fileType,
+        result: "error",
+        was_reimport: wasReimport,
+        section_count_bucket: "0",
+        item_count_bucket: "0",
+      });
       showErrorToast(importError, "Failed to import your resume file.");
     } finally {
       setResumeImporting(false);
@@ -749,19 +832,36 @@ export const DesignResumePage: React.FC = () => {
     try {
       const exported = await api.exportDesignResume();
       makeDownload(exported.fileName, exported.document);
+      trackProductEvent("resume_studio_export_completed", {
+        result: "success",
+      });
       toast.success("Exported your resume JSON.");
     } catch (exportError) {
+      trackProductEvent("resume_studio_export_completed", { result: "error" });
       showErrorToast(exportError, "Failed to export Resume Studio.");
     }
   };
 
   const handleDownloadPdf = async () => {
+    const downloadedAfterEdit = dirty || saveState === "saving";
     try {
       setPdfDownloading(true);
       const generated = await api.generateDesignResumePdf();
       await downloadDesignResumePdf(generated.fileName, generated.pdfUrl);
+      trackProductEvent("resume_studio_pdf_downloaded", {
+        renderer: pdfRenderer,
+        theme: typstTheme,
+        after_edit: downloadedAfterEdit,
+        result: "success",
+      });
       toast.success("Your PDF is ready.");
     } catch (downloadError) {
+      trackProductEvent("resume_studio_pdf_downloaded", {
+        renderer: pdfRenderer,
+        theme: typstTheme,
+        after_edit: downloadedAfterEdit,
+        result: "error",
+      });
       showErrorToast(downloadError, "Failed to generate a PDF.");
     } finally {
       setPdfDownloading(false);
@@ -1391,6 +1491,13 @@ export const DesignResumePage: React.FC = () => {
             if (!open) setDialogState(null);
           }}
           onSave={(item) => {
+            const currentItems = asArray(
+              asRecord(
+                asRecord(draft.resumeJson.sections)?.[
+                  dialogState.definition.key
+                ],
+              )?.items,
+            );
             updateResumeJson((current) => {
               const next = structuredClone(current);
               const sections = (asRecord(next.sections) ?? {}) as Record<
@@ -1419,11 +1526,28 @@ export const DesignResumePage: React.FC = () => {
               } as DesignResumeJson["sections"];
               return next;
             });
+            trackProductEvent("resume_studio_section_edited", {
+              section: dialogState.definition.key,
+              action: dialogState.index == null ? "add" : "edit",
+              item_count_bucket: bucketCount(
+                dialogState.index == null
+                  ? currentItems.length + 1
+                  : currentItems.length,
+              ),
+              device_layout: getDeviceLayout(),
+            });
           }}
           onDelete={
             dialogState.index == null
               ? undefined
               : () => {
+                  const currentItems = asArray(
+                    asRecord(
+                      asRecord(draft.resumeJson.sections)?.[
+                        dialogState.definition.key
+                      ],
+                    )?.items,
+                  );
                   updateResumeJson((current) => {
                     const next = structuredClone(current);
                     const sections = (asRecord(next.sections) ?? {}) as Record<
@@ -1446,6 +1570,14 @@ export const DesignResumePage: React.FC = () => {
                       },
                     } as DesignResumeJson["sections"];
                     return next;
+                  });
+                  trackProductEvent("resume_studio_section_edited", {
+                    section: dialogState.definition.key,
+                    action: "delete",
+                    item_count_bucket: bucketCount(
+                      Math.max(0, currentItems.length - 1),
+                    ),
+                    device_layout: getDeviceLayout(),
                   });
                   setDialogState(null);
                 }

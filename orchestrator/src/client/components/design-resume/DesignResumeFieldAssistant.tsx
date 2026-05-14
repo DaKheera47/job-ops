@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type FieldValue = string | string[];
@@ -223,6 +224,7 @@ export const DesignResumeFieldAssistant: React.FC<
   const contentRef = useRef<HTMLDivElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
   const currentValueRef = useRef(value);
+  const lastPromptLengthBucketRef = useRef<string>("0");
   currentValueRef.current = value;
 
   useEffect(() => {
@@ -252,6 +254,8 @@ export const DesignResumeFieldAssistant: React.FC<
     if (isGenerating) return;
 
     const wasEmptyAtStart = isEmptyValue(currentValueRef.current);
+    const promptLengthBucket = bucketQueryLength(content);
+    lastPromptLengthBucketRef.current = promptLengthBucket;
     const controller = new AbortController();
     abortRef.current = controller;
     setIsGenerating(true);
@@ -281,9 +285,23 @@ export const DesignResumeFieldAssistant: React.FC<
       };
       assistantMessage.suggestion = suggestion;
       setMessages((current) => [...current, assistantMessage]);
+      trackProductEvent("resume_studio_ai_field_suggestion_completed", {
+        section: section ?? "unknown",
+        field_type: valueType,
+        result: "generated",
+        was_empty: wasEmptyAtStart,
+        prompt_length_bucket: promptLengthBucket,
+      });
 
       if (wasEmptyAtStart && isEmptyValue(currentValueRef.current)) {
         onApply(result.suggestion);
+        trackProductEvent("resume_studio_ai_field_suggestion_completed", {
+          section: section ?? "unknown",
+          field_type: valueType,
+          result: "auto_applied",
+          was_empty: wasEmptyAtStart,
+          prompt_length_bucket: promptLengthBucket,
+        });
         toast.success(`${label} filled with AI draft.`);
         return;
       }
@@ -291,6 +309,13 @@ export const DesignResumeFieldAssistant: React.FC<
       setPendingSuggestion(suggestion);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
+      trackProductEvent("resume_studio_ai_field_suggestion_completed", {
+        section: section ?? "unknown",
+        field_type: valueType,
+        result: "error",
+        was_empty: wasEmptyAtStart,
+        prompt_length_bucket: promptLengthBucket,
+      });
       showErrorToast(error, "AI field edit failed");
     } finally {
       abortRef.current = null;
@@ -301,6 +326,13 @@ export const DesignResumeFieldAssistant: React.FC<
   const applySuggestion = (suggestion: PendingSuggestion) => {
     onApply(suggestion.value);
     setPendingSuggestion(null);
+    trackProductEvent("resume_studio_ai_field_suggestion_completed", {
+      section: section ?? "unknown",
+      field_type: valueType,
+      result: "applied",
+      was_empty: isEmptyValue(currentValueRef.current),
+      prompt_length_bucket: lastPromptLengthBucketRef.current,
+    });
     toast.success(`${label} updated.`);
   };
 

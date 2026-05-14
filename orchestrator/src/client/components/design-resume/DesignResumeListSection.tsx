@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { DesignResumeSection } from "./DesignResumeSection";
 import type { ItemDefinition } from "./definitions";
@@ -64,6 +65,12 @@ function getItemPreview(
     .map((entry) => toText(entry))
     .filter(Boolean)
     .join(", ");
+}
+
+function getDeviceLayout(): "mobile" | "desktop" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return "desktop";
+  return window.matchMedia("(max-width: 639px)").matches ? "mobile" : "desktop";
 }
 
 type DesignResumeListSectionProps = {
@@ -389,16 +396,29 @@ export function DesignResumeListSectionContent({
     onUpdateItems(
       items.filter((_, currentIndex) => currentIndex !== pendingRemovalIndex),
     );
+    trackProductEvent("resume_studio_section_edited", {
+      section: definition.key,
+      action: "delete",
+      item_count_bucket: bucketCount(Math.max(0, items.length - 1)),
+      device_layout: getDeviceLayout(),
+    });
     setPendingRemovalIndex(null);
   };
 
   const toggleItemHidden = (index: number) => {
+    const isHidden = toBoolean(items[index]?.hidden, false);
     const nextItems = [...items];
     nextItems[index] = {
       ...nextItems[index],
-      hidden: !toBoolean(nextItems[index].hidden, false),
+      hidden: !isHidden,
     };
     onUpdateItems(nextItems);
+    trackProductEvent("resume_studio_section_edited", {
+      section: definition.key,
+      action: isHidden ? "unhide" : "hide",
+      item_count_bucket: bucketCount(nextItems.length),
+      device_layout: getDeviceLayout(),
+    });
   };
 
   const updateProjectInclusionMode = (
@@ -453,6 +473,12 @@ export function DesignResumeListSectionContent({
     }
 
     onUpdateItems(reorderItems(items, fromIndex, index));
+    trackProductEvent("resume_studio_section_edited", {
+      section: definition.key,
+      action: "reorder",
+      item_count_bucket: bucketCount(items.length),
+      device_layout: getDeviceLayout(),
+    });
     resetDragState();
   };
 
