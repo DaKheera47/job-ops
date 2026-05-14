@@ -1,6 +1,6 @@
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
-import { getAllJobs } from "@server/repositories/jobs";
+import { getAllJobs, getJobById } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
   updatePostApplicationIntegrationSyncState,
@@ -14,10 +14,15 @@ import {
   completePostApplicationSyncRun,
   startPostApplicationSyncRun,
 } from "@server/repositories/post-application-sync-runs";
+import * as settingsRepo from "@server/repositories/settings";
 import { transitionStage } from "@server/services/applicationTracking";
 import { resolveStageTransitionForTarget } from "@server/services/post-application/stage-target";
-import type { PostApplicationRouterStageTarget } from "@shared/types";
+import type { Job, PostApplicationRouterStageTarget } from "@shared/types";
 import { classifyWithSmartRouter, minifyActiveJobs } from "./email-router";
+import {
+  emitGmailProcessedMessage,
+  type GmailMessageAction,
+} from "./gmail-sync-events";
 import type { GmailCredentials } from "./gmail-api";
 import {
   buildEmailText,
@@ -110,6 +115,42 @@ function resolveProcessingStatus(input: {
 }): "auto_linked" | "pending_user" | "ignored" {
   if (input.isAutoLinked) return "auto_linked";
   if (input.isPendingMatch || input.isRelevantOrphan) return "pending_user";
+  return "ignored";
+}
+
+function parseConfidenceSetting(
+  raw: string | null | undefined,
+  fallback: number,
+): number {
+  if (raw === null || raw === undefined) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(100, Math.max(0, parsed));
+}
+
+function classifyAction(args: {
+  matchedJobId: string | null;
+  confidence: number;
+  isRelevant: boolean;
+  autoLinkThreshold: number;
+  autoLinkTransitioned: boolean;
+  notifyThreshold: number;
+}): GmailMessageAction {
+  if (args.autoLinkTransitioned && args.matchedJobId) return "auto_linked";
+  if (
+    args.matchedJobId &&
+    args.confidence >= args.notifyThreshold &&
+    args.confidence < args.autoLinkThreshold
+  ) {
+    return "pending_review";
+  }
+  if (
+    args.isRelevant &&
+    !args.matchedJobId &&
+    args.confidence >= args.notifyThreshold
+  ) {
+    return "no_match";
+  }
   return "ignored";
 }
 
@@ -240,13 +281,30 @@ export async function runGmailIngestionSync(args: {
       searchDays,
       maxMessages,
     );
+    // Include "ready" too — the user applies manually, so emails about a
+    // freshly-applied job often arrive before they've moved the row to
+    // "applied" in the tool.  We want Smart Router to still consider those.
     const activeJobs = await getAllJobs([
+      "ready",
       "applied",
       "in_progress",
       "processing",
     ]);
     const activeJobMinified = minifyActiveJobs(activeJobs);
     const activeJobIds = new Set(activeJobMinified.map((job) => job.id));
+    const activeJobsById = new Map<string, Job>(
+      activeJobs.map((job) => [job.id, job]),
+    );
+
+    const autoLinkConfidence = parseConfidenceSetting(
+      await settingsRepo.getSetting("gmailAutoLinkConfidence"),
+      95,
+    );
+    const notifyConfidence = parseConfidenceSetting(
+      await settingsRepo.getSetting("gmailNotifyConfidence"),
+      70,
+    );
+
     const concurrency = Math.max(
       1,
       Number.parseInt(
@@ -254,6 +312,62 @@ export async function runGmailIngestionSync(args: {
         10,
       ) || 3,
     );
+
+    type EmittableSavedMessage = {
+      id: string;
+      externalMessageId: string;
+      telegramNotifiedAt: number | null;
+      subject: string;
+      fromAddress: string;
+      senderName: string | null;
+      receivedAt: number;
+      matchedJobId: string | null;
+      matchConfidence: number | null;
+      stageTarget: PostApplicationRouterStageTarget | null;
+    };
+
+    const emitForSavedMessage = (params: {
+      savedMessage: EmittableSavedMessage;
+      action: GmailMessageAction;
+      stageTransitionApplied: boolean;
+      reason: string;
+      errorMessage: string | null;
+    }): void => {
+      // Skip the noisiest category (spam/marketing) to avoid chat fatigue.
+      if (params.action === "ignored") return;
+      // Idempotency: only notify once per email — the subscriber stamps
+      // telegram_notified_at after sending, so subsequent ticks won't repeat.
+      if (params.savedMessage.telegramNotifiedAt !== null) return;
+
+      const matched = params.savedMessage.matchedJobId
+        ? activeJobsById.get(params.savedMessage.matchedJobId)
+        : null;
+      const transition = resolveStageTransitionForTarget(
+        params.savedMessage.stageTarget ?? "no_change",
+      );
+
+      emitGmailProcessedMessage({
+        accountKey: args.accountKey,
+        messageId: params.savedMessage.id,
+        externalMessageId: params.savedMessage.externalMessageId,
+        isFirstProcessing: true,
+        subject: params.savedMessage.subject,
+        fromAddress: params.savedMessage.fromAddress,
+        senderName: params.savedMessage.senderName,
+        receivedAtMs: params.savedMessage.receivedAt,
+        action: params.action,
+        confidence: params.savedMessage.matchConfidence ?? 0,
+        stageTarget: params.savedMessage.stageTarget ?? "no_change",
+        reason: params.reason,
+        matchedJobId: params.savedMessage.matchedJobId,
+        matchedJobTitle: matched?.title ?? null,
+        matchedJobEmployer: matched?.employer ?? null,
+        fromStage: matched?.status ?? null,
+        toStage: transition.toStage,
+        stageTransitionApplied: params.stageTransitionApplied,
+        errorMessage: params.errorMessage,
+      });
+    };
 
     await runWithConcurrency(messageIds, concurrency, async (message) => {
       discovered += 1;
@@ -317,6 +431,24 @@ export async function runGmailIngestionSync(args: {
               note: "Auto-created from Smart Router.",
             });
           }
+
+          const action = classifyAction({
+            matchedJobId: savedMessage.matchedJobId,
+            confidence: savedMessage.matchConfidence ?? 0,
+            isRelevant: savedMessage.relevanceDecision === "relevant",
+            autoLinkThreshold: autoLinkConfidence,
+            autoLinkTransitioned,
+            notifyThreshold: notifyConfidence,
+          });
+          emitForSavedMessage({
+            savedMessage,
+            action,
+            stageTransitionApplied: autoLinkTransitioned,
+            reason:
+              (savedMessage.classificationPayload as { reason?: string })
+                ?.reason ?? "",
+            errorMessage: savedMessage.errorMessage ?? null,
+          });
           return;
         }
 
@@ -337,7 +469,8 @@ export async function runGmailIngestionSync(args: {
           routerResult.bestMatchId && activeJobIds.has(routerResult.bestMatchId)
             ? routerResult.bestMatchId
             : null;
-        const isAutoLinked = routerResult.confidence >= 95 && matchedJobId;
+        const isAutoLinked =
+          routerResult.confidence >= autoLinkConfidence && matchedJobId;
         const isPendingMatch = routerResult.confidence >= 50;
         const isRelevantOrphan = routerResult.isRelevant;
         const processingStatus = resolveProcessingStatus({
@@ -395,6 +528,22 @@ export async function runGmailIngestionSync(args: {
             note: "Auto-created from Smart Router.",
           });
         }
+
+        const action = classifyAction({
+          matchedJobId: savedMessage.matchedJobId,
+          confidence: routerResult.confidence,
+          isRelevant: routerResult.isRelevant,
+          autoLinkThreshold: autoLinkConfidence,
+          autoLinkTransitioned,
+          notifyThreshold: notifyConfidence,
+        });
+        emitForSavedMessage({
+          savedMessage,
+          action,
+          stageTransitionApplied: autoLinkTransitioned,
+          reason: routerResult.reason,
+          errorMessage: null,
+        });
       } catch (error) {
         errored += 1;
         logger.warn("Failed to ingest Gmail message", {

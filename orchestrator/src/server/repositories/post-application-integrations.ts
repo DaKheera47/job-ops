@@ -53,6 +53,28 @@ function mapRowToIntegration(
   };
 }
 
+/**
+ * List all integrations for a provider that are currently in the `connected`
+ * state.  Used by the Gmail auto-sync scheduler to enumerate every connected
+ * account on every polling cycle.
+ */
+export async function listConnectedPostApplicationIntegrations(
+  provider: PostApplicationProvider,
+): Promise<PostApplicationIntegration[]> {
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select()
+    .from(postApplicationIntegrations)
+    .where(
+      and(
+        eq(postApplicationIntegrations.provider, provider),
+        eq(postApplicationIntegrations.tenantId, tenantId),
+        eq(postApplicationIntegrations.status, "connected"),
+      ),
+    );
+  return rows.map(mapRowToIntegration);
+}
+
 export async function getPostApplicationIntegration(
   provider: PostApplicationProvider,
   accountKey: string,

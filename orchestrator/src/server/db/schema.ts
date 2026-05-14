@@ -155,6 +155,12 @@ export const jobs = sqliteTable(
     closedAt: integer("closed_at", { mode: "number" }),
     suitabilityScore: real("suitability_score"),
     suitabilityReason: text("suitability_reason"),
+    matchAnalysis: text("match_analysis", { mode: "json" }),
+    legitimacyTier: text("legitimacy_tier", {
+      enum: ["green", "yellow", "red"],
+    }),
+    legitimacyScore: real("legitimacy_score"),
+    legitimacySignals: text("legitimacy_signals", { mode: "json" }),
     tailoredSummary: text("tailored_summary"),
     tailoredHeadline: text("tailored_headline"),
     tailoredSkills: text("tailored_skills"),
@@ -284,6 +290,14 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
     .default("running"),
   jobsDiscovered: integer("jobs_discovered").notNull().default(0),
   jobsProcessed: integer("jobs_processed").notNull().default(0),
+  jobsSearched: integer("jobs_searched").notNull().default(0),
+  jobsDeduplicated: integer("jobs_deduplicated").notNull().default(0),
+  jobsLivenessFiltered: integer("jobs_liveness_filtered").notNull().default(0),
+  jobsExpired: integer("jobs_expired").notNull().default(0),
+  jobsScored: integer("jobs_scored").notNull().default(0),
+  jobsAutoSkipped: integer("jobs_auto_skipped").notNull().default(0),
+  jobsSelected: integer("jobs_selected").notNull().default(0),
+  jobsGhostFlagged: integer("jobs_ghost_flagged").notNull().default(0),
   errorMessage: text("error_message"),
   configSnapshot: text("config_snapshot"),
   requestedConfig: text("requested_config", { mode: "json" }),
@@ -642,6 +656,7 @@ export const postApplicationMessages = sqliteTable(
     }),
     decidedAt: integer("decided_at", { mode: "number" }),
     decidedBy: text("decided_by"),
+    telegramNotifiedAt: integer("telegram_notified_at", { mode: "number" }),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
@@ -659,6 +674,65 @@ export const postApplicationMessages = sqliteTable(
     providerAccountReviewStatusIndex: index(
       "idx_post_app_messages_provider_account_processing_status",
     ).on(table.provider, table.accountKey, table.processingStatus),
+  }),
+);
+
+export const interviewStories = sqliteTable(
+  "interview_stories",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    situation: text("situation").notNull().default(""),
+    task: text("task").notNull().default(""),
+    action: text("action").notNull().default(""),
+    result: text("result").notNull().default(""),
+    reflection: text("reflection").notNull().default(""),
+    tags: text("tags").notNull().default("[]"),
+    sourceJobId: text("source_job_id").references(() => jobs.id, {
+      onDelete: "set null",
+    }),
+    timesUsed: integer("times_used").notNull().default(0),
+    isMaster: integer("is_master", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUpdatedIndex: index("idx_interview_stories_tenant_updated").on(
+      table.tenantId,
+      table.updatedAt,
+    ),
+  }),
+);
+
+export const interviewQuestions = sqliteTable(
+  "interview_questions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    answer: text("answer").notNull().default(""),
+    tags: text("tags").notNull().default("[]"),
+    sourceJobId: text("source_job_id").references(() => jobs.id, {
+      onDelete: "set null"
+    }),
+    sourceCompany: text("source_company"),
+    timesAsked: integer("times_asked").notNull().default(1),
+    confidence: integer("confidence").notNull().default(3),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUpdatedIndex: index("idx_interview_questions_tenant_updated").on(
+      table.tenantId,
+      table.updatedAt,
+    ),
   }),
 );
 
@@ -791,3 +865,7 @@ export type TracerLinkRow = typeof tracerLinks.$inferSelect;
 export type NewTracerLinkRow = typeof tracerLinks.$inferInsert;
 export type TracerClickEventRow = typeof tracerClickEvents.$inferSelect;
 export type NewTracerClickEventRow = typeof tracerClickEvents.$inferInsert;
+export type InterviewStoryRow = typeof interviewStories.$inferSelect;
+export type NewInterviewStoryRow = typeof interviewStories.$inferInsert;
+export type InterviewQuestionRow = typeof interviewQuestions.$inferSelect;
+export type NewInterviewQuestionRow = typeof interviewQuestions.$inferInsert;

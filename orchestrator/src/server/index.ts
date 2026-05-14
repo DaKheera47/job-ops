@@ -17,6 +17,7 @@ import {
 } from "./services/backup/index";
 import { attachChallengeViewerUpgradeProxy } from "./services/challenge-viewer";
 import { initializeDemoModeServices } from "./services/demo-mode";
+import { initializeGmailSyncScheduler } from "./services/gmail-sync-scheduler";
 import { initializePipelineScheduler } from "./services/pipeline-scheduler";
 import { initializeTelegramBot } from "./services/telegram-bot";
 import { applyStoredEnvOverrides } from "./services/envSettings";
@@ -158,6 +159,15 @@ async function startServer() {
       await initializePipelineScheduler();
     } catch (error) {
       logger.warn("Failed to initialize pipeline scheduler", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    // Initialize Gmail post-application sync scheduler (default: every 2h)
+    try {
+      await initializeGmailSyncScheduler();
+    } catch (error) {
+      logger.warn("Failed to initialize Gmail sync scheduler", {
         error: sanitizeUnknown(error),
       });
     }

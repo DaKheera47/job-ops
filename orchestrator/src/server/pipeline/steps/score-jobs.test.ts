@@ -23,6 +23,14 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
+vi.mock("@server/services/ghost-job-detector", () => ({
+  assessJobLegitimacy: vi.fn(() => ({
+    tier: "green",
+    score: 80,
+    signals: [],
+  })),
+}));
+
 vi.mock("@server/services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
   calculateSponsorMatchSummary: vi.fn(),

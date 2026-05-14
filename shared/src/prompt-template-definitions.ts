@@ -106,7 +106,7 @@ OUTPUT FORMAT (JSON):
       "scoringInstructionsText",
     ] as const,
     defaultTemplate: `
-You are evaluating a job listing for a candidate. Score how suitable this job is for the candidate on a scale of 0-100.
+You are evaluating a job listing for a candidate. Score how suitable this job is for the candidate on a scale of 0-100, AND produce a structured match analysis the candidate can act on.
 
 SCORING CRITERIA:
 - Skills match (technologies, frameworks, languages): 0-30 points
@@ -132,13 +132,39 @@ JOB DESCRIPTION:
 SCORING INSTRUCTIONS:
 {{scoringInstructionsText}}
 
+CALIBRATION:
+- Most realistic candidates should score 40-65. Be honest, not generous.
+- Reserve 80+ for jobs that genuinely fit the candidate's profile end-to-end.
+- A missing hard requirement (e.g. work-permit, on-site city, specific degree) caps the score at 50.
+
 IMPORTANT: Respond with ONLY a valid JSON object. No markdown, no code fences, no explanation outside the JSON.
 
-REQUIRED FORMAT (exactly this structure):
-{"score": <integer 0-100>, "reason": "<1-2 sentence explanation>"}
-
-EXAMPLE VALID RESPONSE:
-{"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}
+REQUIRED FORMAT (this exact structure — fill every field; use empty arrays when nothing applies):
+{
+  "score": <integer 0-100>,
+  "reason": "<1-2 sentence top-line summary>",
+  "requirements": {
+    "met": ["<requirement clearly satisfied>"],
+    "missing": ["<requirement explicitly required by JD but absent from profile>"],
+    "partial": ["<requirement only weakly covered>"]
+  },
+  "skills": {
+    "matched": ["<skill required by JD AND in profile>"],
+    "missing": ["<skill required by JD, NOT in profile>"],
+    "transferable": ["<profile skill that maps to JD via analogous experience>"],
+    "bonus": ["<profile skill that's valuable but not required>"]
+  },
+  "experience": {
+    "levelMatch": "below" | "match" | "above" | "unknown",
+    "yearsRequired": <integer or null>,
+    "yearsApparent": <integer or null>
+  },
+  "keywords": {
+    "addToResume": ["<exact verbatim JD phrase to insert into resume for ATS>"]
+  },
+  "dealBreakers": ["<hard blocker — citizenship, on-site only, etc.>"],
+  "tailoringTips": ["<concrete edit to apply, e.g. 'Lead with Kubernetes experience in summary'>"]
+}
 `.trim(),
   },
 } as const;

@@ -54,7 +54,7 @@ export function startNotificationSubscriptions(): void {
         {
           reply_markup: new InlineKeyboard()
             .text("📋 View Ready Jobs", "j:ready:0")
-            .text("🚀 Auto Apply", "a:status"),
+            .text("📈 Insights", "i:w:30"),
         },
       );
     }

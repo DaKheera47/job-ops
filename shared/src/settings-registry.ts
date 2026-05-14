@@ -572,6 +572,53 @@ export const settingsRegistry = {
     parse: parseBitBoolOrNull,
     serialize: serializeBitBool,
   },
+  gmailSyncEnabled: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => true,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  gmailSyncIntervalHours: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(24),
+    default: (): number => 2,
+    parse: (raw: string | undefined): number | null => {
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isNaN(parsed)) return null;
+      return Math.min(24, Math.max(1, parsed));
+    },
+    serialize: serializeNullableNumber,
+  },
+  gmailAutoLinkConfidence: {
+    kind: "typed" as const,
+    schema: z.number().int().min(50).max(100),
+    default: (): number => 95,
+    parse: (raw: string | undefined): number | null => {
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isNaN(parsed)) return null;
+      return Math.min(100, Math.max(50, parsed));
+    },
+    serialize: serializeNullableNumber,
+  },
+  gmailNotifyConfidence: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(100),
+    default: (): number => 70,
+    parse: (raw: string | undefined): number | null => {
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isNaN(parsed)) return null;
+      return Math.min(100, Math.max(0, parsed));
+    },
+    serialize: serializeNullableNumber,
+  },
+  gmailNotificationsEnabled: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => true,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
   backupHour: {
     kind: "typed" as const,
     schema: z.number().int().min(0).max(23),

@@ -113,6 +113,55 @@ const HEALTH_PROBE_CONFIG_BY_SOURCE: Record<
       seekMaxJobsPerTerm: "1",
     },
   },
+  weworkremotely: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  remotive: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  remoteok: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  himalayas: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  justjoinit: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  nofluffjobs: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
+  hhru: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,
+    settings: {
+      jobspyResultsWanted: "1",
+    },
+  },
   greenhouse: {
     searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
     selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,

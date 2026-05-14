@@ -4,7 +4,7 @@
 
 import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
-import type { Job } from "@shared/types";
+import type { Job, JobMatchAnalysis } from "@shared/types";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
@@ -14,12 +14,64 @@ import { getEffectiveSettings } from "./settings";
 interface SuitabilityResult {
   score: number; // 0-100
   reason: string; // Explanation
+  matchAnalysis?: JobMatchAnalysis;
 }
 
 type ScoringPreferences = {
   instructions: string;
   promptTemplate: string;
 };
+
+interface RichScoreResponse {
+  score: number;
+  reason: string;
+  requirements?: JobMatchAnalysis["requirements"];
+  skills?: JobMatchAnalysis["skills"];
+  experience?: JobMatchAnalysis["experience"];
+  keywords?: JobMatchAnalysis["keywords"];
+  dealBreakers?: string[];
+  tailoringTips?: string[];
+}
+
+function buildMatchAnalysisFromResponse(
+  data: RichScoreResponse,
+): JobMatchAnalysis | undefined {
+  // Only build the analysis if at least one rich field is populated. Older
+  // models / providers may ignore the optional schema fields and return only
+  // {score, reason} — keep behaviour identical in that case.
+  const hasRichData =
+    data.requirements ||
+    data.skills ||
+    data.experience ||
+    data.keywords ||
+    (Array.isArray(data.dealBreakers) && data.dealBreakers.length > 0) ||
+    (Array.isArray(data.tailoringTips) && data.tailoringTips.length > 0);
+  if (!hasRichData) return undefined;
+
+  return {
+    requirements: {
+      met: data.requirements?.met ?? [],
+      missing: data.requirements?.missing ?? [],
+      partial: data.requirements?.partial ?? [],
+    },
+    skills: {
+      matched: data.skills?.matched ?? [],
+      missing: data.skills?.missing ?? [],
+      transferable: data.skills?.transferable ?? [],
+      bonus: data.skills?.bonus ?? [],
+    },
+    experience: {
+      levelMatch: data.experience?.levelMatch ?? "unknown",
+      yearsRequired: data.experience?.yearsRequired ?? null,
+      yearsApparent: data.experience?.yearsApparent ?? null,
+    },
+    keywords: {
+      addToResume: data.keywords?.addToResume ?? [],
+    },
+    dealBreakers: Array.isArray(data.dealBreakers) ? data.dealBreakers : [],
+    tailoringTips: Array.isArray(data.tailoringTips) ? data.tailoringTips : [],
+  };
+}
 
 /** JSON schema for suitability scoring response */
 const SCORING_SCHEMA: JsonSchemaDefinition = {
@@ -34,6 +86,107 @@ const SCORING_SCHEMA: JsonSchemaDefinition = {
       reason: {
         type: "string",
         description: "Brief 1-2 sentence explanation of the score",
+      },
+      requirements: {
+        type: "object",
+        description:
+          "Itemized requirements breakdown extracted from job description",
+        properties: {
+          met: {
+            type: "array",
+            items: { type: "string" },
+            description: "Requirements clearly satisfied by the candidate",
+          },
+          missing: {
+            type: "array",
+            items: { type: "string" },
+            description: "Hard requirements absent from candidate profile",
+          },
+          partial: {
+            type: "array",
+            items: { type: "string" },
+            description: "Requirements only partially or weakly covered",
+          },
+        },
+        required: ["met", "missing", "partial"],
+        additionalProperties: false,
+      },
+      skills: {
+        type: "object",
+        description:
+          "Skills mapping between candidate profile and job description",
+        properties: {
+          matched: {
+            type: "array",
+            items: { type: "string" },
+            description: "Skills explicitly required by JD AND in profile",
+          },
+          missing: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Skills explicitly required by JD but absent from profile",
+          },
+          transferable: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Profile skills that map to JD requirements via analogous experience",
+          },
+          bonus: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Profile skills not required but valuable for the role",
+          },
+        },
+        required: ["matched", "missing", "transferable", "bonus"],
+        additionalProperties: false,
+      },
+      experience: {
+        type: "object",
+        properties: {
+          levelMatch: {
+            type: "string",
+            enum: ["below", "match", "above", "unknown"],
+            description: "Whether candidate seniority matches the role",
+          },
+          yearsRequired: {
+            type: ["integer", "null"],
+            description: "Years explicitly required by the JD, null if unknown",
+          },
+          yearsApparent: {
+            type: ["integer", "null"],
+            description: "Apparent years from candidate profile, null if unknown",
+          },
+        },
+        required: ["levelMatch", "yearsRequired", "yearsApparent"],
+        additionalProperties: false,
+      },
+      keywords: {
+        type: "object",
+        properties: {
+          addToResume: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Exact JD phrases the candidate should add verbatim for ATS matching",
+          },
+        },
+        required: ["addToResume"],
+        additionalProperties: false,
+      },
+      dealBreakers: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Hard blockers that make this role unrealistic for the candidate (e.g. citizenship, on-site only).",
+      },
+      tailoringTips: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Specific concrete edits to apply to resume/cover letter for this role.",
       },
     },
     required: ["score", "reason"],
@@ -103,7 +256,7 @@ export async function scoreJobSuitability(
   });
 
   const llm = await createConfiguredLlmService();
-  const result = await llm.callJson<{ score: number; reason: string }>({
+  const result = await llm.callJson<RichScoreResponse>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: SCORING_SCHEMA,
@@ -140,6 +293,7 @@ export async function scoreJobSuitability(
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
   const clampedReason = reason || "No explanation provided";
+  const matchAnalysis = buildMatchAnalysisFromResponse(result.data);
 
   // Apply salary penalty if enabled
   const penaltyResult = applySalaryPenalty(job, clampedScore, clampedReason, {
@@ -150,6 +304,7 @@ export async function scoreJobSuitability(
   return {
     score: penaltyResult.score,
     reason: penaltyResult.reason,
+    matchAnalysis,
   };
 }
 

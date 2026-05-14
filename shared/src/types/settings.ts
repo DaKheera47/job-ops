@@ -197,6 +197,11 @@ export interface AppSettings {
   backupEnabled: Resolved<boolean>;
   backupHour: Resolved<number>;
   backupMaxCount: Resolved<number>;
+  gmailSyncEnabled: Resolved<boolean>;
+  gmailSyncIntervalHours: Resolved<number>;
+  gmailAutoLinkConfidence: Resolved<number>;
+  gmailNotifyConfidence: Resolved<number>;
+  gmailNotificationsEnabled: Resolved<boolean>;
   penalizeMissingSalary: Resolved<boolean>;
   missingSalaryPenalty: Resolved<number>;
   autoSkipScoreThreshold: Resolved<number | null>;

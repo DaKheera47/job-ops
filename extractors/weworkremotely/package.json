@@ -1,0 +1,13 @@
+{
+  "name": "weworkremotely-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "We Work Remotely extractor backed by public RSS feeds",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  }
+}

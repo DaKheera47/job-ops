@@ -155,11 +155,6 @@ export function registerJobHandlers(bot: Bot): void {
       keyboard.url("🔗 Open Listing", jobUrl);
     }
 
-    // TODO: Auto Apply — future feature
-    if (job.source === "linkedin" && job.status === "ready") {
-      keyboard.row().text("🔜 Auto Apply (coming soon)", "noop");
-    }
-
     keyboard.row()
       .text("📋 Jobs", `j:${job.status}:0`)
       .text("📊 Stats", "s:stats")

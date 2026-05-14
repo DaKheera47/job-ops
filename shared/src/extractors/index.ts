@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export {
+  COUNTRY_BOUND_DEFAULT_SOURCES,
+  REMOTE_FRIENDLY_SOURCES,
+  autoEnabledRemoteSources,
+  resolveAutoEnabledSources,
+} from "./source-groups";
+
 export const EXTRACTOR_SOURCE_IDS = [
   "gradcracker",
   "indeed",
@@ -12,6 +19,13 @@ export const EXTRACTOR_SOURCE_IDS = [
   "workingnomads",
   "golangjobs",
   "seek",
+  "weworkremotely",
+  "remotive",
+  "remoteok",
+  "himalayas",
+  "justjoinit",
+  "nofluffjobs",
+  "hhru",
   "greenhouse",
   "ashby",
   "lever",
@@ -74,6 +88,13 @@ export const EXTRACTOR_SOURCE_METADATA: Record<
     category: "pipeline",
     requiresCredentials: true,
   },
+  weworkremotely: { label: "We Work Remotely", order: 106, category: "pipeline" },
+  remotive: { label: "Remotive", order: 107, category: "pipeline" },
+  remoteok: { label: "Remote OK", order: 108, category: "pipeline" },
+  himalayas: { label: "Himalayas", order: 109, category: "pipeline" },
+  justjoinit: { label: "JustJoin.it", order: 110, category: "pipeline" },
+  nofluffjobs: { label: "NoFluffJobs", order: 110, category: "pipeline" },
+  hhru: { label: "HeadHunter (hh.ru)", order: 110, category: "pipeline" },
   greenhouse: { label: "Greenhouse", order: 111, category: "pipeline" },
   ashby: { label: "Ashby", order: 112, category: "pipeline" },
   lever: { label: "Lever", order: 113, category: "pipeline" },

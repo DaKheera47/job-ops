@@ -20,6 +20,14 @@ vi.mock("../services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
+vi.mock("../services/ghost-job-detector", () => ({
+  assessJobLegitimacy: vi.fn(() => ({
+    tier: "green",
+    score: 80,
+    signals: [],
+  })),
+}));
+
 // Mock the jobs repository
 vi.mock("../repositories/jobs", () => ({
   updateJob: vi.fn(),

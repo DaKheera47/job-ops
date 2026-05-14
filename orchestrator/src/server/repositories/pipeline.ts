@@ -26,6 +26,16 @@ function mapRowToPipelineRun(
     status: row.status as PipelineRun["status"],
     jobsDiscovered: row.jobsDiscovered,
     jobsProcessed: row.jobsProcessed,
+    funnel: {
+      searched: row.jobsSearched ?? 0,
+      deduplicated: row.jobsDeduplicated ?? 0,
+      livenessFiltered: row.jobsLivenessFiltered ?? 0,
+      expired: row.jobsExpired ?? 0,
+      scored: row.jobsScored ?? 0,
+      autoSkipped: row.jobsAutoSkipped ?? 0,
+      selected: row.jobsSelected ?? 0,
+      ghostFlagged: row.jobsGhostFlagged ?? 0,
+    },
     errorMessage: row.errorMessage,
     configSnapshot: parseConfigSnapshot(row.configSnapshot),
   };
@@ -95,6 +105,16 @@ export async function createPipelineRun(args?: {
     status: "running",
     jobsDiscovered: 0,
     jobsProcessed: 0,
+    funnel: {
+      searched: 0,
+      deduplicated: 0,
+      livenessFiltered: 0,
+      expired: 0,
+      scored: 0,
+      autoSkipped: 0,
+      selected: 0,
+      ghostFlagged: 0,
+    },
     errorMessage: null,
     configSnapshot: args?.configSnapshot ?? null,
   };
@@ -110,6 +130,14 @@ export async function updatePipelineRun(
     status: "running" | "completed" | "failed" | "cancelled";
     jobsDiscovered: number;
     jobsProcessed: number;
+    jobsSearched: number;
+    jobsDeduplicated: number;
+    jobsLivenessFiltered: number;
+    jobsExpired: number;
+    jobsScored: number;
+    jobsAutoSkipped: number;
+    jobsSelected: number;
+    jobsGhostFlagged: number;
     errorMessage: string;
     configSnapshot: PipelineRunConfigSnapshot | null;
     resultSummary: PipelineRunResultSummary | null;

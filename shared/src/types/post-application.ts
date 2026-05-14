@@ -133,6 +133,8 @@ export interface PostApplicationMessage {
   processingStatus: PostApplicationProcessingStatus;
   decidedAt: number | null;
   decidedBy: string | null;
+  /** Unix ms timestamp when this message was reported to Telegram, null if never. */
+  telegramNotifiedAt: number | null;
   errorCode: string | null;
   errorMessage: string | null;
   createdAt: string;

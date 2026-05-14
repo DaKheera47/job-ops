@@ -133,6 +133,38 @@ export interface JobNote {
 
 export type JobSource = ExtractorSourceId;
 
+export interface JobMatchAnalysis {
+  requirements: {
+    met: string[];
+    missing: string[];
+    partial: string[];
+  };
+  skills: {
+    matched: string[];
+    missing: string[];
+    transferable: string[];
+    bonus: string[];
+  };
+  experience: {
+    levelMatch: "below" | "match" | "above" | "unknown";
+    yearsRequired: number | null;
+    yearsApparent: number | null;
+  };
+  keywords: {
+    addToResume: string[];
+  };
+  dealBreakers: string[];
+  tailoringTips: string[];
+}
+
+export type JobLegitimacyTier = "green" | "yellow" | "red";
+
+export interface JobLegitimacySignal {
+  code: string;
+  label: string;
+  weight: "low" | "medium" | "high";
+}
+
 export interface AppliedDuplicateMatch {
   jobId: string;
   title: string;
@@ -174,6 +206,10 @@ export interface Job {
   closedAt: number | null;
   suitabilityScore: number | null; // 0-100 AI-generated score
   suitabilityReason: string | null; // AI explanation
+  matchAnalysis: JobMatchAnalysis | null;
+  legitimacyTier: JobLegitimacyTier | null;
+  legitimacyScore: number | null; // 0-100 (higher = more legitimate)
+  legitimacySignals: JobLegitimacySignal[] | null;
   tailoredSummary: string | null; // Generated resume summary
   tailoredHeadline: string | null; // Generated resume headline
   tailoredSkills: string | null; // Generated resume skills (JSON)
@@ -237,6 +273,7 @@ export type JobListItem = Pick<
   | "outcome"
   | "closedAt"
   | "suitabilityScore"
+  | "legitimacyTier"
   | "sponsorMatchScore"
   | "appliedDuplicateMatch"
   | "jobType"
@@ -338,6 +375,10 @@ export interface UpdateJobInput {
   locationEvidence?: JobLocationEvidence | null;
   suitabilityScore?: number;
   suitabilityReason?: string;
+  matchAnalysis?: JobMatchAnalysis | null;
+  legitimacyTier?: JobLegitimacyTier | null;
+  legitimacyScore?: number | null;
+  legitimacySignals?: JobLegitimacySignal[] | null;
   tailoredSummary?: string;
   tailoredHeadline?: string;
   tailoredSkills?: string;

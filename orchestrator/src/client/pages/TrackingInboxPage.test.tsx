@@ -51,6 +51,7 @@ function makeInboxItem() {
       processingStatus: "pending_user" as const,
       decidedAt: null,
       decidedBy: null,
+      telegramNotifiedAt: null,
       errorCode: null,
       errorMessage: null,
       createdAt: new Date().toISOString(),

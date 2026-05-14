@@ -26,6 +26,17 @@ export interface PipelineRunConfigSnapshot {
   locationIntent: LocationIntent;
 }
 
+export interface PipelineRunFunnelMetrics {
+  searched: number;
+  deduplicated: number;
+  livenessFiltered: number;
+  expired: number;
+  scored: number;
+  autoSkipped: number;
+  selected: number;
+  ghostFlagged: number;
+}
+
 export interface PipelineRun {
   id: string;
   startedAt: string;
@@ -33,6 +44,8 @@ export interface PipelineRun {
   status: "running" | "completed" | "failed" | "cancelled";
   jobsDiscovered: number;
   jobsProcessed: number;
+  /** Funnel metrics may be absent on legacy runs that pre-date the columns. */
+  funnel?: PipelineRunFunnelMetrics;
   errorMessage: string | null;
   configSnapshot?: PipelineRunConfigSnapshot | null;
 }
@@ -105,6 +118,10 @@ export interface PipelineRunResultSummary {
   stage: PipelineRunExecutionStage;
   jobsScored: number | null;
   jobsSelected: number | null;
+  jobsAutoSkipped?: number | null;
+  jobsGhostFlagged?: number | null;
+  jobsLivenessFiltered?: number | null;
+  jobsDeduplicated?: number | null;
   sourceErrors: string[];
 }
 

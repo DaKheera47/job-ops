@@ -3,6 +3,11 @@ import { InlineKeyboard } from "grammy";
 import type { Bot } from "grammy";
 import { runWithRequestContext } from "@infra/request-context";
 import {
+  COUNTRY_BOUND_DEFAULT_SOURCES,
+  resolveAutoEnabledSources,
+  sourceLabel,
+} from "@shared/extractors";
+import {
   runPipeline,
   requestPipelineCancel,
   getPipelineStatus,
@@ -48,11 +53,25 @@ async function buildConfigText(): Promise<string> {
   const scope = await settingsRepo.getSetting("locationSearchScope") || "selected_only";
   const strictness = await settingsRepo.getSetting("locationMatchStrictness") || "exact_only";
 
+  // Resolve the actual sources list the pipeline will use given the scope.
+  const effectiveSources = resolveAutoEnabledSources({
+    scope,
+    baseSources: [...COUNTRY_BOUND_DEFAULT_SOURCES],
+  });
+  const baseSet = new Set<string>(COUNTRY_BOUND_DEFAULT_SOURCES);
+  const remoteAdditions = effectiveSources.filter((id) => !baseSet.has(id));
+
   let text = "<b>🔍 Pipeline — Review Config</b>\n\n";
   text += `📝 <b>Search Terms:</b> ${keywords.length > 0 ? escapeHtml(keywords.join(", ")) : "<i>Not set</i>"}\n`;
   text += `📍 <b>Location:</b> ${escapeHtml(location)}${country ? ` (${escapeHtml(country)})` : ""}\n`;
   text += `🌐 <b>Scope:</b> ${escapeHtml(scopeLabel(scope))}\n`;
   text += `🎯 <b>Strictness:</b> ${escapeHtml(strictnessLabel(strictness))}\n`;
+  text += `🔌 <b>Sources (${effectiveSources.length}):</b> ${escapeHtml(
+    effectiveSources.map((id) => sourceLabel(id)).join(", "),
+  )}\n`;
+  if (remoteAdditions.length > 0) {
+    text += `<i>↳ ${remoteAdditions.length} remote-friendly sources auto-enabled by scope</i>\n`;
+  }
   text += `\n<i>Edit settings or run with current config:</i>`;
   return text;
 }
@@ -197,8 +216,11 @@ export function registerPipelineHandlers(bot: Bot): void {
       }
       keyboard.text("◀️ Back", "p:run");
 
+      const explainer =
+        "\n\n<i>Selected + Remote / Remote Worldwide automatically pull jobs from WeWorkRemotely, Remotive, RemoteOK, Himalayas, JustJoin.it, NoFluffJobs, hh.ru and Working Nomads — no extra setup needed.</i>";
+
       await ctx.editMessageText(
-        `<b>🌐 Location Scope</b>\n\nCurrent: <b>${escapeHtml(scopeLabel(current))}</b>`,
+        `<b>🌐 Location Scope</b>\n\nCurrent: <b>${escapeHtml(scopeLabel(current))}</b>${explainer}`,
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {

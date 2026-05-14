@@ -118,11 +118,35 @@ function mapRowToPostApplicationMessage(
     processingStatus: row.processingStatus as PostApplicationProcessingStatus,
     decidedAt: row.decidedAt,
     decidedBy: row.decidedBy,
+    telegramNotifiedAt: row.telegramNotifiedAt ?? null,
     errorCode: row.errorCode,
     errorMessage: row.errorMessage,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/**
+ * Mark a post-application message as reported to Telegram so the auto-sync
+ * scheduler doesn't re-notify the user about the same email after every poll.
+ */
+export async function markPostApplicationMessageNotified(
+  id: string,
+  notifiedAtMs: number = Date.now(),
+): Promise<void> {
+  const tenantId = getActiveTenantId();
+  await db
+    .update(postApplicationMessages)
+    .set({
+      telegramNotifiedAt: notifiedAtMs,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, id),
+      ),
+    );
 }
 
 export async function getPostApplicationMessageByExternalId(

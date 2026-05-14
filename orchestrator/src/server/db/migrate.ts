@@ -601,6 +601,9 @@ const migrations = [
   `PRAGMA foreign_keys = OFF`,
 
   // Ensure pipeline_runs status supports "cancelled" for existing databases.
+  // NOTE: Funnel metric columns (jobs_searched, jobs_deduplicated, …) are added
+  // separately via ALTER TABLE below — keep the rebuild blueprint aligned with
+  // the original schema so existing rows can be copied without column-mismatch.
   `CREATE TABLE IF NOT EXISTS pipeline_runs_new (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
@@ -898,6 +901,69 @@ const migrations = [
   // Cover letter PDF feature
   `ALTER TABLE jobs ADD COLUMN cover_letter_text TEXT`,
   `ALTER TABLE jobs ADD COLUMN cover_letter_pdf_path TEXT`,
+
+  // Richer match analysis & ghost-job detector
+  `ALTER TABLE jobs ADD COLUMN match_analysis TEXT`,
+  `ALTER TABLE jobs ADD COLUMN legitimacy_tier TEXT`,
+  `ALTER TABLE jobs ADD COLUMN legitimacy_score REAL`,
+  `ALTER TABLE jobs ADD COLUMN legitimacy_signals TEXT`,
+
+  // Funnel metrics on pipeline_runs
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_searched INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_deduplicated INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_liveness_filtered INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_expired INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_scored INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_auto_skipped INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_selected INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE pipeline_runs ADD COLUMN jobs_ghost_flagged INTEGER NOT NULL DEFAULT 0`,
+
+  // Interview prep: story bank + Q&A bank
+  `CREATE TABLE IF NOT EXISTS interview_stories (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    title TEXT NOT NULL,
+    situation TEXT NOT NULL DEFAULT '',
+    task TEXT NOT NULL DEFAULT '',
+    action TEXT NOT NULL DEFAULT '',
+    result TEXT NOT NULL DEFAULT '',
+    reflection TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    source_job_id TEXT,
+    times_used INTEGER NOT NULL DEFAULT 0,
+    is_master INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_job_id) REFERENCES jobs(id) ON DELETE SET NULL
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_interview_stories_tenant_updated
+    ON interview_stories(tenant_id, updated_at)`,
+
+  `CREATE TABLE IF NOT EXISTS interview_questions (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '[]',
+    source_job_id TEXT,
+    source_company TEXT,
+    times_asked INTEGER NOT NULL DEFAULT 1,
+    confidence INTEGER NOT NULL DEFAULT 3,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_job_id) REFERENCES jobs(id) ON DELETE SET NULL
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_interview_questions_tenant_updated
+    ON interview_questions(tenant_id, updated_at)`,
+
+  // Track when the post-application message was last reported to Telegram so
+  // the auto-sync doesn't re-notify the user about the same email after every
+  // poll.  Null = never notified.
+  `ALTER TABLE post_application_messages ADD COLUMN telegram_notified_at INTEGER`,
 ];
 
 console.log("🔧 Running database migrations...");

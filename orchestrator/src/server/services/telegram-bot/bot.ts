@@ -115,6 +115,20 @@ export function createBot(token: string): Bot {
     await sendMainMenu(ctx);
   });
 
+  // m:menu callback — every "◀️ Menu" button across the bot lands here.
+  // Single canonical implementation in this file.
+  botInstance.callbackQuery("m:menu", async (ctx) => {
+    await ctx.answerCallbackQuery().catch(() => {});
+    try {
+      await sendMainMenu(ctx);
+    } catch (err) {
+      logger.error("Main menu render failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      await ctx.answerCallbackQuery("❌ Error loading menu").catch(() => {});
+    }
+  });
+
   // /changelog command — show full changelog history
   botInstance.command("changelog", async (ctx) => {
     await sendFullChangelog(ctx.chat.id);
@@ -177,8 +191,16 @@ export function createBot(token: string): Bot {
   return botInstance;
 }
 
+/**
+ * Render the canonical main menu.  Works both as a /menu command response
+ * (uses ctx.reply for a fresh message) and as a "back to menu" callback
+ * (uses ctx.editMessageText to replace the previous screen in-place).
+ *
+ * Fallback: when editMessageText fails (e.g. message older than 48h or the
+ * inline message has gone missing), we silently fall back to ctx.reply so
+ * the user never gets stuck on an "Error loading menu" toast.
+ */
 export async function sendMainMenu(ctx: Context): Promise<void> {
-  // Import here to avoid circular deps
   const { getJobStats } = await import("../../repositories/jobs");
   const { escapeHtml } = await import("./formatting");
   const stats = await getJobStats();
@@ -194,18 +216,33 @@ export async function sendMainMenu(ctx: Context): Promise<void> {
     `<b>🏠 Job Ops${greeting}</b>\n\n` +
     `📋 ${ready} ready · ${applied} applied · ${discovered} discovered`;
 
+  // Single source of truth for the main menu layout.  Every "Menu" button
+  // anywhere in the bot now renders the same set of options.
   const keyboard = new InlineKeyboard()
     .text("🔍 Pipeline", "p:status")
     .text("📋 Jobs", "j:ready:0")
     .row()
-    .text("🚀 Auto Apply", "a:status")
     .text("📊 Stats", "s:stats")
+    .text("📈 Insights", "i:w:30")
+    .row()
+    .text("🎤 Interview Prep", "ip:menu")
+    .text("📬 Email Sync", "g:status")
     .row()
     .text("📡 Boards", "b:menu")
     .text("⚙️ Settings", "x:menu");
 
-  await ctx.reply(text, {
-    parse_mode: "HTML",
+  const options = {
+    parse_mode: "HTML" as const,
     reply_markup: keyboard,
-  });
+  };
+
+  if (ctx.callbackQuery) {
+    try {
+      await ctx.editMessageText(text, options);
+      return;
+    } catch {
+      // Message too old to edit or otherwise gone — fall through to reply.
+    }
+  }
+  await ctx.reply(text, options);
 }

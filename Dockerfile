@@ -67,6 +67,13 @@ COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 COPY extractors/ats-boards/package*.json ./extractors/ats-boards/
+COPY extractors/weworkremotely/package*.json ./extractors/weworkremotely/
+COPY extractors/remotive/package*.json ./extractors/remotive/
+COPY extractors/remoteok/package*.json ./extractors/remoteok/
+COPY extractors/himalayas/package*.json ./extractors/himalayas/
+COPY extractors/justjoinit/package*.json ./extractors/justjoinit/
+COPY extractors/nofluffjobs/package*.json ./extractors/nofluffjobs/
+COPY extractors/hh-ru/package*.json ./extractors/hh-ru/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
 RUN --mount=type=cache,target=/root/.npm \
@@ -99,6 +106,13 @@ COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/browser-utils ./extractors/browser-utils
 COPY extractors/ats-boards ./extractors/ats-boards
+COPY extractors/weworkremotely ./extractors/weworkremotely
+COPY extractors/remotive ./extractors/remotive
+COPY extractors/remoteok ./extractors/remoteok
+COPY extractors/himalayas ./extractors/himalayas
+COPY extractors/justjoinit ./extractors/justjoinit
+COPY extractors/nofluffjobs ./extractors/nofluffjobs
+COPY extractors/hh-ru ./extractors/hh-ru
 
 # ============================================================================
 # PARALLEL BUILD STAGES
@@ -138,6 +152,13 @@ COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 COPY extractors/ats-boards/package*.json ./extractors/ats-boards/
+COPY extractors/weworkremotely/package*.json ./extractors/weworkremotely/
+COPY extractors/remotive/package*.json ./extractors/remotive/
+COPY extractors/remoteok/package*.json ./extractors/remoteok/
+COPY extractors/himalayas/package*.json ./extractors/himalayas/
+COPY extractors/justjoinit/package*.json ./extractors/justjoinit/
+COPY extractors/nofluffjobs/package*.json ./extractors/nofluffjobs/
+COPY extractors/hh-ru/package*.json ./extractors/hh-ru/
 
 # Install production Node dependencies only.
 RUN --mount=type=cache,target=/root/.npm \
@@ -194,6 +215,13 @@ COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/browser-utils ./extractors/browser-utils
 COPY extractors/ats-boards ./extractors/ats-boards
+COPY extractors/weworkremotely ./extractors/weworkremotely
+COPY extractors/remotive ./extractors/remotive
+COPY extractors/remoteok ./extractors/remoteok
+COPY extractors/himalayas ./extractors/himalayas
+COPY extractors/justjoinit ./extractors/justjoinit
+COPY extractors/nofluffjobs ./extractors/nofluffjobs
+COPY extractors/hh-ru ./extractors/hh-ru
 
 # Create runtime directories.
 RUN mkdir -p /app/data/pdfs /app/data/cloudflare-cookies /app/codex-home

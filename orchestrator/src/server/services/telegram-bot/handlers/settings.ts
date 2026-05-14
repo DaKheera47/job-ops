@@ -496,39 +496,6 @@ export function registerSettingsHandlers(bot: Bot): void {
     return next();
   });
 
-  // Back to main menu
-  bot.callbackQuery("m:menu", async (ctx) => {
-    try {
-      await ctx.answerCallbackQuery();
-      const { getJobStats } = await import("../../../repositories/jobs");
-      const stats = await getJobStats();
-      const ready = stats.ready || 0;
-      const applied = stats.applied || 0;
-      const discovered = stats.discovered || 0;
-
-      const name = ctx.from?.first_name || "";
-      const greeting = name ? ` ${escapeHtml(name)}` : "";
-
-      const text =
-        `<b>🏠 Job Ops${greeting}</b>\n\n` +
-        `📋 ${ready} ready · ${applied} applied · ${discovered} discovered`;
-
-      const keyboard = new InlineKeyboard()
-        .text("🔍 Pipeline", "p:status")
-        .text("📋 Jobs", "j:ready:0")
-        .row()
-        .text("🚀 Auto Apply", "a:status")
-        .text("📊 Stats", "s:stats")
-        .row()
-        .text("⚙️ Settings", "x:menu");
-
-      await ctx.editMessageText(text, {
-        parse_mode: "HTML",
-        reply_markup: keyboard,
-      });
-    } catch (err) {
-      logger.error("Main menu error", { error: err instanceof Error ? err.message : String(err) });
-      await ctx.answerCallbackQuery("❌ Error loading menu").catch(() => {});
-    }
-  });
+  // (m:menu callback is now registered canonically in bot.ts so every
+  //  "◀️ Menu" button across the app renders the same up-to-date layout.)
 }

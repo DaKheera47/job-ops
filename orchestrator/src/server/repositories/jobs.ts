@@ -8,8 +8,11 @@ import type {
   CreateJobInput,
   CreateJobNoteInput,
   Job,
+  JobLegitimacySignal,
+  JobLegitimacyTier,
   JobListItem,
   JobLocationEvidence,
+  JobMatchAnalysis,
   JobNote,
   JobStatus,
   JobsRevisionResponse,
@@ -113,6 +116,7 @@ export async function getJobListItems(
     outcome: jobs.outcome,
     closedAt: jobs.closedAt,
     suitabilityScore: jobs.suitabilityScore,
+    legitimacyTier: jobs.legitimacyTier,
     sponsorMatchScore: jobs.sponsorMatchScore,
     jobType: jobs.jobType,
     jobFunction: jobs.jobFunction,
@@ -145,6 +149,7 @@ export async function getJobListItems(
     ...row,
     source: row.source as JobListItem["source"],
     status: row.status as JobStatus,
+    legitimacyTier: (row.legitimacyTier as JobLegitimacyTier | null) ?? null,
   }));
 }
 
@@ -243,6 +248,7 @@ export async function searchJobs(
       outcome: jobs.outcome,
       closedAt: jobs.closedAt,
       suitabilityScore: jobs.suitabilityScore,
+      legitimacyTier: jobs.legitimacyTier,
       sponsorMatchScore: jobs.sponsorMatchScore,
       jobType: jobs.jobType,
       jobFunction: jobs.jobFunction,
@@ -272,6 +278,7 @@ export async function searchJobs(
     ...row,
     source: row.source as JobListItem["source"],
     status: row.status as JobStatus,
+    legitimacyTier: (row.legitimacyTier as JobLegitimacyTier | null) ?? null,
   }));
 }
 
@@ -803,6 +810,11 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     closedAt: row.closedAt ?? null,
     suitabilityScore: row.suitabilityScore,
     suitabilityReason: row.suitabilityReason,
+    matchAnalysis: (row.matchAnalysis as JobMatchAnalysis | null) ?? null,
+    legitimacyTier: (row.legitimacyTier as JobLegitimacyTier | null) ?? null,
+    legitimacyScore: row.legitimacyScore ?? null,
+    legitimacySignals:
+      (row.legitimacySignals as JobLegitimacySignal[] | null) ?? null,
     tailoredSummary: row.tailoredSummary,
     tailoredHeadline: row.tailoredHeadline ?? null,
     tailoredSkills: row.tailoredSkills ?? null,

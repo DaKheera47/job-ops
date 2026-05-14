@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
+import { assessJobLegitimacy } from "@server/services/ghost-job-detector";
 import { scoreJobSuitability } from "@server/services/scorer";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { asyncPool } from "@server/utils/async-pool";
@@ -13,7 +14,12 @@ const SCORING_CONCURRENCY = 4;
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
   shouldCancel?: () => boolean;
-}): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
+}): Promise<{
+  unprocessedJobs: Job[];
+  scoredJobs: ScoredJob[];
+  autoSkipped: number;
+  ghostFlagged: number;
+}> {
   logger.info("Running scoring step");
   const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
 
@@ -36,6 +42,8 @@ export async function scoreJobsStep(args: {
 
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
+  let autoSkipped = 0;
+  let ghostFlagged = 0;
 
   await asyncPool({
     items: unprocessedJobs,
@@ -63,8 +71,15 @@ export async function scoreJobsStep(args: {
         return;
       }
 
-      const { score, reason } = await scoreJobSuitability(job, args.profile);
+      const { score, reason, matchAnalysis } = await scoreJobSuitability(
+        job,
+        args.profile,
+      );
       if (args.shouldCancel?.()) return;
+
+      // Ghost-job legitimacy heuristic (cheap, no LLM call).
+      const legitimacy = assessJobLegitimacy(job);
+      if (legitimacy.tier === "red") ghostFlagged += 1;
 
       let sponsorMatchScore = 0;
       let sponsorMatchNames: string | undefined;
@@ -91,12 +106,17 @@ export async function scoreJobsStep(args: {
       await jobsRepo.updateJob(job.id, {
         suitabilityScore: score,
         suitabilityReason: reason,
+        ...(matchAnalysis ? { matchAnalysis } : {}),
+        legitimacyTier: legitimacy.tier,
+        legitimacyScore: legitimacy.score,
+        legitimacySignals: legitimacy.signals,
         sponsorMatchScore,
         sponsorMatchNames,
         ...(shouldAutoSkip ? { status: "skipped" } : {}),
       });
 
       if (shouldAutoSkip) {
+        autoSkipped += 1;
         logger.info("Auto-skipped job due to low score", {
           jobId: job.id,
           title: job.title,
@@ -118,8 +138,10 @@ export async function scoreJobsStep(args: {
   progressHelpers.scoringComplete(scoredJobs.length);
   logger.info("Scoring step completed", {
     scoredJobs: scoredJobs.length,
+    autoSkipped,
+    ghostFlagged,
     concurrency: SCORING_CONCURRENCY,
   });
 
-  return { unprocessedJobs, scoredJobs };
+  return { unprocessedJobs, scoredJobs, autoSkipped, ghostFlagged };
 }

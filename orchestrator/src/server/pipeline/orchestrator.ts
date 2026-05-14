@@ -13,6 +13,10 @@ import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import { getActiveTenantId } from "@server/tenancy/context";
+import {
+  COUNTRY_BOUND_DEFAULT_SOURCES,
+  resolveAutoEnabledSources,
+} from "@shared/extractors";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type {
   JobStatus,
@@ -47,6 +51,7 @@ import {
   importJobsStep,
   loadProfileStep,
   notifyPipelineWebhookStep,
+  preImportLivenessStep,
   processJobsStep,
   scoreJobsStep,
   selectJobsStep,
@@ -56,7 +61,10 @@ const DEFAULT_CONFIG: PipelineConfig = {
   topN: 20,
   minSuitabilityScore: 35,
   // Keep Glassdoor opt-in via source picker/settings; do not enable by default.
-  sources: ["gradcracker", "indeed", "linkedin", "ukvisajobs"],
+  // The actual list is resolved at run-time via resolveAutoEnabledSources()
+  // based on the user's location scope when the caller doesn't provide an
+  // explicit `sources` array.
+  sources: [...COUNTRY_BOUND_DEFAULT_SOURCES],
   outputDir: join(getDataDir(), "pdfs"),
   enableCrawling: true,
   enableScoring: true,
@@ -229,6 +237,25 @@ export async function runPipeline(
     resetProgress();
     locationIntent = await resolveLocationIntent(config);
     mergedConfig = { ...DEFAULT_CONFIG, ...config, locationIntent };
+    // When the caller did not pin an explicit source list, expand the default
+    // country-bound list with remote-friendly boards based on the active
+    // location scope. This means selecting "Selected + Remote" or "Remote
+    // Worldwide" auto-pulls WeWorkRemotely / Remotive / RemoteOK / Himalayas /
+    // JustJoin.it / NoFluffJobs / hh.ru / Working Nomads — without forcing
+    // the user to enable each manually.
+    if (!config.sources || config.sources.length === 0) {
+      mergedConfig = {
+        ...mergedConfig,
+        sources: resolveAutoEnabledSources({
+          scope: locationIntent.searchScope,
+          baseSources: [...COUNTRY_BOUND_DEFAULT_SOURCES],
+        }),
+      };
+      logger.info("Resolved auto-enabled sources for scope", {
+        scope: locationIntent.searchScope,
+        sources: mergedConfig.sources,
+      });
+    }
     configSnapshot = {
       topN: mergedConfig.topN,
       minSuitabilityScore: mergedConfig.minSuitabilityScore,
@@ -367,12 +394,35 @@ export async function runPipeline(
       }
 
       ensureNotCancelled(tenantId);
-      const { created } = await importJobsStep({ discoveredJobs });
+      const searchedTotal = discoveredJobs.length;
+      const { liveJobs, filteredCount: preImportFiltered } =
+        await preImportLivenessStep({
+          discoveredJobs,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        });
+      if (preImportFiltered > 0) {
+        pipelineLogger.info("Pre-import liveness filtered URLs", {
+          filtered: preImportFiltered,
+          remaining: liveJobs.length,
+        });
+      }
+      ensureNotCancelled(tenantId);
+      const { created, skipped: dedupSkipped } = await importJobsStep({
+        discoveredJobs: liveJobs,
+      });
       jobsDiscovered = created;
 
-      await persistResultSummary({ stage: "import" });
+      await persistResultSummary({
+        stage: "import",
+        jobsLivenessFiltered: preImportFiltered,
+        jobsDeduplicated: dedupSkipped,
+      });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsDiscovered: created,
+        jobsSearched: searchedTotal,
+        jobsDeduplicated: dedupSkipped,
+        jobsLivenessFiltered: preImportFiltered,
       });
 
       ensureNotCancelled(tenantId);
@@ -386,10 +436,20 @@ export async function runPipeline(
           expired: jobsExpired,
         });
       }
+      if (jobsExpired > 0) {
+        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+          jobsExpired,
+        });
+      }
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "scoring" });
-      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({
+      const {
+        unprocessedJobs,
+        scoredJobs,
+        autoSkipped: scoringAutoSkipped,
+        ghostFlagged,
+      } = await scoreJobsStep({
         profile,
         shouldCancel: () =>
           getPipelineState(tenantId).cancelRequestedAt !== null,
@@ -397,9 +457,17 @@ export async function runPipeline(
       await persistResultSummary({
         stage: "scoring",
         jobsScored: scoredJobs.length,
+        jobsAutoSkipped: scoringAutoSkipped,
+        jobsGhostFlagged: ghostFlagged,
+      });
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+        jobsScored: scoredJobs.length,
+        jobsAutoSkipped: scoringAutoSkipped,
+        jobsGhostFlagged: ghostFlagged,
       });
 
       // Auto-skip jobs below threshold (if configured)
+      let pipelineAutoSkipCount = 0;
       const autoSkipRaw = await settingsRepo.getSetting("pipelineAutoSkipBelow");
       if (autoSkipRaw) {
         const autoSkipThreshold = parseInt(autoSkipRaw, 10);
@@ -413,12 +481,19 @@ export async function runPipeline(
             for (const job of toSkip) {
               await jobsRepo.updateJob(job.id, { status: "skipped" });
             }
+            pipelineAutoSkipCount = toSkip.length;
             pipelineLogger.info("Auto-skipped jobs below threshold", {
               threshold: autoSkipThreshold,
               skipped: toSkip.length,
             });
           }
         }
+      }
+      const totalAutoSkipped = scoringAutoSkipped + pipelineAutoSkipCount;
+      if (totalAutoSkipped > scoringAutoSkipped) {
+        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+          jobsAutoSkipped: totalAutoSkipped,
+        });
       }
 
       ensureNotCancelled(tenantId);
@@ -430,6 +505,9 @@ export async function runPipeline(
       await persistResultSummary({
         stage: "selection",
         jobsScored: scoredJobs.length,
+        jobsSelected: jobsToProcess.length,
+      });
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsSelected: jobsToProcess.length,
       });
 

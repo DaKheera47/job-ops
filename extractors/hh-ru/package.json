@@ -1,0 +1,13 @@
+{
+  "name": "hhru-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "HeadHunter (hh.ru) extractor backed by the public JSON API",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  }
+}
