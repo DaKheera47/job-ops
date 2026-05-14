@@ -5,6 +5,53 @@ import type {
 } from "@shared/types/extractors";
 import { runHiringCafe } from "./src/run";
 
+type HiringCafeContext = Parameters<ExtractorManifest["run"]>[0];
+
+function parseWorkplaceTypes(
+  raw: string | undefined,
+): Array<"remote" | "hybrid" | "onsite"> | undefined {
+  if (!raw) return undefined;
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return undefined;
+    return parsed.filter(
+      (value): value is "remote" | "hybrid" | "onsite" =>
+        value === "remote" || value === "hybrid" || value === "onsite",
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveContextCountry(context: HiringCafeContext): string {
+  return (
+    context.sourceLocationPlan?.requestedCountry ??
+    context.locationIntent?.selectedCountry ??
+    context.selectedCountry
+  );
+}
+
+function resolveContextLocations(context: HiringCafeContext): string[] {
+  return resolveSearchCities({
+    list:
+      context.sourceLocationPlan?.requestedCities ??
+      context.locationIntent?.cityLocations,
+    single: context.settings.searchCities ?? context.settings.jobspyLocation,
+  });
+}
+
+function resolveContextWorkplaceTypes(
+  context: HiringCafeContext,
+): Array<"remote" | "hybrid" | "onsite"> | undefined {
+  const intentTypes = context.locationIntent?.workplaceTypes;
+  if (intentTypes && intentTypes.length > 0) {
+    return [...intentTypes];
+  }
+
+  return parseWorkplaceTypes(context.settings.workplaceTypes);
+}
+
 function toProgress(event: {
   type: string;
   termIndex: number;
@@ -61,18 +108,16 @@ export const manifest: ExtractorManifest = {
       ? parseInt(context.settings.jobspyResultsWanted, 10)
       : 200;
 
+    const country = resolveContextCountry(context);
+
     const result = await runHiringCafe({
-      country: context.selectedCountry,
-      countryKey: context.selectedCountry,
+      country,
+      countryKey: country,
       searchTerms: context.searchTerms,
-      locations: resolveSearchCities({
-        single:
-          context.settings.searchCities ?? context.settings.jobspyLocation,
-      }),
-      workplaceTypes: context.settings.workplaceTypes
-        ? JSON.parse(context.settings.workplaceTypes)
-        : undefined,
+      locations: resolveContextLocations(context),
+      workplaceTypes: resolveContextWorkplaceTypes(context),
       maxJobsPerTerm,
+      shouldCancel: context.shouldCancel,
       onProgress: (event) => {
         if (context.shouldCancel?.()) return;
 
