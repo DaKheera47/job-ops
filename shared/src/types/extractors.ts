@@ -1,5 +1,9 @@
 import type { CreateJobInput } from "./jobs";
-import type { LocationIntent, SourceLocationPlan } from "./location";
+import type {
+  LocationIntent,
+  LocationSourceCapabilitiesInput,
+  SourceLocationPlan,
+} from "./location";
 
 export interface ExtractorProgressEvent {
   phase?: "list" | "job";
@@ -18,6 +22,11 @@ export interface ExtractorProgressEvent {
 export interface ExtractorCapabilities {
   locationEvidence?: boolean;
 }
+
+export type ExtractorSourceLocationCapabilities = Omit<
+  LocationSourceCapabilitiesInput,
+  "source"
+>;
 
 export interface ExtractorRuntimeContext {
   source: string;
@@ -49,5 +58,8 @@ export interface ExtractorManifest {
   providesSources: readonly string[];
   requiredEnvVars?: readonly string[];
   capabilities?: ExtractorCapabilities;
+  locationCapabilities?: Partial<
+    Record<string, ExtractorSourceLocationCapabilities>
+  >;
   run: (context: ExtractorRuntimeContext) => Promise<ExtractorRunResult>;
 }

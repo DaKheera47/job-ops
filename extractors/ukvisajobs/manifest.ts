@@ -67,6 +67,9 @@ export const manifest: ExtractorManifest = {
   displayName: "UK Visa Jobs",
   providesSources: ["ukvisajobs"],
   requiredEnvVars: ["UKVISAJOBS_EMAIL", "UKVISAJOBS_PASSWORD"],
+  locationCapabilities: {
+    ukvisajobs: { supportedCountryKeys: ["united kingdom"] },
+  },
   async run(context: ExtractorRuntimeContext) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

@@ -1,7 +1,9 @@
 import {
   formatCountryLabel,
+  getSourceSupportedCountryKeys,
   isSourceAllowedForCountry,
   normalizeCountryKey,
+  sourceRequiresCityLocations,
 } from "./location-support.js";
 import { normalizeStringArray } from "./normalize-string-array.js";
 import {
@@ -124,12 +126,14 @@ export interface LocationSourceCapabilitiesInput {
   source: JobSource | string;
   supportedCountryKeys?: readonly string[] | null;
   requiresCityLocations?: boolean | null;
+  requiresSelectedCountry?: boolean | null;
 }
 
 export interface LocationSourceCapabilities {
   source: JobSource | string;
   supportedCountryKeys: string[] | null;
   requiresCityLocations: boolean;
+  requiresSelectedCountry: boolean;
 }
 
 export interface LocationSourcePlan {
@@ -303,66 +307,7 @@ function inferWorkplaceTypeFromEvidence(
 function createDefaultSupportedCountryKeys(
   source: JobSource | string,
 ): string[] | null {
-  switch (source) {
-    case "gradcracker":
-    case "ukvisajobs":
-      return ["united kingdom"];
-    case "seek":
-      return ["australia", "new zealand"];
-    case "naukri":
-      return ["india"];
-    case "jobindex":
-      return ["denmark"];
-    case "wazzuf":
-      return ["egypt"];
-    case "glassdoor":
-      return [
-        "australia",
-        "austria",
-        "belgium",
-        "brazil",
-        "canada",
-        "france",
-        "germany",
-        "hong kong",
-        "india",
-        "ireland",
-        "italy",
-        "mexico",
-        "netherlands",
-        "new zealand",
-        "singapore",
-        "spain",
-        "switzerland",
-        "united kingdom",
-        "united states",
-        "vietnam",
-      ];
-    case "adzuna":
-      return [
-        "united kingdom",
-        "united states",
-        "austria",
-        "australia",
-        "belgium",
-        "brazil",
-        "canada",
-        "switzerland",
-        "germany",
-        "spain",
-        "france",
-        "india",
-        "italy",
-        "mexico",
-        "netherlands",
-        "new zealand",
-        "poland",
-        "singapore",
-        "south africa",
-      ];
-    default:
-      return null;
-  }
+  return getSourceSupportedCountryKeys(source as JobSource);
 }
 
 function buildEvidenceLocationText(
@@ -582,7 +527,9 @@ export function getDefaultLocationSourceCapabilities(
   return {
     source,
     supportedCountryKeys: createDefaultSupportedCountryKeys(source),
-    requiresCityLocations: source === "glassdoor",
+    requiresCityLocations: sourceRequiresCityLocations(source as JobSource),
+    requiresSelectedCountry:
+      source === "adzuna" || source === "glassdoor" || source === "seek",
   };
 }
 
@@ -602,6 +549,10 @@ export function normalizeLocationSourceCapabilities(
       "requiresCityLocations" in value
         ? (value.requiresCityLocations ?? defaults.requiresCityLocations)
         : defaults.requiresCityLocations,
+    requiresSelectedCountry:
+      "requiresSelectedCountry" in value
+        ? (value.requiresSelectedCountry ?? defaults.requiresSelectedCountry)
+        : defaults.requiresSelectedCountry,
   };
 }
 
@@ -644,7 +595,10 @@ export function planLocationSource(args: {
         : `Selected country ${formatCountryLabel(requestedCountry)} is not supported.`,
     );
   } else {
-    if (capabilities.supportedCountryKeys !== null) {
+    if (
+      capabilities.supportedCountryKeys !== null &&
+      capabilities.requiresSelectedCountry
+    ) {
       isCompatible = false;
       reasons.push("A selected country is required for this source.");
     } else {

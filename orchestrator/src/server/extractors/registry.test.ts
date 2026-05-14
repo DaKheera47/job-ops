@@ -69,6 +69,44 @@ describe("extractor registry", () => {
     expect(registry.manifestBySource.get("linkedin")?.id).toBe("jobspy");
     expect(registry.manifestBySource.get("naukri")?.id).toBe("naukri");
     expect(registry.manifestBySource.get("ukvisajobs")?.id).toBe("ukvisajobs");
+    expect(registry.locationCapabilitiesBySource.linkedin).toMatchObject({
+      source: "linkedin",
+    });
+  });
+
+  it("normalizes per-source location capabilities from manifests", async () => {
+    const discovery = await import("./discovery");
+    const registryModule = await import("./registry");
+    registryModule.__resetExtractorRegistryForTests();
+
+    vi.mocked(discovery.discoverManifestPaths).mockResolvedValue([
+      "/tmp/jobspy.ts",
+    ]);
+    vi.mocked(discovery.loadManifestFromFile).mockResolvedValue({
+      ...makeManifest("jobspy", ["indeed", "glassdoor"], "JobSpy"),
+      locationCapabilities: {
+        indeed: { supportedCountryKeys: ["UK", "Russia"] },
+        glassdoor: {
+          supportedCountryKeys: ["United States"],
+          requiresCityLocations: true,
+        },
+      },
+    });
+
+    const registry = await registryModule.initializeExtractorRegistry();
+
+    expect(registry.locationCapabilitiesBySource.indeed).toEqual({
+      source: "indeed",
+      supportedCountryKeys: ["united kingdom", "russia"],
+      requiresCityLocations: false,
+      requiresSelectedCountry: false,
+    });
+    expect(registry.locationCapabilitiesBySource.glassdoor).toEqual({
+      source: "glassdoor",
+      supportedCountryKeys: ["united states"],
+      requiresCityLocations: true,
+      requiresSelectedCountry: true,
+    });
   });
 
   it("throws on duplicate manifest ids in strict mode", async () => {

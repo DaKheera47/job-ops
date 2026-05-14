@@ -6,6 +6,10 @@ import {
   type ExtractorSourceId,
   PIPELINE_EXTRACTOR_SOURCE_IDS,
 } from "@shared/extractors";
+import {
+  type LocationSourceCapabilitiesInput,
+  normalizeLocationSourceCapabilities,
+} from "@shared/location-domain.js";
 import type { ExtractorManifest } from "@shared/types";
 import { discoverManifestPaths, loadManifestFromFile } from "./discovery";
 
@@ -13,6 +17,9 @@ export interface ExtractorRegistry {
   manifests: Map<string, ExtractorManifest>;
   manifestBySource: Map<ExtractorSourceId, ExtractorManifest>;
   availableSources: ExtractorSourceId[];
+  locationCapabilitiesBySource: Partial<
+    Record<ExtractorSourceId, LocationSourceCapabilitiesInput>
+  >;
 }
 
 let registry: ExtractorRegistry | null = null;
@@ -111,6 +118,9 @@ async function createRegistry(): Promise<ExtractorRegistry> {
   const manifestPaths = await discoverManifestPaths();
   const manifests = new Map<string, ExtractorManifest>();
   const manifestBySource = new Map<ExtractorSourceId, ExtractorManifest>();
+  const locationCapabilitiesBySource: Partial<
+    Record<ExtractorSourceId, LocationSourceCapabilitiesInput>
+  > = {};
 
   for (const path of manifestPaths) {
     try {
@@ -157,6 +167,11 @@ async function createRegistry(): Promise<ExtractorRegistry> {
       manifests.set(manifest.id, manifest);
       for (const source of validSources) {
         manifestBySource.set(source, manifest);
+        locationCapabilitiesBySource[source] =
+          normalizeLocationSourceCapabilities({
+            source,
+            ...(manifest.locationCapabilities?.[source] ?? {}),
+          });
       }
     } catch (error) {
       if (error instanceof DuplicateSourceProviderError) {
@@ -187,6 +202,9 @@ async function createRegistry(): Promise<ExtractorRegistry> {
       id: manifest.id,
       sources: manifest.providesSources,
       requiredEnvVarsCount: manifest.requiredEnvVars?.length ?? 0,
+      locationCapabilitySources: manifest.providesSources.filter((source) =>
+        Boolean(manifest.locationCapabilities?.[source]),
+      ),
     })),
   });
 
@@ -194,6 +212,7 @@ async function createRegistry(): Promise<ExtractorRegistry> {
     manifests,
     manifestBySource,
     availableSources,
+    locationCapabilitiesBySource,
   };
 }
 

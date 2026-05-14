@@ -1,3 +1,7 @@
+import {
+  GLASSDOOR_SUPPORTED_COUNTRY_KEYS,
+  JOBSPY_SUPPORTED_COUNTRY_KEYS,
+} from "@shared/location-support.js";
 import type {
   ExtractorManifest,
   ExtractorRuntimeContext,
@@ -17,6 +21,14 @@ export const manifest: ExtractorManifest = {
   displayName: "JobSpy",
   providesSources: ["indeed", "linkedin", "glassdoor"],
   capabilities: { locationEvidence: true },
+  locationCapabilities: {
+    indeed: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
+    linkedin: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
+    glassdoor: {
+      supportedCountryKeys: GLASSDOOR_SUPPORTED_COUNTRY_KEYS,
+      requiresCityLocations: true,
+    },
+  },
   async run(context: ExtractorRuntimeContext) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

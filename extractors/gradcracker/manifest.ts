@@ -8,6 +8,9 @@ export const manifest: ExtractorManifest = {
   id: "gradcracker",
   displayName: "Gradcracker",
   providesSources: ["gradcracker"],
+  locationCapabilities: {
+    gradcracker: { supportedCountryKeys: ["united kingdom"] },
+  },
   async run(context: ExtractorRuntimeContext) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

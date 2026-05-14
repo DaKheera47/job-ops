@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { ExtractorRegistry } from "@server/extractors/registry";
 import type { ExtractorSourceId } from "@shared/extractors";
+import { normalizeLocationSourceCapabilities } from "@shared/location-domain.js";
 import type { ExtractorManifest } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
@@ -28,6 +29,12 @@ function createRegistry(
     manifestBySource,
     availableSources:
       availableSources ?? Array.from(manifestBySource.keys()).sort(),
+    locationCapabilitiesBySource: Object.fromEntries(
+      Array.from(manifestBySource.keys()).map((source) => [
+        source,
+        normalizeLocationSourceCapabilities({ source }),
+      ]),
+    ),
   };
 }
 

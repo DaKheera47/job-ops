@@ -1,4 +1,7 @@
-import { getAdzunaCountryCode } from "@shared/location-support.js";
+import {
+  ADZUNA_SUPPORTED_COUNTRY_KEYS,
+  getAdzunaCountryCode,
+} from "@shared/location-support.js";
 import { resolveSearchCities } from "@shared/search-cities.js";
 import type {
   ExtractorManifest,
@@ -54,6 +57,9 @@ export const manifest: ExtractorManifest = {
   providesSources: ["adzuna"],
   requiredEnvVars: ["ADZUNA_APP_ID", "ADZUNA_APP_KEY"],
   capabilities: { locationEvidence: true },
+  locationCapabilities: {
+    adzuna: { supportedCountryKeys: ADZUNA_SUPPORTED_COUNTRY_KEYS },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

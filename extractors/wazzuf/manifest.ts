@@ -37,6 +37,9 @@ export const manifest: ExtractorManifest = {
   id: "wazzuf",
   displayName: "WUZZUF",
   providesSources: ["wazzuf"],
+  locationCapabilities: {
+    wazzuf: { supportedCountryKeys: ["egypt"] },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

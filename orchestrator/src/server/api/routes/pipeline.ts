@@ -274,6 +274,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
       const sourcePlans = planLocationSources({
         intent: locationIntent,
         sources: config.sources,
+        capabilitiesBySource: registry.locationCapabilitiesBySource ?? {},
       });
       if (sourcePlans.incompatibleSources.length > 0) {
         const incompatible = sourcePlans.plans

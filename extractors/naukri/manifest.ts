@@ -53,6 +53,9 @@ export const manifest: ExtractorManifest = {
   id: "naukri",
   displayName: "Naukri",
   providesSources: ["naukri"],
+  locationCapabilities: {
+    naukri: { supportedCountryKeys: ["india"] },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

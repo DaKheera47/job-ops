@@ -221,16 +221,19 @@ describe("location-domain", () => {
       normalizeLocationSourceCapabilities({ source: "gradcracker" }),
     ).toEqual({
       requiresCityLocations: false,
+      requiresSelectedCountry: false,
       source: "gradcracker",
       supportedCountryKeys: ["united kingdom"],
     });
     expect(normalizeLocationSourceCapabilities({ source: "seek" })).toEqual({
       requiresCityLocations: false,
+      requiresSelectedCountry: true,
       source: "seek",
       supportedCountryKeys: ["australia", "new zealand"],
     });
     expect(normalizeLocationSourceCapabilities({ source: "naukri" })).toEqual({
       requiresCityLocations: false,
+      requiresSelectedCountry: false,
       source: "naukri",
       supportedCountryKeys: ["india"],
     });
@@ -238,6 +241,7 @@ describe("location-domain", () => {
       normalizeLocationSourceCapabilities({ source: "startupjobs" }),
     ).toEqual({
       requiresCityLocations: false,
+      requiresSelectedCountry: false,
       source: "startupjobs",
       supportedCountryKeys: null,
     });
@@ -251,6 +255,7 @@ describe("location-domain", () => {
       }),
     ).toEqual({
       requiresCityLocations: true,
+      requiresSelectedCountry: true,
       source: "glassdoor",
       supportedCountryKeys: ["united kingdom"],
     });

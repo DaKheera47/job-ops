@@ -88,11 +88,12 @@ function getLegacyLocationSelection(
 function getSourceLocationPlan(
   source: CrawlSource,
   intent: NonNullable<PipelineConfig["locationIntent"]>,
+  capabilities?: Parameters<typeof planLocationSource>[0]["capabilities"],
 ): ReturnType<typeof planLocationSource> & {
   canRun: boolean;
   warnings: string[];
 } {
-  const plan = planLocationSource({ source, intent });
+  const plan = planLocationSource({ source, intent, capabilities });
   return {
     ...plan,
     canRun: plan.isCompatible,
@@ -156,7 +157,11 @@ export async function discoverJobsStep(args: {
     });
   const sourcePlans = args.mergedConfig.sources.map((source) => ({
     source,
-    plan: getSourceLocationPlan(source, locationIntent),
+    plan: getSourceLocationPlan(
+      source,
+      locationIntent,
+      registry.locationCapabilitiesBySource?.[source],
+    ),
   }));
   const compatibleSources = sourcePlans
     .filter(({ plan }) => plan.canRun)
@@ -245,6 +250,9 @@ export async function discoverJobsStep(args: {
           sourceLocationPlan: getSourceLocationPlan(
             grouped.sources[0] as CrawlSource,
             locationIntent,
+            registry.locationCapabilitiesBySource?.[
+              grouped.sources[0] as ExtractorSourceId
+            ],
           ),
           getExistingJobUrls,
           shouldCancel: args.shouldCancel,

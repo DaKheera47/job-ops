@@ -1,12 +1,15 @@
 import type { JobSource } from "./types";
 
 const COUNTRY_ALIASES: Record<string, string> = {
+  "czech republic": "czechia",
   eg: "egypt",
+  "korea, republic of": "south korea",
+  "republic of korea": "south korea",
+  "russian federation": "russia",
   uk: "united kingdom",
   us: "united states",
   usa: "united states",
   türkiye: "turkey",
-  "czech republic": "czechia",
 };
 
 const COUNTRY_LABELS: Record<string, string> = {
@@ -17,8 +20,208 @@ const COUNTRY_LABELS: Record<string, string> = {
   czechia: "Czechia",
 };
 
-// Keep this list aligned with the JobSpy supported country inputs.
+// This is the app-level country catalog. Individual extractors decide whether a
+// selected country is compatible with their own upstream source.
 export const SUPPORTED_COUNTRY_INPUTS = [
+  "afghanistan",
+  "albania",
+  "algeria",
+  "andorra",
+  "angola",
+  "argentina",
+  "armenia",
+  "australia",
+  "austria",
+  "azerbaijan",
+  "bahamas",
+  "bahrain",
+  "bangladesh",
+  "barbados",
+  "belarus",
+  "belgium",
+  "belize",
+  "benin",
+  "bhutan",
+  "bolivia",
+  "bosnia and herzegovina",
+  "botswana",
+  "brazil",
+  "brunei",
+  "bulgaria",
+  "burkina faso",
+  "burundi",
+  "cambodia",
+  "cameroon",
+  "canada",
+  "cape verde",
+  "central african republic",
+  "chad",
+  "chile",
+  "china",
+  "colombia",
+  "comoros",
+  "congo",
+  "costa rica",
+  "cote d'ivoire",
+  "croatia",
+  "cuba",
+  "cyprus",
+  "czech republic",
+  "czechia",
+  "denmark",
+  "djibouti",
+  "dominican republic",
+  "ecuador",
+  "eg",
+  "egypt",
+  "el salvador",
+  "equatorial guinea",
+  "eritrea",
+  "estonia",
+  "ethiopia",
+  "fiji",
+  "finland",
+  "france",
+  "gabon",
+  "gambia",
+  "georgia",
+  "germany",
+  "ghana",
+  "greece",
+  "guatemala",
+  "guinea",
+  "guyana",
+  "haiti",
+  "honduras",
+  "hong kong",
+  "hungary",
+  "iceland",
+  "india",
+  "indonesia",
+  "ireland",
+  "israel",
+  "italy",
+  "jamaica",
+  "japan",
+  "jordan",
+  "kazakhstan",
+  "kenya",
+  "kuwait",
+  "kyrgyzstan",
+  "laos",
+  "latvia",
+  "lebanon",
+  "lesotho",
+  "liberia",
+  "libya",
+  "liechtenstein",
+  "lithuania",
+  "luxembourg",
+  "madagascar",
+  "malawi",
+  "malaysia",
+  "maldives",
+  "mali",
+  "malta",
+  "mauritania",
+  "mauritius",
+  "mexico",
+  "moldova",
+  "monaco",
+  "mongolia",
+  "montenegro",
+  "morocco",
+  "mozambique",
+  "myanmar",
+  "namibia",
+  "nepal",
+  "netherlands",
+  "new zealand",
+  "nicaragua",
+  "niger",
+  "nigeria",
+  "north macedonia",
+  "norway",
+  "oman",
+  "pakistan",
+  "palestine",
+  "panama",
+  "paraguay",
+  "peru",
+  "philippines",
+  "poland",
+  "portugal",
+  "qatar",
+  "romania",
+  "russia",
+  "russian federation",
+  "rwanda",
+  "saudi arabia",
+  "senegal",
+  "serbia",
+  "seychelles",
+  "sierra leone",
+  "singapore",
+  "slovakia",
+  "slovenia",
+  "somalia",
+  "south africa",
+  "south korea",
+  "sri lanka",
+  "sudan",
+  "suriname",
+  "tanzania",
+  "spain",
+  "sweden",
+  "switzerland",
+  "taiwan",
+  "tajikistan",
+  "thailand",
+  "trinidad and tobago",
+  "tunisia",
+  "türkiye",
+  "turkey",
+  "uganda",
+  "ukraine",
+  "united arab emirates",
+  "uk",
+  "united kingdom",
+  "usa",
+  "us",
+  "united states",
+  "uruguay",
+  "uzbekistan",
+  "venezuela",
+  "vietnam",
+  "zambia",
+  "zimbabwe",
+  "usa/ca",
+  "worldwide",
+] as const;
+
+const ADZUNA_COUNTRY_CODE_BY_KEY: Record<string, string> = {
+  "united kingdom": "gb",
+  "united states": "us",
+  austria: "at",
+  australia: "au",
+  belgium: "be",
+  brazil: "br",
+  canada: "ca",
+  switzerland: "ch",
+  germany: "de",
+  spain: "es",
+  france: "fr",
+  india: "in",
+  italy: "it",
+  mexico: "mx",
+  netherlands: "nl",
+  "new zealand": "nz",
+  poland: "pl",
+  singapore: "sg",
+  "south africa": "za",
+};
+
+export const JOBSPY_SUPPORTED_COUNTRY_KEYS = [
   "argentina",
   "australia",
   "austria",
@@ -34,11 +237,9 @@ export const SUPPORTED_COUNTRY_INPUTS = [
   "costa rica",
   "croatia",
   "cyprus",
-  "czech republic",
   "czechia",
   "denmark",
   "ecuador",
-  "eg",
   "egypt",
   "estonia",
   "finland",
@@ -85,14 +286,10 @@ export const SUPPORTED_COUNTRY_INPUTS = [
   "switzerland",
   "taiwan",
   "thailand",
-  "türkiye",
   "turkey",
   "ukraine",
   "united arab emirates",
-  "uk",
   "united kingdom",
-  "usa",
-  "us",
   "united states",
   "uruguay",
   "venezuela",
@@ -101,60 +298,58 @@ export const SUPPORTED_COUNTRY_INPUTS = [
   "worldwide",
 ] as const;
 
-const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
-const SEEK_SUPPORTED_COUNTRIES = new Set(
-  ["australia", "new zealand"].map((c) => normalizeCountryKey(c)),
+export const GLASSDOOR_SUPPORTED_COUNTRY_KEYS = [
+  "australia",
+  "austria",
+  "belgium",
+  "brazil",
+  "canada",
+  "france",
+  "germany",
+  "hong kong",
+  "india",
+  "ireland",
+  "italy",
+  "mexico",
+  "netherlands",
+  "new zealand",
+  "singapore",
+  "spain",
+  "switzerland",
+  "united kingdom",
+  "united states",
+  "vietnam",
+] as const;
+
+export const ADZUNA_SUPPORTED_COUNTRY_KEYS = Object.keys(
+  ADZUNA_COUNTRY_CODE_BY_KEY,
 );
-const NAUKRI_SUPPORTED_COUNTRIES = new Set(["india"].map(normalizeCountryKey));
-const JOBINDEX_SUPPORTED_COUNTRIES = new Set(
-  ["denmark"].map(normalizeCountryKey),
-);
-const WAZZUF_SUPPORTED_COUNTRIES = new Set(["egypt"].map(normalizeCountryKey));
-const GLASSDOOR_SUPPORTED_COUNTRIES = new Set(
-  [
-    "australia",
-    "austria",
-    "belgium",
-    "brazil",
-    "canada",
-    "france",
-    "germany",
-    "hong kong",
-    "india",
-    "ireland",
-    "italy",
-    "mexico",
-    "netherlands",
-    "new zealand",
-    "singapore",
-    "spain",
-    "switzerland",
-    "united kingdom",
-    "united states",
-    "vietnam",
-  ].map((country) => normalizeCountryKey(country)),
-);
-const ADZUNA_COUNTRY_CODE_BY_KEY: Record<string, string> = {
-  "united kingdom": "gb",
-  "united states": "us",
-  austria: "at",
-  australia: "au",
-  belgium: "be",
-  brazil: "br",
-  canada: "ca",
-  switzerland: "ch",
-  germany: "de",
-  spain: "es",
-  france: "fr",
-  india: "in",
-  italy: "it",
-  mexico: "mx",
-  netherlands: "nl",
-  "new zealand": "nz",
-  poland: "pl",
-  singapore: "sg",
-  "south africa": "za",
+
+const SOURCE_SUPPORTED_COUNTRY_KEYS: Partial<Record<JobSource, string[]>> = {
+  gradcracker: ["united kingdom"],
+  indeed: [...JOBSPY_SUPPORTED_COUNTRY_KEYS],
+  linkedin: [...JOBSPY_SUPPORTED_COUNTRY_KEYS],
+  glassdoor: [...GLASSDOOR_SUPPORTED_COUNTRY_KEYS],
+  ukvisajobs: ["united kingdom"],
+  adzuna: [...ADZUNA_SUPPORTED_COUNTRY_KEYS],
+  jobindex: ["denmark"],
+  seek: ["australia", "new zealand"],
+  naukri: ["india"],
+  wazzuf: ["egypt"],
 };
+
+export function getSourceSupportedCountryKeys(
+  source: JobSource,
+): string[] | null {
+  const countries = SOURCE_SUPPORTED_COUNTRY_KEYS[source];
+  return countries
+    ? countries.map((country) => normalizeCountryKey(country))
+    : null;
+}
+
+export function sourceRequiresCityLocations(source: JobSource): boolean {
+  return source === "glassdoor";
+}
 
 export function normalizeCountryKey(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
@@ -183,7 +378,11 @@ export function isUkCountry(country: string | null | undefined): boolean {
 export function isGlassdoorCountry(
   country: string | null | undefined,
 ): boolean {
-  return GLASSDOOR_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
+  return GLASSDOOR_SUPPORTED_COUNTRY_KEYS.includes(
+    normalizeCountryKey(
+      country,
+    ) as (typeof GLASSDOOR_SUPPORTED_COUNTRY_KEYS)[number],
+  );
 }
 
 export function getAdzunaCountryCode(
@@ -196,18 +395,11 @@ export function isSourceAllowedForCountry(
   source: JobSource,
   country: string | null | undefined,
 ): boolean {
-  if (UK_ONLY_SOURCES.has(source)) return isUkCountry(country);
-  if (source === "seek")
-    return SEEK_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
-  if (source === "naukri")
-    return NAUKRI_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
-  if (source === "jobindex")
-    return JOBINDEX_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
-  if (source === "wazzuf")
-    return WAZZUF_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
-  if (source === "glassdoor") return isGlassdoorCountry(country);
-  if (source === "adzuna") return getAdzunaCountryCode(country) !== null;
-  return true;
+  const supportedCountryKeys = getSourceSupportedCountryKeys(source);
+  return (
+    supportedCountryKeys === null ||
+    supportedCountryKeys.includes(normalizeCountryKey(country))
+  );
 }
 
 export function getCompatibleSourcesForCountry(

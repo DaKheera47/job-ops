@@ -51,7 +51,8 @@ saved budget when you start the run.
 
 #### Country and source compatibility
 
-- Country selection affects which sources are available.
+- Country selection affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
+- Each extractor declares its own supported countries. A country can be selectable even when JobSpy-backed sources do not support it, as long as another selected source can run or locally filter for that country.
 - UK-only sources are disabled for non-UK countries.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
 - Glassdoor can be enabled only when:

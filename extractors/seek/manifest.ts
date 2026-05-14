@@ -38,6 +38,9 @@ export const manifest: ExtractorManifest = {
   displayName: "Seek",
   providesSources: ["seek"],
   requiredEnvVars: ["APIFY_TOKEN"],
+  locationCapabilities: {
+    seek: { supportedCountryKeys: ["australia", "new zealand"] },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

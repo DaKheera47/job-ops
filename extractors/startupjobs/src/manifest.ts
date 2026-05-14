@@ -42,6 +42,9 @@ export const manifest: ExtractorManifest = {
   id: "startupjobs",
   displayName: "startup.jobs",
   providesSources: ["startupjobs"],
+  locationCapabilities: {
+    startupjobs: { supportedCountryKeys: null },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

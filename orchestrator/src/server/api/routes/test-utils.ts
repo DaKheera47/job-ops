@@ -7,6 +7,7 @@ import {
   type ExtractorSourceId,
   PIPELINE_EXTRACTOR_SOURCE_IDS,
 } from "@shared/extractors";
+import { normalizeLocationSourceCapabilities } from "@shared/location-domain.js";
 import type { ExtractorManifest } from "@shared/types";
 import { vi } from "vitest";
 
@@ -162,6 +163,12 @@ function createTestExtractorRegistry(): ExtractorRegistry {
     manifests,
     manifestBySource,
     availableSources: [...PIPELINE_EXTRACTOR_SOURCE_IDS],
+    locationCapabilitiesBySource: Object.fromEntries(
+      Array.from(manifestBySource.keys()).map((source) => [
+        source,
+        normalizeLocationSourceCapabilities({ source }),
+      ]),
+    ),
   };
 }
 

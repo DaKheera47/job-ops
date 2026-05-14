@@ -27,6 +27,7 @@ describe("location-support", () => {
   it("keeps supported country keys unique and canonical", () => {
     expect(SUPPORTED_COUNTRY_KEYS).toContain("united kingdom");
     expect(SUPPORTED_COUNTRY_KEYS).toContain("united states");
+    expect(SUPPORTED_COUNTRY_KEYS).toContain("russia");
     expect(SUPPORTED_COUNTRY_KEYS).toContain("worldwide");
     expect(SUPPORTED_COUNTRY_KEYS).not.toContain("uk");
     expect(SUPPORTED_COUNTRY_KEYS).not.toContain("us");
@@ -63,6 +64,8 @@ describe("location-support", () => {
       true,
     );
     expect(isSourceAllowedForCountry("startupjobs", "worldwide")).toBe(true);
+    expect(isSourceAllowedForCountry("indeed", "russia")).toBe(false);
+    expect(isSourceAllowedForCountry("startupjobs", "russia")).toBe(true);
   });
 
   it("filters incompatible sources while preserving compatible order", () => {

@@ -38,6 +38,9 @@ export const manifest: ExtractorManifest = {
   displayName: "Working Nomads",
   providesSources: ["workingnomads"],
   capabilities: { locationEvidence: true },
+  locationCapabilities: {
+    workingnomads: { supportedCountryKeys: null },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

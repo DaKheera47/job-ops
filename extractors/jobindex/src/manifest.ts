@@ -52,6 +52,9 @@ export const manifest: ExtractorManifest = {
   displayName: "Jobindex",
   providesSources: ["jobindex"],
   capabilities: { locationEvidence: true },
+  locationCapabilities: {
+    jobindex: { supportedCountryKeys: ["denmark"] },
+  },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

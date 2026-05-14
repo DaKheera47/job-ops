@@ -1,5 +1,6 @@
 import type { ExtractorRegistry } from "@server/extractors/registry";
 import type { ExtractorSourceId } from "@shared/extractors";
+import { normalizeLocationSourceCapabilities } from "@shared/location-domain.js";
 import type { ExtractorManifest } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -26,6 +27,12 @@ function createRegistry(
     manifestBySource,
     availableSources:
       availableSources ?? Array.from(manifestBySource.keys()).sort(),
+    locationCapabilitiesBySource: Object.fromEntries(
+      Array.from(manifestBySource.keys()).map((source) => [
+        source,
+        normalizeLocationSourceCapabilities({ source }),
+      ]),
+    ),
   };
 }
 
