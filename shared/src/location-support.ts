@@ -339,13 +339,24 @@ const SOURCE_SUPPORTED_COUNTRY_KEYS: Partial<Record<JobSource, string[]>> = {
   wazzuf: ["egypt"],
 };
 
+const SOURCE_SUPPORTED_COUNTRY_KEYS_NORMALIZED: Partial<
+  Record<JobSource, string[]>
+> = {};
+const SOURCE_SUPPORTED_COUNTRY_SETS: Partial<Record<JobSource, Set<string>>> =
+  {};
+
+for (const [source, countries] of Object.entries(
+  SOURCE_SUPPORTED_COUNTRY_KEYS,
+) as Array<[JobSource, string[]]>) {
+  const normalized = countries.map((country) => normalizeCountryKey(country));
+  SOURCE_SUPPORTED_COUNTRY_KEYS_NORMALIZED[source] = normalized;
+  SOURCE_SUPPORTED_COUNTRY_SETS[source] = new Set(normalized);
+}
+
 export function getSourceSupportedCountryKeys(
   source: JobSource,
 ): string[] | null {
-  const countries = SOURCE_SUPPORTED_COUNTRY_KEYS[source];
-  return countries
-    ? countries.map((country) => normalizeCountryKey(country))
-    : null;
+  return SOURCE_SUPPORTED_COUNTRY_KEYS_NORMALIZED[source] ?? null;
 }
 
 export function sourceRequiresCityLocations(source: JobSource): boolean {
@@ -379,10 +390,10 @@ export function isUkCountry(country: string | null | undefined): boolean {
 export function isGlassdoorCountry(
   country: string | null | undefined,
 ): boolean {
-  return GLASSDOOR_SUPPORTED_COUNTRY_KEYS.includes(
-    normalizeCountryKey(
-      country,
-    ) as (typeof GLASSDOOR_SUPPORTED_COUNTRY_KEYS)[number],
+  return (
+    SOURCE_SUPPORTED_COUNTRY_SETS.glassdoor?.has(
+      normalizeCountryKey(country),
+    ) ?? false
   );
 }
 
@@ -396,10 +407,10 @@ export function isSourceAllowedForCountry(
   source: JobSource,
   country: string | null | undefined,
 ): boolean {
-  const supportedCountryKeys = getSourceSupportedCountryKeys(source);
+  const supportedCountryKeys = SOURCE_SUPPORTED_COUNTRY_SETS[source];
   return (
-    supportedCountryKeys === null ||
-    supportedCountryKeys.includes(normalizeCountryKey(country))
+    supportedCountryKeys === undefined ||
+    supportedCountryKeys.has(normalizeCountryKey(country))
   );
 }
 

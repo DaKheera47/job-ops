@@ -55,6 +55,20 @@ class DuplicateSourceProviderError extends Error {
   }
 }
 
+class UnknownLocationCapabilitySourceError extends Error {
+  readonly manifestId: string;
+  readonly unknownSources: string[];
+
+  constructor(args: { manifestId: string; unknownSources: string[] }) {
+    super(
+      `Extractor manifest ${args.manifestId} declares location capabilities for unknown sources: ${args.unknownSources.join(", ")}`,
+    );
+    this.manifestId = args.manifestId;
+    this.unknownSources = args.unknownSources;
+    this.name = "UnknownLocationCapabilitySourceError";
+  }
+}
+
 export function __resetExtractorRegistryForTests(): void {
   registry = null;
   initPromise = null;
@@ -153,6 +167,31 @@ async function createRegistry(): Promise<ExtractorRegistry> {
         continue;
       }
 
+      const unknownLocationCapabilitySources = Object.keys(
+        manifest.locationCapabilities ?? {},
+      ).filter((source) => !validSources.includes(source as ExtractorSourceId));
+
+      if (unknownLocationCapabilitySources.length > 0) {
+        const error = new UnknownLocationCapabilitySourceError({
+          manifestId: manifest.id,
+          unknownSources: unknownLocationCapabilitySources,
+        });
+
+        if (strictModeEnabled()) {
+          throw error;
+        }
+
+        logger.warn(
+          "Extractor manifest contains location capabilities for sources it does not provide",
+          {
+            manifestId: manifest.id,
+            path,
+            unknownSources: unknownLocationCapabilitySources,
+            providedSources: validSources,
+          },
+        );
+      }
+
       for (const typedSource of validSources) {
         if (manifestBySource.has(typedSource)) {
           const existing = manifestBySource.get(typedSource);
@@ -178,7 +217,11 @@ async function createRegistry(): Promise<ExtractorRegistry> {
         throw error;
       }
 
-      if (error instanceof DuplicateManifestIdError && strictModeEnabled()) {
+      if (
+        (error instanceof DuplicateManifestIdError ||
+          error instanceof UnknownLocationCapabilitySourceError) &&
+        strictModeEnabled()
+      ) {
         throw error;
       }
 

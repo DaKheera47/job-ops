@@ -299,4 +299,35 @@ describe("location-domain", () => {
       "A selected country is required for this source.",
     );
   });
+
+  it("enforces requiresSelectedCountry even for country-agnostic source lists", () => {
+    const result = planLocationSources({
+      intent: {
+        selectedCountry: null,
+        cityLocations: [],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "exact_only",
+      },
+      sources: ["custom-source"],
+      capabilitiesBySource: {
+        "custom-source": {
+          source: "custom-source",
+          supportedCountryKeys: null,
+          requiresSelectedCountry: true,
+        },
+      },
+    });
+
+    expect(result.compatibleSources).toEqual([]);
+    expect(result.incompatibleSources).toEqual(["custom-source"]);
+    expect(result.plans[0]).toMatchObject({
+      source: "custom-source",
+      isCompatible: false,
+      canRun: false,
+    });
+    expect(result.plans[0]?.reasons).toContain(
+      "A selected country is required for this source.",
+    );
+  });
 });

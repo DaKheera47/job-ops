@@ -595,10 +595,7 @@ export function planLocationSource(args: {
         : `Selected country ${formatCountryLabel(requestedCountry)} is not supported.`,
     );
   } else {
-    if (
-      capabilities.supportedCountryKeys !== null &&
-      capabilities.requiresSelectedCountry
-    ) {
+    if (capabilities.requiresSelectedCountry) {
       isCompatible = false;
       reasons.push("A selected country is required for this source.");
     } else {
