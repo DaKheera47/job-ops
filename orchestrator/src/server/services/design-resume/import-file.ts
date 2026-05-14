@@ -10,6 +10,8 @@ import { getRequestId } from "@server/infra/request-context";
 import {
   DocxTextExtractionError,
   extractDocxText,
+  extractPdfText,
+  PdfTextExtractionError,
 } from "@server/services/document-text-extraction";
 import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
@@ -34,7 +36,10 @@ type SupportedRuntimeProvider =
   | "openai"
   | "openrouter"
   | "gemini"
-  | "gemini_cli";
+  | "gemini_cli"
+  | "openai_compatible"
+  | "ollama"
+  | "lmstudio";
 
 const DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA: JsonSchemaDefinition = {
   name: "design_resume_import",
@@ -70,6 +75,9 @@ const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
 const OPENAI_DEFAULT_TIMEOUT_MS = 60_000;
 const OPENROUTER_DEFAULT_TIMEOUT_MS = 90_000;
 const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
+const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = 120_000;
+const CHAT_COMPLETIONS_SUFFIX = "/v1/chat/completions";
+const API_VERSION_SUFFIX = "/v1";
 
 const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
   string,
@@ -123,6 +131,9 @@ function normalizeRuntimeProvider(
   }
   if (normalized === "gemini") return "gemini";
   if (normalized === "gemini_cli") return "gemini_cli";
+  if (normalized === "openai_compatible") return "openai_compatible";
+  if (normalized === "ollama") return "ollama";
+  if (normalized === "lmstudio") return "lmstudio";
   return null;
 }
 
@@ -219,6 +230,28 @@ function buildDataUrl(
   dataBase64: string,
 ): string {
   return `data:${mediaType};base64,${dataBase64}`;
+}
+
+function normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint: string): string {
+  return baseUrlOrEndpoint.trim().replace(/\/+$/, "");
+}
+
+function appendVersionedPath(baseUrl: string, path: string): string {
+  if (baseUrl.endsWith(API_VERSION_SUFFIX)) {
+    return joinUrl(baseUrl.slice(0, -API_VERSION_SUFFIX.length), path);
+  }
+  return joinUrl(baseUrl, path);
+}
+
+function resolveChatCompletionsUrl(baseUrlOrEndpoint: string): string {
+  const normalized = normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint);
+  if (
+    normalized.endsWith(CHAT_COMPLETIONS_SUFFIX) ||
+    normalized.endsWith("/chat/completions")
+  ) {
+    return normalized;
+  }
+  return appendVersionedPath(normalized, CHAT_COMPLETIONS_SUFFIX);
 }
 
 function buildUserPrompt(): string {
@@ -528,23 +561,6 @@ ${JSON.stringify(template, null, 2)}
 `.trim();
 }
 
-async function extractPdfText(decoded: Buffer): Promise<string> {
-  try {
-    const { default: pdfParse } = await import("pdf-parse");
-    const data = (await pdfParse(decoded)) as { text?: string };
-    const text = typeof data?.text === "string" ? data.text.trim() : "";
-    if (!text) {
-      throw badRequest("Resume PDF did not contain readable text.");
-    }
-    return text;
-  } catch (error) {
-    if (error instanceof AppError && error.status === 400) {
-      throw error;
-    }
-    throw badRequest("Resume PDF file could not be read or is encrypted.");
-  }
-}
-
 async function extractResumeDocxText(decoded: Buffer): Promise<string> {
   let text: string;
   try {
@@ -566,16 +582,18 @@ async function extractResumeDocxText(decoded: Buffer): Promise<string> {
   return text;
 }
 
-function buildDocxPrompt(documentText: string, fileName: string): string {
-  return `
-The resume file was uploaded as DOCX and converted locally to plain text before extraction.
-File name: ${fileName}
-
-Extracted resume text:
-${documentText}
-
-${buildUserPrompt()}
-`.trim();
+async function extractResumePdfText(decoded: Buffer): Promise<string> {
+  try {
+    return await extractPdfText(decoded);
+  } catch (error) {
+    if (error instanceof PdfTextExtractionError) {
+      if (error.code === "EMPTY_TEXT") {
+        throw badRequest("Resume PDF did not contain readable text.");
+      }
+      throw badRequest("Resume PDF file could not be read or is encrypted.");
+    }
+    throw badRequest("Resume PDF file could not be read or is encrypted.");
+  }
 }
 
 function buildTextExtractPrompt(
@@ -596,6 +614,18 @@ ${documentText}
 
 ${buildUserPrompt()}
 `.trim();
+}
+
+function buildDocumentTextPrompt(
+  documentText: string,
+  fileName: string,
+  mediaType: SupportedImportMediaType,
+): string {
+  return buildTextExtractPrompt(
+    documentText,
+    fileName,
+    mediaType === "application/pdf" ? "PDF" : "DOCX",
+  );
 }
 
 function normalizeGeminiModelName(value: string): string {
@@ -772,7 +802,7 @@ function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, or Gemini (CLI) to import resumes. DOCX files are converted to text locally before extraction. PDFs with Gemini (CLI) are converted to plain text locally before extraction.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, Gemini (CLI), OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -823,6 +853,58 @@ function shouldRetryOpenRouterPdfWithAlternateEngine(input: {
   ].some((pattern) => normalized.includes(pattern));
 }
 
+function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
+  return (
+    provider === "openai_compatible" ||
+    provider === "ollama" ||
+    provider === "lmstudio"
+  );
+}
+
+function providerRequiresApiKey(provider: SupportedRuntimeProvider): boolean {
+  return (
+    provider === "openai" || provider === "openrouter" || provider === "gemini"
+  );
+}
+
+async function extractInitialDocumentText(input: {
+  provider: SupportedRuntimeProvider;
+  mediaType: SupportedImportMediaType;
+  decoded: Buffer;
+}): Promise<string | null> {
+  if (input.mediaType === DOCX_MIME) {
+    return extractResumeDocxText(input.decoded);
+  }
+  if (
+    input.mediaType === "application/pdf" &&
+    (input.provider === "gemini_cli" ||
+      isTextOnlyImportProvider(input.provider))
+  ) {
+    return extractResumePdfText(input.decoded);
+  }
+  return null;
+}
+
+function shouldFallbackToExtractedPdfText(input: {
+  provider: SupportedRuntimeProvider;
+  mediaType: SupportedImportMediaType;
+  documentText: string | null;
+  error: unknown;
+}): boolean {
+  if (
+    input.mediaType !== "application/pdf" ||
+    input.documentText ||
+    input.provider === "gemini_cli" ||
+    isTextOnlyImportProvider(input.provider)
+  ) {
+    return false;
+  }
+
+  const message =
+    input.error instanceof Error ? input.error.message : String(input.error);
+  return isFileCapabilityError(message);
+}
+
 async function extractWithOpenAi(args: {
   apiKey: string;
   baseUrl: string | null;
@@ -861,7 +943,11 @@ async function extractWithOpenAi(args: {
             ? [
                 {
                   type: "input_text",
-                  text: buildDocxPrompt(args.documentText, args.fileName),
+                  text: buildDocumentTextPrompt(
+                    args.documentText,
+                    args.fileName,
+                    args.mediaType,
+                  ),
                 },
               ]
             : [
@@ -943,7 +1029,11 @@ async function extractWithOpenRouter(args: {
           {
             role: "user",
             content: args.documentText
-              ? buildDocxPrompt(args.documentText, args.fileName)
+              ? buildDocumentTextPrompt(
+                  args.documentText,
+                  args.fileName,
+                  args.mediaType,
+                )
               : [
                   {
                     type: "text",
@@ -1046,7 +1136,11 @@ async function extractWithGemini(args: {
           parts: args.documentText
             ? [
                 {
-                  text: buildDocxPrompt(args.documentText, args.fileName),
+                  text: buildDocumentTextPrompt(
+                    args.documentText,
+                    args.fileName,
+                    args.mediaType,
+                  ),
                 },
               ]
             : [
@@ -1086,6 +1180,77 @@ async function extractWithGemini(args: {
   const text = extractGeminiText(payload);
   if (!text) {
     throw upstreamError("Gemini returned an empty response for resume import.");
+  }
+  return text;
+}
+
+function getDefaultChatCompletionsBaseUrl(
+  provider: "openai_compatible" | "ollama" | "lmstudio",
+): string {
+  if (provider === "ollama") return "http://localhost:11434";
+  if (provider === "lmstudio") return "http://localhost:1234";
+  return "https://api.openai.com";
+}
+
+async function extractWithTextChatCompletions(args: {
+  provider: "openai_compatible" | "ollama" | "lmstudio";
+  apiKey: string | null;
+  baseUrl: string | null;
+  model: string;
+  mediaType: SupportedImportMediaType;
+  fileName: string;
+  documentText: string;
+  requestId: string | undefined;
+}): Promise<string> {
+  const url = resolveChatCompletionsUrl(
+    args.baseUrl || getDefaultChatCompletionsBaseUrl(args.provider),
+  );
+  const response = await fetch(url, {
+    method: "POST",
+    headers: buildHeaders({
+      apiKey: args.apiKey,
+      provider: args.provider,
+    }),
+    body: JSON.stringify({
+      model: args.model,
+      stream: false,
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: buildDocumentTextPrompt(
+            args.documentText,
+            args.fileName,
+            args.mediaType,
+          ),
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const detail = parseErrorMessage(await getResponseDetail(response));
+    throw new AppError({
+      status: response.status >= 500 ? 502 : 503,
+      message: detail || `${args.provider} returned ${response.status}.`,
+      details: {
+        provider: args.provider,
+        model: args.model,
+        requestId: args.requestId ?? null,
+      },
+    });
+  }
+
+  const payload = await response.json();
+  const text = extractChatCompletionText(payload);
+  if (!text) {
+    throw upstreamError(
+      `${args.provider} returned an empty response for resume import.`,
+    );
   }
   return text;
 }
@@ -1170,6 +1335,28 @@ async function extractResumeFromProvider(args: {
   if (args.provider === "openrouter") {
     return extractWithOpenRouter(args);
   }
+  if (
+    args.provider === "openai_compatible" ||
+    args.provider === "ollama" ||
+    args.provider === "lmstudio"
+  ) {
+    const text = args.documentText?.trim();
+    if (!text) {
+      throw badRequest(
+        `${args.provider} resume import requires plain-text resume content (DOCX or extracted PDF text).`,
+      );
+    }
+    return extractWithTextChatCompletions({
+      provider: args.provider,
+      apiKey: args.apiKey || null,
+      baseUrl: args.baseUrl,
+      model: args.model,
+      mediaType: args.mediaType,
+      fileName: args.fileName,
+      documentText: text,
+      requestId: args.requestId,
+    });
+  }
   return extractWithGemini(args);
 }
 
@@ -1202,30 +1389,67 @@ export async function importDesignResumeFromFile(
     );
   }
 
-  const isGeminiCli = provider === "gemini_cli";
-  if (!isGeminiCli && !runtime.apiKey) {
+  if (providerRequiresApiKey(provider) && !runtime.apiKey) {
     throw serviceUnavailable(
       "Connect your AI provider in Settings before importing a resume file.",
     );
   }
 
   try {
-    let documentText: string | null =
-      mediaType === DOCX_MIME ? await extractResumeDocxText(decoded) : null;
-    if (isGeminiCli && mediaType === "application/pdf") {
-      documentText = await extractPdfText(decoded);
-    }
-    const rawText = await extractResumeFromProvider({
+    let documentText = await extractInitialDocumentText({
       provider,
-      apiKey: runtime.apiKey ?? "",
-      baseUrl: runtime.baseUrl,
-      model: runtime.model,
       mediaType,
-      fileName,
-      dataBase64: normalizedBase64,
-      documentText,
-      requestId,
+      decoded,
     });
+    let rawText: string;
+    try {
+      rawText = await extractResumeFromProvider({
+        provider,
+        apiKey: runtime.apiKey ?? "",
+        baseUrl: runtime.baseUrl,
+        model: runtime.model,
+        mediaType,
+        fileName,
+        dataBase64: normalizedBase64,
+        documentText,
+        requestId,
+      });
+    } catch (error) {
+      if (
+        !shouldFallbackToExtractedPdfText({
+          provider,
+          mediaType,
+          documentText,
+          error,
+        })
+      ) {
+        throw error;
+      }
+
+      logger.info(
+        "Retrying design resume file import with extracted PDF text",
+        {
+          requestId: requestId ?? null,
+          provider,
+          model: runtime.model,
+          fileName,
+          mediaType,
+        },
+      );
+
+      documentText = await extractResumePdfText(decoded);
+      rawText = await extractResumeFromProvider({
+        provider,
+        apiKey: runtime.apiKey ?? "",
+        baseUrl: runtime.baseUrl,
+        model: runtime.model,
+        mediaType,
+        fileName,
+        dataBase64: normalizedBase64,
+        documentText,
+        requestId,
+      });
+    }
     const parsed = parseImportedResumeJson(rawText);
     const normalized = sanitizeNormalizedResume(parsed);
     const saved = await replaceCurrentDesignResumeDocument({

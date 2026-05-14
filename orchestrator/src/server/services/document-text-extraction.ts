@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 
 export type DocxTextExtractionErrorCode = "INVALID_DOCX" | "MISSING_DOCUMENT";
+export type PdfTextExtractionErrorCode = "INVALID_PDF" | "EMPTY_TEXT";
 
 export class DocxTextExtractionError extends Error {
   code: DocxTextExtractionErrorCode;
@@ -8,6 +9,16 @@ export class DocxTextExtractionError extends Error {
   constructor(code: DocxTextExtractionErrorCode, message: string) {
     super(message);
     this.name = "DocxTextExtractionError";
+    this.code = code;
+  }
+}
+
+export class PdfTextExtractionError extends Error {
+  code: PdfTextExtractionErrorCode;
+
+  constructor(code: PdfTextExtractionErrorCode, message: string) {
+    super(message);
+    this.name = "PdfTextExtractionError";
     this.code = code;
   }
 }
@@ -76,4 +87,27 @@ export async function extractDocxText(buffer: Buffer): Promise<string> {
 
   const xml = await documentXml.async("string");
   return normalizeDocxXmlText(xml);
+}
+
+export async function extractPdfText(buffer: Buffer): Promise<string> {
+  try {
+    const { default: pdfParse } = await import("pdf-parse");
+    const data = (await pdfParse(buffer)) as { text?: string };
+    const text = typeof data?.text === "string" ? data.text.trim() : "";
+    if (!text) {
+      throw new PdfTextExtractionError(
+        "EMPTY_TEXT",
+        "PDF file did not contain readable text.",
+      );
+    }
+    return text;
+  } catch (error) {
+    if (error instanceof PdfTextExtractionError) {
+      throw error;
+    }
+    throw new PdfTextExtractionError(
+      "INVALID_PDF",
+      "PDF file could not be read or is encrypted.",
+    );
+  }
 }

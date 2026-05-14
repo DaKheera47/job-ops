@@ -15,6 +15,10 @@ vi.mock("node:fs/promises", () => ({
   open: mocks.open,
 }));
 
+vi.mock("pdf-parse", () => ({
+  default: vi.fn(),
+}));
+
 vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
   listJobNotesByIds: vi.fn(),
@@ -45,12 +49,24 @@ vi.mock("./writing-style", async (importOriginal) => {
   };
 });
 
+import pdfParse from "pdf-parse";
 import { listJobDocumentsByIds } from "../repositories/job-documents";
 import { getJobById, listJobNotesByIds } from "../repositories/jobs";
 import { getSetting } from "../repositories/settings";
 import { listJobPostApplicationEmailsByIds } from "./post-application/job-emails";
 import { getProfile } from "./profile";
 import { getWritingStyle } from "./writing-style";
+
+function makePdfParseResult(text: string) {
+  return {
+    numpages: 1,
+    numrender: 1,
+    info: {},
+    metadata: null,
+    version: "default" as const,
+    text,
+  };
+}
 
 function mockDocumentFile(buffer: Buffer) {
   const read = vi.fn(
@@ -82,6 +98,9 @@ describe("buildJobChatPromptContext", () => {
     vi.mocked(listJobNotesByIds).mockResolvedValue([]);
     vi.mocked(listJobDocumentsByIds).mockResolvedValue([]);
     mockDocumentFile(Buffer.from(""));
+    vi.mocked(pdfParse).mockResolvedValue(
+      makePdfParseResult("PDF context text"),
+    );
     vi.mocked(listJobPostApplicationEmailsByIds).mockResolvedValue([]);
     vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
@@ -507,6 +526,42 @@ describe("buildJobChatPromptContext", () => {
     expect(context.selectedDocumentsSnapshot).toContain(
       "Discuss reliability & incident response.",
     );
+  });
+
+  it("extracts PDF documents for selected job document context", async () => {
+    const job = createJob({ id: "job-ctx-pdf" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(pdfParse).mockResolvedValueOnce(
+      makePdfParseResult("Interview pack\nDiscuss reliability."),
+    );
+    vi.mocked(listJobDocumentsByIds).mockResolvedValue([
+      {
+        id: "doc-pdf",
+        jobId: job.id,
+        fileName: "interview-pack.pdf",
+        mediaType: "application/pdf",
+        byteSize: 2048,
+        storagePath: "/tmp/interview-pack.pdf",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    mockDocumentFile(Buffer.from("%PDF-1.4"));
+
+    const context = await buildJobChatPromptContext(
+      job.id,
+      [],
+      [],
+      ["doc-pdf"],
+    );
+
+    expect(pdfParse).toHaveBeenCalledOnce();
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Document 1: interview-pack.pdf",
+    );
+    expect(context.selectedDocumentsSnapshot).toContain("Interview pack");
+    expect(context.selectedDocumentsSnapshot).toContain("Discuss reliability.");
   });
 
   it("reads only the configured document prefix for Ghostwriter context", async () => {

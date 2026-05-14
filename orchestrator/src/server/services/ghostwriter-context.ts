@@ -25,7 +25,7 @@ import type { Job, JobDocument, ResumeProfile } from "@shared/types";
 import * as jobDocumentsRepo from "../repositories/job-documents";
 import * as jobsRepo from "../repositories/jobs";
 import * as settingsRepo from "../repositories/settings";
-import { extractDocxText } from "./document-text-extraction";
+import { extractDocxText, extractPdfText } from "./document-text-extraction";
 import {
   getWritingLanguageLabel,
   resolveWritingOutputLanguage,
@@ -262,9 +262,7 @@ async function extractDocumentText(
 
   if (isJobDocumentPdf(document)) {
     try {
-      const { default: pdfParse } = await import("pdf-parse");
-      const result = await pdfParse(buffer);
-      return (result.text ?? "").trim();
+      return await extractPdfText(buffer);
     } catch (error) {
       logger.warn("Failed to extract Ghostwriter document PDF text", {
         jobId: document.jobId,

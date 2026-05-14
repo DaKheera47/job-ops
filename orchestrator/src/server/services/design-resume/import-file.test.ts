@@ -1,4 +1,3 @@
-import { AppError } from "@infra/errors";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,8 +19,23 @@ const requestContext = vi.hoisted(() => ({
 vi.mock("@server/services/modelSelection", () => modelSelection);
 vi.mock("./index", () => designResumeService);
 vi.mock("@server/infra/request-context", () => requestContext);
+vi.mock("pdf-parse", () => ({
+  default: vi.fn(),
+}));
 
+import pdfParse from "pdf-parse";
 import { importDesignResumeFromFile } from "./import-file";
+
+function makePdfParseResult(text: string) {
+  return {
+    numpages: 1,
+    numrender: 1,
+    info: {},
+    metadata: null,
+    version: "default" as const,
+    text,
+  };
+}
 
 function makeResumeDocument(
   resumeJson: DesignResumeJson = buildDefaultReactiveResumeDocument() as DesignResumeJson,
@@ -72,6 +86,9 @@ describe("importDesignResumeFromFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", vi.fn());
+    vi.mocked(pdfParse).mockResolvedValue(
+      makePdfParseResult("Taylor Quinn\nSenior Engineer"),
+    );
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValue({
       provider: "openai",
       model: "gpt-4.1",
@@ -546,12 +563,213 @@ describe("importDesignResumeFromFile", () => {
     expect(String(body)).not.toContain(spacedBase64.trim());
   });
 
-  it("returns a capability error when the configured provider does not support direct file import", async () => {
+  it("imports PDFs through extracted text for Ollama", async () => {
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
       provider: "ollama",
       model: "llama3",
       baseUrl: "http://localhost:11434",
-      apiKey: "unused",
+      apiKey: null,
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(pdfParse).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    const body =
+      fetchCall?.[1] && "body" in fetchCall[1] ? fetchCall[1].body : "";
+    expect(String(body)).toContain(
+      "The resume file was uploaded as PDF and converted locally to plain text before extraction.",
+    );
+    expect(String(body)).toContain("Taylor Quinn");
+  });
+
+  it("imports PDFs through extracted text for OpenAI-compatible endpoints", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "openai_compatible",
+      model: "mistral:7b",
+      baseUrl: "http://localhost:11434/v1/chat/completions",
+      apiKey: null,
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining("Taylor Quinn"),
+      }),
+    );
+  });
+
+  it("imports DOCX through extracted text for OpenAI-compatible endpoints", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "openai_compatible",
+      model: "gemma3:4b",
+      baseUrl: "http://localhost:11434",
+      apiKey: null,
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const docxBase64 = await makeDocxBase64("Taylor Quinn\nSenior Engineer");
+
+    await importDesignResumeFromFile({
+      fileName: "resume.docx",
+      mediaType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      dataBase64: docxBase64,
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining(
+          "The resume file was uploaded as DOCX and converted locally to plain text before extraction.",
+        ),
+      }),
+    );
+  });
+
+  it("falls back to extracted PDF text when native file input is unsupported", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              message: "This model does not support input_file attachments.",
+            },
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            output_text: `{"basics":{"name":"Taylor Quinn"}}`,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const secondCall = vi.mocked(fetch).mock.calls[1];
+    const secondBody =
+      secondCall?.[1] && "body" in secondCall[1] ? secondCall[1].body : "";
+    expect(String(secondBody)).not.toContain('"type":"input_file"');
+    expect(String(secondBody)).toContain(
+      "The resume file was uploaded as PDF and converted locally to plain text before extraction.",
+    );
+    expect(String(secondBody)).toContain("Taylor Quinn");
+  });
+
+  it("returns a clear error for PDFs without readable text during text fallback", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "ollama",
+      model: "llama3",
+      baseUrl: "http://localhost:11434",
+      apiKey: null,
+    });
+    vi.mocked(pdfParse).mockResolvedValueOnce(makePdfParseResult("   "));
+
+    await expect(
+      importDesignResumeFromFile({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: Buffer.from("pdf-data").toString("base64"),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "Resume PDF did not contain readable text.",
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("returns a capability error when the configured provider is unsupported", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "codex",
+      model: "gpt-5",
+      baseUrl: null,
+      apiKey: null,
     });
 
     await expect(
@@ -564,44 +782,6 @@ describe("importDesignResumeFromFile", () => {
       status: 503,
       message: expect.stringContaining("Resume file import is not available"),
     });
-  });
-
-  it("surfaces a model capability error instead of falling back to local extraction", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          error: {
-            message: "This model does not support input_file attachments.",
-          },
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-
-    let thrown: unknown;
-    try {
-      await importDesignResumeFromFile({
-        fileName: "resume.pdf",
-        mediaType: "application/pdf",
-        dataBase64: Buffer.from("pdf-data").toString("base64"),
-      });
-    } catch (error) {
-      thrown = error;
-    }
-
-    expect(thrown).toBeInstanceOf(AppError);
-    expect(thrown).toMatchObject({
-      status: 503,
-      message: expect.stringContaining(
-        "could not accept this attached PDF file directly",
-      ),
-    });
-    expect(
-      designResumeService.replaceCurrentDesignResumeDocument,
-    ).not.toHaveBeenCalled();
   });
 
   it("does not misclassify unrelated upstream errors as file capability failures", async () => {
