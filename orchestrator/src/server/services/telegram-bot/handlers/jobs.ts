@@ -6,12 +6,32 @@ import type { JobStatus } from "@shared/types";
 import * as jobsRepo from "../../../repositories/jobs";
 import * as settingsRepo from "../../../repositories/settings";
 import { getDataDir } from "../../../config/dataDir";
+import { getCandidateBasics } from "../../candidate-profile";
 import { safeFilePart } from "../../pdf-storage";
+import { isSmartApplyEligible } from "../../smart-apply";
 import { generateCoverLetterPdf } from "../../cover-letter-pdf";
 import { generateReferralMessage } from "../../referral-message";
 import { formatJobCard, formatJobListItem, escapeHtml } from "../formatting";
 
 const PAGE_SIZE = 5;
+
+/**
+ * Build a human-readable PDF filename using the candidate's name from their
+ * design resume (source of truth), not their Telegram display name.
+ */
+async function buildAttachmentFilename(
+  employer: string,
+  suffix: "CV" | "CoverLetter",
+): Promise<string | undefined> {
+  const basics = await getCandidateBasics();
+  const safeName = basics.name ? safeFilePart(basics.name) : "";
+  const safeEmployer = safeFilePart(employer);
+  if (safeName && safeEmployer)
+    return `${safeName}_${safeEmployer}_${suffix}.pdf`;
+  if (safeName) return `${safeName}_${suffix}.pdf`;
+  if (suffix === "CoverLetter") return "CoverLetter.pdf";
+  return undefined;
+}
 
 export function registerJobHandlers(bot: Bot): void {
   // Job list: j:ready:0, j:applied:0, j:discovered:0, j:in_progress:0
@@ -149,6 +169,12 @@ export function registerJobHandlers(bot: Bot): void {
       keyboard.row();
       keyboard.text("📝 Cover Letter", `j:cl:${sid}`);
       keyboard.text("🤝 Ask for Referral", `j:rr:${sid}`);
+    }
+
+    // Smart Apply — only on ready jobs from supported ATS (Greenhouse/Ashby).
+    if (job.status === "ready" && isSmartApplyEligible({ job })) {
+      keyboard.row();
+      keyboard.text("🚀 Smart Apply", `sa:start:${sid}`);
     }
 
     if (jobUrl) {
@@ -333,17 +359,7 @@ export function registerJobHandlers(bot: Bot): void {
       ? job.pdfPath
       : join(getDataDir(), "pdfs", job.pdfPath);
 
-    // Build filename from Telegram user name + employer
-    const firstName = ctx.from?.first_name || "";
-    const lastName = ctx.from?.last_name || "";
-    const fullName = `${firstName} ${lastName}`.trim();
-    const safeName = safeFilePart(fullName);
-    const safeEmployer = safeFilePart(job.employer);
-    const fileName = safeName && safeEmployer
-      ? `${safeName}_${safeEmployer}_CV.pdf`
-      : safeName
-        ? `${safeName}_CV.pdf`
-        : undefined;
+    const fileName = await buildAttachmentFilename(job.employer, "CV");
 
     try {
       await ctx.replyWithDocument(new InputFile(pdfFullPath, fileName), {
@@ -392,14 +408,9 @@ export function registerJobHandlers(bot: Bot): void {
       return;
     }
 
-    const firstName = ctx.from?.first_name || "";
-    const lastName = ctx.from?.last_name || "";
-    const safeName = safeFilePart(`${firstName} ${lastName}`.trim());
-    const safeEmployer = safeFilePart(job.employer);
     const fileName =
-      safeName && safeEmployer
-        ? `${safeName}_${safeEmployer}_CoverLetter.pdf`
-        : "CoverLetter.pdf";
+      (await buildAttachmentFilename(job.employer, "CoverLetter")) ??
+      "CoverLetter.pdf";
 
     try {
       await ctx.replyWithDocument(new InputFile(result.pdfPath, fileName), {

@@ -964,6 +964,30 @@ const migrations = [
   // the auto-sync doesn't re-notify the user about the same email after every
   // poll.  Null = never notified.
   `ALTER TABLE post_application_messages ADD COLUMN telegram_notified_at INTEGER`,
+
+  // Smart Apply: server-side Playwright pre-fill sessions
+  `CREATE TABLE IF NOT EXISTS smart_apply_sessions (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    job_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'preparing'
+      CHECK(status IN ('preparing','ready','submitted','expired','aborted','failed')),
+    apply_url TEXT NOT NULL,
+    parsed_fields TEXT,
+    prefill_values TEXT,
+    viewer_token TEXT,
+    viewer_expires_at INTEGER,
+    submitted_at INTEGER,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_smart_apply_sessions_tenant_job
+    ON smart_apply_sessions(tenant_id, job_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_smart_apply_sessions_status
+    ON smart_apply_sessions(status)`,
 ];
 
 console.log("🔧 Running database migrations...");

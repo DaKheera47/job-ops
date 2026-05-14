@@ -10,6 +10,7 @@ import { registerJobHandlers } from "./handlers/jobs";
 import { registerMaintenanceHandlers } from "./handlers/maintenance";
 import { registerPipelineHandlers } from "./handlers/pipeline";
 import { registerSettingsHandlers } from "./handlers/settings";
+import { registerSmartApplyHandlers } from "./handlers/smart-apply";
 import { registerStatsHandlers } from "./handlers/stats";
 import { sendChangelogIfNeeded } from "./changelog-notifications";
 import {
@@ -48,6 +49,7 @@ export async function initializeTelegramBot(): Promise<void> {
     registerInterviewPrepHandlers(bot);
     registerGmailHandlers(bot);
     registerMaintenanceHandlers(bot);
+    registerSmartApplyHandlers(bot);
 
     // Start long-polling
     bot.start({

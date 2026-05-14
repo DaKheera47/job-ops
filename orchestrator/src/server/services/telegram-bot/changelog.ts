@@ -37,6 +37,28 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.11.0",
+    date: "2026-05-14",
+    items: [
+      {
+        title: "🚀 Smart Apply (Greenhouse + Ashby)",
+        description:
+          "On any 'ready' job from Greenhouse or Ashby, tap 🚀 Smart Apply. The server opens the application form in a real Firefox session, pre-fills your name, email, phone, location, uploads the tailored resume PDF, and gives you a mobile-friendly browser link. You review every screening question yourself — we never click Submit for you.",
+        tip: "Open any ready Greenhouse or Ashby job → tap 🚀 Smart Apply → wait ~20 sec → tap the link → review fields → tap Submit. Job is auto-moved to 'applied' once the success page appears.",
+      },
+      {
+        title: "🛡 Safety guardrails",
+        description:
+          "Smart Apply skips any form with a captcha. Free-text screening questions are left blank with a note (no LLM-drafted answers are shipped without your review). Browser sessions auto-expire after 15 minutes. Only one session can be open at a time per server.",
+      },
+      {
+        title: "📄 Resume filename fix",
+        description:
+          "PDF and cover-letter filenames now use the name from your design resume (the source of truth) instead of your Telegram display name. So your applications are named correctly regardless of how Telegram shows you.",
+      },
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-05-14",
     items: [

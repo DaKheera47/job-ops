@@ -677,6 +677,41 @@ export const postApplicationMessages = sqliteTable(
   }),
 );
 
+export const smartApplySessions = sqliteTable(
+  "smart_apply_sessions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: ["preparing", "ready", "submitted", "expired", "aborted", "failed"],
+    })
+      .notNull()
+      .default("preparing"),
+    applyUrl: text("apply_url").notNull(),
+    parsedFields: text("parsed_fields", { mode: "json" }),
+    prefillValues: text("prefill_values", { mode: "json" }),
+    viewerToken: text("viewer_token"),
+    viewerExpiresAt: integer("viewer_expires_at", { mode: "number" }),
+    submittedAt: integer("submitted_at", { mode: "number" }),
+    errorMessage: text("error_message"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantJobIndex: index("idx_smart_apply_sessions_tenant_job").on(
+      table.tenantId,
+      table.jobId,
+    ),
+    statusIndex: index("idx_smart_apply_sessions_status").on(table.status),
+  }),
+);
+
 export const interviewStories = sqliteTable(
   "interview_stories",
   {
@@ -869,3 +904,5 @@ export type InterviewStoryRow = typeof interviewStories.$inferSelect;
 export type NewInterviewStoryRow = typeof interviewStories.$inferInsert;
 export type InterviewQuestionRow = typeof interviewQuestions.$inferSelect;
 export type NewInterviewQuestionRow = typeof interviewQuestions.$inferInsert;
+export type SmartApplySessionRow = typeof smartApplySessions.$inferSelect;
+export type NewSmartApplySessionRow = typeof smartApplySessions.$inferInsert;
