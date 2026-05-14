@@ -11,9 +11,25 @@ type UmamiTracker = {
   identify?: (id: string) => void;
 };
 
+type OpenPanelTracker = {
+  q?: unknown[][];
+  (
+    command:
+      | "init"
+      | "track"
+      | "identify"
+      | "setGlobalProperties"
+      | "increment"
+      | "decrement"
+      | "clear",
+    ...args: unknown[]
+  ): void;
+};
+
 declare global {
   interface Window {
     umami?: UmamiTracker;
+    op?: OpenPanelTracker;
   }
 }
 
@@ -24,6 +40,14 @@ export function trackEvent(event: string, data?: Record<string, unknown>) {
     appVersion: getAnalyticsAppVersion(),
   });
   window.umami?.track(event, payload);
+  const openPanel = window.op;
+  if (typeof openPanel === "function") {
+    if (payload) {
+      openPanel("track", event, payload);
+    } else {
+      openPanel("track", event);
+    }
+  }
 }
 
 type ProductEventMap = {
@@ -360,8 +384,11 @@ export function identifyAnalyticsUser(
   distinctId: string | null | undefined,
 ): void {
   if (typeof window === "undefined") return;
-  const identify = window.umami?.identify;
-  if (typeof identify !== "function") return;
+  const umamiIdentify = window.umami?.identify;
+  const openPanel = window.op;
+  const hasOpenPanel = typeof openPanel === "function";
+  const hasUmami = typeof umamiIdentify === "function";
+  if (!hasOpenPanel && !hasUmami) return;
 
   const normalized =
     normalizeDistinctId(distinctId) ??
@@ -369,7 +396,17 @@ export function identifyAnalyticsUser(
     null;
   if (!normalized || normalized === cachedDistinctId) return;
 
-  identify(normalized);
+  if (hasUmami) {
+    umamiIdentify(normalized);
+  }
+  if (hasOpenPanel) {
+    openPanel("identify", { profileId: normalized });
+    const appVersion = getAnalyticsAppVersion();
+    openPanel("setGlobalProperties", {
+      analytics_user_id: normalized,
+      ...(appVersion ? { app_version: appVersion } : {}),
+    });
+  }
   cachedDistinctId = normalized;
 }
 

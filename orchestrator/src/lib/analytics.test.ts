@@ -10,12 +10,14 @@ import {
 describe("analytics", () => {
   const track = vi.fn();
   const identify = vi.fn();
+  const op = vi.fn();
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-02-25T12:00:00Z"));
     track.mockReset();
     identify.mockReset();
+    op.mockReset();
     __resetAnalyticsTestState();
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -23,6 +25,10 @@ describe("analytics", () => {
     Object.defineProperty(window, "umami", {
       configurable: true,
       value: { track, identify },
+    });
+    Object.defineProperty(window, "op", {
+      configurable: true,
+      value: op,
     });
   });
 
@@ -60,6 +66,19 @@ describe("analytics", () => {
     expect(storedId).toBe(firstPayload.analytics_user_id);
     expect(firstPayload.app_version).toBe("abc1234-dev");
     expect(secondPayload.app_version).toBe("abc1234-dev");
+
+    expect(op).toHaveBeenNthCalledWith(
+      1,
+      "track",
+      "star_repo_click",
+      firstPayload,
+    );
+    expect(op).toHaveBeenNthCalledWith(
+      2,
+      "track",
+      "tracer_drilldown_mode_changed",
+      secondPayload,
+    );
   });
 
   it("drops disallowed keys and non-primitive payload values", () => {
@@ -113,6 +132,7 @@ describe("analytics", () => {
 
     expect(identify).toHaveBeenCalledTimes(1);
     expect(identify).toHaveBeenCalledWith("user-123");
+    expect(op).toHaveBeenCalledWith("identify", { profileId: "user-123" });
   });
 
   it("uses identified distinct IDs in event metadata", () => {
@@ -133,5 +153,8 @@ describe("analytics", () => {
     identifyAnalyticsUser(longDistinctId);
 
     expect(identify).toHaveBeenCalledWith("a".repeat(50));
+    expect(op).toHaveBeenCalledWith("identify", {
+      profileId: "a".repeat(50),
+    });
   });
 });
