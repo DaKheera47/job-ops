@@ -16,6 +16,7 @@ import { CSSTransition, SwitchTransition } from "react-transition-group";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { OnboardingGate } from "./components/OnboardingGate";
+import { useAnalyticsIdentity } from "./hooks/useAnalyticsIdentity";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 import { setAuthNavigator } from "./lib/auth-navigation";
 import { DesignResumePage } from "./pages/DesignResumePage";
@@ -52,6 +53,7 @@ const REDIRECTS: Array<{ from: string; to: string }> = [
 const DEMO_WAITLIST_BANNER_DISMISSED_KEY = "jobops.demoWaitlistBannerDismissed";
 
 export const App: React.FC = () => {
+  useAnalyticsIdentity();
   const location = useLocation();
   const navigate = useNavigate();
   const nodeRef = useRef<HTMLDivElement>(null);

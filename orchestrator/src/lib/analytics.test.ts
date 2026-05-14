@@ -2,24 +2,27 @@ import {
   __resetAnalyticsTestState,
   bucketQueryLength,
   getAnalyticsRequestHeaders,
+  identifyAnalyticsUser,
   trackEvent,
   trackProductEvent,
 } from "./analytics";
 
 describe("analytics", () => {
   const track = vi.fn();
+  const identify = vi.fn();
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-02-25T12:00:00Z"));
     track.mockReset();
+    identify.mockReset();
     __resetAnalyticsTestState();
     window.localStorage.clear();
     window.sessionStorage.clear();
     (globalThis as any).__APP_VERSION__ = "abc1234-dev";
     Object.defineProperty(window, "umami", {
       configurable: true,
-      value: { track },
+      value: { track, identify },
     });
   });
 
@@ -102,5 +105,33 @@ describe("analytics", () => {
     expect(
       window.sessionStorage.getItem("jobops.analytics.session_id.v1"),
     ).toBe(firstHeaders["x-jobops-analytics-session-id"]);
+  });
+
+  it("identifies authenticated users with Umami distinct IDs", () => {
+    identifyAnalyticsUser("user-123");
+    identifyAnalyticsUser("user-123");
+
+    expect(identify).toHaveBeenCalledTimes(1);
+    expect(identify).toHaveBeenCalledWith("user-123");
+  });
+
+  it("uses identified distinct IDs in event metadata", () => {
+    identifyAnalyticsUser("user-123");
+
+    trackEvent("star_repo_click", { location: "demo_mode_banner" });
+
+    expect(track).toHaveBeenCalledWith("star_repo_click", {
+      location: "demo_mode_banner",
+      analytics_user_id: "user-123",
+      app_version: "abc1234-dev",
+    });
+  });
+
+  it("truncates distinct IDs to Umami's 50-character limit", () => {
+    const longDistinctId = "a".repeat(64);
+
+    identifyAnalyticsUser(longDistinctId);
+
+    expect(identify).toHaveBeenCalledWith("a".repeat(50));
   });
 });

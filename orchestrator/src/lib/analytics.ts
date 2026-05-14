@@ -8,6 +8,7 @@ declare const __APP_VERSION__: string;
 
 type UmamiTracker = {
   track: (event: string, data?: Record<string, unknown>) => void;
+  identify?: (id: string) => void;
 };
 
 declare global {
@@ -19,7 +20,7 @@ declare global {
 export function trackEvent(event: string, data?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   const payload = withAnalyticsMetadata(data as AnalyticsPayload | undefined, {
-    analyticsUserId: getAnalyticsUserId(),
+    analyticsUserId: getEventAnalyticsUserId(),
     appVersion: getAnalyticsAppVersion(),
   });
   window.umami?.track(event, payload);
@@ -228,6 +229,10 @@ function getAnalyticsUserId(): string | null {
   }
 }
 
+function getEventAnalyticsUserId(): string | null {
+  return cachedDistinctId ?? getAnalyticsUserId();
+}
+
 function getAnalyticsAppVersion(): string | null {
   try {
     return __APP_VERSION__?.trim() || null;
@@ -268,11 +273,13 @@ export function getAnalyticsRequestHeaders(): Record<string, string> {
 }
 
 const DEDUPE_WINDOW_MS = 3_000;
+const UMAMI_DISTINCT_ID_MAX_LENGTH = 50;
 const ANALYTICS_USER_ID_STORAGE_KEY = "jobops.analytics.user_id.v1";
 const ANALYTICS_SESSION_ID_STORAGE_KEY = "jobops.analytics.session_id.v1";
 const recentEventCache = new Map<string, number>();
 let cachedAnalyticsUserId: string | null = null;
 let cachedAnalyticsSessionId: string | null = null;
+let cachedDistinctId: string | null = null;
 const DISALLOWED_KEY_PARTS = [
   "query",
   "url",
@@ -343,6 +350,29 @@ export function trackProductEvent<T extends ProductEventName>(
   trackEvent(event, sanitized);
 }
 
+function normalizeDistinctId(id: string | null | undefined): string | null {
+  const trimmed = id?.trim() ?? "";
+  if (!trimmed) return null;
+  return trimmed.slice(0, UMAMI_DISTINCT_ID_MAX_LENGTH);
+}
+
+export function identifyAnalyticsUser(
+  distinctId: string | null | undefined,
+): void {
+  if (typeof window === "undefined") return;
+  const identify = window.umami?.identify;
+  if (typeof identify !== "function") return;
+
+  const normalized =
+    normalizeDistinctId(distinctId) ??
+    normalizeDistinctId(getAnalyticsUserId()) ??
+    null;
+  if (!normalized || normalized === cachedDistinctId) return;
+
+  identify(normalized);
+  cachedDistinctId = normalized;
+}
+
 export function bucketCount(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "0";
   if (value === 1) return "1";
@@ -380,4 +410,5 @@ export function __resetAnalyticsTestState() {
   recentEventCache.clear();
   cachedAnalyticsUserId = null;
   cachedAnalyticsSessionId = null;
+  cachedDistinctId = null;
 }
