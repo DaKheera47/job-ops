@@ -1,29 +1,57 @@
-import { spawn, spawnSync } from "node:child_process";
-import { mkdir, readFile, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
   resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
-import type { CreateJobInput } from "@shared/types/jobs";
+import type { CreateJobInput, JobLocationEvidence } from "@shared/types/jobs";
 import {
   toNumberOrNull,
   toStringOrNull,
 } from "@shared/utils/type-conversion.js";
+import {
+  type HiringCafeCountryLocation,
+  resolveHiringCafeCountryLocation,
+} from "./country-map.js";
+import { createDefaultSearchState } from "./default-search-state.js";
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
-const EXTRACTOR_DIR = join(srcDir, "..");
-const DATASET_PATH = join(EXTRACTOR_DIR, "storage/datasets/default/jobs.json");
-const STORAGE_DATASET_DIR = join(EXTRACTOR_DIR, "storage/datasets/default");
-const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
-const require = createRequire(import.meta.url);
-const TSX_CLI_PATH = resolveTsxCliPath();
+const BASE_URL = "https://hiring.cafe/";
+const DEFAULT_MAX_JOBS_PER_TERM = 200;
+const DEFAULT_SEARCH_TERM = "web developer";
+const DEFAULT_DATE_FETCHED_PAST_N_DAYS = 30;
+const DEFAULT_LOCATION_RADIUS_MILES = 50;
+const PAGE_LIMIT = 50;
 
 type HiringCafeRawJob = Record<string, unknown>;
+type HiringCafeWorkplaceType = "Remote" | "Hybrid" | "Onsite";
+
+interface CityLocationContext {
+  id: string;
+  city: string;
+  regionLong: string;
+  regionShort: string;
+  countryLong: string;
+  countryShort: string;
+  lat: number;
+  lon: number;
+  formattedAddress: string;
+  population: number | null;
+  radiusMiles: number;
+}
+
+interface NominatimResult {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+  address?: Record<string, unknown>;
+}
+
+export interface HiringCafeSsrPage {
+  jobs: HiringCafeRawJob[];
+  page: number;
+  totalCount: number | null;
+  pageSize: number | null;
+  isLastPage: boolean;
+}
 
 export type HiringCafeProgressEvent =
   | {
@@ -57,6 +85,8 @@ export interface RunHiringCafeOptions {
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   locationRadiusMiles?: number;
   maxJobsPerTerm?: number;
+  fetchImpl?: typeof fetch;
+  shouldCancel?: () => boolean;
   onProgress?: (event: HiringCafeProgressEvent) => void;
 }
 
@@ -68,108 +98,459 @@ export interface HiringCafeResult {
   challengeRequired?: string;
 }
 
-function resolveTsxCliPath(): string | null {
-  try {
-    return require.resolve("tsx/dist/cli.mjs");
-  } catch {
-    return null;
+class HiringCafeChallengeError extends Error {
+  constructor() {
+    super("Hiring Cafe returned a challenge page instead of search data.");
+    this.name = "HiringCafeChallengeError";
   }
 }
 
-function canRunNpmCommand(): boolean {
-  const result = spawnSync("npm", ["--version"], { stdio: "ignore" });
-  return !result.error && result.status === 0;
+function toPositiveIntOrFallback(
+  value: number | undefined,
+  fallback: number,
+): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.floor(value as number));
 }
 
-function parseProgressLine(line: string): HiringCafeProgressEvent | null {
-  if (!line.startsWith(JOBOPS_PROGRESS_PREFIX)) return null;
-  const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-
-  const event = toStringOrNull(parsed.event);
-  const termIndex = toNumberOrNull(parsed.termIndex);
-  const termTotal = toNumberOrNull(parsed.termTotal);
-  const searchTerm = toStringOrNull(parsed.searchTerm) ?? "";
-  if (!event || termIndex === null || termTotal === null) return null;
-
-  if (event === "term_start") {
-    return { type: "term_start", termIndex, termTotal, searchTerm };
-  }
-
-  if (event === "page_fetched") {
-    const pageNo = toNumberOrNull(parsed.pageNo);
-    if (pageNo === null) return null;
-    return {
-      type: "page_fetched",
-      termIndex,
-      termTotal,
-      searchTerm,
-      pageNo,
-      resultsOnPage: toNumberOrNull(parsed.resultsOnPage) ?? 0,
-      totalCollected: toNumberOrNull(parsed.totalCollected) ?? 0,
-    };
-  }
-
-  if (event === "term_complete") {
-    return {
-      type: "term_complete",
-      termIndex,
-      termTotal,
-      searchTerm,
-      jobsFoundTerm: toNumberOrNull(parsed.jobsFoundTerm) ?? 0,
-    };
-  }
-
-  return null;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
 }
 
-function mapHiringCafeRow(row: HiringCafeRawJob): CreateJobInput | null {
-  const jobUrl = toStringOrNull(row.jobUrl);
-  if (!jobUrl) return null;
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => toStringOrNull(item))
+    .filter((item): item is string => Boolean(item));
+}
+
+function firstArrayValue(value: unknown): string | null {
+  const values = asStringArray(value);
+  return values.length > 0 ? values[0] : null;
+}
+
+function parseWorkplaceTypes(
+  raw: RunHiringCafeOptions["workplaceTypes"],
+): HiringCafeWorkplaceType[] {
+  if (!raw || raw.length === 0) return ["Remote", "Hybrid", "Onsite"];
+
+  const out: HiringCafeWorkplaceType[] = [];
+  const seen = new Set<HiringCafeWorkplaceType>();
+  for (const value of raw) {
+    const mapped =
+      value === "remote"
+        ? "Remote"
+        : value === "hybrid"
+          ? "Hybrid"
+          : value === "onsite"
+            ? "Onsite"
+            : null;
+    if (!mapped || seen.has(mapped)) continue;
+    seen.add(mapped);
+    out.push(mapped);
+  }
+  return out.length > 0 ? out : ["Remote", "Hybrid", "Onsite"];
+}
+
+function formatCompensation(
+  processedJobData: Record<string, unknown> | null,
+): string | undefined {
+  if (!processedJobData) return undefined;
+
+  const min = toNumberOrNull(processedJobData.yearly_min_compensation);
+  const max = toNumberOrNull(processedJobData.yearly_max_compensation);
+  if (min === null && max === null) return undefined;
+
+  const currency = toStringOrNull(
+    processedJobData.listed_compensation_currency,
+  );
+  const frequency =
+    toStringOrNull(processedJobData.listed_compensation_frequency) ?? "Yearly";
+  const amount = formatCompensationAmount(min, max);
+
+  const parts = [currency, amount, frequency ? `/ ${frequency}` : ""]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return parts || undefined;
+}
+
+function formatCompensationAmount(
+  min: number | null,
+  max: number | null,
+): string {
+  if (min !== null && max !== null) {
+    return `${Math.round(min)}-${Math.round(max)}`;
+  }
+  if (min !== null) return `${Math.round(min)}+`;
+  return `${Math.round(max ?? 0)}`;
+}
+
+function buildLocationEvidence(args: {
+  formattedLocation?: string | null;
+  cities: string[];
+  states: string[];
+  countries: string[];
+}): JobLocationEvidence | undefined {
+  const location =
+    args.formattedLocation ??
+    args.cities[0] ??
+    args.states[0] ??
+    args.countries[0];
+
+  const city = args.cities[0];
+  const country = args.countries[0];
+
+  if (!location && !city && !country) return undefined;
 
   return {
+    location,
+    city,
+    country,
     source: "hiringcafe",
-    sourceJobId: toStringOrNull(row.sourceJobId) ?? undefined,
-    title: toStringOrNull(row.title) ?? "Unknown Title",
-    employer: toStringOrNull(row.employer) ?? "Unknown Employer",
-    jobUrl,
-    applicationLink: toStringOrNull(row.applicationLink) ?? jobUrl,
-    location: toStringOrNull(row.location) ?? undefined,
-    salary: toStringOrNull(row.salary) ?? undefined,
-    datePosted: toStringOrNull(row.datePosted) ?? undefined,
-    jobDescription: toStringOrNull(row.jobDescription) ?? undefined,
-    jobType: toStringOrNull(row.jobType) ?? undefined,
   };
 }
 
-async function readDataset(): Promise<CreateJobInput[]> {
-  const content = await readFile(DATASET_PATH, "utf-8");
-  const parsed = JSON.parse(content) as unknown;
-  if (!Array.isArray(parsed)) return [];
+function mapHiringCafeJob(raw: HiringCafeRawJob): CreateJobInput | null {
+  const jobInformation = asRecord(raw.job_information);
+  const processed = asRecord(raw.v5_processed_job_data);
+  const companyInfo = asRecord(jobInformation?.company_info);
+  const enrichedCompanyData = asRecord(raw.enriched_company_data);
 
-  const jobs: CreateJobInput[] = [];
-  const seen = new Set<string>();
-  for (const value of parsed) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-    const mapped = mapHiringCafeRow(value as HiringCafeRawJob);
-    if (!mapped) continue;
-    const dedupeKey = mapped.sourceJobId || mapped.jobUrl;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    jobs.push(mapped);
-  }
-  return jobs;
+  const sourceJobId =
+    toStringOrNull(raw.id) ??
+    toStringOrNull(raw.objectID) ??
+    toStringOrNull(raw.original_source_id) ??
+    toStringOrNull(raw.requisition_id) ??
+    undefined;
+
+  const jobUrl = toStringOrNull(raw.apply_url);
+  if (!jobUrl) return null;
+
+  const title =
+    toStringOrNull(jobInformation?.title) ??
+    toStringOrNull(jobInformation?.job_title_raw) ??
+    toStringOrNull(processed?.core_job_title) ??
+    "Unknown Title";
+
+  const employer =
+    toStringOrNull(companyInfo?.name) ??
+    toStringOrNull(processed?.company_name) ??
+    "Unknown Employer";
+
+  const location =
+    toStringOrNull(processed?.formatted_workplace_location) ??
+    firstArrayValue(processed?.workplace_cities) ??
+    firstArrayValue(processed?.workplace_states) ??
+    firstArrayValue(processed?.workplace_countries) ??
+    undefined;
+  const locationEvidence = buildLocationEvidence({
+    formattedLocation: toStringOrNull(processed?.formatted_workplace_location),
+    cities: asStringArray(processed?.workplace_cities),
+    states: asStringArray(processed?.workplace_states),
+    countries: asStringArray(processed?.workplace_countries),
+  });
+
+  const commitments = asStringArray(processed?.commitment);
+  const jobType = commitments.length > 0 ? commitments.join(", ") : undefined;
+  const skills = asStringArray(processed?.technical_tools);
+  const workplaceType = toStringOrNull(processed?.workplace_type);
+
+  return {
+    source: "hiringcafe",
+    sourceJobId,
+    title,
+    employer,
+    employerUrl:
+      toStringOrNull(enrichedCompanyData?.homepage_uri) ??
+      toStringOrNull(processed?.company_website) ??
+      undefined,
+    jobUrl,
+    applicationLink: jobUrl,
+    location,
+    locationEvidence,
+    salary: formatCompensation(processed),
+    datePosted: toStringOrNull(processed?.estimated_publish_date) ?? undefined,
+    jobDescription:
+      toStringOrNull(jobInformation?.description) ??
+      toStringOrNull(processed?.requirements_summary) ??
+      undefined,
+    jobType,
+    skills: skills.length > 0 ? skills.join(", ") : undefined,
+    isRemote: workplaceType === "Remote",
+  };
 }
 
-async function clearStorageDataset(): Promise<void> {
-  await rm(STORAGE_DATASET_DIR, { recursive: true, force: true });
-  await mkdir(STORAGE_DATASET_DIR, { recursive: true });
+function parseRawJobs(value: unknown): HiringCafeRawJob[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is HiringCafeRawJob =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item),
+  );
+}
+
+export function parseHiringCafeSsrPage(html: string): HiringCafeSsrPage {
+  const match = html.match(
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>\s*([\s\S]*?)\s*<\/script>/i,
+  );
+  if (!match) {
+    if (/cloudflare|cf-browser-verification|challenge-platform/i.test(html)) {
+      throw new HiringCafeChallengeError();
+    }
+    throw new Error(
+      "Hiring Cafe response did not include Next.js search data.",
+    );
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(match[1] ?? "");
+  } catch {
+    throw new Error("Hiring Cafe Next.js search data was not valid JSON.");
+  }
+
+  const props = asRecord(asRecord(data)?.props);
+  const pageProps = asRecord(props?.pageProps);
+  if (!pageProps) {
+    throw new Error("Hiring Cafe Next.js search data was missing page props.");
+  }
+
+  const ssrError = pageProps.ssrError;
+  if (ssrError) {
+    throw new Error(`Hiring Cafe SSR search failed: ${String(ssrError)}`);
+  }
+
+  return {
+    jobs: parseRawJobs(pageProps.ssrHits),
+    page: toNumberOrNull(pageProps.ssrPage) ?? 0,
+    totalCount: toNumberOrNull(pageProps.ssrTotalCount),
+    pageSize: toNumberOrNull(pageProps.ssrPageSize),
+    isLastPage: Boolean(pageProps.ssrIsLastPage),
+  };
+}
+
+export function buildHiringCafeSearchUrl(args: {
+  searchState: unknown;
+  pageNo: number;
+}): string {
+  const url = new URL(BASE_URL);
+  url.searchParams.set("searchState", JSON.stringify(args.searchState));
+  if (args.pageNo > 0) {
+    url.searchParams.set("page", String(args.pageNo));
+  }
+  return url.toString();
+}
+
+async function fetchHiringCafeSearchPage(args: {
+  searchState: unknown;
+  pageNo: number;
+  fetchImpl: typeof fetch;
+}): Promise<HiringCafeSsrPage> {
+  const url = buildHiringCafeSearchUrl({
+    searchState: args.searchState,
+    pageNo: args.pageNo,
+  });
+  const response = await args.fetchImpl(url, {
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
+      "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  const body = await response.text();
+  if (!response.ok) {
+    if (/cloudflare|cf-browser-verification|challenge-platform/i.test(body)) {
+      throw new HiringCafeChallengeError();
+    }
+    const statusText = response.statusText ? ` ${response.statusText}` : "";
+    throw new Error(
+      `Hiring Cafe search request failed with ${response.status}${statusText} for ${url}`,
+    );
+  }
+
+  return parseHiringCafeSsrPage(body);
+}
+
+function buildCityLocationId(input: string): string {
+  const normalized = input.trim().toLowerCase().replace(/\s+/g, "_");
+  return `city_${normalized}`.slice(0, 32);
+}
+
+function toRegionShortName(value: string): string {
+  const compact = value
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (compact.length === 0) return "REG";
+  if (compact.length === 1) {
+    return compact[0].slice(0, 3).toUpperCase();
+  }
+  return compact
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+async function resolveCityLocationContext(args: {
+  city: string;
+  countryLong: string;
+  countryShort: string;
+  radiusMiles: number;
+  fetchImpl: typeof fetch;
+}): Promise<CityLocationContext | null> {
+  if (!args.countryLong || !args.countryShort) return null;
+
+  const query = `${args.city}, ${args.countryLong}`;
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", "1");
+
+  try {
+    const response = await args.fetchImpl(url.toString(), {
+      headers: {
+        accept: "application/json",
+        "user-agent": "job-ops-hiringcafe-extractor/1.0",
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as unknown;
+    if (!Array.isArray(payload) || payload.length === 0) return null;
+
+    const first = payload[0] as NominatimResult;
+    const lat = Number(first.lat ?? "");
+    const lon = Number(first.lon ?? "");
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+    const address = asRecord(first.address);
+    const regionLong =
+      toStringOrNull(address?.state) ??
+      toStringOrNull(address?.county) ??
+      toStringOrNull(address?.region) ??
+      args.countryLong;
+    const displayName =
+      toStringOrNull(first.display_name) ??
+      `${args.city}, ${regionLong}, ${args.countryShort}`;
+
+    return {
+      id: buildCityLocationId(args.city),
+      city: args.city,
+      regionLong,
+      regionShort: toRegionShortName(regionLong),
+      countryLong: args.countryLong,
+      countryShort: args.countryShort,
+      lat,
+      lon,
+      formattedAddress: displayName,
+      population: null,
+      radiusMiles: args.radiusMiles,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function createCitySearchState(args: {
+  searchQuery: string;
+  dateFetchedPastNDays: number;
+  context: CityLocationContext;
+  workplaceTypes: HiringCafeWorkplaceType[];
+}): Record<string, unknown> {
+  return {
+    searchQuery: args.searchQuery,
+    locations: [
+      {
+        id: args.context.id,
+        types: ["locality"],
+        address_components: [
+          {
+            long_name: args.context.city,
+            short_name: args.context.city,
+            types: ["locality"],
+          },
+          {
+            long_name: args.context.regionLong,
+            short_name: args.context.regionShort,
+            types: ["administrative_area_level_1"],
+          },
+          {
+            long_name: args.context.countryLong,
+            short_name: args.context.countryShort,
+            types: ["country"],
+          },
+        ],
+        geometry: {
+          location: {
+            lat: args.context.lat,
+            lon: args.context.lon,
+          },
+        },
+        formatted_address: args.context.formattedAddress,
+        population: args.context.population,
+        workplace_types: [],
+        options: {
+          radius: args.context.radiusMiles,
+          radius_unit: "miles",
+          ignore_radius: false,
+        },
+      },
+    ],
+    workplaceTypes: args.workplaceTypes,
+    defaultToUserLocation: false,
+    userLocation: null,
+    dateFetchedPastNDays: args.dateFetchedPastNDays,
+  };
+}
+
+async function resolveSearchStateLocation(args: {
+  location: string | null;
+  countryLocation: HiringCafeCountryLocation | null;
+  countryKey: string;
+  radiusMiles: number;
+  fetchImpl: typeof fetch;
+}): Promise<CityLocationContext | null> {
+  if (!args.location || !args.countryLocation) return null;
+  if (!shouldApplyStrictCityFilter(args.location, args.countryKey)) return null;
+
+  const countryComponent = args.countryLocation.address_components[0];
+  return resolveCityLocationContext({
+    city: args.location,
+    countryLong: countryComponent?.long_name ?? "",
+    countryShort: countryComponent?.short_name ?? "",
+    radiusMiles: args.radiusMiles,
+    fetchImpl: args.fetchImpl,
+  });
+}
+
+async function buildSearchState(args: {
+  searchTerm: string;
+  countryLocation: HiringCafeCountryLocation | null;
+  cityLocationContext: CityLocationContext | null;
+  workplaceTypes: HiringCafeWorkplaceType[];
+}): Promise<unknown> {
+  if (args.cityLocationContext) {
+    return createCitySearchState({
+      searchQuery: args.searchTerm,
+      dateFetchedPastNDays: DEFAULT_DATE_FETCHED_PAST_N_DAYS,
+      context: args.cityLocationContext,
+      workplaceTypes: args.workplaceTypes,
+    });
+  }
+
+  return createDefaultSearchState({
+    searchQuery: args.searchTerm,
+    location: args.countryLocation,
+    dateFetchedPastNDays: DEFAULT_DATE_FETCHED_PAST_N_DAYS,
+    workplaceTypes: args.workplaceTypes,
+  });
 }
 
 export async function runHiringCafe(
@@ -178,13 +559,16 @@ export async function runHiringCafe(
   const searchTerms =
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
-      : ["web developer"];
+      : [DEFAULT_SEARCH_TERM];
   const country = (options.country ?? "").trim().toLowerCase();
-  const countryKey = normalizeCountryKey(options.countryKey ?? "");
-  const maxJobsPerTerm = options.maxJobsPerTerm ?? 200;
-  const locationRadiusMiles = Math.max(
-    1,
-    Math.floor(options.locationRadiusMiles ?? 1),
+  const countryKey = normalizeCountryKey(options.countryKey ?? country);
+  const maxJobsPerTerm = toPositiveIntOrFallback(
+    options.maxJobsPerTerm,
+    DEFAULT_MAX_JOBS_PER_TERM,
+  );
+  const locationRadiusMiles = toPositiveIntOrFallback(
+    options.locationRadiusMiles,
+    DEFAULT_LOCATION_RADIUS_MILES,
   );
   const locations = resolveSearchCities({
     list: options.locations,
@@ -192,133 +576,104 @@ export async function runHiringCafe(
   });
   const runLocations = locations.length > 0 ? locations : [null];
   const termTotal = searchTerms.length * runLocations.length;
-
-  const useNpmCommand = canRunNpmCommand();
-  if (!useNpmCommand && !TSX_CLI_PATH) {
-    return {
-      success: false,
-      jobs: [],
-      error: "Unable to execute Hiring Cafe extractor (npm/tsx unavailable)",
-    };
-  }
-
-  let challengeRequired: string | undefined;
+  const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const jobs: CreateJobInput[] = [];
+  const seen = new Set<string>();
 
   try {
-    const jobs: CreateJobInput[] = [];
-    const seen = new Set<string>();
+    const countryLocation = resolveHiringCafeCountryLocation(country);
 
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
-      const location = runLocations[runIndex];
-      const strictLocationFilter =
-        location !== null && shouldApplyStrictCityFilter(location, countryKey);
+      if (options.shouldCancel?.()) return { success: true, jobs };
 
-      await clearStorageDataset();
-
-      await new Promise<void>((resolve, reject) => {
-        const extractorEnv = {
-          ...process.env,
-          JOBOPS_EMIT_PROGRESS: "1",
-          HIRING_CAFE_SEARCH_TERMS: JSON.stringify(searchTerms),
-          HIRING_CAFE_COUNTRY: country,
-          HIRING_CAFE_WORKPLACE_TYPES: JSON.stringify(
-            options.workplaceTypes ?? ["remote", "hybrid", "onsite"],
-          ),
-          HIRING_CAFE_MAX_JOBS_PER_TERM: String(maxJobsPerTerm),
-          HIRING_CAFE_OUTPUT_JSON: DATASET_PATH,
-          HIRING_CAFE_LOCATION_QUERY: strictLocationFilter ? location : "",
-          HIRING_CAFE_LOCATION_RADIUS_MILES: strictLocationFilter
-            ? String(locationRadiusMiles)
-            : "",
-        };
-
-        const child = useNpmCommand
-          ? spawn("npm", ["run", "start"], {
-              cwd: EXTRACTOR_DIR,
-              stdio: ["ignore", "pipe", "pipe"],
-              env: extractorEnv,
-            })
-          : (() => {
-              const tsxCliPath = TSX_CLI_PATH;
-              if (!tsxCliPath) {
-                throw new Error(
-                  "Unable to execute Hiring Cafe extractor (npm/tsx unavailable)",
-                );
-              }
-
-              return spawn(process.execPath, [tsxCliPath, "src/main.ts"], {
-                cwd: EXTRACTOR_DIR,
-                stdio: ["ignore", "pipe", "pipe"],
-                env: extractorEnv,
-              });
-            })();
-
-        const handleLine = (line: string, stream: NodeJS.WriteStream) => {
-          if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) {
-            const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
-            try {
-              const parsed = JSON.parse(raw) as Record<string, unknown>;
-              // Detect challenge_required signal from the child process
-              if (
-                parsed.event === "challenge_required" &&
-                typeof parsed.url === "string"
-              ) {
-                challengeRequired = parsed.url;
-                return;
-              }
-            } catch {
-              // ignore parse failures
-            }
-          }
-
-          const progressEvent = parseProgressLine(line);
-          if (progressEvent) {
-            const termOffset = runIndex * searchTerms.length;
-            options.onProgress?.({
-              ...progressEvent,
-              termIndex: termOffset + progressEvent.termIndex,
-              termTotal,
-            });
-            return;
-          }
-
-          stream.write(`${line}\n`);
-        };
-
-        const stdoutRl = child.stdout
-          ? createInterface({ input: child.stdout })
-          : null;
-        const stderrRl = child.stderr
-          ? createInterface({ input: child.stderr })
-          : null;
-
-        stdoutRl?.on("line", (line) => handleLine(line, process.stdout));
-        stderrRl?.on("line", (line) => handleLine(line, process.stderr));
-
-        child.on("close", (code) => {
-          stdoutRl?.close();
-          stderrRl?.close();
-          if (code === 0) resolve();
-          else
-            reject(new Error(`Hiring Cafe extractor exited with code ${code}`));
-        });
-        child.on("error", reject);
+      const runLocation = runLocations[runIndex];
+      const cityLocationContext = await resolveSearchStateLocation({
+        location: runLocation,
+        countryLocation,
+        countryKey,
+        radiusMiles: locationRadiusMiles,
+        fetchImpl,
       });
 
-      const runJobs = await readDataset();
-      const filtered = runJobs;
+      for (let i = 0; i < searchTerms.length; i += 1) {
+        if (options.shouldCancel?.()) return { success: true, jobs };
 
-      for (const job of filtered) {
-        const key = job.sourceJobId || job.jobUrl;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        jobs.push(job);
+        const searchTerm = searchTerms[i];
+        const termIndex = runIndex * searchTerms.length + i + 1;
+        options.onProgress?.({
+          type: "term_start",
+          termIndex,
+          termTotal,
+          searchTerm,
+        });
+
+        const searchState = await buildSearchState({
+          searchTerm,
+          countryLocation,
+          cityLocationContext,
+          workplaceTypes,
+        });
+        let pageNo = 0;
+        let termCollected = 0;
+
+        while (termCollected < maxJobsPerTerm && pageNo < PAGE_LIMIT) {
+          if (options.shouldCancel?.()) return { success: true, jobs };
+
+          const page = await fetchHiringCafeSearchPage({
+            searchState,
+            pageNo,
+            fetchImpl,
+          });
+          let mappedOnPage = 0;
+
+          for (const rawJob of page.jobs) {
+            if (termCollected >= maxJobsPerTerm) break;
+
+            const mapped = mapHiringCafeJob(rawJob);
+            if (!mapped) continue;
+
+            const dedupeKey = mapped.sourceJobId || mapped.jobUrl;
+            if (seen.has(dedupeKey)) continue;
+            seen.add(dedupeKey);
+            jobs.push(mapped);
+            termCollected += 1;
+            mappedOnPage += 1;
+          }
+
+          options.onProgress?.({
+            type: "page_fetched",
+            termIndex,
+            termTotal,
+            searchTerm,
+            pageNo,
+            resultsOnPage: mappedOnPage,
+            totalCollected: termCollected,
+          });
+
+          if (page.isLastPage || page.jobs.length === 0) break;
+          pageNo += 1;
+        }
+
+        options.onProgress?.({
+          type: "term_complete",
+          termIndex,
+          termTotal,
+          searchTerm,
+          jobsFoundTerm: termCollected,
+        });
       }
     }
 
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, jobs: [], error: message, challengeRequired };
+    return {
+      success: false,
+      jobs: [],
+      error: message,
+      challengeRequired:
+        error instanceof HiringCafeChallengeError ? BASE_URL : undefined,
+    };
   }
 }
