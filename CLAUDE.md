@@ -69,9 +69,44 @@ If the developer says yes:
 ### Telegram Bot
 - Grammy library, long-polling mode
 - Handlers in `orchestrator/src/server/services/telegram-bot/handlers/`
-- Callback routing: `j:` jobs, `p:` pipeline, `s:` stats, `x:` settings, `b:` boards, `a:` auto-apply, `m:` menu
+- Callback routing: `j:` jobs, `p:` pipeline, `s:` stats, `x:` settings, `b:` boards, `m:` menu, `sa:` smart-apply, `g:` gmail
+- Main menu is rendered by a single canonical `sendMainMenu()` helper — `m:menu` callback and `/menu` command both route through it. Do NOT add second copies of the menu keyboard in other handlers — that's how the "buttons disappear after returning" regression happens.
 - Auth via `/link <code>` with one-time codes from Settings UI
 - The bot is the PRIMARY user interface — all new features should have Telegram integration
+
+### Smart Apply (Greenhouse + Ashby)
+- Server-side Playwright (headed Firefox on `:99`) opens the ATS form, parses fields, pre-fills from the design resume + tailored PDF, then hands the live browser to the user via noVNC for review + manual submit.
+- Code layout:
+  - `orchestrator/src/server/services/smart-apply/` — `eligibility.ts` (URL/source check), `parsers/{greenhouse,ashby}.ts` (DOM walk via `frame.evaluate`), `prefill.ts` (label-based mapping; **no LLM drafts** for essay questions — they are left blank with `requiresReview: true`), `session.ts` (lifecycle orchestrator).
+  - `orchestrator/src/server/repositories/smart-apply-sessions.ts` — `smart_apply_sessions` table CRUD.
+  - `orchestrator/src/server/services/telegram-bot/handlers/smart-apply.ts` — callback flow `sa:start` → `sa:status` → `sa:abort`.
+- Session lifecycle: `preparing` → `ready` → `submitted` | `expired` | `aborted` | `failed`. Status is the single source of truth; the Telegram card polls and re-renders.
+- Security/reliability invariants — preserve these:
+  - **Single-session guard** (`active: ActiveBrowserSession | null` at module scope in `session.ts`) — only one Playwright browser at a time.
+  - **15-min viewer TTL** with auto-teardown; `expireStaleSessions()` runs on startup.
+  - **Token-scoped noVNC URLs** via the challenge-viewer infrastructure — never expose the raw VNC port.
+  - **Captcha skip** — if reCAPTCHA / hCaptcha / Turnstile is detected, the form is opened and pre-filled but the user is told to solve it themselves; we never attempt to defeat captchas.
+  - **No auto-submit** — the user submits manually in the noVNC viewer. We detect submission by watching the page URL transition to a success route.
+- Eligibility = source `greenhouse`/`ashby` OR URL matches the regexes in `eligibility.ts`. To extend to a new ATS, add a parser + eligibility branch — do NOT touch session.ts.
+
+### Pipeline Scheduler
+- File: `orchestrator/src/server/services/pipeline-scheduler.ts`
+- **Periodic-check pattern, NOT a long `setTimeout`.** Reason: long timeouts don't survive Docker pause/resume, host sleep, or wall-clock changes. Previous setTimeout-based scheduler fired hours late in production.
+- Ticks every 60s, checks "should this slot have fired by now?" against `pipeline_runs.started_at` for idempotency.
+- Self-healing across restarts: a missed firing window is picked up within 60s of the container coming back up.
+- Backups and visa-sponsor refresh keep the shared `Scheduler` abstraction (cheap idempotent jobs). Only the pipeline owns this dedicated loop. Don't migrate it back to a single-timer scheduler.
+
+### Candidate Identity
+- The design resume the user uploaded at registration is the **single source of truth** for candidate basics (name, email, phone, location).
+- Read it via `orchestrator/src/server/services/candidate-profile.ts` — `getCandidateBasics()` / `getCandidateNameParts()`. 60-second cache; call `clearCandidateBasicsCache()` after the resume is edited.
+- **Never** pull identity from `ctx.from.first_name` / `last_name` (Telegram profile), env vars, or hard-coded strings. PDF filenames, Telegram captions, Smart Apply form pre-fills, cover-letter sender blocks all go through this helper.
+
+### Gmail Auto-Sync
+- Scheduler: `orchestrator/src/server/services/gmail-sync-scheduler.ts` — polls every connected Gmail account on a fixed interval (default 2h; setting `gmailSyncIntervalHours`).
+- Sync runner: `orchestrator/src/server/services/post-application/ingestion/gmail-sync.ts`.
+- Reliability invariants: in-flight guard prevents overlap, per-account consecutive-failure counter emits a `health_alert` event after 3 strikes so the bot can prompt "Reconnect Gmail".
+- OAuth setup requires env vars `GMAIL_OAUTH_CLIENT_ID` and `GMAIL_OAUTH_CLIENT_SECRET` (plus the redirect URI registered in Google Cloud Console). Without them, the connect flow surfaces "Gmail OAuth is not configured" in the Settings UI.
+- Notifications: each processed email produces a Telegram message via `orchestrator/src/server/services/telegram-bot/gmail-notifications.ts`. Auto-link confidence threshold is governed by `gmailAutoLinkConfidence`; below it, the bot asks the user to confirm the link.
 
 ### Extractors
 - Each extractor is a workspace package in `extractors/<name>/`
