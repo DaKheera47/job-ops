@@ -127,6 +127,13 @@ const HEALTH_PROBE_CONFIG_BY_SOURCE: Record<
       naukriMaxJobsPerTerm: "1",
     },
   },
+  fiveamsat: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: "egypt",
+    settings: {
+      fiveamsatMaxJobsPerTerm: "1",
+    },
+  },
   wazzuf: {
     searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
     selectedCountry: "egypt",

@@ -335,6 +335,7 @@ const SOURCE_SUPPORTED_COUNTRY_KEYS: Partial<Record<JobSource, string[]>> = {
   jobindex: ["denmark"],
   seek: ["australia", "new zealand"],
   naukri: ["india"],
+  fiveamsat: ["egypt"],
   wazzuf: ["egypt"],
 };
 
