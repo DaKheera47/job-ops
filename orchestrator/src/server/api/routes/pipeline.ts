@@ -57,7 +57,9 @@ function toSelectedSourcesValue(
   sources: readonly string[] | undefined,
 ): string | undefined {
   if (!Array.isArray(sources) || sources.length === 0) return undefined;
-  return [...sources].sort((left, right) => left.localeCompare(right)).join("|");
+  return [...sources]
+    .sort((left, right) => left.localeCompare(right))
+    .join("|");
 }
 
 function resolveRequestOrigin(req: Request): string | null {

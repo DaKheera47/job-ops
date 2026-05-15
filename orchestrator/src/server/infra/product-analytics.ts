@@ -303,23 +303,25 @@ export async function trackServerProductEvent(
         UMAMI_FALLBACK_USER_AGENT,
     });
     const [umamiResponse, openPanelDelivered] = await Promise.all([
-      umami.track({
-        id: installState.distinctId,
-        ...(timestamp !== null ? { timestamp } : {}),
-        hostname: page.hostname,
-        url: page.url,
-        name: event,
-        ...(payload ? { data: payload } : {}),
-      }).catch((error) => {
-        logger.warn("Server product analytics request errored", {
-          provider: "umami",
-          event,
-          requestOrigin: options?.requestOrigin ?? null,
-          urlPath: options?.urlPath ?? "/",
-          error: sanitizeUnknown(error),
-        });
-        return null;
-      }),
+      umami
+        .track({
+          id: installState.distinctId,
+          ...(timestamp !== null ? { timestamp } : {}),
+          hostname: page.hostname,
+          url: page.url,
+          name: event,
+          ...(payload ? { data: payload } : {}),
+        })
+        .catch((error) => {
+          logger.warn("Server product analytics request errored", {
+            provider: "umami",
+            event,
+            requestOrigin: options?.requestOrigin ?? null,
+            urlPath: options?.urlPath ?? "/",
+            error: sanitizeUnknown(error),
+          });
+          return null;
+        }),
       trackOpenPanelProductEvent({
         event,
         profileId: installState.distinctId,

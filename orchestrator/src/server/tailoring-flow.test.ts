@@ -1,9 +1,9 @@
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateFinalPdf } from "./pipeline/orchestrator";
 import * as jobsRepo from "./repositories/jobs";
 import * as pdfService from "./services/pdf";
 import * as pdfFingerprint from "./services/pdf-fingerprint";
-import { trackServerProductEvent } from "@infra/product-analytics";
 
 // Mock dependencies
 vi.mock("./repositories/jobs");
