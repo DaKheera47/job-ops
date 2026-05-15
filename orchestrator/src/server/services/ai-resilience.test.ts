@@ -77,26 +77,19 @@ describe("AI Service Resilience", () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it("should handle API 500/400 errors gracefully (fallback)", async () => {
+    it("should throw LlmNotConfiguredError on API 500/400 errors", async () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: false,
         status: 500,
         statusText: "Internal Server Error",
       } as any);
 
-      // Spy on console.error to keep test output clean
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-      const result = await scoreJobSuitability(mockJob, mockProfile);
-
-      expect(result.score).toBeNull(); // Null score
-      expect(result.reason).toContain("Scoring unavailable"); // Fallback reason
-      expect(consoleSpy).toHaveBeenCalled();
+      await expect(scoreJobSuitability(mockJob, mockProfile)).rejects.toThrow(
+        "AI scoring failed",
+      );
     });
 
-    it("should handle Malformed/Invalid JSON in API response", async () => {
+    it("should throw LlmNotConfiguredError on Malformed/Invalid JSON in API response", async () => {
       const mockResponse = {
         ok: true,
         json: async () => ({
@@ -106,11 +99,10 @@ describe("AI Service Resilience", () => {
         }),
       };
       vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
-      vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const result = await scoreJobSuitability(mockJob, mockProfile);
-
-      expect(result.reason).toContain("Scoring unavailable"); // Fell back
+      await expect(scoreJobSuitability(mockJob, mockProfile)).rejects.toThrow(
+        "AI scoring failed",
+      );
     });
 
     it("should extract JSON from markdown code blocks", async () => {

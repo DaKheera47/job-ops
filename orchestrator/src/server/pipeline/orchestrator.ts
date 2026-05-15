@@ -73,11 +73,15 @@ type TenantPipelineState = {
   activePipelineRunId: string | null;
   cancelRequestedAt: string | null;
   activeChallengeState: ChallengeState | null;
+  activeLlmConfigState: LlmConfigState | null;
 };
 
 type ChallengeState = {
   challenges: Map<string, PendingChallenge>;
-  /** Resolves the Promise that blocks the pipeline in `runPipeline`. */
+  resolve: () => void;
+};
+
+type LlmConfigState = {
   resolve: () => void;
 };
 
@@ -91,6 +95,7 @@ function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
       activePipelineRunId: null,
       cancelRequestedAt: null,
       activeChallengeState: null,
+      activeLlmConfigState: null,
     };
     pipelineStateByTenant.set(tenantId, state);
   }
@@ -173,6 +178,19 @@ export function resolvePipelineChallenge(extractorId: string): {
   }
 
   return { resolved: deleted, remaining };
+}
+
+/**
+ * Resume a pipeline that paused because the LLM was not configured.
+ * Called by the POST /api/pipeline/resume-scoring endpoint after the user
+ * configures an API key in Settings.
+ */
+export function resumePipelineScoring(): { resolved: boolean } {
+  const state = getPipelineState();
+  if (!state.activeLlmConfigState) return { resolved: false };
+  state.activeLlmConfigState.resolve();
+  state.activeLlmConfigState = null;
+  return { resolved: true };
 }
 
 // ---------- Cancellation ----------
@@ -351,13 +369,41 @@ export async function runPipeline(
         jobsDiscovered: created,
       });
 
+      let unprocessedJobs: import("@shared/types").Job[] = [];
+      let scoredJobs: import("./steps/types").ScoredJob[] = [];
+
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "scoring" });
-      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({
-        profile,
-        shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
-      });
+      try {
+        ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
+          profile,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        }));
+      } catch (error) {
+        if (error instanceof LlmNotConfiguredError) {
+          const message = error.message;
+          progressHelpers.configurationRequired(message);
+          pipelineLogger.warn("Pipeline paused — LLM not configured", error);
+
+          await new Promise<void>((resolve) => {
+            tenantState.activeLlmConfigState = { resolve };
+          });
+          tenantState.activeLlmConfigState = null;
+
+          ensureNotCancelled(tenantId);
+
+          pipelineLogger.info("LLM configured, resuming scoring");
+
+          ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
+            profile,
+            shouldCancel: () =>
+              getPipelineState(tenantId).cancelRequestedAt !== null,
+          }));
+        } else {
+          throw error;
+        }
+      }
       await persistResultSummary({
         stage: "scoring",
         jobsScored: scoredJobs.length,
@@ -446,30 +492,6 @@ export async function runPipeline(
         };
       }
 
-      if (error instanceof LlmNotConfiguredError) {
-        const message = error.message;
-        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-          status: "failed",
-          completedAt: new Date().toISOString(),
-          jobsDiscovered,
-          jobsProcessed,
-          errorMessage: message,
-          resultSummary,
-        });
-        progressHelpers.configurationRequired(message);
-        pipelineLogger.error("Pipeline failed — LLM not configured", error);
-        await notifyPipelineWebhookStep("pipeline.failed", {
-          pipelineRunId: pipelineRun.id,
-          error: message,
-        });
-        return {
-          success: false,
-          jobsDiscovered,
-          jobsProcessed,
-          error: message,
-        };
-      }
-
       const message = error instanceof Error ? error.message : "Unknown error";
 
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
@@ -498,6 +520,7 @@ export async function runPipeline(
       tenantState.activePipelineRunId = null;
       tenantState.cancelRequestedAt = null;
       tenantState.activeChallengeState = null;
+      tenantState.activeLlmConfigState = null;
     }
   });
 }
@@ -863,13 +886,16 @@ export function requestPipelineCancel(): {
 
   state.cancelRequestedAt = new Date().toISOString();
 
-  // Unblock the challenge pause if the pipeline is waiting for human solving.
-  // Without this, cancellation during challenge_required would leave the
-  // pipeline stuck until challenges are solved or the server restarts.
+  // Unblock any pause so cancellation can proceed. Without this the pipeline
+  // would stay stuck in memory until the pause resolves or the server restarts.
   // ensureNotCancelled() runs immediately after the paused Promise resolves.
   if (state.activeChallengeState) {
     state.activeChallengeState.resolve();
     state.activeChallengeState = null;
+  }
+  if (state.activeLlmConfigState) {
+    state.activeLlmConfigState.resolve();
+    state.activeLlmConfigState = null;
   }
 
   return {

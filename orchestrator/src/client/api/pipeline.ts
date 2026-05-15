@@ -50,6 +50,12 @@ export async function solvePipelineChallenge(extractorId: string): Promise<{
   });
 }
 
+export async function resumePipelineScoring(): Promise<{ resolved: boolean }> {
+  return fetchApi<{ resolved: boolean }>("/pipeline/resume-scoring", {
+    method: "POST",
+  });
+}
+
 export async function getPipelineRunInsights(
   id: string,
 ): Promise<PipelineRunInsights> {

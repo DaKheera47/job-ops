@@ -5,6 +5,7 @@
 import {
   getPipelineProgressSnapshot,
   prepareChallengeViewer,
+  resumePipelineScoring,
   solvePipelineChallenge,
 } from "@client/api";
 import {
@@ -79,6 +80,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     "connecting",
   );
   const [solvingExtractor, setSolvingExtractor] = useState<string | null>(null);
+  const [resumingScoring, setResumingScoring] = useState(false);
 
   const handleSolveChallenge = useCallback(async (extractorId: string) => {
     setSolvingExtractor(extractorId);
@@ -105,6 +107,15 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       console.error("Solve challenge request failed:", err);
     } finally {
       setSolvingExtractor(null);
+    }
+  }, []);
+
+  const handleResumeScoring = useCallback(async () => {
+    setResumingScoring(true);
+    try {
+      await resumePipelineScoring();
+    } catch {
+      setResumingScoring(false);
     }
   }, []);
 
@@ -470,10 +481,28 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
               <div className="rounded-md border border-orange-500/20 bg-orange-500/10 p-3">
                 <div className="flex items-start gap-2 text-sm text-orange-400">
                   <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <p className="font-medium">LLM configuration required</p>
                     <p className="text-orange-300/80">{progress.error}</p>
                   </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
+                    disabled={resumingScoring}
+                    onClick={handleResumeScoring}
+                  >
+                    {resumingScoring ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        Resuming…
+                      </>
+                    ) : (
+                      "Restart scoring"
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>

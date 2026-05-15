@@ -121,29 +121,25 @@ export async function scoreJobSuitability(
   });
 
   if (!result.success) {
-    if (result.error.toLowerCase().includes("api key")) {
-      logger.warn("LLM API key not set — scoring unavailable", {
-        jobId: job.id,
-      });
-      throw new LlmNotConfiguredError(
-        "LLM API key not configured. Go to Settings → Integrations → API Keys to add one, then re-run the pipeline for accurate AI-powered scoring.",
-      );
-    }
-    logger.error("Scoring failed", {
+    logger.warn("Scoring failed — pausing pipeline", {
       jobId: job.id,
       error: result.error,
     });
-    return { score: null, reason: "Scoring unavailable — AI service error" };
+    throw new LlmNotConfiguredError(
+      `AI scoring failed: ${result.error}. Check your LLM configuration in Settings → Integrations, then resume scoring.`,
+    );
   }
 
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
   if (typeof score !== "number" || Number.isNaN(score)) {
-    logger.error("Invalid score in AI response", {
+    logger.warn("Invalid score in AI response — pausing pipeline", {
       jobId: job.id,
     });
-    return { score: null, reason: "Scoring unavailable — AI returned invalid data" };
+    throw new LlmNotConfiguredError(
+      "AI returned invalid scoring data. Check your LLM configuration in Settings → Integrations, then resume scoring.",
+    );
   }
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
