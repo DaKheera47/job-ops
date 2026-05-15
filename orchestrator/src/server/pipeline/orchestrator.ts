@@ -34,8 +34,8 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
-import { generateTailoring } from "../services/summary";
 import { LlmNotConfiguredError } from "../services/scorer";
+import { generateTailoring } from "../services/summary";
 import {
   type PendingChallenge,
   progressHelpers,

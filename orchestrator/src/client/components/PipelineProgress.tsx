@@ -51,7 +51,8 @@ const stepBadgeClasses: Record<PipelineProgressState["step"], string> = {
   completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   cancelled: "bg-muted text-muted-foreground border-border",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
-  configuration_required: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  configuration_required:
+    "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
 
 const clamp = (value: number, min: number, max: number) =>

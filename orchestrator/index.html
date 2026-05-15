@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script defer src="https://umami.dakheera47.com/script.js" data-website-id="0dc42ed1-87c3-4ac0-9409-5a9b9588fe66"></script>
     <script>
-      window.op=window.op||function(){var n=[];return new Proxy(function(){arguments.length&&n.push([].slice.call(arguments))},{get:function(t,r){return"q"===r?n:function(){n.push([r].concat([].slice.call(arguments)))}} ,has:function(t,r){return"q"===r}}) }();
+      window.op=window.op||(()=> {var n=[];return new Proxy(function(){arguments.length&&n.push([].slice.call(arguments))},{get:(t,r)=> "q"===r?n:function(){n.push([r].concat([].slice.call(arguments)))} ,has:(t,r)=> "q"===r}) })();
       window.op('init', {
         apiUrl: 'https://openpanel.dakheera47.com/api',
         clientId: '6a953241-309b-4e5a-be1b-412c5d7b6544',
