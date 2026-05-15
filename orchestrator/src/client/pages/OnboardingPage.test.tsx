@@ -1259,6 +1259,17 @@ describe("OnboardingPage", () => {
     expect(
       screen.queryByRole("button", { name: /connect reactive resume/i }),
     ).not.toBeInTheDocument();
+
+    vi.mocked(validateAndMaybePersistRxResumeMode).mockClear();
+    vi.mocked(api.validateResumeConfig).mockClear();
+    fireEvent.click(
+      screen.getByRole("button", { name: /recheck reactive resume/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.validateResumeConfig).toHaveBeenCalled();
+    });
+    expect(validateAndMaybePersistRxResumeMode).not.toHaveBeenCalled();
   });
 
   it("persists a changed Reactive Resume template before search terms are refreshed", async () => {
