@@ -8,8 +8,11 @@ import { sanitizeUnknown } from "./sanitize";
 
 const UMAMI_HOST_URL = "https://umami.dakheera47.com";
 const UMAMI_WEBSITE_ID = "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66";
+const OPENPANEL_API_BASE_URL = "https://openpanel.dakheera47.com/api";
+const OPENPANEL_CLIENT_ID = "6a953241-309b-4e5a-be1b-412c5d7b6544";
 const UMAMI_FALLBACK_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
+const OPENPANEL_FALLBACK_USER_AGENT = "jobops-orchestrator/1.0";
 const DISALLOWED_KEY_PARTS = [
   "query",
   "url",
@@ -151,6 +154,104 @@ function toUnixTimestampSeconds(
   return Math.floor(epochMs / 1000);
 }
 
+function toIsoTimestamp(
+  value: Date | number | string | null | undefined,
+): string | null {
+  if (value === null || value === undefined) return null;
+
+  let date: Date | null = null;
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    const epochMs = value < 1_000_000_000_000 ? value * 1000 : value;
+    date = new Date(epochMs);
+  } else if (typeof value === "string" && value.trim().length > 0) {
+    date = new Date(value);
+  }
+
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function getOpenPanelTrackUrl(): string | null {
+  const configuredBaseUrl = normalizeBaseUrl(
+    process.env.JOBOPS_OPENPANEL_API_URL ?? OPENPANEL_API_BASE_URL,
+  );
+  if (!configuredBaseUrl) return null;
+  return `${configuredBaseUrl}/track`;
+}
+
+function getOpenPanelClientId(): string | null {
+  const configured = process.env.JOBOPS_OPENPANEL_CLIENT_ID?.trim();
+  return configured || OPENPANEL_CLIENT_ID;
+}
+
+async function trackOpenPanelProductEvent(args: {
+  event: string;
+  profileId: string;
+  data?: AnalyticsPayload;
+  occurredAt?: Date | number | string | null;
+  requestUserAgent?: string | null;
+  requestOrigin?: string | null;
+  urlPath: string;
+}): Promise<boolean> {
+  const trackUrl = getOpenPanelTrackUrl();
+  const clientId = getOpenPanelClientId();
+  if (!trackUrl || !clientId) {
+    return false;
+  }
+
+  const properties: AnalyticsPayload = {
+    ...(args.data ?? {}),
+    __path: args.urlPath,
+  };
+  const timestamp = toIsoTimestamp(args.occurredAt);
+  if (timestamp) {
+    properties.__timestamp = timestamp;
+  }
+
+  const requestContext = getRequestContext();
+  const response = await fetch(trackUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "openpanel-client-id": clientId,
+      ...(process.env.JOBOPS_OPENPANEL_CLIENT_SECRET?.trim()
+        ? {
+            "openpanel-client-secret":
+              process.env.JOBOPS_OPENPANEL_CLIENT_SECRET.trim(),
+          }
+        : {}),
+      "user-agent":
+        args.requestUserAgent?.trim() ||
+        requestContext?.requestUserAgent?.trim() ||
+        OPENPANEL_FALLBACK_USER_AGENT,
+    },
+    body: JSON.stringify({
+      type: "track",
+      payload: {
+        name: args.event,
+        profileId: args.profileId,
+        properties,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    logger.warn("Server product analytics request failed", {
+      provider: "openpanel",
+      event: args.event,
+      status: response.status,
+      requestOrigin: args.requestOrigin ?? null,
+      urlPath: args.urlPath,
+    });
+    return false;
+  }
+
+  return true;
+}
+
 export async function trackServerProductEvent(
   event: string,
   data?: Record<string, unknown>,
@@ -180,6 +281,7 @@ export async function trackServerProductEvent(
     urlPath: options?.urlPath,
   });
   const timestamp = toUnixTimestampSeconds(options?.occurredAt);
+  const isoTimestamp = toIsoTimestamp(options?.occurredAt);
 
   try {
     const installState = options?.distinctId
@@ -198,28 +300,50 @@ export async function trackServerProductEvent(
         requestContext?.requestUserAgent?.trim() ||
         UMAMI_FALLBACK_USER_AGENT,
     });
-    const response = await umami.track({
-      id: installState.distinctId,
-      ...(timestamp !== null ? { timestamp } : {}),
-      hostname: page.hostname,
-      url: page.url,
-      name: event,
-      ...(payload ? { data: payload } : {}),
-    });
-
-    if (!response.ok) {
-      logger.warn("Server product analytics request failed", {
+    const [umamiResponse, openPanelDelivered] = await Promise.all([
+      umami.track({
+        id: installState.distinctId,
+        ...(timestamp !== null ? { timestamp } : {}),
+        hostname: page.hostname,
+        url: page.url,
+        name: event,
+        ...(payload ? { data: payload } : {}),
+      }),
+      trackOpenPanelProductEvent({
         event,
-        status: response.status,
+        profileId: installState.distinctId,
+        data: payload,
+        occurredAt: isoTimestamp,
+        requestUserAgent: options?.requestUserAgent,
+        requestOrigin: options?.requestOrigin,
+        urlPath: page.url,
+      }).catch((error) => {
+        logger.warn("Server product analytics request errored", {
+          provider: "openpanel",
+          event,
+          requestOrigin: options?.requestOrigin ?? null,
+          urlPath: options?.urlPath ?? "/",
+          error: sanitizeUnknown(error),
+        });
+        return false;
+      }),
+    ]);
+
+    const umamiDelivered = umamiResponse.ok;
+    if (!umamiDelivered) {
+      logger.warn("Server product analytics request failed", {
+        provider: "umami",
+        event,
+        status: umamiResponse.status,
         requestOrigin: options?.requestOrigin ?? null,
         urlPath: options?.urlPath ?? "/",
       });
-      return false;
     }
 
-    return true;
+    return umamiDelivered || openPanelDelivered;
   } catch (error) {
     logger.warn("Server product analytics request errored", {
+      provider: "umami",
       event,
       requestOrigin: options?.requestOrigin ?? null,
       urlPath: options?.urlPath ?? "/",
