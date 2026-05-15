@@ -187,6 +187,32 @@ describe("server product analytics", () => {
     );
   });
 
+  it("returns delivered when OpenPanel succeeds even if Umami throws", async () => {
+    vi.mocked(getMockUmami().track).mockRejectedValue(new Error("umami down"));
+
+    const delivered = await trackServerProductEvent(
+      "resume_generated",
+      {
+        origin: "move_to_ready",
+      },
+      {
+        requestOrigin: "https://app.jobops.example",
+        urlPath: "/jobs",
+      },
+    );
+
+    expect(delivered).toBe(true);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Server product analytics request errored",
+      expect.objectContaining({
+        provider: "umami",
+        event: "resume_generated",
+        requestOrigin: "https://app.jobops.example",
+        urlPath: "/jobs",
+      }),
+    );
+  });
+
   it("supports the commonjs module-object shape exposed at runtime", async () => {
     vi.doMock("@umami/node", () => ({
       default: {

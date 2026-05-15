@@ -310,6 +310,15 @@ export async function trackServerProductEvent(
         url: page.url,
         name: event,
         ...(payload ? { data: payload } : {}),
+      }).catch((error) => {
+        logger.warn("Server product analytics request errored", {
+          provider: "umami",
+          event,
+          requestOrigin: options?.requestOrigin ?? null,
+          urlPath: options?.urlPath ?? "/",
+          error: sanitizeUnknown(error),
+        });
+        return null;
       }),
       trackOpenPanelProductEvent({
         event,
@@ -331,8 +340,8 @@ export async function trackServerProductEvent(
       }),
     ]);
 
-    const umamiDelivered = umamiResponse.ok;
-    if (!umamiDelivered) {
+    const umamiDelivered = umamiResponse?.ok ?? false;
+    if (umamiResponse && !umamiDelivered) {
       logger.warn("Server product analytics request failed", {
         provider: "umami",
         event,
