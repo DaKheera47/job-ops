@@ -9,6 +9,7 @@ export const RxResumeStep: React.FC<{
   baseResumeValue: string | null;
   isBusy: boolean;
   isResumeReady: boolean;
+  hasRxResumeAccess: boolean;
   isSelfHosted: boolean;
   rxresumeApiKey: string;
   rxresumeUrl: string;
@@ -20,6 +21,7 @@ export const RxResumeStep: React.FC<{
   onRxresumeUrlChange: (value: string) => void;
 }> = ({
   baseResumeValue,
+  hasRxResumeAccess,
   isBusy,
   isResumeReady,
   isSelfHosted,
@@ -95,7 +97,7 @@ export const RxResumeStep: React.FC<{
         />
       ) : null}
 
-      {rxresumeValidation.valid ? (
+      {hasRxResumeAccess ? (
         <div className="space-y-3 rounded-lg border border-border/60 bg-background/70 p-4">
           <div className="space-y-1">
             <div className="text-sm font-medium">Template resume</div>
@@ -107,7 +109,7 @@ export const RxResumeStep: React.FC<{
           <BaseResumeSelection
             value={baseResumeValue}
             onValueChange={onTemplateResumeChange}
-            hasRxResumeAccess={rxresumeValidation.valid}
+            hasRxResumeAccess={hasRxResumeAccess}
             disabled={isBusy}
           />
           {isResumeReady ? (

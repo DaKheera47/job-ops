@@ -166,6 +166,7 @@ export const BaseResumeStep: React.FC<{
         <>
           <RxResumeStep
             baseResumeValue={baseResumeValue}
+            hasRxResumeAccess={hasRxResumeAccess}
             isBusy={isBusy}
             isResumeReady={isResumeReady}
             isSelfHosted={isRxResumeSelfHosted}

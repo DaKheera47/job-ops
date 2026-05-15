@@ -1202,4 +1202,47 @@ describe("OnboardingPage", () => {
     });
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
   });
+
+  it("keeps the Reactive Resume picker visible when returning with saved credentials", async () => {
+    currentSettings = {
+      ...baseSettings,
+      rxresumeApiKeyHint: "rx-k",
+      rxresumeBaseResumeId: "resume-1",
+      pdfRenderer: { value: "rxresume", default: "rxresume", override: null },
+      searchTerms: {
+        value: ["Platform Engineer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(validateAndMaybePersistRxResumeMode).mockResolvedValue({
+      validation: {
+        valid: false,
+        message: "Validation has not refreshed yet.",
+      },
+    } as any);
+
+    renderPage();
+
+    fireEvent.click(getStepButton(/^Search terms$/i));
+    fireEvent.click(getStepButton(/^Resume$/i));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Your base resume is loaded and ready."),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText("Template resume")).toBeInTheDocument();
+    expect(screen.getByText("Base resume selection")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter v5 API key")).toBeInTheDocument();
+  });
 });

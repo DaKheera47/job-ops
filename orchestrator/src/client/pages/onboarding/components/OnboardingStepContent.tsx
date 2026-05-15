@@ -72,11 +72,15 @@ export const OnboardingStepContent: React.FC<{
   }
 
   if (props.currentStep === "baseresume") {
+    const hasSavedRxResumeAccess = Boolean(props.rxresumeApiKeyHint);
+    const hasRxResumeAccess =
+      props.rxresumeValidation.valid || hasSavedRxResumeAccess;
+
     return (
       <BaseResumeStep
         baseResumeValidation={props.baseResumeValidation}
         baseResumeValue={props.baseResumeValue}
-        hasRxResumeAccess={props.rxresumeValidation.valid}
+        hasRxResumeAccess={hasRxResumeAccess}
         isBusy={props.isBusy}
         isImportingResume={props.isImportingResume}
         isResumeReady={props.isResumeReady}
