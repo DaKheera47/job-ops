@@ -3,10 +3,14 @@ import { generateFinalPdf } from "./pipeline/orchestrator";
 import * as jobsRepo from "./repositories/jobs";
 import * as pdfService from "./services/pdf";
 import * as pdfFingerprint from "./services/pdf-fingerprint";
+import { trackServerProductEvent } from "@infra/product-analytics";
 
 // Mock dependencies
 vi.mock("./repositories/jobs");
 vi.mock("./services/pdf");
+vi.mock("@infra/product-analytics", () => ({
+  trackServerProductEvent: vi.fn().mockResolvedValue(true),
+}));
 vi.mock("./services/pdf-fingerprint", () => ({
   createJobPdfFingerprint: vi.fn().mockReturnValue("test-pdf-fingerprint"),
   resolvePdfFingerprintContext: vi.fn().mockResolvedValue({
@@ -38,6 +42,7 @@ describe("Tailoring Flow", () => {
     vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(
       {} as any,
     );
+    vi.mocked(trackServerProductEvent).mockClear();
   });
 
   it("should use manual overrides (tailoring) when generating PDF", async () => {
@@ -97,6 +102,16 @@ describe("Tailoring Flow", () => {
       pdfFingerprint: "test-pdf-fingerprint",
       pdfGeneratedAt: expect.any(String),
     });
+    expect(trackServerProductEvent).toHaveBeenCalledWith(
+      "resume_generated",
+      expect.objectContaining({
+        renderer: "latex",
+        theme: null,
+      }),
+      expect.objectContaining({
+        urlPath: "/jobs",
+      }),
+    );
   });
 
   it("should fall back to defaults if no tailoring is present", async () => {

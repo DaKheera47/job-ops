@@ -731,6 +731,11 @@ export async function generateFinalPdf(
         {
           origin: analyticsOrigin,
           generation_kind: generationKind,
+          renderer: fingerprintContext.pdfRenderer,
+          theme:
+            fingerprintContext.pdfRenderer === "typst"
+              ? fingerprintContext.typstTheme
+              : null,
           tracer_links_enabled: job.tracerLinksEnabled,
           has_tailored_summary: Boolean(job.tailoredSummary),
           has_tailored_skills: Boolean(job.tailoredSkills),
