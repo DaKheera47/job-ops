@@ -31,7 +31,7 @@ describe("JobPageLeftSidebar score ring", () => {
     const ring = screen.getByRole("img", {
       name:
         score === null
-          ? "Scoring failed — AI service unavailable"
+          ? "AI misconfiguration or service error. Please check your settings and AI service status."
           : `Suitability score ${score}`,
     });
 
