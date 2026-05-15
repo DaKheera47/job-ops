@@ -2,6 +2,12 @@ import type { JobListItem } from "@shared/types.js";
 import { Loader2, XCircle } from "lucide-react";
 import { isPdfRegenerating, isPdfStale } from "@/client/lib/pdf-freshness";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { defaultStatusToken, statusTokens } from "./constants";
 
 interface JobRowContentProps {
@@ -88,8 +94,17 @@ export const JobRowContent = ({
           </span>
         </div>
       ) : (
-        <div className="shrink-0 text-right" title="Scoring failed">
-          <XCircle className="h-4 w-4 text-destructive" />
+        <div className="shrink-0 text-right">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <XCircle className="h-4 w-4 text-destructive" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-60 text-xs">
+                AI misconfiguration or service error. Please check your settings and AI service status.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
     </div>

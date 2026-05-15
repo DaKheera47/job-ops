@@ -11,6 +11,12 @@ import type React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type JobMemoryView =
   | "overview"
@@ -67,7 +73,8 @@ const getSuitabilityScoreTokens = (score: number | null) => {
     return {
       shell: "border-destructive/40 bg-destructive/10 text-destructive",
       value: "!",
-      label: "Scoring failed — AI service unavailable",
+      label:
+        "AI misconfiguration or service error. Please check your settings and AI service status.",
     };
   }
 
@@ -101,32 +108,41 @@ export const ScoreRing: React.FC<{
   const tokens = getSuitabilityScoreTokens(score);
 
   return (
-    <div
-      role="img"
-      aria-label={tokens.label}
-      className={cn(
-        size === "sm"
-          ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
-          : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
-        tokens.shell,
-      )}
-    >
-      <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div
-          className={cn(
-            size === "sm" ? "text-lg" : "text-2xl",
-            "font-semibold leading-none tabular-nums",
-          )}
-        >
-          {tokens.value}
-        </div>
-        {size === "lg" && (
-          <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
-            score
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            role="img"
+            aria-label={tokens.label}
+            className={cn(
+              size === "sm"
+                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
+                : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
+              tokens.shell,
+            )}
+          >
+            <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div
+                className={cn(
+                  size === "sm" ? "text-lg" : "text-2xl",
+                  "font-semibold leading-none tabular-nums",
+                )}
+              >
+                {tokens.value}
+              </div>
+              {size === "lg" && (
+                <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
+                  score
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-60 text-xs">
+          {tokens.label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
