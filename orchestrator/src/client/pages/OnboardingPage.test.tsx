@@ -1253,6 +1253,12 @@ describe("OnboardingPage", () => {
     expect(screen.getByText("Template resume")).toBeInTheDocument();
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter v5 API key")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /recheck reactive resume/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /connect reactive resume/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("persists a changed Reactive Resume template before search terms are refreshed", async () => {

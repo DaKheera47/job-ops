@@ -743,6 +743,8 @@ export function useOnboardingFlow() {
 
   const currentCopy = currentStep ? STEP_COPY[currentStep] : STEP_COPY.llm;
   const baseResumeValue = watch("rxresumeBaseResumeId");
+  const hasRxResumeAccess =
+    rxresumeValidation.valid || Boolean(settings?.rxresumeApiKeyHint);
 
   const primaryLabel =
     currentStep === "llm"
@@ -751,7 +753,7 @@ export function useOnboardingFlow() {
         : "Save connection"
       : currentStep === "baseresume"
         ? resumeSetupMode === "rxresume"
-          ? rxresumeValidation.valid
+          ? hasRxResumeAccess
             ? baseResumeValue
               ? "Recheck Reactive Resume"
               : "Confirm Resume Template"
