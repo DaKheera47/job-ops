@@ -10,6 +10,7 @@ const UMAMI_HOST_URL = "https://umami.dakheera47.com";
 const UMAMI_WEBSITE_ID = "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66";
 const OPENPANEL_API_BASE_URL = "https://openpanel.dakheera47.com/api";
 const OPENPANEL_CLIENT_ID = "6a953241-309b-4e5a-be1b-412c5d7b6544";
+const OPENPANEL_CLIENT_SECRET = "sec_906d37f958321fef9adb";
 const UMAMI_FALLBACK_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 const OPENPANEL_FALLBACK_USER_AGENT = "jobops-orchestrator/1.0";
@@ -187,6 +188,11 @@ function getOpenPanelClientId(): string | null {
   return configured || OPENPANEL_CLIENT_ID;
 }
 
+function getOpenPanelClientSecret(): string | null {
+  const configured = process.env.JOBOPS_OPENPANEL_CLIENT_SECRET?.trim();
+  return configured || OPENPANEL_CLIENT_SECRET;
+}
+
 async function trackOpenPanelProductEvent(args: {
   event: string;
   profileId: string;
@@ -198,7 +204,8 @@ async function trackOpenPanelProductEvent(args: {
 }): Promise<boolean> {
   const trackUrl = getOpenPanelTrackUrl();
   const clientId = getOpenPanelClientId();
-  if (!trackUrl || !clientId) {
+  const clientSecret = getOpenPanelClientSecret();
+  if (!trackUrl || !clientId || !clientSecret) {
     return false;
   }
 
@@ -217,12 +224,7 @@ async function trackOpenPanelProductEvent(args: {
     headers: {
       "content-type": "application/json",
       "openpanel-client-id": clientId,
-      ...(process.env.JOBOPS_OPENPANEL_CLIENT_SECRET?.trim()
-        ? {
-            "openpanel-client-secret":
-              process.env.JOBOPS_OPENPANEL_CLIENT_SECRET.trim(),
-          }
-        : {}),
+      "openpanel-client-secret": clientSecret,
       "user-agent":
         args.requestUserAgent?.trim() ||
         requestContext?.requestUserAgent?.trim() ||
