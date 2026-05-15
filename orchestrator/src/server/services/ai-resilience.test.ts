@@ -91,7 +91,7 @@ describe("AI Service Resilience", () => {
 
       const result = await scoreJobSuitability(mockJob, mockProfile);
 
-      expect(result.score).toBe(50); // Neutral score
+      expect(result.score).toBeNull(); // Null score
       expect(result.reason).toContain("Scoring unavailable"); // Fallback reason
       expect(consoleSpy).toHaveBeenCalled();
     });

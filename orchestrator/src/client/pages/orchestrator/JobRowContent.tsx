@@ -1,5 +1,5 @@
 import type { JobListItem } from "@shared/types.js";
-import { Loader2 } from "lucide-react";
+import { Loader2, XCircle } from "lucide-react";
 import { isPdfRegenerating, isPdfStale } from "@/client/lib/pdf-freshness";
 import { cn } from "@/lib/utils";
 import { defaultStatusToken, statusTokens } from "./constants";
@@ -81,11 +81,15 @@ export const JobRowContent = ({
         )}
       </div>
 
-      {hasScore && (
+      {hasScore ? (
         <div className="shrink-0 text-right">
           <span className={cn("text-sm tabular-nums", suitabilityTone)}>
             {job.suitabilityScore}
           </span>
+        </div>
+      ) : (
+        <div className="shrink-0 text-right" title="Scoring failed">
+          <XCircle className="h-4 w-4 text-destructive" />
         </div>
       )}
     </div>

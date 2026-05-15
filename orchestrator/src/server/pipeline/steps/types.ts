@@ -1,7 +1,7 @@
 import type { CreateJobInput, Job, PipelineConfig } from "@shared/types";
 
 export type ScoredJob = Job & {
-  suitabilityScore: number;
+  suitabilityScore: number | null;
   suitabilityReason: string;
 };
 

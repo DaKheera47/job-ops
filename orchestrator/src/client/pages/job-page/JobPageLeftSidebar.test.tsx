@@ -24,20 +24,20 @@ describe("JobPageLeftSidebar score ring", () => {
     [70, "border-emerald-400/60"],
     [65, "border-amber-400/60"],
     [59, "border-slate-500/55"],
-    [null, "border-border/60"],
+    [null, "border-destructive/40"],
   ])("uses the expected band for score %s", (score, expectedClass) => {
     renderSidebar({ suitabilityScore: score });
 
     const ring = screen.getByRole("img", {
       name:
         score === null
-          ? "Suitability score not available"
+          ? "Scoring failed — AI service unavailable"
           : `Suitability score ${score}`,
     });
 
     expect(ring).toHaveClass(expectedClass);
     expect(
-      within(ring).getByText(score === null ? "—" : String(score)),
+      within(ring).getByText(score === null ? "!" : String(score)),
     ).toBeInTheDocument();
   });
 });

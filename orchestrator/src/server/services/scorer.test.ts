@@ -898,7 +898,7 @@ describe("salary penalty", () => {
       });
 
       const result = await scoreJobSuitability(job, {});
-      expect(result.score).toBe(50);
+      expect(result.score).toBeNull();
       expect(result.reason).toContain("Scoring unavailable");
     });
   });

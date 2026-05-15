@@ -1,8 +1,5 @@
-/**
- * Suitability score display component.
- */
-
 import type React from "react";
+import { XCircle } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
 
@@ -12,7 +9,12 @@ interface ScoreIndicatorProps {
 
 export const ScoreIndicator: React.FC<ScoreIndicatorProps> = ({ score }) => {
   if (score === null) {
-    return <span className="text-sm text-muted-foreground">Not scored</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-sm text-destructive">
+        <XCircle className="h-3.5 w-3.5" />
+        Scoring failed
+      </span>
+    );
   }
 
   return (

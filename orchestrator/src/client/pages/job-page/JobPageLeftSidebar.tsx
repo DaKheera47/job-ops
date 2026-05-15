@@ -65,9 +65,9 @@ const memoryLinks = [
 const getSuitabilityScoreTokens = (score: number | null) => {
   if (score === null) {
     return {
-      shell: "border-border/60 bg-muted/15 text-muted-foreground",
-      value: "—",
-      label: "Suitability score not available",
+      shell: "border-destructive/40 bg-destructive/10 text-destructive",
+      value: "!",
+      label: "Scoring failed — AI service unavailable",
     };
   }
 

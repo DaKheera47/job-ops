@@ -19,7 +19,7 @@ export class LlmNotConfiguredError extends Error {
 }
 
 interface SuitabilityResult {
-  score: number; // 0-100
+  score: number | null; // 0-100, or null when scoring failed
   reason: string; // Explanation
 }
 
@@ -129,21 +129,21 @@ export async function scoreJobSuitability(
         "LLM API key not configured. Go to Settings → Integrations → API Keys to add one, then re-run the pipeline for accurate AI-powered scoring.",
       );
     }
-    logger.error("Scoring failed, returning neutral score", {
+    logger.error("Scoring failed", {
       jobId: job.id,
       error: result.error,
     });
-    return { score: 50, reason: "Scoring unavailable — AI service error" };
+    return { score: null, reason: "Scoring unavailable — AI service error" };
   }
 
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
   if (typeof score !== "number" || Number.isNaN(score)) {
-    logger.error("Invalid score in AI response, returning neutral score", {
+    logger.error("Invalid score in AI response", {
       jobId: job.id,
     });
-    return { score: 50, reason: "Scoring unavailable — AI returned invalid data" };
+    return { score: null, reason: "Scoring unavailable — AI returned invalid data" };
   }
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
@@ -454,7 +454,7 @@ export async function scoreAndRankJobs(
   jobs: Job[],
   profile: Record<string, unknown>,
 ): Promise<
-  Array<Job & { suitabilityScore: number; suitabilityReason: string }>
+  Array<Job & { suitabilityScore: number | null; suitabilityReason: string }>
 > {
   const scoredJobs = await Promise.all(
     jobs.map(async (job) => {
@@ -467,5 +467,10 @@ export async function scoreAndRankJobs(
     }),
   );
 
-  return scoredJobs.sort((a, b) => b.suitabilityScore - a.suitabilityScore);
+  return scoredJobs.sort((a, b) => {
+    if (a.suitabilityScore == null && b.suitabilityScore == null) return 0;
+    if (a.suitabilityScore == null) return 1;
+    if (b.suitabilityScore == null) return -1;
+    return b.suitabilityScore - a.suitabilityScore;
+  });
 }

@@ -370,7 +370,7 @@ export interface UpdateJobInput {
   closedAt?: number | null;
   jobDescription?: string | null;
   locationEvidence?: JobLocationEvidence | null;
-  suitabilityScore?: number;
+  suitabilityScore?: number | null;
   suitabilityReason?: string;
   jobBrief?: string | null;
   tailoredSummary?: string;

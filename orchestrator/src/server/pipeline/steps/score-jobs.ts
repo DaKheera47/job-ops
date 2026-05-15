@@ -88,6 +88,7 @@ export async function scoreJobsStep(args: {
       // Check if job should be auto-skipped based on score threshold
       const shouldAutoSkip =
         job.status !== "applied" &&
+        score !== null &&
         autoSkipThreshold !== null &&
         !Number.isNaN(autoSkipThreshold) &&
         score < autoSkipThreshold;
