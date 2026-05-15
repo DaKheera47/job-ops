@@ -35,6 +35,7 @@ import {
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
 import { generateTailoring } from "../services/summary";
+import { LlmNotConfiguredError } from "../services/scorer";
 import {
   type PendingChallenge,
   progressHelpers,
@@ -436,6 +437,30 @@ export async function runPipeline(
         pipelineLogger.info("Pipeline run cancelled", {
           jobsDiscovered,
           jobsProcessed,
+        });
+        return {
+          success: false,
+          jobsDiscovered,
+          jobsProcessed,
+          error: message,
+        };
+      }
+
+      if (error instanceof LlmNotConfiguredError) {
+        const message = error.message;
+        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+          status: "failed",
+          completedAt: new Date().toISOString(),
+          jobsDiscovered,
+          jobsProcessed,
+          errorMessage: message,
+          resultSummary,
+        });
+        progressHelpers.configurationRequired(message);
+        pipelineLogger.error("Pipeline failed — LLM not configured", error);
+        await notifyPipelineWebhookStep("pipeline.failed", {
+          pipelineRunId: pipelineRun.id,
+          error: message,
         });
         return {
           success: false,

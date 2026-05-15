@@ -37,6 +37,7 @@ const stepLabels: Record<PipelineProgressState["step"], string> = {
   completed: "Complete",
   cancelled: "Cancelled",
   failed: "Failed",
+  configuration_required: "Configuration Required",
 };
 
 const stepBadgeClasses: Record<PipelineProgressState["step"], string> = {
@@ -49,6 +50,7 @@ const stepBadgeClasses: Record<PipelineProgressState["step"], string> = {
   completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   cancelled: "bg-muted text-muted-foreground border-border",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
+  configuration_required: "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -60,6 +62,7 @@ const TERMINAL_STEPS: ReadonlySet<PipelineProgressState["step"]> = new Set([
   "completed",
   "cancelled",
   "failed",
+  "configuration_required",
 ]);
 
 function resolveSourceLabel(source: string): string {
@@ -159,6 +162,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       case "completed":
       case "cancelled":
       case "failed":
+      case "configuration_required":
         return 100;
       default:
         return 0;
@@ -263,7 +267,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     step !== "idle" &&
     step !== "completed" &&
     step !== "cancelled" &&
-    step !== "failed";
+    step !== "failed" &&
+    step !== "configuration_required";
   const listPagesText = progress
     ? progress.crawlingListPagesTotal > 0
       ? `${progress.crawlingListPagesProcessed}/${progress.crawlingListPagesTotal}`
@@ -456,6 +461,21 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
           {step === "failed" && progress.error && (
             <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
               {progress.error}
+            </div>
+          )}
+
+          {step === "configuration_required" && progress.error && (
+            <div className="space-y-3">
+              <Separator />
+              <div className="rounded-md border border-orange-500/20 bg-orange-500/10 p-3">
+                <div className="flex items-start gap-2 text-sm text-orange-400">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium">LLM configuration required</p>
+                    <p className="text-orange-300/80">{progress.error}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

@@ -11,6 +11,13 @@ import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import { renderPromptTemplate } from "./prompt-templates";
 import { getEffectiveSettings } from "./settings";
 
+export class LlmNotConfiguredError extends Error {
+  constructor(message?: string) {
+    super(message ?? "LLM API key not configured");
+    this.name = "LlmNotConfiguredError";
+  }
+}
+
 interface SuitabilityResult {
   score: number; // 0-100
   reason: string; // Explanation
@@ -115,29 +122,28 @@ export async function scoreJobSuitability(
 
   if (!result.success) {
     if (result.error.toLowerCase().includes("api key")) {
-      logger.warn("LLM API key not set, using mock scoring", { jobId: job.id });
+      logger.warn("LLM API key not set — scoring unavailable", {
+        jobId: job.id,
+      });
+      throw new LlmNotConfiguredError(
+        "LLM API key not configured. Go to Settings → Integrations → API Keys to add one, then re-run the pipeline for accurate AI-powered scoring.",
+      );
     }
-    logger.error("Scoring failed, using mock scoring", {
+    logger.error("Scoring failed, returning neutral score", {
       jobId: job.id,
       error: result.error,
     });
-    return mockScore(job, {
-      penalizeMissingSalary: settings.penalizeMissingSalary.value,
-      missingSalaryPenalty: settings.missingSalaryPenalty.value,
-    });
+    return { score: 50, reason: "Scoring unavailable — AI service error" };
   }
 
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
   if (typeof score !== "number" || Number.isNaN(score)) {
-    logger.error("Invalid score in AI response, using mock scoring", {
+    logger.error("Invalid score in AI response, returning neutral score", {
       jobId: job.id,
     });
-    return mockScore(job, {
-      penalizeMissingSalary: settings.penalizeMissingSalary.value,
-      missingSalaryPenalty: settings.missingSalaryPenalty.value,
-    });
+    return { score: 50, reason: "Scoring unavailable — AI returned invalid data" };
   }
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
@@ -439,59 +445,6 @@ function isVisibleCvItem(item: ProfileRecord): boolean {
 
 function isRecord(value: unknown): value is ProfileRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-async function mockScore(
-  job: Job,
-  settings: { penalizeMissingSalary: boolean; missingSalaryPenalty: number },
-): Promise<SuitabilityResult> {
-  // Simple keyword-based scoring as fallback
-  const jd = (job.jobDescription || "").toLowerCase();
-  const title = job.title.toLowerCase();
-
-  const goodKeywords = [
-    "typescript",
-    "react",
-    "node",
-    "python",
-    "web",
-    "frontend",
-    "backend",
-    "fullstack",
-    "software",
-    "engineer",
-    "developer",
-  ];
-  const badKeywords = [
-    "senior",
-    "5+ years",
-    "10+ years",
-    "principal",
-    "staff",
-    "manager",
-  ];
-
-  let score = 50;
-
-  for (const kw of goodKeywords) {
-    if (jd.includes(kw) || title.includes(kw)) score += 5;
-  }
-
-  for (const kw of badKeywords) {
-    if (jd.includes(kw) || title.includes(kw)) score -= 10;
-  }
-
-  score = Math.min(100, Math.max(0, score));
-
-  const baseReason = "Scored using keyword matching (API key not configured)";
-
-  // Apply salary penalty if enabled
-  const penaltyResult = applySalaryPenalty(job, score, baseReason, settings);
-
-  return {
-    score: penaltyResult.score,
-    reason: penaltyResult.reason,
-  };
 }
 
 /**

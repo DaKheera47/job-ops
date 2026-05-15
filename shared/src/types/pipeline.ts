@@ -130,7 +130,8 @@ export type PipelineProgressStep =
   | "processing"
   | "completed"
   | "cancelled"
-  | "failed";
+  | "failed"
+  | "configuration_required";
 
 export interface PipelineProgressCurrentJob {
   id: string;

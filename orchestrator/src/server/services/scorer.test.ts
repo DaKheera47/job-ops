@@ -854,19 +854,18 @@ describe("salary penalty", () => {
     });
   });
 
-  describe("mock scoring with penalty", () => {
-    it("should apply penalty in mock scoring fallback", async () => {
-      const { scoreJobSuitability } = await import("./scorer");
+  describe("LlmNotConfiguredError", () => {
+    it("should throw LlmNotConfiguredError when API key is not configured", async () => {
+      const { scoreJobSuitability, LlmNotConfiguredError } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: { value: true, default: true, override: null },
+        penalizeMissingSalary: { value: false, default: false, override: null },
         missingSalaryPenalty: { value: 10, default: 10, override: null },
         rxresumeBaseResumeId: "base-resume-123",
       } as any);
 
-      // Simulate API key error to trigger mock scoring
       callJsonMock.mockResolvedValue({
         success: false,
-        error: "API key not configured",
+        error: "LLM API key not configured",
       });
 
       const job = createJob({
@@ -874,15 +873,13 @@ describe("salary penalty", () => {
         salary: null,
         title: "Software Engineer",
       });
-      const result = await scoreJobSuitability(job, {});
 
-      // Mock score base is 50, with keyword bonuses from "Software Engineer"
-      // After 10 point penalty, should be reduced
-      expect(result.score).toBeLessThanOrEqual(50);
-      expect(result.reason).toContain("missing salary information");
+      await expect(scoreJobSuitability(job, {})).rejects.toThrow(
+        LlmNotConfiguredError,
+      );
     });
 
-    it("should not apply penalty in mock scoring when disabled", async () => {
+    it("should return neutral score for non-API-key errors", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({
         penalizeMissingSalary: { value: false, default: false, override: null },
@@ -892,17 +889,17 @@ describe("salary penalty", () => {
 
       callJsonMock.mockResolvedValue({
         success: false,
-        error: "API key not configured",
+        error: "Rate limit exceeded",
       });
 
       const job = createJob({
-        id: "test-job-1",
-        salary: null,
+        id: "test-job-2",
         title: "Software Engineer",
       });
-      const result = await scoreJobSuitability(job, {});
 
-      expect(result.reason).not.toContain("missing salary");
+      const result = await scoreJobSuitability(job, {});
+      expect(result.score).toBe(50);
+      expect(result.reason).toContain("Scoring unavailable");
     });
   });
 });
