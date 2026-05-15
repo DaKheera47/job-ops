@@ -53,6 +53,13 @@ import { z } from "zod";
 export const pipelineRouter = Router();
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 
+function toSelectedSourcesValue(
+  sources: readonly string[] | undefined,
+): string | undefined {
+  if (!Array.isArray(sources) || sources.length === 0) return undefined;
+  return [...sources].sort((left, right) => left.localeCompare(right)).join("|");
+}
+
 function resolveRequestOrigin(req: Request): string | null {
   const configuredBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL?.trim();
   if (configuredBaseUrl) {
@@ -319,6 +326,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
       "jobs_pipeline_run_started",
       {
         source_count: config.sources?.length,
+        selected_sources: toSelectedSourcesValue(config.sources),
         top_n: config.topN,
         min_suitability_score: config.minSuitabilityScore,
         country: config.country,

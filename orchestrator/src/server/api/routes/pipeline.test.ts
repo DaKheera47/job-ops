@@ -339,6 +339,7 @@ describe.sequential("Pipeline API routes", () => {
       "jobs_pipeline_run_started",
       expect.objectContaining({
         source_count: 1,
+        selected_sources: "gradcracker",
         top_n: 5,
         min_suitability_score: 65,
         country: "united kingdom",
