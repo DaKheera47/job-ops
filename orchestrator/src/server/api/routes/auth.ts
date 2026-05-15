@@ -3,6 +3,7 @@ import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import { verifyPassword } from "@server/auth/password";
 import { isDemoMode } from "@server/config/demo";
+import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-analytics";
 import * as usersRepo from "@server/repositories/users";
 import type { Request, Response } from "express";
 import { Router } from "express";
@@ -179,7 +180,11 @@ authRouter.get(
       fail(res, unauthorized("Authentication required"));
       return;
     }
-    ok(res, { user });
+    const installState = await getOrCreateAnalyticsInstallState();
+    ok(res, {
+      user,
+      analyticsDistinctId: installState.distinctId,
+    });
   }),
 );
 

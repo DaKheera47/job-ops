@@ -407,6 +407,14 @@ export function identifyAnalyticsUser(
       ...(appVersion ? { app_version: appVersion } : {}),
     });
   }
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(ANALYTICS_USER_ID_STORAGE_KEY, normalized);
+      cachedAnalyticsUserId = normalized;
+    } catch {
+      // Ignore storage failures; identify is best-effort.
+    }
+  }
   cachedDistinctId = normalized;
 }
 

@@ -133,6 +133,9 @@ describe("analytics", () => {
     expect(identify).toHaveBeenCalledTimes(1);
     expect(identify).toHaveBeenCalledWith("user-123");
     expect(op).toHaveBeenCalledWith("identify", { profileId: "user-123" });
+    expect(window.localStorage.getItem("jobops.analytics.user_id.v1")).toBe(
+      "user-123",
+    );
   });
 
   it("uses identified distinct IDs in event metadata", () => {

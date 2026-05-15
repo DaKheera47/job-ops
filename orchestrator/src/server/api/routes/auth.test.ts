@@ -130,6 +130,37 @@ describe.sequential("Auth routes", () => {
 
       expect(res.status).toBe(401);
     });
+
+    it("returns a stable backend analytics distinct id from /api/auth/me", async () => {
+      const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret" }),
+      });
+      const { data } = await loginRes.json();
+      const token = data.token as string;
+
+      const firstMeRes = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(firstMeRes.status).toBe(200);
+      const firstMeBody = await firstMeRes.json();
+      expect(firstMeBody.ok).toBe(true);
+      expect(firstMeBody.data.user.id).toBeTruthy();
+      expect(firstMeBody.data.analyticsDistinctId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+
+      const secondMeRes = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(secondMeRes.status).toBe(200);
+      const secondMeBody = await secondMeRes.json();
+      expect(secondMeBody.ok).toBe(true);
+      expect(secondMeBody.data.analyticsDistinctId).toBe(
+        firstMeBody.data.analyticsDistinctId,
+      );
+    });
   });
 
   describe("POST /api/auth/setup", () => {

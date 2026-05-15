@@ -43,6 +43,11 @@ export type AuthBootstrapStatus = {
   setupRequired: boolean;
 };
 
+export type CurrentAuthContext = {
+  user: AuthUser;
+  analyticsDistinctId: string | null;
+};
+
 export async function signInWithCredentials(
   username: string,
   password: string,
@@ -85,8 +90,19 @@ export async function setupFirstAdmin(input: {
   return data.user;
 }
 
+export async function getCurrentAuthContext(): Promise<CurrentAuthContext> {
+  const result = await fetchApi<{
+    user: AuthUser;
+    analyticsDistinctId?: string | null;
+  }>("/auth/me");
+  return {
+    user: result.user,
+    analyticsDistinctId: result.analyticsDistinctId ?? null,
+  };
+}
+
 export async function getCurrentAuthUser(): Promise<AuthUser> {
-  const result = await fetchApi<{ user: AuthUser }>("/auth/me");
+  const result = await getCurrentAuthContext();
   return result.user;
 }
 

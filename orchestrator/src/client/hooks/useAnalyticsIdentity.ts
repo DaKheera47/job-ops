@@ -10,10 +10,10 @@ export function useAnalyticsIdentity(): void {
 
     if (hasSession) {
       void api
-        .getCurrentAuthUser()
-        .then((user) => {
+        .getCurrentAuthContext()
+        .then((context) => {
           if (cancelled) return;
-          identifyAnalyticsUser(user.id);
+          identifyAnalyticsUser(context.analyticsDistinctId);
         })
         .catch(() => {
           // Ignore auth fetch errors; analytics identity is best-effort.
