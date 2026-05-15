@@ -53,7 +53,16 @@ vi.mock("@client/components/ReactiveResumeConfigPanel", () => ({
 }));
 
 vi.mock("@client/pages/settings/components/BaseResumeSelection", () => ({
-  BaseResumeSelection: () => <div>Base resume selection</div>,
+  BaseResumeSelection: (props: {
+    onValueChange: (value: string | null) => void;
+  }) => (
+    <div>
+      Base resume selection
+      <button type="button" onClick={() => props.onValueChange("resume-2")}>
+        Choose alternate resume
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("sonner", () => ({
@@ -1244,5 +1253,65 @@ describe("OnboardingPage", () => {
     expect(screen.getByText("Template resume")).toBeInTheDocument();
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter v5 API key")).toBeInTheDocument();
+  });
+
+  it("persists a changed Reactive Resume template before search terms are refreshed", async () => {
+    currentSettings = {
+      ...baseSettings,
+      rxresumeApiKeyHint: "rx-k",
+      rxresumeBaseResumeId: "resume-1",
+      pdfRenderer: { value: "rxresume", default: "rxresume", override: null },
+      searchTerms: {
+        value: ["Platform Engineer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("pdfRenderer" in update
+          ? {
+              pdfRenderer: {
+                value: update.pdfRenderer,
+                default: "rxresume",
+                override: null,
+              },
+            }
+          : {}),
+        ...("rxresumeBaseResumeId" in update
+          ? { rxresumeBaseResumeId: update.rxresumeBaseResumeId }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    renderPage();
+
+    fireEvent.click(getStepButton(/^Resume$/i));
+    fireEvent.click(screen.getByRole("button", { name: /choose alternate/i }));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        pdfRenderer: "rxresume",
+        rxresumeBaseResumeId: "resume-2",
+      });
+    });
+
+    fireEvent.click(getStepButton(/^Search terms$/i));
+
+    await waitFor(() => {
+      expect(api.suggestOnboardingSearchTerms).toHaveBeenCalled();
+    });
+    expect(currentSettings.rxresumeBaseResumeId).toBe("resume-2");
   });
 });

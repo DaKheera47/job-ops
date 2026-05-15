@@ -810,11 +810,31 @@ export function useOnboardingFlow() {
     handlePrimaryAction,
     handleTemplateResumeChange: (value: string | null) => {
       const currentValue = getValues().rxresumeBaseResumeId;
+      if (currentValue === value) return;
+
       if (currentValue !== value) {
         markSearchTermsStale();
       }
       setBaseResumeId(value);
       setValue("rxresumeBaseResumeId", value);
+
+      void (async () => {
+        try {
+          setIsSaving(true);
+          const nextSettings = await api.updateSettings({
+            pdfRenderer: "rxresume",
+            rxresumeBaseResumeId: value,
+          });
+          syncSettingsCache(nextSettings);
+          await validateBaseResume();
+        } catch (error) {
+          setBaseResumeId(currentValue);
+          setValue("rxresumeBaseResumeId", currentValue);
+          showErrorToast(error, "Failed to save selected resume");
+        } finally {
+          setIsSaving(false);
+        }
+      })();
     },
   };
 }
