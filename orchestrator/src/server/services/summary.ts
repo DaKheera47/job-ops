@@ -143,6 +143,23 @@ export async function generateSummary(
   };
 }
 
+// Cap mirrors scorer.ts — anything past 8 KB is almost always boilerplate
+// and costs tokens without informing the resume rewrite.
+const JOB_DESCRIPTION_MAX_CHARS = 8000;
+const TRUNCATION_MARKER = "\n\n... [description truncated]";
+
+function truncateJobDescription(raw: string | null | undefined): string {
+  if (!raw) return "";
+  if (raw.length <= JOB_DESCRIPTION_MAX_CHARS) return raw;
+  const head = raw.slice(0, JOB_DESCRIPTION_MAX_CHARS);
+  const lastBoundary = head.lastIndexOf(" ");
+  const safeHead =
+    lastBoundary > JOB_DESCRIPTION_MAX_CHARS * 0.9
+      ? head.slice(0, lastBoundary)
+      : head;
+  return `${safeHead}${TRUNCATION_MARKER}`;
+}
+
 async function buildTailoringPrompt(
   profile: ResumeProfile,
   jd: string,
@@ -187,7 +204,7 @@ async function buildTailoringPrompt(
   const template = await getEffectivePromptTemplate("tailoringPromptTemplate");
 
   return renderPromptTemplate(template, {
-    jobDescription: jd,
+    jobDescription: truncateJobDescription(jd),
     profileJson: JSON.stringify(relevantProfile, null, 2),
     outputLanguage,
     tone: writingStyle.tone,

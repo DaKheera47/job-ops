@@ -29,6 +29,7 @@ export const REMOTE_FRIENDLY_SOURCES: ExtractorSourceId[] = [
   "remotive",
   "remoteok",
   "himalayas",
+  "hackernews",
   "justjoinit",
   "nofluffjobs",
   // NOTE: hh.ru aggressively geo-blocks API requests originating outside

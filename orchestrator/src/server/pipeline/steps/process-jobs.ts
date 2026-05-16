@@ -7,7 +7,10 @@ type ProcessJobFn = (
   jobId: string,
   options?: { force?: boolean; analyticsOrigin?: "pipeline" },
 ) => Promise<{ success: boolean; error?: string }>;
-const PROCESSING_CONCURRENCY = 3;
+// Each processed job triggers 2 LLM calls (tailoring + project pick) plus a
+// LaTeX/rxresume PDF render.  Concurrency=5 keeps top-N=20 processing under
+// 2 minutes while staying within the GNAI rate limit.
+const PROCESSING_CONCURRENCY = 5;
 
 export async function processJobsStep(args: {
   jobsToProcess: ScoredJob[];

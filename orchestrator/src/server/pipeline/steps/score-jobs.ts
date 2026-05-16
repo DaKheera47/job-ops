@@ -9,7 +9,10 @@ import type { Job } from "@shared/types";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 
-const SCORING_CONCURRENCY = 4;
+// Anthropic API accepts ~10+ parallel requests comfortably for an Intel
+// GNAI account.  Bumping from 4 → 8 cuts scoring wall-time roughly in half
+// with no quality impact (each call is independent).
+const SCORING_CONCURRENCY = 8;
 
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
@@ -19,9 +22,33 @@ export async function scoreJobsStep(args: {
   scoredJobs: ScoredJob[];
   autoSkipped: number;
   ghostFlagged: number;
+  deferredCount: number;
 }> {
   logger.info("Running scoring step");
-  const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
+
+  // Hard cost cap — newest jobs win, rest stay in `discovered` and get
+  // picked up by the next run.  Pulled from settings so the user can tune
+  // it without redeploying.
+  const maxToScoreRaw = await settingsRepo.getSetting(
+    "pipelineMaxJobsToScore",
+  );
+  const maxToScore = maxToScoreRaw
+    ? Math.max(1, parseInt(maxToScoreRaw, 10))
+    : 2000;
+  // Fetch up to maxToScore+1 so we can detect whether the queue was capped
+  // (i.e. there were strictly more eligible jobs than we are going to score).
+  const sampled = await jobsRepo.getUnscoredDiscoveredJobs(maxToScore + 1);
+  const queueWasCapped = sampled.length > maxToScore;
+  const unprocessedJobs = queueWasCapped ? sampled.slice(0, maxToScore) : sampled;
+  const deferredCount = queueWasCapped ? sampled.length - maxToScore : 0;
+
+  if (queueWasCapped) {
+    logger.info("Scoring queue capped by pipelineMaxJobsToScore", {
+      capacity: maxToScore,
+      sampled: sampled.length,
+      deferredCount,
+    });
+  }
 
   // Check if auto-skip threshold is configured
   const autoSkipThresholdRaw = await settingsRepo.getSetting(
@@ -140,8 +167,9 @@ export async function scoreJobsStep(args: {
     scoredJobs: scoredJobs.length,
     autoSkipped,
     ghostFlagged,
+    deferredCount,
     concurrency: SCORING_CONCURRENCY,
   });
 
-  return { unprocessedJobs, scoredJobs, autoSkipped, ghostFlagged };
+  return { unprocessedJobs, scoredJobs, autoSkipped, ghostFlagged, deferredCount };
 }

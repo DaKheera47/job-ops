@@ -36,10 +36,14 @@ export async function filterAntiDomainJobsStep(): Promise<{
     );
     if (!result.skip) continue;
 
-    const reasonKey =
-      result.reason.kind === "anti_domain"
-        ? `anti_domain:${result.reason.domain}`
-        : "no_resume_signal";
+    let reasonKey: string;
+    if (result.reason.kind === "anti_domain") {
+      reasonKey = `anti_domain:${result.reason.domain}`;
+    } else if (result.reason.kind === "language_required") {
+      reasonKey = `language_required:${result.reason.language}`;
+    } else {
+      reasonKey = "no_resume_signal";
+    }
     byReason[reasonKey] = (byReason[reasonKey] ?? 0) + 1;
 
     const reasonText = formatSkipReason(result.reason);

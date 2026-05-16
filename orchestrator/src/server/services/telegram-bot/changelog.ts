@@ -37,6 +37,45 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.15.0",
+    date: "2026-05-16",
+    items: [
+      {
+        title: "⚡ 4-5× faster pipeline runs",
+        description:
+          "Last run took 2h 33m — almost all of it spent in sequential country-by-country LinkedIn/Indeed scraping. Now those 9 countries run 3 at a time in parallel, scoring concurrency doubled (4 → 8), discovery extractors doubled (3 → 6), and JobSpy's per-term cap dropped from 50 → 25 (LinkedIn returns the most-relevant first anyway). Expected new runtime: ~30-45 minutes for the same coverage.",
+      },
+      {
+        title: "🌐 Language requirement filter",
+        description:
+          "If a job hard-requires a language not in your resume's Languages section (\"Fluent in Polish\", \"Native German speaker\", \"Must speak French\"), it gets auto-skipped. Soft mentions like \"knowledge of Polish is a plus\" still pass. Resume is the source of truth — add or remove a language there to update the filter.",
+        tip: "Already applied to your current queue (9 German-required jobs auto-skipped).",
+      },
+      {
+        title: "🎯 Mix of AI models",
+        description:
+          "Job scoring and project selection switched to Claude Haiku 4.5 — same quality on simple classification tasks, ~70% cheaper and 2-3× faster. Resume tailoring (the part employers actually read) upgraded to Claude Opus 4.6 for sharper headlines and ATS keyword density. Net effect: comparable cost per run, better tailoring quality.",
+      },
+    ],
+  },
+  {
+    version: "1.14.0",
+    date: "2026-05-16",
+    items: [
+      {
+        title: "📰 New source: HN \"Who is hiring?\"",
+        description:
+          "Each month's Hacker News hiring thread is now pulled automatically via the Algolia HN API and parsed into structured jobs. Only remote roles are kept; intern-only and \"SEEKING FREELANCER\" posts are auto-dropped. Expect ~150–300 extra remote leads per month from this source alone.",
+      },
+      {
+        title: "💸 Cost guardrails",
+        description:
+          "New setting `pipelineMaxJobsToScore` (default 2000) caps how many jobs go through the AI scorer per run — newer jobs win, the rest move to the next run. Also: long job descriptions are now truncated to 8000 characters before being sent to the AI (everything past that is usually boilerplate). Together this keeps a single run under ~$35 even with the largest expected queue.",
+        tip: "If you ever see fewer jobs scored than discovered, that means the cap kicked in. Raise `pipelineMaxJobsToScore` in Settings to score more in one go.",
+      },
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-05-16",
     items: [

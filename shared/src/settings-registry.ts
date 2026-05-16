@@ -727,6 +727,18 @@ export const settingsRegistry = {
       return value === null || value === undefined ? null : String(value);
     },
   },
+  // Hard cap on LLM scoring calls per pipeline run. Newer (more recent
+  // `discovered_at`) jobs win when the queue is over the cap; the rest
+  // remain in `status='discovered'` and get scored on the next run.
+  // Default 2000 jobs ≈ ~$35 per run on Claude Sonnet 4.6 — well inside
+  // the $80/day Anthropic budget even with retries.
+  pipelineMaxJobsToScore: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(20000),
+    default: (): number => 2000,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
 
   // --- Model Variants ---
   modelScorer: {

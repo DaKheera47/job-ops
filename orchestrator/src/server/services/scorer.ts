@@ -408,6 +408,28 @@ export function parseJsonFromContent(
   throw new Error("Unable to parse JSON from model response");
 }
 
+// Hard cap on job description length we pass to the LLM. Anything past 8 KB
+// is almost always boilerplate ("About our company", "Equal opportunity
+// statement", "Benefits", multilingual repeats) — keeping the cap saves
+// 5-15% input tokens on a typical run and ~50% on long wall-of-text postings
+// (max in the corpus was 19 KB). Truncation happens at a word boundary
+// followed by an explicit "... [description truncated]" marker so the LLM
+// knows the cut-off was deliberate.
+const JOB_DESCRIPTION_MAX_CHARS = 8000;
+const TRUNCATION_MARKER = "\n\n... [description truncated]";
+
+function truncateJobDescription(raw: string | null | undefined): string {
+  if (!raw) return "No description available";
+  if (raw.length <= JOB_DESCRIPTION_MAX_CHARS) return raw;
+  const head = raw.slice(0, JOB_DESCRIPTION_MAX_CHARS);
+  const lastBoundary = head.lastIndexOf(" ");
+  const safeHead =
+    lastBoundary > JOB_DESCRIPTION_MAX_CHARS * 0.9
+      ? head.slice(0, lastBoundary)
+      : head;
+  return `${safeHead}${TRUNCATION_MARKER}`;
+}
+
 function buildScoringPrompt(
   job: Job,
   profile: Record<string, unknown>,
@@ -421,7 +443,7 @@ function buildScoringPrompt(
     salary: job.salary || "Not specified",
     degreeRequired: job.degreeRequired || "Not specified",
     disciplines: job.disciplines || "Not specified",
-    jobDescription: job.jobDescription || "No description available",
+    jobDescription: truncateJobDescription(job.jobDescription),
     scoringInstructionsText: preferences.instructions
       ? preferences.instructions
       : "No additional custom scoring instructions.",

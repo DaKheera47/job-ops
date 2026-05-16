@@ -472,11 +472,18 @@ export async function runPipeline(
         scoredJobs,
         autoSkipped: scoringAutoSkipped,
         ghostFlagged,
+        deferredCount: scoringDeferred,
       } = await scoreJobsStep({
         profile,
         shouldCancel: () =>
           getPipelineState(tenantId).cancelRequestedAt !== null,
       });
+      if (scoringDeferred > 0) {
+        pipelineLogger.info(
+          "Scoring deferred extra jobs to next run (pipelineMaxJobsToScore cap)",
+          { deferred: scoringDeferred },
+        );
+      }
       await persistResultSummary({
         stage: "scoring",
         jobsScored: scoredJobs.length,

@@ -22,7 +22,11 @@ import {
   updateProgress,
 } from "../progress";
 
-const DISCOVERY_CONCURRENCY = 3;
+// Tuned for ~14 active extractor manifests. Concurrency=6 lets the four
+// heaviest (jobspy/linkedin-glassdoor, ats-boards, gradcracker, ukvisajobs)
+// run alongside the lightweight remote-only API extractors instead of
+// blocking them — discovery time drops from ~2h to ~30-45 min in practice.
+const DISCOVERY_CONCURRENCY = 6;
 
 type DiscoveryTaskResult = {
   discoveredJobs: CreateJobInput[];

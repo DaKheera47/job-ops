@@ -263,6 +263,7 @@ export const DEMO_SOURCE_BASE_URLS: Record<JobSource, string> = {
   remotive: "https://remotive.com",
   remoteok: "https://remoteok.com",
   himalayas: "https://himalayas.app",
+  hackernews: "https://news.ycombinator.com/submitted?id=whoishiring",
   justjoinit: "https://justjoin.it",
   nofluffjobs: "https://nofluffjobs.com",
   hhru: "https://hh.ru",

@@ -35,10 +35,15 @@ const TPM_KEYWORDS: ResumeKeywords = {
     "pmo",
     "delivery",
   ]),
+  candidateLanguages: new Set(["english", "russian"]),
   sourceLength: 1000,
 };
 
-const EMPTY_KEYWORDS: ResumeKeywords = { tokens: new Set(), sourceLength: 0 };
+const EMPTY_KEYWORDS: ResumeKeywords = {
+  tokens: new Set(),
+  candidateLanguages: new Set(),
+  sourceLength: 0,
+};
 
 describe("screenJob — anti-domain", () => {
   it.each([
@@ -160,6 +165,100 @@ describe("screenJob — ordering", () => {
     );
     expect(result.skip).toBe(true);
     if (result.skip) expect(result.reason.kind).toBe("anti_domain");
+  });
+});
+
+describe("screenJob — language gate", () => {
+  it("skips jobs that hard-require a language the candidate doesn't list", () => {
+    const r1 = screenJob(
+      {
+        title: "Senior Program Manager",
+        jobDescription:
+          "We're looking for a Native Polish speaker to lead our Warsaw team.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r1.skip).toBe(true);
+    if (r1.skip) {
+      expect(r1.reason.kind).toBe("language_required");
+      if (r1.reason.kind === "language_required") {
+        expect(r1.reason.language).toBe("polish");
+      }
+    }
+
+    const r2 = screenJob(
+      {
+        title: "Project Manager",
+        jobDescription: "Fluent in German is mandatory for this role.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r2.skip).toBe(true);
+    if (r2.skip && r2.reason.kind === "language_required") {
+      expect(r2.reason.language).toBe("german");
+    }
+
+    const r3 = screenJob(
+      {
+        title: "Engineering Manager",
+        jobDescription: "Must speak French at a professional level.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r3.skip).toBe(true);
+  });
+
+  it("does NOT skip when the language is in candidate's resume", () => {
+    // Russian IS in TPM_KEYWORDS.candidateLanguages — must pass even with
+    // a hard requirement.
+    const r = screenJob(
+      {
+        title: "Technical Program Manager",
+        jobDescription: "Native Russian speaker required for client comms.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r.skip).toBe(false);
+  });
+
+  it("does NOT skip on soft mentions ('knowledge of X is a plus')", () => {
+    const r = screenJob(
+      {
+        title: "Senior Program Manager",
+        jobDescription:
+          "Knowledge of Polish or German is a plus but not required.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r.skip).toBe(false);
+  });
+
+  it("does NOT skip when candidateLanguages is empty (no negative signal)", () => {
+    const noLangs: ResumeKeywords = {
+      tokens: TPM_KEYWORDS.tokens,
+      candidateLanguages: new Set(),
+      sourceLength: TPM_KEYWORDS.sourceLength,
+    };
+    const r = screenJob(
+      {
+        title: "Program Manager",
+        jobDescription: "Native Polish speaker required.",
+      },
+      noLangs,
+    );
+    expect(r.skip).toBe(false);
+  });
+
+  it("anti-domain still wins over language gate", () => {
+    const r = screenJob(
+      {
+        title: "Medical Billing Specialist",
+        jobDescription: "Native Polish speaker required.",
+      },
+      TPM_KEYWORDS,
+    );
+    expect(r.skip).toBe(true);
+    if (r.skip) expect(r.reason.kind).toBe("anti_domain");
   });
 });
 
