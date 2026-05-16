@@ -1,15 +1,13 @@
-import { getJobsFromCxs } from "@career-boards/workday/get-jobs-from-cxs";
-import { workdayUrlToCxsJobsUrl } from "@career-boards/workday/workday-url-to-cxs";
+import { fetchWorkdayCxsJobs } from "@client/api/workday";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { Eye, Loader2, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type WatchlistFetchState =
   | {
       status: "loading";
       careersUrl: string;
-      cxsJobsUrl: string;
     }
   | {
       status: "success";
@@ -24,15 +22,12 @@ type WatchlistFetchState =
       error: string;
     };
 
-export const WatchlistPage: React.FC = () => {
-  const watchlist = useMemo(
-    () => [
-      "https://autodesk.wd1.myworkdayjobs.com/Ext",
-      "https://pg.wd5.myworkdayjobs.com/en-US/1000",
-    ],
-    [],
-  );
+const WATCHLIST_URLS = [
+  "https://autodesk.wd1.myworkdayjobs.com/Ext",
+  "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+];
 
+export const WatchlistPage: React.FC = () => {
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
   const [dismissedUrls, setDismissedUrls] = useState<Set<string>>(
     () => new Set(),
@@ -42,65 +37,40 @@ export const WatchlistPage: React.FC = () => {
     let cancelled = false;
 
     async function fetchWatchlist() {
-      const initialItems: WatchlistFetchState[] = watchlist.map(
-        (careersUrl) => {
-          try {
-            return {
-              status: "loading",
-              careersUrl,
-              cxsJobsUrl: workdayUrlToCxsJobsUrl(careersUrl),
-            };
-          } catch (error) {
-            return {
-              status: "error",
-              careersUrl,
-              error: error instanceof Error ? error.message : String(error),
-            };
-          }
-        },
+      setItems(
+        WATCHLIST_URLS.map((careersUrl) => ({
+          status: "loading",
+          careersUrl,
+        })),
       );
 
-      setItems(initialItems);
-
       await Promise.all(
-        initialItems.map(async (item) => {
-          if (item.status === "error") return;
-
+        WATCHLIST_URLS.map(async (careersUrl) => {
           try {
-            const response = await getJobsFromCxs({
-              cxsJobsUrl: item.cxsJobsUrl,
-              careersUrl: item.careersUrl,
-              maxJobs: 40,
-            });
+            const result = await fetchWorkdayCxsJobs(careersUrl, 40);
 
             if (cancelled) return;
 
-            setItems((currentItems) =>
-              currentItems.map((currentItem) =>
-                currentItem.careersUrl === item.careersUrl
-                  ? {
-                      status: "success",
-                      careersUrl: item.careersUrl,
-                      cxsJobsUrl: item.cxsJobsUrl,
-                      response,
-                    }
-                  : currentItem,
+            setItems((current) =>
+              current.map((item) =>
+                item.careersUrl === careersUrl
+                  ? { status: "success", ...result }
+                  : item,
               ),
             );
           } catch (error) {
             if (cancelled) return;
 
-            setItems((currentItems) =>
-              currentItems.map((currentItem) =>
-                currentItem.careersUrl === item.careersUrl
+            setItems((current) =>
+              current.map((item) =>
+                item.careersUrl === careersUrl
                   ? {
                       status: "error",
-                      careersUrl: item.careersUrl,
-                      cxsJobsUrl: item.cxsJobsUrl,
+                      careersUrl,
                       error:
                         error instanceof Error ? error.message : String(error),
                     }
-                  : currentItem,
+                  : item,
               ),
             );
           }
@@ -113,7 +83,7 @@ export const WatchlistPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [watchlist]);
+  }, []);
 
   const visibleItems = items.filter(
     (item) => !dismissedUrls.has(item.careersUrl),
