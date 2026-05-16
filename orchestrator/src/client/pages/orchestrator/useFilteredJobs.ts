@@ -37,7 +37,9 @@ export const useFilteredJobs = (
     let filtered = [...jobs];
 
     if (activeTab === "ready") {
-      filtered = filtered.filter((job) => job.status === "ready");
+      filtered = filtered.filter(
+        (job) => job.status === "ready" || job.status === "processing",
+      );
     } else if (activeTab === "discovered") {
       filtered = filtered.filter(
         (job) => job.status === "discovered" || job.status === "processing",

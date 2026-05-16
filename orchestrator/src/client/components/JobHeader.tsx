@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, formatDate, formatJobSourceLabel, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
-import { ScoreRing } from "../pages/job-page/JobPageLeftSidebar";
+import {
+  isAwaitingAiScore,
+  ScoreRing,
+} from "../pages/job-page/JobPageLeftSidebar";
 import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
 import {
   getJobStatusIndicator,
@@ -235,7 +238,11 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
         </div>
 
         <div className="flex w-full flex-row-reverse sm:flex-col justify-between items-end gap-4 sm:w-auto sm:justify-end h-full">
-          <ScoreRing score={job.suitabilityScore} size="sm" />
+          <ScoreRing
+            score={job.suitabilityScore}
+            size="sm"
+            isAwaitingAi={isAwaitingAiScore(job)}
+          />
           {jobCTA && <>{jobCTA}</>}
         </div>
       </div>

@@ -3,6 +3,7 @@ import {
   ClipboardList,
   FileText,
   FolderKanban,
+  Loader2,
   Mail,
   MessageSquareText,
   Sparkles,
@@ -68,7 +69,18 @@ const memoryLinks = [
   },
 ];
 
-const getSuitabilityScoreTokens = (score: number | null) => {
+const getSuitabilityScoreTokens = (
+  score: number | null,
+  isAwaitingAi = false,
+) => {
+  if (score === null && isAwaitingAi) {
+    return {
+      shell: "border-blue-300/55 bg-blue-500/10 text-blue-200",
+      value: "loading",
+      label: "AI is still tailoring and scoring this job.",
+    };
+  }
+
   if (score === null) {
     return {
       shell: "border-destructive/40 bg-destructive/10 text-destructive",
@@ -101,11 +113,20 @@ const getSuitabilityScoreTokens = (score: number | null) => {
   };
 };
 
+export function isAwaitingAiScore(
+  job: Pick<Job, "status" | "suitabilityScore">,
+): boolean {
+  if (job.suitabilityScore != null) return false;
+  return job.status === "processing";
+}
+
 export const ScoreRing: React.FC<{
   score: number | null;
   size?: "sm" | "lg";
-}> = ({ score, size = "lg" }) => {
-  const tokens = getSuitabilityScoreTokens(score);
+  isAwaitingAi?: boolean;
+}> = ({ score, size = "lg", isAwaitingAi = false }) => {
+  const tokens = getSuitabilityScoreTokens(score, isAwaitingAi);
+  const isLoading = score === null && isAwaitingAi;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -128,7 +149,11 @@ export const ScoreRing: React.FC<{
                   "font-semibold leading-none tabular-nums",
                 )}
               >
-                {tokens.value}
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  tokens.value
+                )}
               </div>
               {size === "lg" && (
                 <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
@@ -167,7 +192,10 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
           <div className="text-sm text-muted-foreground">{job.title}</div>
         </div>
         <div className="flex justify-start sm:justify-end">
-          <ScoreRing score={job.suitabilityScore} />
+          <ScoreRing
+            score={job.suitabilityScore}
+            isAwaitingAi={isAwaitingAiScore(job)}
+          />
         </div>
       </div>
 

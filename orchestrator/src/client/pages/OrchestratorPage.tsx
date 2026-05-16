@@ -2,7 +2,7 @@ import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import { useSettings } from "@client/hooks/useSettings";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { VirtualListHandle } from "@/client/lib/virtual-list";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
@@ -35,6 +35,7 @@ import {
 export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     searchParams,
     sourceFilter,
@@ -73,6 +74,7 @@ export const OrchestratorPage: React.FC = () => {
 
   const selectedJobId = jobId || null;
   const jobListHandleRef = useRef<VirtualListHandle | null>(null);
+  const lastNavigationRefreshRef = useRef<number | null>(null);
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
@@ -119,6 +121,16 @@ export const OrchestratorPage: React.FC = () => {
     setIsRefreshPaused,
     loadJobs,
   } = useOrchestratorData(selectedJobId);
+
+  useEffect(() => {
+    const state = location.state as { refreshJobsAt?: number } | null;
+    const refreshJobsAt = state?.refreshJobsAt;
+    if (!refreshJobsAt || refreshJobsAt === lastNavigationRefreshRef.current) {
+      return;
+    }
+    lastNavigationRefreshRef.current = refreshJobsAt;
+    void loadJobs();
+  }, [loadJobs, location.state]);
   const enabledSources = useMemo(
     () => getEnabledSources(settings ?? null),
     [settings],

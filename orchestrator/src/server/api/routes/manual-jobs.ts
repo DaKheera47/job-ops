@@ -315,8 +315,17 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
 
-    // Score asynchronously so the import returns immediately.
-    (async () => {
+    const scoringJob = await jobsRepo.updateJob(processedJob.id, {
+      status: "processing",
+    });
+    if (!scoringJob) {
+      return fail(res, notFound("Job not found"));
+    }
+
+    ok(res, scoringJob);
+
+    // Score asynchronously so the import returns immediately with a processing state.
+    void (async () => {
       try {
         const rawProfile = await getProfile();
         if (
@@ -334,6 +343,7 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           }),
         ]);
         await jobsRepo.updateJob(processedJob.id, {
+          status: "ready",
           suitabilityScore: score,
           suitabilityReason: reason,
           jobBrief,
@@ -343,6 +353,7 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           jobId: processedJob.id,
           error,
         });
+        await jobsRepo.updateJob(processedJob.id, { status: "ready" });
       }
     })().catch((error) => {
       logger.warn("Manual job scoring task failed to start", {
@@ -350,8 +361,6 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
         error,
       });
     });
-
-    ok(res, processedJob);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(res, badRequest(error.message, error.flatten()));

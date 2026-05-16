@@ -23,7 +23,7 @@ const defaultDateFilter: JobDateFilter = {
 };
 
 describe("useFilteredJobs", () => {
-  it("keeps only ready jobs in the ready tab", () => {
+  it("keeps ready and processing jobs in the ready tab", () => {
     const jobs: Job[] = [
       { ...baseJob, id: "ready", status: "ready" },
       { ...baseJob, id: "processing", status: "processing" },
@@ -41,7 +41,10 @@ describe("useFilteredJobs", () => {
       ),
     );
 
-    expect(result.current.map((job) => job.id)).toEqual(["ready"]);
+    expect(result.current.map((job) => job.id)).toEqual([
+      "processing",
+      "ready",
+    ]);
   });
 
   it("filters by discovered date on the discovered tab", () => {

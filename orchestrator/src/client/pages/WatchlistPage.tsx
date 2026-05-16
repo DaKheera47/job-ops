@@ -1,3 +1,4 @@
+import * as api from "@client/api";
 import {
   fetchWorkdayCxsJobDetails,
   fetchWorkdayCxsJobs,
@@ -11,10 +12,12 @@ import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
 import { useSettings } from "@client/hooks/useSettings";
 import { showErrorToast } from "@client/lib/error-toast";
+import { queryKeys } from "@client/lib/queryKeys";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type { JobListItem, ManualJobDraft } from "@shared/types.js";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, FolderInput, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -239,6 +242,7 @@ function rankWorkdayJobs(
 
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { settings } = useSettings();
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
   const [jobDetails, setJobDetails] = useState<Record<string, JobDetailsState>>(
@@ -581,8 +585,16 @@ export const WatchlistPage: React.FC = () => {
             sourceHost: open ? current.sourceHost : null,
           }))
         }
-        onImported={(result) => {
-          navigate(`/jobs/ready/${result.jobId}`);
+        onImported={async (result) => {
+          await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+          await queryClient.fetchQuery({
+            queryKey: queryKeys.jobs.list({ view: "list" }),
+            queryFn: () => api.getJobs({ view: "list" }),
+            staleTime: 0,
+          });
+          navigate(`/jobs/ready/${result.jobId}`, {
+            state: { refreshJobsAt: Date.now() },
+          });
         }}
         initialDraft={importState.draft}
         initialSource={importState.source}

@@ -148,7 +148,7 @@ export const tabs: Array<{
   label: string;
   statuses: JobStatus[];
 }> = [
-  { id: "ready", label: "Ready", statuses: ["ready"] },
+  { id: "ready", label: "Ready", statuses: ["ready", "processing"] },
   {
     id: "discovered",
     label: "Discovered",

@@ -102,11 +102,17 @@ describe.sequential("Manual jobs API routes", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.source).toBe("manual");
+    expect(body.data.status).toBe("processing");
     expect(body.data.jobUrl).toBe("https://example.com/jobs/backend-engineer");
     expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id, {
       analyticsOrigin: "manual_job_create",
     });
     await new Promise((resolve) => setTimeout(resolve, 25));
+    const readyRes = await fetch(`${baseUrl}/api/jobs/${body.data.id}`);
+    const readyBody = await readyRes.json();
+    expect(readyBody.ok).toBe(true);
+    expect(readyBody.data.status).toBe("ready");
+    expect(readyBody.data.suitabilityScore).toBe(88);
   });
 
   it("rejects manual imports without a job URL", async () => {
