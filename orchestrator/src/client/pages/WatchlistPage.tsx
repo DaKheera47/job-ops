@@ -8,10 +8,19 @@ import {
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
+import { useSettings } from "@client/hooks/useSettings";
+import { matchJobLocationIntent } from "@shared/job-matching.js";
+import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
+import { normalizeCountryKey } from "@shared/location-support.js";
 import type { JobListItem } from "@shared/types.js";
 import { Eye, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import {
+  normalizeWorkplaceTypes,
+  parseCityLocationsSetting,
+} from "./orchestrator/automatic-run";
+import { computeJobMatchScore } from "./orchestrator/JobCommandBar.utils";
 import { JobRowContent } from "./orchestrator/JobRowContent";
 
 type WatchlistFetchState =
@@ -44,6 +53,15 @@ type JobDetailsState =
       status: "error";
       error: string;
     };
+
+interface RankedWorkdayJob {
+  workdayJob: NormalizedWorkdayJob;
+  job: JobListItem;
+  matchScore: number;
+  matchedSearchTerm: string | null;
+  locationPriority: 0 | 1;
+  locationMatched: boolean;
+}
 
 const WATCHLIST_URLS = [
   "https://autodesk.wd1.myworkdayjobs.com/Ext",
@@ -97,7 +115,80 @@ function toJobListItem(
   };
 }
 
+function getPipelineSearchMatch(
+  job: JobListItem,
+  searchTerms: string[],
+): { score: number; term: string | null } {
+  let best = { score: 0, term: null as string | null };
+
+  for (const term of searchTerms) {
+    const normalizedTerm = term.trim().toLowerCase();
+    if (!normalizedTerm) continue;
+
+    const score = computeJobMatchScore(job, normalizedTerm);
+    if (score > best.score) {
+      best = { score, term };
+    }
+  }
+
+  return best;
+}
+
+function normalizeUiCountryKey(value: string): string {
+  const normalized = normalizeCountryKey(value);
+  if (normalized === "usa/ca") return "united states";
+  return normalized;
+}
+
+function rankWorkdayJobs(
+  jobs: NormalizedWorkdayJob[],
+  careersUrl: string,
+  searchTerms: string[],
+  locationIntent: ReturnType<typeof createLocationIntentFromLegacyInputs>,
+): RankedWorkdayJob[] {
+  const hasSelectedLocation = Boolean(locationIntent.selectedCountry);
+
+  return jobs
+    .map((workdayJob, index) => {
+      const job = toJobListItem(workdayJob, careersUrl);
+      const match = getPipelineSearchMatch(job, searchTerms);
+      const locationMatch = hasSelectedLocation
+        ? matchJobLocationIntent(
+            {
+              location: job.location,
+              locationEvidence: null,
+              isRemote: /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
+            },
+            locationIntent,
+          )
+        : { matched: false, priority: 0 as const };
+
+      return {
+        workdayJob,
+        job,
+        matchScore: match.score,
+        matchedSearchTerm: match.term,
+        locationPriority: locationMatch.priority,
+        locationMatched: locationMatch.matched,
+        index,
+      };
+    })
+    .sort((left, right) => {
+      if (left.matchScore !== right.matchScore) {
+        return right.matchScore - left.matchScore;
+      }
+      if (left.locationPriority !== right.locationPriority) {
+        return right.locationPriority - left.locationPriority;
+      }
+      if (left.locationMatched !== right.locationMatched) {
+        return left.locationMatched ? -1 : 1;
+      }
+      return left.index - right.index;
+    });
+}
+
 export const WatchlistPage: React.FC = () => {
+  const { settings } = useSettings();
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
   const [jobDetails, setJobDetails] = useState<Record<string, JobDetailsState>>(
     {},
@@ -161,6 +252,16 @@ export const WatchlistPage: React.FC = () => {
   const visibleItems = items.filter(
     (item) => !dismissedUrls.has(item.careersUrl),
   );
+  const pipelineSearchTerms = settings?.searchTerms.value ?? [];
+  const locationIntent = createLocationIntentFromLegacyInputs({
+    selectedCountry: normalizeUiCountryKey(
+      settings?.jobspyCountryIndeed.value ?? "",
+    ),
+    cityLocations: parseCityLocationsSetting(settings?.searchCities.value),
+    workplaceTypes: normalizeWorkplaceTypes(settings?.workplaceTypes.value),
+    searchScope: settings?.locationSearchScope.value,
+    matchStrictness: settings?.locationMatchStrictness.value,
+  });
 
   function dismiss(careersUrl: string) {
     setDismissedUrls((current) => {
@@ -283,46 +384,71 @@ export const WatchlistPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {item.response.jobs.map((workdayJob) => {
-                    const job = toJobListItem(workdayJob, item.careersUrl);
-                    const details = jobDetails[workdayJob.jobUrl];
+                  {rankWorkdayJobs(
+                    item.response.jobs,
+                    item.careersUrl,
+                    pipelineSearchTerms,
+                    locationIntent,
+                  ).map(
+                    ({
+                      workdayJob,
+                      job,
+                      matchScore,
+                      matchedSearchTerm,
+                      locationMatched,
+                      locationPriority,
+                    }) => {
+                      const details = jobDetails[workdayJob.jobUrl];
 
-                    return (
-                      <div key={job.id} className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <JobRowContent
-                            job={job}
-                            showStatusDot={false}
-                            showSuitabilityScore={false}
-                            className="min-w-0 flex-1"
-                          />
-                          <OpenJobListingButton
-                            href={workdayJob.jobUrl}
-                            size="sm"
-                            className="shrink-0"
+                      return (
+                        <div key={job.id} className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <JobRowContent
+                              job={job}
+                              showStatusDot={false}
+                              showSuitabilityScore={false}
+                              className="min-w-0 flex-1"
+                            />
+                            <OpenJobListingButton
+                              href={workdayJob.jobUrl}
+                              size="sm"
+                              className="shrink-0"
+                            />
+                            {matchedSearchTerm ? (
+                              <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
+                                {matchedSearchTerm} · {matchScore}
+                              </span>
+                            ) : null}
+                            {locationMatched ? (
+                              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                                {locationPriority > 0 ? "location" : "remote"}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <JobDescriptionPanel
+                            description={
+                              details?.status === "success"
+                                ? details.details.jobDescriptionText
+                                : null
+                            }
+                            helperText="Fetched only when this panel is opened."
+                            jobUrl={workdayJob.jobUrl}
+                            defaultOpen={false}
+                            isLoading={details?.status === "loading"}
+                            error={
+                              details?.status === "error" ? details.error : null
+                            }
+                            onOpen={() =>
+                              void loadJobDetails(workdayJob.jobUrl)
+                            }
+                            maxHeightClassName="max-h-72"
+                            className="mt-3"
                           />
                         </div>
-
-                        <JobDescriptionPanel
-                          description={
-                            details?.status === "success"
-                              ? details.details.jobDescriptionText
-                              : null
-                          }
-                          helperText="Fetched only when this panel is opened."
-                          jobUrl={workdayJob.jobUrl}
-                          defaultOpen={false}
-                          isLoading={details?.status === "loading"}
-                          error={
-                            details?.status === "error" ? details.error : null
-                          }
-                          onOpen={() => void loadJobDetails(workdayJob.jobUrl)}
-                          maxHeightClassName="max-h-72"
-                          className="mt-3"
-                        />
-                      </div>
-                    );
-                  })}
+                      );
+                    },
+                  )}
                 </div>
               )}
             </div>
