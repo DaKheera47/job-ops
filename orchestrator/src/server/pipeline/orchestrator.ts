@@ -48,6 +48,7 @@ import {
 import {
   checkLivenessStep,
   discoverJobsStep,
+  filterRelocationJobsStep,
   importJobsStep,
   loadProfileStep,
   notifyPipelineWebhookStep,
@@ -424,6 +425,15 @@ export async function runPipeline(
         jobsDeduplicated: dedupSkipped,
         jobsLivenessFiltered: preImportFiltered,
       });
+
+      ensureNotCancelled(tenantId);
+      const { markedCount: relocationSkipped } =
+        await filterRelocationJobsStep();
+      if (relocationSkipped > 0) {
+        pipelineLogger.info("Relocation filter auto-skipped jobs", {
+          skipped: relocationSkipped,
+        });
+      }
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "liveness" });

@@ -108,6 +108,24 @@ If the developer says yes:
 - OAuth setup requires env vars `GMAIL_OAUTH_CLIENT_ID` and `GMAIL_OAUTH_CLIENT_SECRET` (plus the redirect URI registered in Google Cloud Console). Without them, the connect flow surfaces "Gmail OAuth is not configured" in the Settings UI.
 - Notifications: each processed email produces a Telegram message via `orchestrator/src/server/services/telegram-bot/gmail-notifications.ts`. Auto-link confidence threshold is governed by `gmailAutoLinkConfidence`; below it, the bot asks the user to confirm the link.
 
+### Relocation Filter (Munich-or-remote)
+- The current user is in Munich and does NOT relocate. Pipeline auto-skips listings that aren't in the Munich metro and aren't genuinely remote.
+- `orchestrator/src/server/services/relocation-filter.ts` — `requiresRelocation(job)` predicate. Hard-coded Munich-area keyword list (München / Garching / Gräfelfing / Unterföhring / Kirchheim / Germering / Aschheim / Ottobrunn / Planegg / Martinsried / Neubiberg / Haar / Ismaning / Oberhaching / Vaterstetten / Putzbrunn / Pullach / Taufkirchen) + country-only allow-list ("Germany"/"NL"/"Europe"/"DE"/...) + explicit remote markers ("Remote"/"Anywhere"/"Home Office"/"Telearbeit"/"Werk van thuis").
+- `orchestrator/src/server/pipeline/steps/filter-relocation.ts` — pipeline step that demotes discovered jobs requiring relocation to `skipped` status with reason `RELOCATION_SKIP_REASON`. Marks rather than deletes so users can still inspect them in "All Jobs".
+- **Trust the location string, not `isRemote`.** LinkedIn and Indeed routinely set `isRemote=1` for hybrid roles in Berlin/Hamburg/Düsseldorf that still require relocation. The filter ignores the source's remote flag and relies on the location text.
+- Currently single-tenant (Munich is hard-coded). If you generalize to other cities, parameterize the keyword list and remove the hard-coded constants — do NOT add per-tenant settings flags until that's actually needed.
+
+### Stale Jobs Cleanup
+- File: `orchestrator/src/server/services/stale-jobs-cleanup.ts` — daily 3 AM UTC scheduler.
+- Removes jobs in `discovered`/`skipped`/`expired` status not updated for 90+ days. Repository helper: `deleteStaleJobs(olderThanDays)` in `orchestrator/src/server/repositories/jobs.ts`.
+- **Never touches** `applied`/`in_progress`/`ready` — those represent user investment and must persist regardless of age. Preserve this invariant in any new pruning logic.
+- Initialized at startup from `orchestrator/src/server/index.ts` via `initializeStaleJobsCleanup()`. Look for "Stale job cleanup scheduler started" in the logs to verify it's running after restart.
+
+### Pipeline Step Ordering
+- Order: `discoverJobs` → `preImportLiveness` → `importJobs` → `filterRelocation` → `checkLiveness` → `scoreJobs` (LLM) → `autoSkipBelowThreshold` → `selectJobs` → `processJobs`.
+- Registered in `orchestrator/src/server/pipeline/steps/index.ts`; invoked in `orchestrator/src/server/pipeline/orchestrator.ts`.
+- **Insert new filtering steps BEFORE `scoreJobs`.** Scoring is the LLM bottleneck — both cost and rate-limit constrained. Pre-filtering aggressively (liveness, relocation, future heuristics) saves tokens and prevents pipeline stalls when GNAI hits its $80/day cap.
+
 ### Extractors
 - Each extractor is a workspace package in `extractors/<name>/`
 - Must export an `ExtractorManifest` from `manifest.ts` or `src/manifest.ts`
@@ -129,11 +147,14 @@ If the developer says yes:
 
 ## Common Pitfalls
 
-- **Docker path with spaces**: Use `MSYS_NO_PATHCONV=1` prefix on Windows/Git Bash
+- **Docker path with spaces**: Use `MSYS_NO_PATHCONV=1` prefix on Windows/Git Bash. Also needed for `docker exec <container> <path>` and `docker cp <src> <container>:/<dst>` when the destination path contains a leading slash that Git Bash would otherwise translate.
 - **New extractor not loading**: Check it's in Dockerfile AND registered in `shared/src/extractors/index.ts`
 - **New setting not recognized**: Must be added to `shared/src/settings-registry.ts`
 - **Telegram menu not updating**: Docker build cache — use `--no-cache`
 - **Type errors in `Record<ExtractorSourceId, ...>`**: When adding source IDs, also update `demo-defaults.data.ts` and `extractor-health.ts`
+- **`docker compose restart` does NOT pick up source changes.** The container entrypoint runs `npx tsx src/server/index.ts` against code baked into the image (`ghcr.io/dakheera47/job-ops:latest`), and that image often lags behind `main`. After editing TypeScript: either `docker compose build --no-cache && docker compose up -d` to rebuild, or for quick iteration `docker cp <changed-files> job-ops:/app/orchestrator/...` followed by `docker compose restart`. Verify the running code with `MSYS_NO_PATHCONV=1 docker exec job-ops grep -n <symbol> /app/orchestrator/src/...` before assuming a fix landed.
+- **One-off DB scripts**: The container has no `sqlite3` CLI. Pattern: write `scripts/<name>.cjs` using `require("/app/orchestrator/node_modules/better-sqlite3")` against `/app/data/jobs.db`, then `docker cp scripts/x.cjs job-ops:/tmp/x.cjs` and `MSYS_NO_PATHCONV=1 docker exec job-ops node /tmp/x.cjs`. **Always back up before destructive ops**: `MSYS_NO_PATHCONV=1 docker exec job-ops sh -c "cp /app/data/jobs.db /app/data/jobs.db.bak-$(date +%Y%m%d-%H%M%S)"`. Existing scripts in `scripts/*.cjs` show the conventions.
+- **Don't delete `applied`/`in_progress`/`ready` jobs.** These represent user investment (tailored PDFs, sent applications, ongoing interviews). Every pruning/cleanup path in the codebase (stale-jobs, relocation filter, score-threshold auto-skip) preserves them — keep that invariant.
 
 ## Karpathy Coding Principles
 

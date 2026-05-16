@@ -785,6 +785,32 @@ export async function deleteJobsBelowScore(threshold: number): Promise<number> {
 }
 
 /**
+ * Bulk-mark a list of discovered jobs as skipped with a reason.  Used by the
+ * pipeline relocation filter — every targeted job must currently be in
+ * `discovered`, otherwise it is left alone (we never demote applied/ready/etc).
+ */
+export async function markJobsSkippedWithReason(
+  ids: string[],
+  reason: string,
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const tenantId = getActiveTenantId();
+  const now = new Date().toISOString();
+  const result = await db
+    .update(jobs)
+    .set({ status: "skipped", suitabilityReason: reason, updatedAt: now })
+    .where(
+      and(
+        eq(jobs.tenantId, tenantId),
+        eq(jobs.status, "discovered"),
+        inArray(jobs.id, ids),
+      ),
+    )
+    .run();
+  return result.changes;
+}
+
+/**
  * Delete stale jobs not updated in olderThanDays days.
  * Only targets safe-to-prune statuses (discovered, skipped, expired) —
  * never touches applied, in_progress, or ready jobs.
