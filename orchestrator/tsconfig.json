@@ -17,6 +17,7 @@
       "@infra/*": ["src/server/infra/*"],
       "@client/*": ["src/client/*"],
       "@shared/*": ["../shared/src/*"],
+      "@career-boards/workday": ["../career-boards/workday/src/index.ts"],
       "@career-boards/workday/*": ["../career-boards/workday/src/*"]
     }
   },

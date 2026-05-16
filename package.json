@@ -4,6 +4,7 @@
   "workspaces": [
     "orchestrator",
     "docs-site",
+    "career-boards/*",
     "extractors/*",
     "shared"
   ],

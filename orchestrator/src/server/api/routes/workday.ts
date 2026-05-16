@@ -1,8 +1,8 @@
 import {
   getJobsFromCxs,
   WorkdayCxsFetchError,
-} from "@career-boards/workday/get-jobs-from-cxs";
-import { workdayUrlToCxsJobsUrl } from "@career-boards/workday/workday-url-to-cxs";
+  workdayUrlToCxsJobsUrl,
+} from "@career-boards/workday";
 import {
   badRequest,
   requestTimeout,
