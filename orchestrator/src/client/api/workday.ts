@@ -16,6 +16,8 @@ export interface NormalizedWorkdayJob {
   company?: string;
   locationText?: string;
   postedOn?: string;
+  jobDescriptionHtml?: string;
+  jobDescriptionText?: string;
   jobUrl: string;
   externalPath: string;
   raw: WorkdayJobPosting;

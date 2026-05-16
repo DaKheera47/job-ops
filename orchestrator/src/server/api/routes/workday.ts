@@ -1,4 +1,5 @@
 import {
+  getJobDetailsFromCxs,
   getJobsFromCxs,
   WorkdayCxsFetchError,
   workdayUrlToCxsJobsUrl,
@@ -46,10 +47,31 @@ workdayRouter.post("/fetch-jobs", async (req: Request, res: Response) => {
       signal: controller.signal,
     });
 
+    const jobs = await Promise.all(
+      response.jobs.map(async (job) => {
+        const details = await getJobDetailsFromCxs({
+          jobUrl: job.jobUrl,
+          signal: controller.signal,
+        });
+
+        return {
+          ...job,
+          company: job.company ?? details.job.company,
+          locationText: job.locationText ?? details.job.locationText,
+          postedOn: job.postedOn ?? details.job.postedOn,
+          jobDescriptionHtml: details.job.jobDescriptionHtml,
+          jobDescriptionText: details.job.jobDescriptionText,
+        };
+      }),
+    );
+
     ok(res, {
       careersUrl: input.careersUrl,
       cxsJobsUrl,
-      response,
+      response: {
+        ...response,
+        jobs,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

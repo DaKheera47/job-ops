@@ -3,6 +3,7 @@ import {
   type NormalizedWorkdayJob,
   type WorkdayCxsJobsResult,
 } from "@client/api/workday";
+import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
 import type { JobListItem } from "@shared/types.js";
@@ -239,21 +240,31 @@ export const WatchlistPage: React.FC = () => {
                     const job = toJobListItem(workdayJob, item.careersUrl);
 
                     return (
-                      <div
-                        key={job.id}
-                        className="flex items-center gap-3 px-4 py-3"
-                      >
-                        <JobRowContent
-                          job={job}
-                          showStatusDot={false}
-                          showSuitabilityScore={false}
-                          className="min-w-0 flex-1"
-                        />
-                        <OpenJobListingButton
-                          href={workdayJob.jobUrl}
-                          size="sm"
-                          className="shrink-0"
-                        />
+                      <div key={job.id} className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <JobRowContent
+                            job={job}
+                            showStatusDot={false}
+                            showSuitabilityScore={false}
+                            className="min-w-0 flex-1"
+                          />
+                          <OpenJobListingButton
+                            href={workdayJob.jobUrl}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                        </div>
+
+                        {workdayJob.jobDescriptionText ? (
+                          <JobDescriptionPanel
+                            description={workdayJob.jobDescriptionText}
+                            helperText="Fetched from the Workday CXS job detail endpoint."
+                            jobUrl={workdayJob.jobUrl}
+                            defaultOpen={false}
+                            maxHeightClassName="max-h-72"
+                            className="mt-3"
+                          />
+                        ) : null}
                       </div>
                     );
                   })}

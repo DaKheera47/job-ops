@@ -28,6 +28,7 @@ type JobDescriptionPanelProps = {
   description: string | null | undefined;
   helperText?: string;
   jobUrl?: string | null;
+  defaultOpen?: boolean;
   maxHeightClassName?: string;
   onSave?: (description: string) => Promise<void> | void;
 };
@@ -40,6 +41,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   description: rawDescription,
   helperText = defaultHelperText,
   jobUrl,
+  defaultOpen = true,
   maxHeightClassName = "max-h-[420px]",
   onSave,
 }) => {
@@ -93,7 +95,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
     <Accordion
       type="single"
       collapsible
-      defaultValue="job-description"
+      defaultValue={defaultOpen ? "job-description" : undefined}
       className={cn(
         "overflow-hidden rounded-lg border border-border/45 bg-muted/25",
         className,
