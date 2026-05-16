@@ -70,7 +70,7 @@ type ProductEventMap = {
     had_error_message: boolean;
   };
   jobs_manual_import_completed: {
-    manual_import_source: "pasted_description" | "fetched_url";
+    manual_import_source: string;
     manual_import_source_host?: string;
   };
   jobs_bulk_action_started: {

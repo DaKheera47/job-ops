@@ -32,7 +32,10 @@ import { Textarea } from "@/components/ui/textarea";
 type ManualImportStep = "paste" | "loading" | "review";
 type ManualImportProgressStep = "paste" | "review";
 
-export type ManualImportTrackingSource = "pasted_description" | "fetched_url";
+export type ManualImportTrackingSource =
+  | "pasted_description"
+  | "fetched_url"
+  | (string & {});
 
 export interface ManualImportResult {
   jobId: string;
@@ -41,6 +44,8 @@ export interface ManualImportResult {
 }
 
 type ManualJobDraftState = {
+  source: string;
+  sourceJobId: string;
   title: string;
   employer: string;
   jobUrl: string;
@@ -70,6 +75,8 @@ type ReviewFieldConfig = {
 };
 
 const emptyDraft: ManualJobDraftState = {
+  source: "",
+  sourceJobId: "",
   title: "",
   employer: "",
   jobUrl: "",
@@ -226,6 +233,8 @@ const normalizeDraft = (
   jd?: string,
 ): ManualJobDraftState => ({
   ...emptyDraft,
+  source: draft?.source ?? "",
+  sourceJobId: draft?.sourceJobId ?? "",
   title: draft?.title ?? "",
   employer: draft?.employer ?? "",
   jobUrl: draft?.jobUrl ?? "",
@@ -250,6 +259,8 @@ const toPayload = (draft: ManualJobDraftState): ManualJobDraft => {
 
   return {
     title: clean(draft.title),
+    source: clean(draft.source),
+    sourceJobId: clean(draft.sourceJobId),
     employer: clean(draft.employer),
     jobUrl: clean(draft.jobUrl),
     applicationLink: clean(draft.applicationLink),
@@ -271,6 +282,9 @@ interface ManualImportFlowProps {
   onImported: (result: ManualImportResult) => void | Promise<void>;
   onClose: () => void;
   showReviewIntro?: boolean;
+  initialDraft?: ManualJobDraft | null;
+  initialSource?: ManualImportTrackingSource | null;
+  initialSourceHost?: string | null;
 }
 
 function getSourceHost(value: string): string | null {
@@ -295,6 +309,9 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   onImported,
   onClose,
   showReviewIntro = true,
+  initialDraft = null,
+  initialSource = null,
+  initialSourceHost = null,
 }) => {
   const [step, setStep] = useState<ManualImportStep>("paste");
   const [rawDescription, setRawDescription] = useState("");
@@ -311,7 +328,31 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   const [fetchedSourceUrl, setFetchedSourceUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (active) return;
+    if (active) {
+      if (!initialDraft) return;
+      const normalized = normalizeDraft(initialDraft);
+      setStep("review");
+      setRawDescription(normalized.jobDescription);
+      setFetchUrl(normalized.jobUrl);
+      setIsFetching(false);
+      setDraft(normalized);
+      setWarning(null);
+      setError(null);
+      setFetchNotice(null);
+      setIsImporting(false);
+      setImportSource(
+        initialSource ||
+          (normalized.source as ManualImportTrackingSource) ||
+          "pasted_description",
+      );
+      setImportSourceHost(
+        initialSourceHost ??
+          getSourceHost(normalized.jobUrl) ??
+          getSourceHost(normalized.applicationLink),
+      );
+      setFetchedSourceUrl(normalized.jobUrl || null);
+      return;
+    }
     setStep("paste");
     setRawDescription("");
     setFetchUrl("");
@@ -324,7 +365,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setImportSource("pasted_description");
     setImportSourceHost(null);
     setFetchedSourceUrl(null);
-  }, [active]);
+  }, [active, initialDraft, initialSource, initialSourceHost]);
 
   const progressStep: ManualImportProgressStep =
     step === "review" ? "review" : "paste";

@@ -2,6 +2,7 @@
  * Manual job import flow (paste JD -> infer -> review -> import).
  */
 
+import type { ManualJobDraft } from "@shared/types.js";
 import { FileText } from "lucide-react";
 import type React from "react";
 import {
@@ -11,18 +12,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ManualImportFlow, type ManualImportResult } from "./ManualImportFlow";
+import {
+  ManualImportFlow,
+  type ManualImportResult,
+  type ManualImportTrackingSource,
+} from "./ManualImportFlow";
 
 interface ManualImportSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported: (result: ManualImportResult) => void | Promise<void>;
+  initialDraft?: ManualJobDraft | null;
+  initialSource?: ManualImportTrackingSource | null;
+  initialSourceHost?: string | null;
 }
 
 export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
   open,
   onOpenChange,
   onImported,
+  initialDraft,
+  initialSource,
+  initialSourceHost,
 }) => {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -46,6 +57,9 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
               active={open}
               onImported={onImported}
               onClose={() => onOpenChange(false)}
+              initialDraft={initialDraft}
+              initialSource={initialSource}
+              initialSourceHost={initialSourceHost}
             />
           </div>
         </div>

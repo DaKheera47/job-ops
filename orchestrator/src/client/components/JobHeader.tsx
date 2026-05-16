@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn, formatDate, sourceLabel } from "@/lib/utils";
+import { cn, formatDate, formatJobSourceLabel, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
 import { ScoreRing } from "../pages/job-page/JobPageLeftSidebar";
 import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
@@ -263,8 +263,10 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {job.source && (
             <StatusIndicator
               variant="sky"
-              tooltip={`Job found on ${sourceLabel[job.source]}`}
-              label={job.source ? sourceLabel[job.source] : "Unknown Source"}
+              tooltip={`Job found on ${formatJobSourceLabel(job.source)}`}
+              label={
+                sourceLabel[job.source] ?? formatJobSourceLabel(job.source)
+              }
             />
           )}
 

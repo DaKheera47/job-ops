@@ -29,6 +29,14 @@ const manualJobInferenceSchema = z.object({
 
 const manualJobImportSchema = z.object({
   job: z.object({
+    source: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[a-z0-9][a-z0-9:_-]*$/i)
+      .optional(),
+    sourceJobId: z.string().trim().max(500).optional(),
     title: z.string().trim().min(1).max(500),
     employer: z.string().trim().min(1).max(500),
     jobUrl: z.string().trim().url().max(2000),
@@ -260,9 +268,11 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
   try {
     const input = manualJobImportSchema.parse(req.body ?? {});
     const job = input.job;
+    const source = cleanOptional(job.source) ?? "manual";
 
     const createdJob = await jobsRepo.createJob({
-      source: "manual",
+      source,
+      sourceJobId: cleanOptional(job.sourceJobId) ?? undefined,
       title: job.title.trim(),
       employer: job.employer.trim(),
       jobUrl: job.jobUrl.trim(),

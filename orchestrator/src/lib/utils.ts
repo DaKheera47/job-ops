@@ -1,6 +1,7 @@
 import {
   EXTRACTOR_SOURCE_IDS,
   sourceLabel as getExtractorSourceLabel,
+  isExtractorSourceId,
 } from "@shared/extractors";
 import type { Job } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
@@ -138,11 +139,27 @@ export const formatJobForWebhook = (job: Job) => {
   );
 };
 
-export const sourceLabel: Record<Job["source"], string> =
+export const sourceLabel: Partial<Record<Job["source"], string>> =
   EXTRACTOR_SOURCE_IDS.reduce(
     (acc, source) => {
       acc[source] = getExtractorSourceLabel(source);
       return acc;
     },
-    {} as Record<Job["source"], string>,
+    {} as Partial<Record<Job["source"], string>>,
   );
+
+export function formatJobSourceLabel(source?: string | null): string {
+  if (!source) return "Unknown Source";
+  if (isExtractorSourceId(source)) return getExtractorSourceLabel(source);
+
+  const [namespace, ...rest] = source.split(":");
+  if (namespace === "workday" && rest.length > 0) {
+    const company = rest
+      .join(":")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return `Workday: ${company}`;
+  }
+
+  return source;
+}

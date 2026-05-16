@@ -59,6 +59,7 @@ import {
   copyTextToClipboard,
   formatDateTime,
   formatJobForWebhook,
+  formatJobSourceLabel,
   formatTimestamp,
   safeFilenamePart,
   sourceLabel as sourceLabels,
@@ -220,7 +221,9 @@ export const JobPage: React.FC = () => {
       ),
     [catalog, selectedProjectIds],
   );
-  const sourceLabel = job ? sourceLabels[job.source] : "";
+  const sourceLabel = job
+    ? (sourceLabels[job.source] ?? formatJobSourceLabel(job.source))
+    : "";
   const jobPageBackTo = React.useMemo(() => {
     const state = location.state as JobPageLocationState | null;
     return isValidJobPageBackTarget(state?.jobPageBackTo)

@@ -141,7 +141,7 @@ export interface JobDocument {
   updatedAt: string;
 }
 
-export type JobSource = ExtractorSourceId;
+export type JobSource = ExtractorSourceId | (string & {});
 
 export type JobPdfSource = "generated" | "uploaded";
 export type JobPdfFreshness =
@@ -331,6 +331,8 @@ export interface CreateJobInput {
 }
 
 export interface ManualJobDraft {
+  source?: JobSource;
+  sourceJobId?: string;
   title?: string;
   employer?: string;
   jobUrl?: string;

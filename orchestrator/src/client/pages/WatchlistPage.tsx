@@ -7,15 +7,19 @@ import {
 } from "@client/api/workday";
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import { PageHeader, PageMain } from "@client/components/layout";
+import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
 import { useSettings } from "@client/hooks/useSettings";
+import { showErrorToast } from "@client/lib/error-toast";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
-import type { JobListItem } from "@shared/types.js";
-import { Eye, Loader2, X } from "lucide-react";
+import type { JobListItem, ManualJobDraft } from "@shared/types.js";
+import { Eye, FolderInput, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
@@ -61,6 +65,13 @@ interface RankedWorkdayJob {
   matchedSearchTerm: string | null;
   locationPriority: 0 | 1;
   locationMatched: boolean;
+}
+
+interface WorkdayImportState {
+  open: boolean;
+  draft: ManualJobDraft | null;
+  source: string | null;
+  sourceHost: string | null;
 }
 
 const WATCHLIST_URLS = [
@@ -140,6 +151,45 @@ function normalizeUiCountryKey(value: string): string {
   return normalized;
 }
 
+function toWorkdaySource(company: string): string {
+  const slug = company
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `workday:${slug || "unknown"}`;
+}
+
+function getSourceHost(value: string): string | null {
+  try {
+    return new URL(value).hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function buildManualDraftFromWorkdayJob(
+  job: NormalizedWorkdayJob,
+  details: NormalizedWorkdayJobDetails,
+  careersUrl: string,
+): ManualJobDraft {
+  const employer =
+    details.company ?? job.company ?? getEmployerFromCareersUrl(careersUrl);
+
+  return {
+    source: toWorkdaySource(employer),
+    sourceJobId: job.externalId,
+    title: details.title || job.title,
+    employer,
+    jobUrl: details.jobUrl || job.jobUrl,
+    applicationLink: details.jobUrl || job.jobUrl,
+    location: details.locationText ?? job.locationText,
+    jobDescription: details.jobDescriptionText,
+    jobType: details.timeType,
+  };
+}
+
 function rankWorkdayJobs(
   jobs: NormalizedWorkdayJob[],
   careersUrl: string,
@@ -188,6 +238,7 @@ function rankWorkdayJobs(
 }
 
 export const WatchlistPage: React.FC = () => {
+  const navigate = useNavigate();
   const { settings } = useSettings();
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
   const [jobDetails, setJobDetails] = useState<Record<string, JobDetailsState>>(
@@ -196,6 +247,13 @@ export const WatchlistPage: React.FC = () => {
   const [dismissedUrls, setDismissedUrls] = useState<Set<string>>(
     () => new Set(),
   );
+  const [importState, setImportState] = useState<WorkdayImportState>({
+    open: false,
+    draft: null,
+    source: null,
+    sourceHost: null,
+  });
+  const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,8 +329,11 @@ export const WatchlistPage: React.FC = () => {
     });
   }
 
-  async function loadJobDetails(jobUrl: string) {
-    if (jobDetails[jobUrl]) return;
+  async function loadJobDetails(
+    jobUrl: string,
+  ): Promise<NormalizedWorkdayJobDetails | null> {
+    const existing = jobDetails[jobUrl];
+    if (existing?.status === "success") return existing.details;
 
     setJobDetails((current) => ({
       ...current,
@@ -289,6 +350,7 @@ export const WatchlistPage: React.FC = () => {
           details: result.response.job,
         },
       }));
+      return result.response.job;
     } catch (error) {
       setJobDetails((current) => ({
         ...current,
@@ -297,6 +359,32 @@ export const WatchlistPage: React.FC = () => {
           error: error instanceof Error ? error.message : String(error),
         },
       }));
+      return null;
+    }
+  }
+
+  async function handleMoveToWorkspace(
+    job: NormalizedWorkdayJob,
+    careersUrl: string,
+  ) {
+    try {
+      setMovingJobUrl(job.jobUrl);
+      const details = await loadJobDetails(job.jobUrl);
+      if (!details) {
+        throw new Error("Couldn't fetch the job description yet.");
+      }
+      const draft = buildManualDraftFromWorkdayJob(job, details, careersUrl);
+      const source = draft.source ?? null;
+      setImportState({
+        open: true,
+        draft,
+        source,
+        sourceHost: source ?? getSourceHost(job.jobUrl),
+      });
+    } catch (error) {
+      showErrorToast(error, "Failed to prepare Workday job");
+    } finally {
+      setMovingJobUrl(null);
     }
   }
 
@@ -414,6 +502,26 @@ export const WatchlistPage: React.FC = () => {
                               size="sm"
                               className="shrink-0"
                             />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="shrink-0 gap-2"
+                              disabled={movingJobUrl === workdayJob.jobUrl}
+                              onClick={() =>
+                                void handleMoveToWorkspace(
+                                  workdayJob,
+                                  item.careersUrl,
+                                )
+                              }
+                            >
+                              {movingJobUrl === workdayJob.jobUrl ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <FolderInput className="h-4 w-4" />
+                              )}
+                              Move to workspace
+                            </Button>
                             {matchedSearchTerm ? (
                               <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
                                 {matchedSearchTerm} · {matchScore}
@@ -461,6 +569,25 @@ export const WatchlistPage: React.FC = () => {
           ) : null}
         </div>
       </PageMain>
+
+      <ManualImportSheet
+        open={importState.open}
+        onOpenChange={(open) =>
+          setImportState((current) => ({
+            ...current,
+            open,
+            draft: open ? current.draft : null,
+            source: open ? current.source : null,
+            sourceHost: open ? current.sourceHost : null,
+          }))
+        }
+        onImported={(result) => {
+          navigate(`/jobs/ready/${result.jobId}`);
+        }}
+        initialDraft={importState.draft}
+        initialSource={importState.source}
+        initialSourceHost={importState.sourceHost}
+      />
     </>
   );
 };

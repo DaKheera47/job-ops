@@ -1,4 +1,7 @@
-import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
+import {
+  EXTRACTOR_SOURCE_METADATA,
+  type ExtractorSourceId,
+} from "@shared/extractors";
 import {
   createLocationIntent,
   type LocationSourcePlan,
@@ -125,8 +128,10 @@ function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
 
 function getKnownJobSource(
   source: LocationSourcePlan["source"],
-): JobSource | null {
-  return source in EXTRACTOR_SOURCE_METADATA ? (source as JobSource) : null;
+): ExtractorSourceId | null {
+  return source in EXTRACTOR_SOURCE_METADATA
+    ? (source as ExtractorSourceId)
+    : null;
 }
 
 function getSourceStatus(args: {
