@@ -37,6 +37,23 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.13.0",
+    date: "2026-05-16",
+    items: [
+      {
+        title: "🧹 Smarter pre-screening — less noise in your job queue",
+        description:
+          "Before the AI scores any job, two new gates run: (1) titles that clearly belong to mismatched careers (medical, payroll, field sales, ERP consulting, legal, retail, recruiting, …) are auto-skipped, and (2) jobs whose title and description share zero keywords with your resume are skipped too. You'll see less off-topic clutter and the AI spends its budget on real candidates.",
+        tip: "Already applied to your current queue. The resume itself is the source of truth — edit it and the filter automatically adapts.",
+      },
+      {
+        title: "🔎 Wider match on remote-only boards",
+        description:
+          "Himalayas, RemoteOK, Remotive, We Work Remotely and Working Nomads now ignore rank prefixes (Senior, Junior, Lead, Staff, Principal) when checking your search terms against listings. A search for \"Senior Program Manager\" now also matches \"Program Manager II\" or \"Lead Program Manager\". The cap per term tripled from 50 → 150 since these boards return everything in one HTTP call anyway.",
+      },
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-05-16",
     items: [

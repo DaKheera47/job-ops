@@ -5,9 +5,13 @@
 
 import type { CreateJobInput } from "@shared/types/jobs";
 import { createRateLimitedFetch } from "@shared/utils/rate-limited-fetch";
+import { termMatchesHaystack } from "@shared/utils/term-match";
 
 const HIMALAYAS_API_URL = "https://himalayas.app/jobs/api";
-const DEFAULT_MAX_PER_TERM = 50;
+// One HTTP call returns the full payload — filtering is in-memory, so a
+// higher per-term cap costs nothing and improves recall when the user has
+// many synonymous search terms.
+const DEFAULT_MAX_PER_TERM = 150;
 
 export type HimalayasWorkplaceType = "remote" | "hybrid" | "onsite";
 
@@ -152,21 +156,14 @@ function mapJob(job: HimalayasJob): CreateJobInput | null {
 }
 
 function matchesSearchTerm(job: HimalayasJob, searchTerm: string): boolean {
-  const normalized = searchTerm.toLowerCase().trim();
-  if (!normalized) return true;
   const haystack = [
     asString(job.title) ?? "",
     asString(job.description) ?? "",
     asString(job.excerpt) ?? "",
     asString(job.companyName) ?? "",
     Array.isArray(job.categories) ? job.categories.join(" ") : "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  return normalized
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((token) => haystack.includes(token));
+  ].join(" ");
+  return termMatchesHaystack(haystack, searchTerm);
 }
 
 async function fetchHimalayas(

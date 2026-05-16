@@ -48,6 +48,7 @@ import {
 import {
   checkLivenessStep,
   discoverJobsStep,
+  filterAntiDomainJobsStep,
   filterRelocationJobsStep,
   importJobsStep,
   loadProfileStep,
@@ -432,6 +433,18 @@ export async function runPipeline(
       if (relocationSkipped > 0) {
         pipelineLogger.info("Relocation filter auto-skipped jobs", {
           skipped: relocationSkipped,
+        });
+      }
+
+      ensureNotCancelled(tenantId);
+      const {
+        markedCount: antiDomainSkipped,
+        byReason: antiDomainByReason,
+      } = await filterAntiDomainJobsStep();
+      if (antiDomainSkipped > 0) {
+        pipelineLogger.info("Anti-domain / resume-signal filter skipped jobs", {
+          skipped: antiDomainSkipped,
+          byReason: antiDomainByReason,
         });
       }
 

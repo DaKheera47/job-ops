@@ -5,9 +5,12 @@
 
 import type { CreateJobInput } from "@shared/types/jobs";
 import { createRateLimitedFetch } from "@shared/utils/rate-limited-fetch";
+import { termMatchesHaystack } from "@shared/utils/term-match";
 
 const REMOTIVE_API_URL = "https://remotive.com/api/remote-jobs";
-const DEFAULT_MAX_PER_TERM = 50;
+// Single HTTP call returns all jobs — filtering is in-memory, so a higher
+// cap costs nothing and helps when the user has many synonymous terms.
+const DEFAULT_MAX_PER_TERM = 150;
 
 export type RemotiveWorkplaceType = "remote" | "hybrid" | "onsite";
 
@@ -128,21 +131,14 @@ function mapJob(job: RemotiveJob): CreateJobInput | null {
 }
 
 function matchesSearchTerm(job: RemotiveJob, searchTerm: string): boolean {
-  const normalized = searchTerm.toLowerCase().trim();
-  if (!normalized) return true;
   const haystack = [
     asString(job.title) ?? "",
     asString(job.description) ?? "",
     asString(job.company_name) ?? "",
     asString(job.category) ?? "",
     Array.isArray(job.tags) ? job.tags.join(" ") : "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  return normalized
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((token) => haystack.includes(token));
+  ].join(" ");
+  return termMatchesHaystack(haystack, searchTerm);
 }
 
 async function fetchRemotive(args: {

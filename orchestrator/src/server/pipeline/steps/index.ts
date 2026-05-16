@@ -1,5 +1,6 @@
 export { checkLivenessStep } from "./check-liveness";
 export { discoverJobsStep } from "./discover-jobs";
+export { filterAntiDomainJobsStep } from "./filter-anti-domain";
 export { filterRelocationJobsStep } from "./filter-relocation";
 export { importJobsStep } from "./import-jobs";
 export { loadProfileStep } from "./load-profile";

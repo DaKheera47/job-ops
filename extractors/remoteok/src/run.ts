@@ -7,11 +7,14 @@
 
 import type { CreateJobInput } from "@shared/types/jobs";
 import { createRateLimitedFetch } from "@shared/utils/rate-limited-fetch";
+import { termMatchesHaystack } from "@shared/utils/term-match";
 
 const REMOTEOK_API_URL = "https://remoteok.com/api";
 const REMOTEOK_USER_AGENT =
   "JobOps/1.0 (+https://github.com/dakheera47/job-ops)";
-const DEFAULT_MAX_PER_TERM = 50;
+// Single HTTP call returns all jobs — filtering is in-memory, so a higher
+// cap costs nothing and helps when the user has many synonymous terms.
+const DEFAULT_MAX_PER_TERM = 150;
 
 export type RemoteOkWorkplaceType = "remote" | "hybrid" | "onsite";
 
@@ -149,20 +152,13 @@ function mapJob(job: RemoteOkJob): CreateJobInput | null {
 }
 
 function matchesSearchTerm(job: RemoteOkJob, searchTerm: string): boolean {
-  const normalized = searchTerm.toLowerCase().trim();
-  if (!normalized) return true;
   const haystack = [
     asString(job.position) ?? "",
     asString(job.description) ?? "",
     asString(job.company) ?? "",
     Array.isArray(job.tags) ? job.tags.join(" ") : "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  return normalized
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((token) => haystack.includes(token));
+  ].join(" ");
+  return termMatchesHaystack(haystack, searchTerm);
 }
 
 async function fetchAllRemoteOkJobs(

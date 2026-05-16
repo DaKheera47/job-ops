@@ -1,4 +1,5 @@
 import { normalizeCountryKey } from "@shared/location-support.js";
+import { termMatchesHaystack } from "@shared/utils/term-match";
 import {
   matchesRequestedCity,
   normalizeLocationToken,
@@ -154,13 +155,6 @@ function matchesSearchTerm(
   job: WorkingNomadsSearchJob,
   searchTerm: string,
 ): boolean {
-  const normalizedTerm = searchTerm
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!normalizedTerm) return true;
-
   const tags = Array.isArray(job.tags)
     ? job.tags.filter((value): value is string => typeof value === "string")
     : typeof job.tags === "string"
@@ -188,20 +182,8 @@ function matchesSearchTerm(
     ...tags,
     ...locations,
     typeof job.location_base === "string" ? job.location_base : "",
-  ]
-    .join(" ")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!haystack) return false;
-  if (haystack.includes(normalizedTerm)) return true;
-
-  return normalizedTerm
-    .split(" ")
-    .filter(Boolean)
-    .every((token) => haystack.includes(token));
+  ].join(" ");
+  return termMatchesHaystack(haystack, searchTerm);
 }
 
 function isCountryLikeLocation(

@@ -8,9 +8,12 @@
 
 import type { CreateJobInput } from "@shared/types/jobs";
 import { createRateLimitedFetch } from "@shared/utils/rate-limited-fetch";
+import { termMatchesHaystack } from "@shared/utils/term-match";
 
 const WWR_FEED_URL = "https://weworkremotely.com/remote-jobs.rss";
-const DEFAULT_MAX_PER_TERM = 50;
+// Single HTTP call returns all jobs — filtering is in-memory, so a higher
+// cap costs nothing and helps when the user has many synonymous terms.
+const DEFAULT_MAX_PER_TERM = 150;
 
 export type WwrWorkplaceType = "remote" | "hybrid" | "onsite";
 
@@ -156,14 +159,8 @@ function mapItem(item: WwrItem): CreateJobInput | null {
 }
 
 function matchesSearchTerm(item: WwrItem, searchTerm: string): boolean {
-  const normalized = searchTerm.toLowerCase().trim();
-  if (!normalized) return true;
-  const haystack =
-    `${item.title} ${item.description} ${item.category ?? ""}`.toLowerCase();
-  return normalized
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((token) => haystack.includes(token));
+  const haystack = `${item.title} ${item.description} ${item.category ?? ""}`;
+  return termMatchesHaystack(haystack, searchTerm);
 }
 
 async function fetchFeed(fetchImpl: typeof fetch): Promise<WwrItem[]> {
