@@ -26,6 +26,12 @@ export interface WorkdaySourceConfig {
   canonicalCareersUrl: string;
 }
 
+export interface WorkdayJobSourceConfig extends WorkdaySourceConfig {
+  externalPath: string;
+  cxsJobUrl: string;
+  canonicalJobUrl: string;
+}
+
 export class WorkdayUrlParseError extends Error {
   readonly code: WorkdayUrlParseErrorCode;
   readonly input: string;
@@ -56,6 +62,39 @@ export function isWorkdayUrl(input: string): boolean {
  */
 export function workdayUrlToCxsJobsUrl(input: string): string {
   return parseWorkdayUrl(input).cxsJobsUrl;
+}
+
+/**
+ * Convenience helper for callers that need the CXS job detail endpoint.
+ */
+export function workdayJobUrlToCxsJobUrl(input: string): string {
+  return parseWorkdayJobUrl(input).cxsJobUrl;
+}
+
+/**
+ * Converts a public Workday job URL into the JSON job detail endpoint used by
+ * Workday Candidate Experience.
+ */
+export function parseWorkdayJobUrl(input: string): WorkdayJobSourceConfig {
+  const cxsJobResult = parseExistingCxsJobEndpoint(input);
+  if (cxsJobResult) return cxsJobResult;
+
+  const source = parseWorkdayUrl(input);
+  const url = toUrl(input);
+  const segments = getPathSegments(url.pathname);
+  const externalPath = getJobExternalPath(input, source, segments);
+
+  return {
+    ...source,
+    externalPath,
+    cxsJobUrl: buildCxsJobUrl(
+      source.origin,
+      source.tenant,
+      source.site,
+      externalPath,
+    ),
+    canonicalJobUrl: `${source.canonicalCareersUrl}${externalPath}`,
+  };
 }
 
 /**
@@ -125,7 +164,7 @@ export function parseWorkdayUrl(input: string): WorkdaySourceConfig {
 
 function parseExistingCxsEndpoint(
   input: string,
-  url: URL,
+  _url: URL,
   host: string,
   origin: string,
   segments: string[],
@@ -166,6 +205,64 @@ function parseExistingCxsEndpoint(
     shard,
     cxsJobsUrl: buildCxsJobsUrl(origin, tenant, site),
     canonicalCareersUrl: buildCanonicalCareersUrl(origin, host, tenant, site),
+  };
+}
+
+function parseExistingCxsJobEndpoint(
+  input: string,
+): WorkdayJobSourceConfig | null {
+  const url = toUrl(input);
+  const host = url.hostname.toLowerCase();
+  const origin = url.origin;
+  const segments = getPathSegments(url.pathname);
+  const wdayIndex = segments.findIndex(
+    (segment) => segment.toLowerCase() === "wday",
+  );
+
+  if (wdayIndex === -1) return null;
+
+  const maybeCxs = segments[wdayIndex + 1]?.toLowerCase();
+  const tenant = segments[wdayIndex + 2];
+  const site = segments[wdayIndex + 3];
+  const externalPathParts = segments.slice(wdayIndex + 4);
+
+  if (maybeCxs !== "cxs") return null;
+
+  if (
+    !tenant ||
+    !site ||
+    externalPathParts.length === 0 ||
+    externalPathParts[0]?.toLowerCase() === "jobs"
+  ) {
+    throw new WorkdayUrlParseError(
+      "MISSING_CXS_PARTS",
+      "Workday CXS job URL must look like /wday/cxs/{tenant}/{site}/job/{slug}.",
+      input,
+    );
+  }
+
+  const shard = extractShard(host);
+  const canonicalCareersUrl = buildCanonicalCareersUrl(
+    origin,
+    host,
+    tenant,
+    site,
+  );
+  const externalPath = `/${externalPathParts.map(encodePathSegment).join("/")}`;
+
+  return {
+    inputUrl: input,
+    kind: "cxs-jobs-endpoint",
+    origin,
+    host,
+    tenant,
+    site,
+    shard,
+    cxsJobsUrl: buildCxsJobsUrl(origin, tenant, site),
+    canonicalCareersUrl,
+    externalPath,
+    cxsJobUrl: buildCxsJobUrl(origin, tenant, site, externalPath),
+    canonicalJobUrl: `${canonicalCareersUrl}${externalPath}`,
   };
 }
 
@@ -258,6 +355,19 @@ function buildCxsJobsUrl(origin: string, tenant: string, site: string): string {
   return `${origin}/wday/cxs/${encodePathSegment(tenant)}/${encodePathSegment(site)}/jobs`;
 }
 
+function buildCxsJobUrl(
+  origin: string,
+  tenant: string,
+  site: string,
+  externalPath: string,
+): string {
+  const normalizedExternalPath = externalPath.startsWith("/")
+    ? externalPath
+    : `/${externalPath}`;
+
+  return `${origin}/wday/cxs/${encodePathSegment(tenant)}/${encodePathSegment(site)}${encodePath(normalizedExternalPath)}`;
+}
+
 function buildCanonicalCareersUrl(
   origin: string,
   host: string,
@@ -288,6 +398,54 @@ function buildMyworkdaysiteCareersUrl(
 ): string {
   const localePart = locale ? `/${encodePathSegment(locale)}` : "";
   return `${origin}${localePart}/recruiting/${encodePathSegment(tenant)}/${encodePathSegment(site)}`;
+}
+
+function getJobExternalPath(
+  input: string,
+  source: WorkdaySourceConfig,
+  segments: string[],
+): string {
+  if (source.kind === "cxs-jobs-endpoint") {
+    const wdayIndex = segments.findIndex(
+      (segment) => segment.toLowerCase() === "wday",
+    );
+    const rest = segments.slice(wdayIndex + 4);
+
+    if (rest[0]?.toLowerCase() === "jobs") {
+      throw new WorkdayUrlParseError(
+        "MISSING_CXS_PARTS",
+        "Workday CXS job URL must include a job path after /wday/cxs/{tenant}/{site}.",
+        input,
+      );
+    }
+
+    if (rest.length > 0) return `/${rest.map(encodePathSegment).join("/")}`;
+  }
+
+  if (source.kind === "legacy-myworkdayjobs") {
+    const { rest } = peelLocale(segments);
+    const externalPathParts = rest.slice(1);
+    if (externalPathParts.length > 0) {
+      return `/${externalPathParts.map(encodePathSegment).join("/")}`;
+    }
+  }
+
+  if (source.kind === "myworkdaysite-recruiting") {
+    const { rest } = peelLocale(segments);
+    const recruitingIndex = rest.findIndex(
+      (segment) => segment.toLowerCase() === "recruiting",
+    );
+    const externalPathParts = rest.slice(recruitingIndex + 3);
+    if (externalPathParts.length > 0) {
+      return `/${externalPathParts.map(encodePathSegment).join("/")}`;
+    }
+  }
+
+  throw new WorkdayUrlParseError(
+    "MISSING_SITE",
+    "Workday job URL is missing the job path, for example /job/{slug}.",
+    input,
+  );
 }
 
 function toUrl(input: string): URL {
@@ -343,4 +501,8 @@ function extractShard(host: string): string | undefined {
 
 function encodePathSegment(segment: string): string {
   return encodeURIComponent(segment);
+}
+
+function encodePath(path: string): string {
+  return path.split("/").map(encodePathSegment).join("/");
 }

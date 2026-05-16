@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./get-job-details-from-cxs": "./src/get-job-details-from-cxs.ts",
+    "./get-jobs-from-cxs": "./src/get-jobs-from-cxs.ts",
+    "./workday-url-to-cxs": "./src/workday-url-to-cxs.ts"
   }
 }
