@@ -16,9 +16,10 @@
       "@server/*": ["src/server/*"],
       "@infra/*": ["src/server/infra/*"],
       "@client/*": ["src/client/*"],
-      "@shared/*": ["../shared/src/*"]
+      "@shared/*": ["../shared/src/*"],
+      "@career-boards/workday/*": ["../career-boards/workday/src/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*"],
+  "include": ["src/**/*", "scripts/**/*", "../career-boards/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

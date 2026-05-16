@@ -31,6 +31,7 @@ import { SignInPage } from "./pages/SignInPage";
 import { TracerLinksPage } from "./pages/TracerLinksPage";
 import { TrackingInboxPage } from "./pages/TrackingInboxPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
+import { WatchlistPage } from "./pages/WatchlistPage";
 
 /** Backwards-compatibility redirects: old URL paths -> new URL paths */
 const REDIRECTS: Array<{ from: string; to: string }> = [
@@ -193,6 +194,7 @@ export const App: React.FC = () => {
                 <Route path="/tracer-links" element={<TracerLinksPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
                 <Route path="/tracking-inbox" element={<TrackingInboxPage />} />
+                <Route path="/watchlist" element={<WatchlistPage />} />
                 <Route path="/jobs/:tab" element={<OrchestratorPage />} />
                 <Route
                   path="/jobs/:tab/:jobId"

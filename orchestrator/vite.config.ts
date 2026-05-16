@@ -58,6 +58,7 @@ export default defineConfig({
       "@infra": path.resolve(__dirname, "./src/server/infra"),
       "@shared": path.resolve(__dirname, "../shared/src"),
       "job-ops-shared": path.resolve(__dirname, "../shared/src"),
+      "@career-boards/workday": path.resolve(__dirname, "../career-boards/workday/src"),
     },
   },
   server: {
