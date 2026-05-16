@@ -37,6 +37,27 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.12.0",
+    date: "2026-05-16",
+    items: [
+      {
+        title: "🌐 More remote jobs — US, UK, Canada added",
+        description:
+          "LinkedIn and Indeed now also search across the US, UK and Canada in addition to Germany, UAE, Cyprus, Israel, Netherlands and Switzerland. This unlocks a much larger pool of global-remote vacancies that you previously couldn't see.",
+      },
+      {
+        title: "🎯 Smarter search keywords",
+        description:
+          "Expanded the job-title list from 10 to 35 by mining your resume: now we also search for Security/Compliance/GRC Program Manager, Functional Safety, Open Source Program Manager (OSPO), Engineering Operations, Release Manager, Technical Project Manager, Developer Relations and more. Niche roles where your background is a strong fit.",
+      },
+      {
+        title: "🚫 Stricter relocation filter",
+        description:
+          "Vacancies with just a country label (\"United States\", \"Canada\") and no explicit remote flag are now auto-skipped — these are usually on-site postings at company HQ. You'll see less noise while keeping every truly global-remote role.",
+      },
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-05-14",
     items: [
