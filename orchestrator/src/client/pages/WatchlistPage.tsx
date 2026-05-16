@@ -1,8 +1,15 @@
-import { fetchWorkdayCxsJobs } from "@client/api/workday";
+import {
+  fetchWorkdayCxsJobs,
+  type NormalizedWorkdayJob,
+  type WorkdayCxsJobsResult,
+} from "@client/api/workday";
 import { PageHeader, PageMain } from "@client/components/layout";
+import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
+import type { JobListItem } from "@shared/types.js";
 import { Eye, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { JobRowContent } from "./orchestrator/JobRowContent";
 
 type WatchlistFetchState =
   | {
@@ -13,7 +20,7 @@ type WatchlistFetchState =
       status: "success";
       careersUrl: string;
       cxsJobsUrl: string;
-      response: unknown;
+      response: WorkdayCxsJobsResult;
     }
   | {
       status: "error";
@@ -26,6 +33,53 @@ const WATCHLIST_URLS = [
   "https://autodesk.wd1.myworkdayjobs.com/Ext",
   "https://pg.wd5.myworkdayjobs.com/en-US/1000",
 ];
+
+function getEmployerFromCareersUrl(careersUrl: string): string {
+  try {
+    const host = new URL(careersUrl).hostname;
+    const [tenant] = host.split(".");
+    return tenant || host;
+  } catch {
+    return "Workday";
+  }
+}
+
+function toJobListItem(
+  job: NormalizedWorkdayJob,
+  careersUrl: string,
+): JobListItem {
+  const now = new Date().toISOString();
+
+  return {
+    id: `workday:${careersUrl}:${job.externalId}`,
+    source: "manual",
+    title: job.title,
+    employer: job.company ?? getEmployerFromCareersUrl(careersUrl),
+    jobUrl: job.jobUrl,
+    applicationLink: job.jobUrl,
+    datePosted: job.postedOn ?? null,
+    deadline: null,
+    salary: null,
+    location: job.locationText ?? null,
+    status: "discovered",
+    outcome: null,
+    closedAt: null,
+    suitabilityScore: null,
+    sponsorMatchScore: null,
+    appliedDuplicateMatch: null,
+    jobType: null,
+    jobFunction: null,
+    pdfRegenerating: false,
+    pdfFreshness: "missing",
+    salaryMinAmount: null,
+    salaryMaxAmount: null,
+    salaryCurrency: null,
+    discoveredAt: now,
+    readyAt: null,
+    appliedAt: null,
+    updatedAt: now,
+  };
+}
 
 export const WatchlistPage: React.FC = () => {
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
@@ -156,29 +210,55 @@ export const WatchlistPage: React.FC = () => {
                 </div>
               </div>
 
-              <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-                {item.status === "loading"
-                  ? "Fetching Workday CXS response..."
-                  : item.status === "error"
-                    ? JSON.stringify(
-                        {
-                          careersUrl: item.careersUrl,
-                          cxsJobsUrl: item.cxsJobsUrl,
-                          error: item.error,
-                        },
-                        null,
-                        2,
-                      )
-                    : JSON.stringify(
-                        {
-                          careersUrl: item.careersUrl,
-                          cxsJobsUrl: item.cxsJobsUrl,
-                          response: item.response,
-                        },
-                        null,
-                        2,
-                      )}
-              </pre>
+              {item.status === "loading" ? (
+                <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Fetching Workday CXS response...
+                </div>
+              ) : item.status === "error" ? (
+                <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+                  {JSON.stringify(
+                    {
+                      careersUrl: item.careersUrl,
+                      cxsJobsUrl: item.cxsJobsUrl,
+                      error: item.error,
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              ) : (
+                <div className="divide-y divide-border/40">
+                  <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+                    <span>
+                      {item.response.fetched} of {item.response.total} jobs
+                    </span>
+                  </div>
+
+                  {item.response.jobs.map((workdayJob) => {
+                    const job = toJobListItem(workdayJob, item.careersUrl);
+
+                    return (
+                      <div
+                        key={job.id}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
+                        <JobRowContent
+                          job={job}
+                          showStatusDot={false}
+                          showSuitabilityScore={false}
+                          className="min-w-0 flex-1"
+                        />
+                        <OpenJobListingButton
+                          href={workdayJob.jobUrl}
+                          size="sm"
+                          className="shrink-0"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
 

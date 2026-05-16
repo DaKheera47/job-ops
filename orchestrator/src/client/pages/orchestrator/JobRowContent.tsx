@@ -14,6 +14,7 @@ interface JobRowContentProps {
   job: JobListItem;
   isSelected?: boolean;
   showStatusDot?: boolean;
+  showSuitabilityScore?: boolean;
   statusDotClassName?: string;
   className?: string;
 }
@@ -28,6 +29,7 @@ export const JobRowContent = ({
   job,
   isSelected = false,
   showStatusDot = true,
+  showSuitabilityScore = true,
   statusDotClassName,
   className,
 }: JobRowContentProps) => {
@@ -87,13 +89,13 @@ export const JobRowContent = ({
         )}
       </div>
 
-      {hasScore ? (
+      {showSuitabilityScore && hasScore ? (
         <div className="shrink-0 text-right">
           <span className={cn("text-sm tabular-nums", suitabilityTone)}>
             {job.suitabilityScore}
           </span>
         </div>
-      ) : (
+      ) : showSuitabilityScore ? (
         <div className="shrink-0 text-right">
           <TooltipProvider delayDuration={0}>
             <Tooltip>
@@ -107,7 +109,7 @@ export const JobRowContent = ({
             </Tooltip>
           </TooltipProvider>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
