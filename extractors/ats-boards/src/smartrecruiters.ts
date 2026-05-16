@@ -1,4 +1,5 @@
 import type { CreateJobInput } from "@shared/types/jobs";
+import { detectIsRemoteFromAts } from "./types";
 
 interface SmartRecruitersPosting {
   id?: string;
@@ -67,6 +68,8 @@ export async function fetchSmartRecruitersJobs(
     for (const p of postings) {
       if (!p.name || !p.applyUrl) continue;
 
+      const location = buildLocation(p);
+      const isRemote = detectIsRemoteFromAts(location);
       allJobs.push({
         source: "smartrecruiters",
         sourceJobId: p.id ?? undefined,
@@ -74,10 +77,12 @@ export async function fetchSmartRecruitersJobs(
         employer: p.company?.name ?? slug,
         jobUrl: p.applyUrl ?? "",
         applicationLink: p.applyUrl ?? undefined,
-        location: buildLocation(p),
+        location,
+        locationEvidence: { location, source: "smartrecruiters" },
         datePosted: p.releasedDate ?? undefined,
         jobFunction: p.department?.label ?? undefined,
         jobType: p.typeOfEmployment?.label ?? undefined,
+        isRemote,
       });
     }
 

@@ -1,4 +1,5 @@
 import type { CreateJobInput } from "@shared/types/jobs";
+import { detectIsRemoteFromAts } from "./types";
 
 interface GreenhouseJob {
   id?: number;
@@ -34,16 +35,22 @@ export async function fetchGreenhouseJobs(
 
   return data.jobs
     .filter((j) => j.title && j.absolute_url)
-    .map((j): CreateJobInput => ({
-      source: "greenhouse",
-      sourceJobId: j.id != null ? String(j.id) : undefined,
-      title: j.title ?? "Unknown Title",
-      employer: slug,
-      jobUrl: j.absolute_url ?? "",
-      applicationLink: j.absolute_url ?? undefined,
-      location: j.location?.name ?? "Not specified",
-      jobDescription: j.content ?? undefined,
-      datePosted: j.updated_at ?? undefined,
-      jobFunction: j.departments?.map((d) => d.name).filter(Boolean).join(", ") ?? undefined,
-    }));
+    .map((j): CreateJobInput => {
+      const location = j.location?.name ?? "Not specified";
+      const isRemote = detectIsRemoteFromAts(location, j.content);
+      return {
+        source: "greenhouse",
+        sourceJobId: j.id != null ? String(j.id) : undefined,
+        title: j.title ?? "Unknown Title",
+        employer: slug,
+        jobUrl: j.absolute_url ?? "",
+        applicationLink: j.absolute_url ?? undefined,
+        location,
+        locationEvidence: { location, source: "greenhouse" },
+        jobDescription: j.content ?? undefined,
+        datePosted: j.updated_at ?? undefined,
+        jobFunction: j.departments?.map((d) => d.name).filter(Boolean).join(", ") ?? undefined,
+        isRemote,
+      };
+    });
 }

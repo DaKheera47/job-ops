@@ -30,6 +30,14 @@ export const REMOTE_FRIENDLY_SOURCES: ExtractorSourceId[] = [
   "remoteok",
   "himalayas",
   "hackernews",
+  // ATS-board direct pulls — only run when atsBoardSlugs setting lists
+  // companies for each provider, otherwise the extractor returns 0 jobs
+  // and costs nothing. The list is curated toward remote-first employers
+  // (GitLab, Automattic, Buffer, Doist, Vercel, Anthropic, OpenAI, …) so
+  // adding them to the remote scope brings in high-signal listings.
+  "greenhouse",
+  "ashby",
+  "lever",
   "justjoinit",
   "nofluffjobs",
   // NOTE: hh.ru aggressively geo-blocks API requests originating outside

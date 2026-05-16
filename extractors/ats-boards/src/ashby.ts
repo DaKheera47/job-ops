@@ -1,4 +1,5 @@
 import type { CreateJobInput } from "@shared/types/jobs";
+import { detectIsRemoteFromAts } from "./types";
 
 interface AshbyJob {
   title?: string;
@@ -36,18 +37,24 @@ export async function fetchAshbyJobs(
 
   return data.jobs
     .filter((j) => j.title && j.jobUrl)
-    .map((j): CreateJobInput => ({
-      source: "ashby",
-      sourceJobId: j.id ?? undefined,
-      title: j.title ?? "Unknown Title",
-      employer: slug,
-      jobUrl: j.jobUrl ?? "",
-      applicationLink: j.jobUrl ?? undefined,
-      location: j.location ?? "Not specified",
-      jobDescription: j.descriptionHtml ?? undefined,
-      datePosted: j.publishedAt ?? undefined,
-      jobFunction: j.departmentName ?? undefined,
-      jobType: j.employmentType ?? undefined,
-      salary: j.compensation?.compensationTierSummary ?? undefined,
-    }));
+    .map((j): CreateJobInput => {
+      const location = j.location ?? "Not specified";
+      const isRemote = detectIsRemoteFromAts(location, j.descriptionHtml);
+      return {
+        source: "ashby",
+        sourceJobId: j.id ?? undefined,
+        title: j.title ?? "Unknown Title",
+        employer: slug,
+        jobUrl: j.jobUrl ?? "",
+        applicationLink: j.jobUrl ?? undefined,
+        location,
+        locationEvidence: { location, source: "ashby" },
+        jobDescription: j.descriptionHtml ?? undefined,
+        datePosted: j.publishedAt ?? undefined,
+        jobFunction: j.departmentName ?? undefined,
+        jobType: j.employmentType ?? undefined,
+        salary: j.compensation?.compensationTierSummary ?? undefined,
+        isRemote,
+      };
+    });
 }

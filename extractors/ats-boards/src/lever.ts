@@ -1,4 +1,5 @@
 import type { CreateJobInput } from "@shared/types/jobs";
+import { detectIsRemoteFromAts } from "./types";
 
 interface LeverJob {
   id?: string;
@@ -39,6 +40,9 @@ export async function fetchLeverJobs(
         .filter(Boolean)
         .join("\n\n");
 
+      const location = j.categories?.location ?? "Not specified";
+      const description = descriptionParts || j.description || undefined;
+      const isRemote = detectIsRemoteFromAts(location, description);
       return {
         source: "lever",
         sourceJobId: j.id ?? undefined,
@@ -46,13 +50,15 @@ export async function fetchLeverJobs(
         employer: slug,
         jobUrl: j.hostedUrl ?? "",
         applicationLink: j.hostedUrl ? `${j.hostedUrl}/apply` : undefined,
-        location: j.categories?.location ?? "Not specified",
-        jobDescription: descriptionParts || j.description || undefined,
+        location,
+        locationEvidence: { location, source: "lever" },
+        jobDescription: description,
         jobFunction: j.categories?.department ?? j.categories?.team ?? undefined,
         jobType: j.categories?.commitment ?? undefined,
         datePosted: j.createdAt
           ? new Date(j.createdAt).toISOString()
           : undefined,
+        isRemote,
       };
     });
 }

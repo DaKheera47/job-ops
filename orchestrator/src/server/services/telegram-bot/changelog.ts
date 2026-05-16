@@ -37,6 +37,28 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.16.0",
+    date: "2026-05-16",
+    items: [
+      {
+        title: "🏢 ATS direct pulls — 40 remote-first companies, 4700+ jobs",
+        description:
+          "Jobs from Greenhouse, Ashby, and Lever boards (GitLab, MongoDB, OpenAI, Stripe, Datadog, Cloudflare, Airbnb, Replit, Spotify, Supabase, Linear, Attio, Warp, …) are now pulled directly from the companies' career APIs every pipeline run. Previously these boards were configured but never enabled in the remote scope.",
+        tip: "The same dashboard's 'companies' setting drives this list — add or remove a slug there to tune the source.",
+      },
+      {
+        title: "🔍 Remote detection in ATS data",
+        description:
+          "Each ATS extractor now reads the location field and the first ~800 characters of the description to decide whether a role is genuinely remote. A San-Francisco posting that merely mentions \"remote-friendly perks\" no longer slips through as remote — only roles with explicit \"Remote\" / \"Anywhere\" / \"Distributed\" / \"Worldwide\" in the location.",
+      },
+      {
+        title: "🧹 Auto-cleanup of stale board slugs",
+        description:
+          "Companies move between ATS providers and slugs go stale. We pruned 45 dead entries (404s) in one shot — every remaining slug was probed live and returns real jobs.",
+      },
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-05-16",
     items: [
