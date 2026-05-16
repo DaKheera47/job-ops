@@ -1,6 +1,8 @@
 import {
+  fetchWorkdayCxsJobDetails,
   fetchWorkdayCxsJobs,
   type NormalizedWorkdayJob,
+  type NormalizedWorkdayJobDetails,
   type WorkdayCxsJobsResult,
 } from "@client/api/workday";
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
@@ -27,6 +29,19 @@ type WatchlistFetchState =
       status: "error";
       careersUrl: string;
       cxsJobsUrl?: string;
+      error: string;
+    };
+
+type JobDetailsState =
+  | {
+      status: "loading";
+    }
+  | {
+      status: "success";
+      details: NormalizedWorkdayJobDetails;
+    }
+  | {
+      status: "error";
       error: string;
     };
 
@@ -84,6 +99,9 @@ function toJobListItem(
 
 export const WatchlistPage: React.FC = () => {
   const [items, setItems] = useState<WatchlistFetchState[]>([]);
+  const [jobDetails, setJobDetails] = useState<Record<string, JobDetailsState>>(
+    {},
+  );
   const [dismissedUrls, setDismissedUrls] = useState<Set<string>>(
     () => new Set(),
   );
@@ -150,6 +168,35 @@ export const WatchlistPage: React.FC = () => {
       next.add(careersUrl);
       return next;
     });
+  }
+
+  async function loadJobDetails(jobUrl: string) {
+    if (jobDetails[jobUrl]) return;
+
+    setJobDetails((current) => ({
+      ...current,
+      [jobUrl]: { status: "loading" },
+    }));
+
+    try {
+      const result = await fetchWorkdayCxsJobDetails(jobUrl);
+
+      setJobDetails((current) => ({
+        ...current,
+        [jobUrl]: {
+          status: "success",
+          details: result.response.job,
+        },
+      }));
+    } catch (error) {
+      setJobDetails((current) => ({
+        ...current,
+        [jobUrl]: {
+          status: "error",
+          error: error instanceof Error ? error.message : String(error),
+        },
+      }));
+    }
   }
 
   return (
@@ -238,6 +285,7 @@ export const WatchlistPage: React.FC = () => {
 
                   {item.response.jobs.map((workdayJob) => {
                     const job = toJobListItem(workdayJob, item.careersUrl);
+                    const details = jobDetails[workdayJob.jobUrl];
 
                     return (
                       <div key={job.id} className="px-4 py-3">
@@ -255,16 +303,23 @@ export const WatchlistPage: React.FC = () => {
                           />
                         </div>
 
-                        {workdayJob.jobDescriptionText ? (
-                          <JobDescriptionPanel
-                            description={workdayJob.jobDescriptionText}
-                            helperText="Fetched from the Workday CXS job detail endpoint."
-                            jobUrl={workdayJob.jobUrl}
-                            defaultOpen={false}
-                            maxHeightClassName="max-h-72"
-                            className="mt-3"
-                          />
-                        ) : null}
+                        <JobDescriptionPanel
+                          description={
+                            details?.status === "success"
+                              ? details.details.jobDescriptionText
+                              : null
+                          }
+                          helperText="Fetched only when this panel is opened."
+                          jobUrl={workdayJob.jobUrl}
+                          defaultOpen={false}
+                          isLoading={details?.status === "loading"}
+                          error={
+                            details?.status === "error" ? details.error : null
+                          }
+                          onOpen={() => void loadJobDetails(workdayJob.jobUrl)}
+                          maxHeightClassName="max-h-72"
+                          className="mt-3"
+                        />
                       </div>
                     );
                   })}

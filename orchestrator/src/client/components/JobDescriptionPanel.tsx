@@ -29,8 +29,11 @@ type JobDescriptionPanelProps = {
   helperText?: string;
   jobUrl?: string | null;
   defaultOpen?: boolean;
+  isLoading?: boolean;
+  error?: string | null;
   maxHeightClassName?: string;
   onSave?: (description: string) => Promise<void> | void;
+  onOpen?: () => void;
 };
 
 const defaultHelperText =
@@ -42,8 +45,11 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   helperText = defaultHelperText,
   jobUrl,
   defaultOpen = true,
+  isLoading = false,
+  error = null,
   maxHeightClassName = "max-h-[420px]",
   onSave,
+  onOpen,
 }) => {
   const { renderMarkdownInJobDescriptions } = useSettings();
   const [isEditing, setIsEditing] = useState(false);
@@ -96,6 +102,9 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       type="single"
       collapsible
       defaultValue={defaultOpen ? "job-description" : undefined}
+      onValueChange={(value) => {
+        if (value === "job-description") onOpen?.();
+      }}
       className={cn(
         "overflow-hidden rounded-lg border border-border/45 bg-muted/25",
         className,
@@ -125,14 +134,16 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
                     </a>
                   </Button>
                 ) : null}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => void handleCopy()}
-                >
-                  <Copy className="mr-1.5 h-3.5 w-3.5" />
-                  Copy
-                </Button>
+                {!isLoading && !error && description ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleCopy()}
+                  >
+                    <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    Copy
+                  </Button>
+                ) : null}
                 {canEdit ? (
                   <Button
                     size="sm"
@@ -179,7 +190,14 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
               maxHeightClassName,
             )}
           >
-            {isEditing ? (
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading job description...
+              </div>
+            ) : error ? (
+              <div className="text-sm text-destructive">{error}</div>
+            ) : isEditing ? (
               <Textarea
                 value={editedDescription}
                 onChange={(event) => setEditedDescription(event.target.value)}

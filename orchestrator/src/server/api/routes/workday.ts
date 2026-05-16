@@ -47,31 +47,10 @@ workdayRouter.post("/fetch-jobs", async (req: Request, res: Response) => {
       signal: controller.signal,
     });
 
-    const jobs = await Promise.all(
-      response.jobs.map(async (job) => {
-        const details = await getJobDetailsFromCxs({
-          jobUrl: job.jobUrl,
-          signal: controller.signal,
-        });
-
-        return {
-          ...job,
-          company: job.company ?? details.job.company,
-          locationText: job.locationText ?? details.job.locationText,
-          postedOn: job.postedOn ?? details.job.postedOn,
-          jobDescriptionHtml: details.job.jobDescriptionHtml,
-          jobDescriptionText: details.job.jobDescriptionText,
-        };
-      }),
-    );
-
     ok(res, {
       careersUrl: input.careersUrl,
       cxsJobsUrl,
-      response: {
-        ...response,
-        jobs,
-      },
+      response,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -94,3 +73,47 @@ workdayRouter.post("/fetch-jobs", async (req: Request, res: Response) => {
     clearTimeout(timeout);
   }
 });
+
+const fetchWorkdayJobDetailsSchema = z.object({
+  jobUrl: z.string().trim().url().max(2000),
+});
+
+workdayRouter.post(
+  "/fetch-job-details",
+  async (req: Request, res: Response) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const input = fetchWorkdayJobDetailsSchema.parse(req.body ?? {});
+      const response = await getJobDetailsFromCxs({
+        jobUrl: input.jobUrl,
+        signal: controller.signal,
+      });
+
+      ok(res, {
+        jobUrl: input.jobUrl,
+        response,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return fail(res, badRequest(error.message, error.flatten()));
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        return fail(res, requestTimeout());
+      }
+      if (error instanceof WorkdayCxsFetchError) {
+        return fail(
+          res,
+          upstreamError(error.message, {
+            url: error.url,
+            status: error.status,
+          }),
+        );
+      }
+      fail(res, toAppError(error));
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+);
