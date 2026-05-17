@@ -4,321 +4,43 @@ import {
   fetchWorkdayCxsJobs,
   type NormalizedWorkdayJob,
   type NormalizedWorkdayJobDetails,
-  type WorkdayCxsJobsResult,
 } from "@client/api/workday";
-import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { ManualImportSheet } from "@client/components/ManualImportSheet";
-import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
 import { useSettings } from "@client/hooks/useSettings";
 import { showErrorToast } from "@client/lib/error-toast";
 import { queryKeys } from "@client/lib/queryKeys";
-import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
-import { normalizeCountryKey } from "@shared/location-support.js";
-import type {
-  JobListItem,
-  ManualJobDraft,
-  WatchlistSelectedSource,
-} from "@shared/types.js";
+import type { JobListItem } from "@shared/types.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, FolderInput, Loader2, RotateCcw, X } from "lucide-react";
+import { Eye } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
 } from "./orchestrator/automatic-run";
-import { computeJobMatchScore } from "./orchestrator/JobCommandBar.utils";
-import { JobRowContent } from "./orchestrator/JobRowContent";
-
-type WatchlistFetchState =
-  | {
-      status: "loading";
-      source: WatchlistSelectedSource;
-    }
-  | {
-      status: "success";
-      source: WatchlistSelectedSource;
-      response: WorkdayCxsJobsResult;
-    }
-  | {
-      status: "error";
-      source: WatchlistSelectedSource;
-      error: string;
-    };
-
-interface SourceSelectionDraft {
-  id: string;
-  isCustom: boolean;
-  catalogSourceId: string | null;
-  customUrl: string;
-}
-
-type JobDetailsState =
-  | {
-      status: "loading";
-    }
-  | {
-      status: "success";
-      details: NormalizedWorkdayJobDetails;
-    }
-  | {
-      status: "error";
-      error: string;
-    };
-
-interface RankedWorkdayJob {
-  workdayJob: NormalizedWorkdayJob;
-  job: JobListItem;
-  matchScore: number;
-  matchedSearchTerm: string | null;
-  locationPriority: 0 | 1;
-  locationMatched: boolean;
-}
-
-interface WorkdayImportState {
-  open: boolean;
-  draft: ManualJobDraft | null;
-  source: string | null;
-  sourceHost: string | null;
-}
-
-type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
-
-interface WatchlistCheckState {
-  checkedAt: string | null;
-  previousLastCheckedAt: string | null;
-  newJobKeys: Set<string>;
-}
-
-const CUSTOM_SOURCE_VALUE = "__custom__";
-const WATCHLIST_SOURCE_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
-let sourceDraftSequence = 0;
-
-function createSourceDraft(
-  overrides?: Partial<Omit<SourceSelectionDraft, "id">>,
-): SourceSelectionDraft {
-  sourceDraftSequence += 1;
-  return {
-    id: `draft-${sourceDraftSequence}`,
-    isCustom: false,
-    catalogSourceId: null,
-    customUrl: "",
-    ...overrides,
-  };
-}
-
-function getEmployerFromCareersUrl(careersUrl: string): string {
-  try {
-    const host = new URL(careersUrl).hostname;
-    const [tenant] = host.split(".");
-    return tenant || host;
-  } catch {
-    return "Workday";
-  }
-}
-
-function toJobListItem(
-  job: NormalizedWorkdayJob,
-  careersUrl: string,
-): JobListItem {
-  const now = new Date().toISOString();
-
-  return {
-    id: `workday:${careersUrl}:${job.externalId}`,
-    source: "manual",
-    sourceJobId: null,
-    title: job.title,
-    employer: job.company ?? getEmployerFromCareersUrl(careersUrl),
-    jobUrl: job.jobUrl,
-    applicationLink: job.jobUrl,
-    datePosted: job.postedOn ?? null,
-    deadline: null,
-    salary: null,
-    location: job.locationText ?? null,
-    status: "discovered",
-    outcome: null,
-    closedAt: null,
-    suitabilityScore: null,
-    sponsorMatchScore: null,
-    appliedDuplicateMatch: null,
-    jobType: null,
-    jobFunction: null,
-    pdfRegenerating: false,
-    pdfFreshness: "missing",
-    salaryMinAmount: null,
-    salaryMaxAmount: null,
-    salaryCurrency: null,
-    discoveredAt: now,
-    readyAt: null,
-    appliedAt: null,
-    updatedAt: now,
-  };
-}
-
-function getPipelineSearchMatch(
-  job: JobListItem,
-  searchTerms: string[],
-): { score: number; term: string | null } {
-  let best = { score: 0, term: null as string | null };
-
-  for (const term of searchTerms) {
-    const normalizedTerm = term.trim().toLowerCase();
-    if (!normalizedTerm) continue;
-
-    const score = computeJobMatchScore(job, normalizedTerm);
-    if (score > best.score) {
-      best = { score, term };
-    }
-  }
-
-  return best;
-}
-
-function normalizeUiCountryKey(value: string): string {
-  const normalized = normalizeCountryKey(value);
-  if (normalized === "usa/ca") return "united states";
-  return normalized;
-}
-
-function toSourceSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function getWorkdayTenantFromUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    const [tenant] = url.hostname.split(".");
-    return tenant || null;
-  } catch {
-    return null;
-  }
-}
-
-function toWorkdaySource(value: string): string {
-  const slug = toSourceSlug(getWorkdayTenantFromUrl(value) ?? value);
-  return `workday:${slug || "unknown"}`;
-}
-
-function getWorkdayImportKey(source: string, externalId: string): string {
-  return `${source}:${externalId}`;
-}
-
-function formatWatchlistCheckTimestamp(value: string | null): string | null {
-  if (!value) return null;
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-}
-
-function getWorkspaceJobPath(job: JobListItem): string {
-  const tab =
-    job.status === "discovered"
-      ? "discovered"
-      : job.status === "applied" || job.status === "in_progress"
-        ? "applied"
-        : "ready";
-  return `/jobs/${tab}/${job.id}`;
-}
-
-function getSourceHost(value: string): string | null {
-  try {
-    return new URL(value).hostname || null;
-  } catch {
-    return null;
-  }
-}
-
-function buildManualDraftFromWorkdayJob(
-  job: NormalizedWorkdayJob,
-  details: NormalizedWorkdayJobDetails,
-  careersUrl: string,
-  cxsJobsUrl: string,
-): ManualJobDraft {
-  const employer =
-    details.company ?? job.company ?? getEmployerFromCareersUrl(careersUrl);
-
-  return {
-    source: toWorkdaySource(cxsJobsUrl || careersUrl || employer),
-    sourceJobId: job.externalId,
-    title: details.title || job.title,
-    employer,
-    jobUrl: details.jobUrl || job.jobUrl,
-    applicationLink: details.jobUrl || job.jobUrl,
-    location: details.locationText ?? job.locationText,
-    jobDescription: details.jobDescriptionText,
-    jobType: details.timeType,
-  };
-}
-
-function rankWorkdayJobs(
-  jobs: NormalizedWorkdayJob[],
-  careersUrl: string,
-  searchTerms: string[],
-  locationIntent: ReturnType<typeof createLocationIntentFromLegacyInputs>,
-): RankedWorkdayJob[] {
-  const hasSelectedLocation = Boolean(locationIntent.selectedCountry);
-
-  return jobs
-    .map((workdayJob, index) => {
-      const job = toJobListItem(workdayJob, careersUrl);
-      const match = getPipelineSearchMatch(job, searchTerms);
-      const locationMatch = hasSelectedLocation
-        ? matchJobLocationIntent(
-            {
-              location: job.location,
-              locationEvidence: null,
-              isRemote: /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
-            },
-            locationIntent,
-          )
-        : { matched: false, priority: 0 as const };
-
-      return {
-        workdayJob,
-        job,
-        matchScore: match.score,
-        matchedSearchTerm: match.term,
-        locationPriority: locationMatch.priority,
-        locationMatched: locationMatch.matched,
-        index,
-      };
-    })
-    .sort((left, right) => {
-      if (left.matchScore !== right.matchScore) {
-        return right.matchScore - left.matchScore;
-      }
-      if (left.locationPriority !== right.locationPriority) {
-        return right.locationPriority - left.locationPriority;
-      }
-      if (left.locationMatched !== right.locationMatched) {
-        return left.locationMatched ? -1 : 1;
-      }
-      return left.index - right.index;
-    });
-}
+import type {
+  JobDetailsState,
+  SourceSelectionDraft,
+  WatchlistCheckState,
+  WatchlistFetchState,
+  WatchlistRowState,
+  WorkdayImportState,
+} from "./watchlist/types";
+import {
+  buildManualDraftFromWorkdayJob,
+  createSourceDraft,
+  formatWatchlistCheckTimestamp,
+  getSourceHost,
+  getWorkdayImportKey,
+  getWorkspaceJobPath,
+  normalizeUiCountryKey,
+  toWorkdaySource,
+} from "./watchlist/utils";
+import { WatchlistSourceResultsCard } from "./watchlist/WatchlistSourceResultsCard";
+import { WatchlistSourcesCard } from "./watchlist/WatchlistSourcesCard";
 
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
@@ -348,6 +70,7 @@ export const WatchlistPage: React.FC = () => {
       previousLastCheckedAt: null,
       newJobKeys: new Set(),
     });
+
   const { data: workspaceJobsResponse } = useQuery({
     queryKey: queryKeys.jobs.list({ view: "list" }),
     queryFn: () => api.getJobs({ view: "list" }),
@@ -363,6 +86,7 @@ export const WatchlistPage: React.FC = () => {
     queryFn: api.getWatchlistSources,
     staleTime: 30_000,
   });
+
   const saveSourcesMutation = useMutation({
     mutationFn: api.updateWatchlistSources,
     onSuccess: async () => {
@@ -469,9 +193,7 @@ export const WatchlistPage: React.FC = () => {
         }),
       );
 
-      if (cancelled || checks.length === 0) {
-        return;
-      }
+      if (cancelled || checks.length === 0) return;
 
       try {
         const check = await api.recordWatchlistCheck({ checks });
@@ -532,15 +254,20 @@ export const WatchlistPage: React.FC = () => {
     watchlistCheckState.previousLastCheckedAt,
   );
   const pipelineSearchTerms = settings?.searchTerms.value ?? [];
-  const locationIntent = createLocationIntentFromLegacyInputs({
-    selectedCountry: normalizeUiCountryKey(
-      settings?.jobspyCountryIndeed.value ?? "",
-    ),
-    cityLocations: parseCityLocationsSetting(settings?.searchCities.value),
-    workplaceTypes: normalizeWorkplaceTypes(settings?.workplaceTypes.value),
-    searchScope: settings?.locationSearchScope.value,
-    matchStrictness: settings?.locationMatchStrictness.value,
-  });
+  const locationIntent = useMemo(
+    () =>
+      createLocationIntentFromLegacyInputs({
+        selectedCountry: normalizeUiCountryKey(
+          settings?.jobspyCountryIndeed.value ?? "",
+        ),
+        cityLocations: parseCityLocationsSetting(settings?.searchCities.value),
+        workplaceTypes: normalizeWorkplaceTypes(settings?.workplaceTypes.value),
+        searchScope: settings?.locationSearchScope.value,
+        matchStrictness: settings?.locationMatchStrictness.value,
+      }),
+    [settings],
+  );
+
   const importedJobsByWorkdayKey = useMemo(() => {
     const importedJobs = new Map<string, JobListItem>();
     for (const job of workspaceJobsResponse?.jobs ?? []) {
@@ -554,6 +281,7 @@ export const WatchlistPage: React.FC = () => {
     }
     return importedJobs;
   }, [workspaceJobsResponse?.jobs]);
+
   const ignoredWorkdayKeys = useMemo(() => {
     const ignoredKeys = new Set<string>();
     for (const state of watchlistStatesResponse?.states ?? []) {
@@ -759,456 +487,51 @@ export const WatchlistPage: React.FC = () => {
 
       <PageMain>
         <div className="space-y-3">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">
-                  Watched sources
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Choose catalog sources or add your own Workday URL.
-                </p>
-                {formattedLastCheckedAt ? (
-                  <p className="text-xs text-muted-foreground">
-                    Last checked: {formattedLastCheckedAt}
-                    {formattedPreviousLastCheckedAt
-                      ? ` · ${newJobsCount} new since ${formattedPreviousLastCheckedAt}`
-                      : " · First check saved your baseline"}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="w-full max-w-[180px]">
-                <Select
-                  value={String(sourceDrafts.length)}
-                  onValueChange={(value) => updateSourceCount(Number(value))}
-                >
-                  <SelectTrigger aria-label="Number of watchlist sources">
-                    <SelectValue placeholder="Source count" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WATCHLIST_SOURCE_COUNT_OPTIONS.map((count) => (
-                      <SelectItem key={`count-${count}`} value={String(count)}>
-                        {count} {count === 1 ? "source" : "sources"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {sourceDrafts.length === 0 ? (
-                <div className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
-                  No watchlist sources selected.
-                </div>
-              ) : null}
-
-              {sourceDrafts.map((draft, index) => (
-                <div
-                  key={draft.id}
-                  className="grid gap-3 rounded-md border border-border/60 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-                >
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Source {index + 1}
-                    </div>
-                    <Select
-                      value={
-                        draft.isCustom
-                          ? CUSTOM_SOURCE_VALUE
-                          : (draft.catalogSourceId ?? undefined)
-                      }
-                      onValueChange={(value) => {
-                        if (value === CUSTOM_SOURCE_VALUE) {
-                          updateDraft(index, (current) => ({
-                            ...current,
-                            isCustom: true,
-                            catalogSourceId: null,
-                          }));
-                          return;
-                        }
-
-                        updateDraft(index, (current) => ({
-                          ...current,
-                          isCustom: false,
-                          catalogSourceId: value,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger
-                        aria-label={`Watchlist source ${index + 1}`}
-                      >
-                        <SelectValue placeholder="Select a source" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {catalogSources.map((source) => (
-                          <SelectItem key={source.id} value={source.id}>
-                            {source.label}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value={CUSTOM_SOURCE_VALUE}>
-                          Choose your own Workday URL
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Workday URL
-                    </div>
-                    {draft.isCustom ? (
-                      <Input
-                        value={draft.customUrl}
-                        onChange={(event) =>
-                          updateDraft(index, (current) => ({
-                            ...current,
-                            customUrl: event.target.value,
-                          }))
-                        }
-                        placeholder="https://company.wd1.myworkdayjobs.com/..."
-                        aria-label={`Custom Workday URL ${index + 1}`}
-                      />
-                    ) : (
-                      <div className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
-                        {catalogSources.find(
-                          (source) => source.id === draft.catalogSourceId,
-                        )?.careersUrl ?? "Select a source to preview its URL"}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <Button
-                type="button"
-                className="gap-2"
-                disabled={saveSourcesMutation.isPending}
-                onClick={() => {
-                  void handleSaveSources().catch((error) => {
-                    showErrorToast(error, "Failed to save watchlist sources");
-                  });
-                }}
-              >
-                {saveSourcesMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                Save sources
-              </Button>
-            </div>
-          </div>
+          <WatchlistSourcesCard
+            sourceDrafts={sourceDrafts}
+            catalogSources={catalogSources}
+            formattedLastCheckedAt={formattedLastCheckedAt}
+            formattedPreviousLastCheckedAt={formattedPreviousLastCheckedAt}
+            newJobsCount={newJobsCount}
+            isSaving={saveSourcesMutation.isPending}
+            onSourceCountChange={updateSourceCount}
+            onUpdateDraft={updateDraft}
+            onSave={() => {
+              void handleSaveSources().catch((error) => {
+                showErrorToast(error, "Failed to save watchlist sources");
+              });
+            }}
+          />
 
           {visibleItems.map((item) => (
-            <div
+            <WatchlistSourceResultsCard
               key={item.source.id}
-              className="overflow-hidden rounded-lg border bg-card"
-            >
-              <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-foreground">
-                    {item.source.label}
-                  </div>
-
-                  {item.source.careersUrl ? (
-                    <div className="mt-1 truncate text-xs text-muted-foreground">
-                      {item.source.careersUrl}
-                    </div>
-                  ) : null}
-
-                  {item.source.cxsJobsUrl ? (
-                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                      {item.source.cxsJobsUrl}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  {item.status === "loading" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking
-                    </span>
-                  ) : null}
-
-                  {item.status === "success" ? (
-                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                      Success
-                    </span>
-                  ) : null}
-
-                  {item.status === "error" ? (
-                    <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                      Error
-                    </span>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={() => dismiss(item.source.id)}
-                    className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label={`Dismiss ${item.source.label}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {item.status === "loading" ? (
-                <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Fetching Workday CXS response...
-                </div>
-              ) : item.status === "error" ? (
-                <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-                  {JSON.stringify(
-                    {
-                      label: item.source.label,
-                      sourceType: item.source.sourceType,
-                      careersUrl: item.source.careersUrl,
-                      cxsJobsUrl: item.source.cxsJobsUrl,
-                      error: item.error,
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-              ) : (
-                (() => {
-                  const rankedJobs = rankWorkdayJobs(
-                    item.response.jobs,
-                    item.source.careersUrl,
-                    pipelineSearchTerms,
-                    locationIntent,
-                  ).map((rankedJob) => ({
-                    ...rankedJob,
-                    importedJob: getImportedWorkdayJob(
-                      rankedJob.workdayJob,
-                      item.source.cxsJobsUrl ?? item.source.careersUrl,
-                    ),
-                    rowState: getWorkdayRowState(
-                      rankedJob.workdayJob,
-                      item.source.cxsJobsUrl ?? item.source.careersUrl,
-                    ),
-                  }));
-                  const hiddenIgnoredCount = rankedJobs.filter(
-                    (rankedJob) => rankedJob.rowState === "ignored",
-                  ).length;
-                  const visibleRankedJobs = showIgnored
-                    ? rankedJobs
-                    : rankedJobs.filter(
-                        (rankedJob) => rankedJob.rowState !== "ignored",
-                      );
-
-                  return (
-                    <div className="divide-y divide-border/40">
-                      <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
-                        <span>
-                          {visibleRankedJobs.length} of {item.response.total}{" "}
-                          jobs
-                          {hiddenIgnoredCount > 0 && !showIgnored
-                            ? ` (${hiddenIgnoredCount} ignored hidden)`
-                            : null}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={showIgnored}
-                            onCheckedChange={setShowIgnored}
-                            aria-label="Show ignored watchlist jobs"
-                          />
-                          Show ignored
-                        </div>
-                      </div>
-
-                      {visibleRankedJobs.map(
-                        ({
-                          workdayJob,
-                          job,
-                          matchScore,
-                          matchedSearchTerm,
-                          locationMatched,
-                          locationPriority,
-                          importedJob,
-                          rowState,
-                        }) => {
-                          const details = jobDetails[workdayJob.jobUrl];
-                          const stateInput = getWorkdayStateInput(
-                            workdayJob,
-                            item.source.cxsJobsUrl ?? item.source.careersUrl,
-                          );
-                          const isIgnoring =
-                            ignoreMutation.isPending &&
-                            ignoreMutation.variables?.source ===
-                              stateInput.source &&
-                            ignoreMutation.variables?.sourceJobId ===
-                              stateInput.sourceJobId;
-                          const isUnignoring =
-                            unignoreMutation.isPending &&
-                            unignoreMutation.variables?.source ===
-                              stateInput.source &&
-                            unignoreMutation.variables?.sourceJobId ===
-                              stateInput.sourceJobId;
-                          const isNewSinceLastCheck =
-                            rowState === "new" &&
-                            watchlistCheckState.newJobKeys.has(
-                              getWorkdayImportKey(
-                                stateInput.source,
-                                stateInput.sourceJobId,
-                              ),
-                            );
-
-                          return (
-                            <div key={job.id} className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <JobRowContent
-                                  job={job}
-                                  showStatusDot={false}
-                                  showSuitabilityScore={false}
-                                  className="min-w-0 flex-1"
-                                />
-                                <OpenJobListingButton
-                                  href={workdayJob.jobUrl}
-                                  size="sm"
-                                  className="shrink-0"
-                                />
-                                {importedJob ? (
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                                      Already in workspace
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      size="sm"
-                                      className="shrink-0"
-                                      onClick={() =>
-                                        navigate(
-                                          getWorkspaceJobPath(importedJob),
-                                        )
-                                      }
-                                    >
-                                      Open workspace job
-                                    </Button>
-                                  </div>
-                                ) : rowState === "ignored" ? (
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    <span className="rounded-full border border-muted-foreground/20 bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-                                      Ignored
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      size="sm"
-                                      className="shrink-0 gap-2"
-                                      disabled={isUnignoring}
-                                      onClick={() =>
-                                        unignoreMutation.mutate(stateInput)
-                                      }
-                                    >
-                                      {isUnignoring ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <RotateCcw className="h-4 w-4" />
-                                      )}
-                                      Unignore
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      size="sm"
-                                      className="shrink-0 gap-2"
-                                      disabled={
-                                        movingJobUrl === workdayJob.jobUrl
-                                      }
-                                      onClick={() =>
-                                        void handleMoveToWorkspace(
-                                          workdayJob,
-                                          item.source.careersUrl,
-                                          item.source.cxsJobsUrl ??
-                                            item.source.careersUrl,
-                                        )
-                                      }
-                                    >
-                                      {movingJobUrl === workdayJob.jobUrl ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <FolderInput className="h-4 w-4" />
-                                      )}
-                                      Move to workspace
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="shrink-0 gap-2 text-muted-foreground"
-                                      disabled={isIgnoring}
-                                      onClick={() =>
-                                        ignoreMutation.mutate(stateInput)
-                                      }
-                                    >
-                                      {isIgnoring ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <EyeOff className="h-4 w-4" />
-                                      )}
-                                      Ignore
-                                    </Button>
-                                  </>
-                                )}
-                                {matchedSearchTerm ? (
-                                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
-                                    {matchedSearchTerm} · {matchScore}
-                                  </span>
-                                ) : null}
-                                {locationMatched ? (
-                                  <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                                    {locationPriority > 0
-                                      ? "location"
-                                      : "remote"}
-                                  </span>
-                                ) : null}
-                                {isNewSinceLastCheck ? (
-                                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">
-                                    New since last check
-                                  </span>
-                                ) : null}
-                              </div>
-
-                              <JobDescriptionPanel
-                                description={
-                                  details?.status === "success"
-                                    ? details.details.jobDescriptionText
-                                    : null
-                                }
-                                helperText="Fetched only when this panel is opened."
-                                jobUrl={workdayJob.jobUrl}
-                                defaultOpen={false}
-                                isLoading={details?.status === "loading"}
-                                error={
-                                  details?.status === "error"
-                                    ? details.error
-                                    : null
-                                }
-                                onOpen={() =>
-                                  void loadJobDetails(workdayJob.jobUrl)
-                                }
-                                maxHeightClassName="max-h-72"
-                                className="mt-3"
-                              />
-                            </div>
-                          );
-                        },
-                      )}
-                    </div>
-                  );
-                })()
-              )}
-            </div>
+              item={item}
+              pipelineSearchTerms={pipelineSearchTerms}
+              locationIntent={locationIntent}
+              showIgnored={showIgnored}
+              dismiss={dismiss}
+              setShowIgnored={setShowIgnored}
+              getImportedWorkdayJob={getImportedWorkdayJob}
+              getWorkdayRowState={getWorkdayRowState}
+              getWorkdayStateInput={getWorkdayStateInput}
+              jobDetails={jobDetails}
+              movingJobUrl={movingJobUrl}
+              ignorePending={ignoreMutation.isPending}
+              ignoreVariables={ignoreMutation.variables}
+              unignorePending={unignoreMutation.isPending}
+              unignoreVariables={unignoreMutation.variables}
+              watchlistCheckState={watchlistCheckState}
+              onIgnore={(input) => ignoreMutation.mutate(input)}
+              onUnignore={(input) => unignoreMutation.mutate(input)}
+              onMoveToWorkspace={(job, careersUrl, cxsJobsUrl) => {
+                void handleMoveToWorkspace(job, careersUrl, cxsJobsUrl);
+              }}
+              onOpenWorkspaceJob={(job) => navigate(getWorkspaceJobPath(job))}
+              onLoadJobDetails={(jobUrl) => {
+                void loadJobDetails(jobUrl);
+              }}
+            />
           ))}
 
           {visibleItems.length === 0 ? (
