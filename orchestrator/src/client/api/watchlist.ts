@@ -1,6 +1,8 @@
 import type {
+  UpdateWatchlistSelectionsInput,
   WatchlistJobState,
   WatchlistJobStatesResponse,
+  WatchlistSourcesResponse,
 } from "@shared/types";
 import { fetchApi } from "./core";
 
@@ -10,6 +12,19 @@ function watchlistStatePath(source: string, sourceJobId: string): string {
 
 export async function getWatchlistJobStates(): Promise<WatchlistJobStatesResponse> {
   return fetchApi<WatchlistJobStatesResponse>("/watchlist/states");
+}
+
+export async function getWatchlistSources(): Promise<WatchlistSourcesResponse> {
+  return fetchApi<WatchlistSourcesResponse>("/watchlist/sources");
+}
+
+export async function updateWatchlistSources(
+  input: UpdateWatchlistSelectionsInput,
+): Promise<WatchlistSourcesResponse> {
+  return fetchApi<WatchlistSourcesResponse>("/watchlist/sources", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function ignoreWatchlistJob(input: {

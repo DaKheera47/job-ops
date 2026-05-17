@@ -50,6 +50,80 @@ describe.sequential("Watchlist API routes", () => {
       ({ server, baseUrl, closeDb, tempDir } = await startServer());
     });
 
+    it("loads watchlist sources from the career board catalog json", async () => {
+      const res = await fetch(`${baseUrl}/api/watchlist/sources`);
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.catalogSources).toEqual([
+        expect.objectContaining({
+          id: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+          label: "Autodesk",
+          sourceType: "workday",
+          careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+          cxsJobsUrl:
+            "https://autodesk.wd1.myworkdayjobs.com/wday/cxs/autodesk/Ext/jobs",
+        }),
+        expect.objectContaining({
+          id: "workday:https://pg.wd5.myworkdayjobs.com/en-US/1000",
+          label: "P&G",
+          sourceType: "workday",
+          careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+          cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+        }),
+      ]);
+      expect(body.data.selectedSources).toEqual([]);
+    });
+
+    it("stores only the user's selected watchlist sources", async () => {
+      const firstRes = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selections: [
+            {
+              catalogSourceId:
+                "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+              sourceType: "workday",
+              careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+            },
+            {
+              sourceType: "workday",
+              careersUrl: "https://example.wd1.myworkdayjobs.com/en-US/careers",
+              label: "https://example.wd1.myworkdayjobs.com/en-US/careers",
+            },
+          ],
+        }),
+      });
+      const firstBody = await firstRes.json();
+
+      expect(firstRes.status).toBe(200);
+      expect(firstBody.ok).toBe(true);
+      expect(firstBody.data.selectedSources).toEqual([
+        expect.objectContaining({
+          catalogSourceId: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+          label: "Autodesk",
+          careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+          sourceType: "workday",
+          isCustom: false,
+          sortOrder: 0,
+        }),
+        expect.objectContaining({
+          catalogSourceId: null,
+          careersUrl: "https://example.wd1.myworkdayjobs.com/en-US/careers",
+          sourceType: "workday",
+          isCustom: true,
+          sortOrder: 1,
+        }),
+      ]);
+
+      const secondBody = await fetch(`${baseUrl}/api/watchlist/sources`).then(
+        (res) => res.json(),
+      );
+      expect(secondBody.data.selectedSources).toHaveLength(2);
+    });
+
     it("upserts ignored states and removes them on unignore", async () => {
       const source = "workday:autodesk";
       const sourceJobId = "26WD97952";

@@ -372,6 +372,43 @@ export interface WatchlistJobStatesResponse {
   states: WatchlistJobState[];
 }
 
+export type WatchedSourceType = "workday" | (string & {});
+
+export interface WatchlistSource {
+  id: string;
+  label: string;
+  careersUrl: string;
+  cxsJobsUrl: string | null;
+  sourceType: WatchedSourceType;
+}
+
+export interface WatchlistSelectedSource {
+  id: string;
+  catalogSourceId: string | null;
+  label: string;
+  careersUrl: string;
+  cxsJobsUrl: string | null;
+  sourceType: WatchedSourceType;
+  isCustom: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WatchlistSourcesResponse {
+  catalogSources: WatchlistSource[];
+  selectedSources: WatchlistSelectedSource[];
+}
+
+export interface UpdateWatchlistSelectionsInput {
+  selections: Array<{
+    catalogSourceId?: string | null;
+    sourceType: WatchedSourceType;
+    label?: string | null;
+    careersUrl: string;
+  }>;
+}
+
 export interface UpdateJobInput {
   title?: string;
   employer?: string;

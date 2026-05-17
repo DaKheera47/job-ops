@@ -40,6 +40,8 @@ vi.mock("@client/components/JobDescriptionPanel", () => ({
 vi.mock("../api", () => ({
   getJobs: vi.fn(),
   getWatchlistJobStates: vi.fn(),
+  getWatchlistSources: vi.fn(),
+  updateWatchlistSources: vi.fn(),
   ignoreWatchlistJob: vi.fn(),
   unignoreWatchlistJob: vi.fn(),
 }));
@@ -136,6 +138,50 @@ beforeEach(() => {
 
   vi.mocked(api.getJobs).mockResolvedValue(makeJobsResponse([]) as never);
   vi.mocked(api.getWatchlistJobStates).mockResolvedValue({ states: [] });
+  vi.mocked(api.getWatchlistSources).mockResolvedValue({
+    catalogSources: [
+      {
+        id: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+        label: "Autodesk",
+        sourceType: "workday",
+        careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+        cxsJobsUrl: autodeskCxsJobsUrl,
+      },
+      {
+        id: `workday:https://pg.wd5.myworkdayjobs.com/en-US/1000`,
+        label: "P&G",
+        sourceType: "workday",
+        careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+        cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+      },
+    ],
+    selectedSources: [
+      {
+        id: "selected-autodesk",
+        catalogSourceId: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+        label: "Autodesk",
+        sourceType: "workday",
+        careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+        cxsJobsUrl: autodeskCxsJobsUrl,
+        isCustom: false,
+        sortOrder: 0,
+        createdAt: "2026-05-17T00:00:00.000Z",
+        updatedAt: "2026-05-17T00:00:00.000Z",
+      },
+      {
+        id: "selected-pg",
+        catalogSourceId: `workday:https://pg.wd5.myworkdayjobs.com/en-US/1000`,
+        label: "P&G",
+        sourceType: "workday",
+        careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+        cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+        isCustom: false,
+        sortOrder: 1,
+        createdAt: "2026-05-17T00:00:00.000Z",
+        updatedAt: "2026-05-17T00:00:00.000Z",
+      },
+    ],
+  });
   vi.mocked(fetchWorkdayCxsJobs).mockImplementation(
     async (careersUrl: string) => {
       if (careersUrl.includes("autodesk")) {

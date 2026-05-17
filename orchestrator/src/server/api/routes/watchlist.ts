@@ -1,5 +1,10 @@
-import { badRequest } from "@infra/errors";
+import { workdayUrlToCxsJobsUrl } from "@career-boards/workday";
+import { badRequest, unprocessableEntity } from "@infra/errors";
 import { fail, ok } from "@infra/http";
+import {
+  getCareerBoardSourceById,
+  listCareerBoardSources,
+} from "@server/config/career-boards";
 import * as watchlistRepo from "@server/repositories/watchlist";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -11,8 +16,148 @@ const watchlistStateParamsSchema = z.object({
   sourceJobId: z.string().trim().min(1).max(500),
 });
 
+const updateWatchlistSelectionsSchema = z.object({
+  selections: z
+    .array(
+      z.object({
+        catalogSourceId: z
+          .string()
+          .trim()
+          .min(1)
+          .max(500)
+          .nullable()
+          .optional(),
+        sourceType: z.string().trim().min(1).max(120),
+        label: z.string().trim().min(1).max(200).nullable().optional(),
+        careersUrl: z.string().trim().url().max(2000),
+      }),
+    )
+    .max(10),
+});
+
+function hydrateSelectedSources(
+  selectedSources: Awaited<
+    ReturnType<typeof watchlistRepo.listWatchlistSelectedSources>
+  >,
+) {
+  return selectedSources.map((source) => ({
+    ...source,
+    cxsJobsUrl:
+      source.sourceType === "workday"
+        ? workdayUrlToCxsJobsUrl(source.careersUrl)
+        : source.cxsJobsUrl,
+  }));
+}
+
 watchlistRouter.get("/states", async (_req: Request, res: Response) => {
   ok(res, { states: await watchlistRepo.listWatchlistJobStates() });
+});
+
+watchlistRouter.get("/sources", async (_req: Request, res: Response) => {
+  const [catalogSources, selectedSources] = await Promise.all([
+    listCareerBoardSources(),
+    watchlistRepo.listWatchlistSelectedSources(),
+  ]);
+
+  ok(res, {
+    catalogSources,
+    selectedSources: hydrateSelectedSources(selectedSources),
+  });
+});
+
+watchlistRouter.put("/sources", async (req: Request, res: Response) => {
+  const parsedBody = updateWatchlistSelectionsSchema.safeParse(req.body ?? {});
+  if (!parsedBody.success) {
+    return fail(
+      res,
+      badRequest(
+        "Invalid watchlist source selections",
+        parsedBody.error.flatten(),
+      ),
+    );
+  }
+
+  const normalizedSelections = [];
+  const seenUrls = new Set<string>();
+
+  for (const selection of parsedBody.data.selections) {
+    const normalizedUrl = selection.careersUrl.trim();
+    if (seenUrls.has(normalizedUrl)) {
+      return fail(
+        res,
+        unprocessableEntity("Duplicate watchlist URLs are not allowed", {
+          careersUrl: normalizedUrl,
+        }),
+      );
+    }
+    seenUrls.add(normalizedUrl);
+
+    if (selection.catalogSourceId) {
+      const catalogSource = await getCareerBoardSourceById(
+        selection.catalogSourceId,
+      );
+      if (!catalogSource) {
+        return fail(
+          res,
+          unprocessableEntity("Selected watchlist source was not found", {
+            catalogSourceId: selection.catalogSourceId,
+          }),
+        );
+      }
+
+      if (catalogSource.careersUrl !== normalizedUrl) {
+        return fail(
+          res,
+          unprocessableEntity(
+            "Selected watchlist source URL does not match the catalog",
+            {
+              catalogSourceId: selection.catalogSourceId,
+              careersUrl: normalizedUrl,
+            },
+          ),
+        );
+      }
+
+      normalizedSelections.push({
+        catalogSourceId: catalogSource.id,
+        sourceType: catalogSource.sourceType,
+        label: catalogSource.label,
+        careersUrl: catalogSource.careersUrl,
+      });
+      continue;
+    }
+
+    if (selection.sourceType === "workday") {
+      try {
+        workdayUrlToCxsJobsUrl(normalizedUrl);
+      } catch (error) {
+        return fail(
+          res,
+          unprocessableEntity(
+            `Invalid Workday URL: ${error instanceof Error ? error.message : String(error)}`,
+            { careersUrl: normalizedUrl },
+          ),
+        );
+      }
+    }
+
+    normalizedSelections.push({
+      catalogSourceId: null,
+      sourceType: selection.sourceType,
+      label: selection.label?.trim() || normalizedUrl,
+      careersUrl: normalizedUrl,
+    });
+  }
+
+  const selectedSources = await watchlistRepo.replaceWatchlistSelectedSources({
+    selections: normalizedSelections,
+  });
+  const catalogSources = await listCareerBoardSources();
+
+  ok(res, {
+    catalogSources,
+    selectedSources: hydrateSelectedSources(selectedSources),
+  });
 });
 
 watchlistRouter.put(

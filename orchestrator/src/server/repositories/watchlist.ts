@@ -1,10 +1,23 @@
 import { randomUUID } from "node:crypto";
-import type { WatchlistJobState } from "@shared/types";
-import { and, eq } from "drizzle-orm";
+import { getUserId } from "@server/infra/request-context";
+import type {
+  UpdateWatchlistSelectionsInput,
+  WatchlistJobState,
+  WatchlistSelectedSource,
+} from "@shared/types";
+import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import { getActiveTenantId } from "../tenancy/context";
 
-const { watchlistJobStates } = schema;
+const { watchlistJobStates, watchlistSelectedSources } = schema;
+
+function requireActiveUserId(): string {
+  const userId = getUserId();
+  if (!userId) {
+    throw new Error("User context is required for watchlist source selections");
+  }
+  return userId;
+}
 
 function mapRowToWatchlistJobState(
   row: typeof watchlistJobStates.$inferSelect,
@@ -16,6 +29,86 @@ function mapRowToWatchlistJobState(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function mapRowToWatchlistSelectedSource(
+  row: typeof watchlistSelectedSources.$inferSelect,
+): WatchlistSelectedSource {
+  return {
+    id: row.id,
+    catalogSourceId: row.catalogSourceId,
+    label: row.label,
+    careersUrl: row.careersUrl,
+    cxsJobsUrl: row.cxsJobsUrl,
+    sourceType: row.sourceType,
+    isCustom: row.isCustom,
+    sortOrder: row.sortOrder,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function listWatchlistSelectedSources(): Promise<
+  WatchlistSelectedSource[]
+> {
+  const tenantId = getActiveTenantId();
+  const userId = requireActiveUserId();
+  const rows = await db
+    .select()
+    .from(watchlistSelectedSources)
+    .where(
+      and(
+        eq(watchlistSelectedSources.tenantId, tenantId),
+        eq(watchlistSelectedSources.userId, userId),
+      ),
+    )
+    .orderBy(asc(watchlistSelectedSources.sortOrder));
+
+  return rows.map(mapRowToWatchlistSelectedSource);
+}
+
+export async function replaceWatchlistSelectedSources(
+  input: UpdateWatchlistSelectionsInput,
+): Promise<WatchlistSelectedSource[]> {
+  const tenantId = getActiveTenantId();
+  const userId = requireActiveUserId();
+  const now = new Date().toISOString();
+
+  db.transaction((tx) => {
+    tx.delete(watchlistSelectedSources)
+      .where(
+        and(
+          eq(watchlistSelectedSources.tenantId, tenantId),
+          eq(watchlistSelectedSources.userId, userId),
+        ),
+      )
+      .run();
+
+    if (input.selections.length === 0) {
+      return;
+    }
+
+    tx.insert(watchlistSelectedSources)
+      .values(
+        input.selections.map((selection, index) => ({
+          id: randomUUID(),
+          tenantId,
+          userId,
+          catalogSourceId: selection.catalogSourceId ?? null,
+          label: selection.label?.trim() || selection.careersUrl,
+          careersUrl: selection.careersUrl,
+          cxsJobsUrl: null,
+          sourceType: selection.sourceType,
+          isCustom: !selection.catalogSourceId,
+          sortOrder: index,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+      .run();
+  });
+
+  return listWatchlistSelectedSources();
 }
 
 export async function listWatchlistJobStates(): Promise<WatchlistJobState[]> {

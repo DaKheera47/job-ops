@@ -16,13 +16,25 @@ import { queryKeys } from "@client/lib/queryKeys";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
-import type { JobListItem, ManualJobDraft } from "@shared/types.js";
+import type {
+  JobListItem,
+  ManualJobDraft,
+  WatchlistSelectedSource,
+} from "@shared/types.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, FolderInput, Loader2, RotateCcw, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   normalizeWorkplaceTypes,
@@ -34,20 +46,25 @@ import { JobRowContent } from "./orchestrator/JobRowContent";
 type WatchlistFetchState =
   | {
       status: "loading";
-      careersUrl: string;
+      source: WatchlistSelectedSource;
     }
   | {
       status: "success";
-      careersUrl: string;
-      cxsJobsUrl: string;
+      source: WatchlistSelectedSource;
       response: WorkdayCxsJobsResult;
     }
   | {
       status: "error";
-      careersUrl: string;
-      cxsJobsUrl?: string;
+      source: WatchlistSelectedSource;
       error: string;
     };
+
+interface SourceSelectionDraft {
+  id: string;
+  isCustom: boolean;
+  catalogSourceId: string | null;
+  customUrl: string;
+}
 
 type JobDetailsState =
   | {
@@ -80,10 +97,22 @@ interface WorkdayImportState {
 
 type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
 
-const WATCHLIST_URLS = [
-  "https://autodesk.wd1.myworkdayjobs.com/Ext",
-  "https://pg.wd5.myworkdayjobs.com/en-US/1000",
-];
+const CUSTOM_SOURCE_VALUE = "__custom__";
+const WATCHLIST_SOURCE_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
+let sourceDraftSequence = 0;
+
+function createSourceDraft(
+  overrides?: Partial<Omit<SourceSelectionDraft, "id">>,
+): SourceSelectionDraft {
+  sourceDraftSequence += 1;
+  return {
+    id: `draft-${sourceDraftSequence}`,
+    isCustom: false,
+    catalogSourceId: null,
+    customUrl: "",
+    ...overrides,
+  };
+}
 
 function getEmployerFromCareersUrl(careersUrl: string): string {
   try {
@@ -291,6 +320,9 @@ export const WatchlistPage: React.FC = () => {
   });
   const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
   const [showIgnored, setShowIgnored] = useState(false);
+  const [sourceDrafts, setSourceDrafts] = useState<SourceSelectionDraft[]>([
+    createSourceDraft(),
+  ]);
   const { data: workspaceJobsResponse } = useQuery({
     queryKey: queryKeys.jobs.list({ view: "list" }),
     queryFn: () => api.getJobs({ view: "list" }),
@@ -300,6 +332,23 @@ export const WatchlistPage: React.FC = () => {
     queryKey: queryKeys.watchlist.states(),
     queryFn: api.getWatchlistJobStates,
     staleTime: 30_000,
+  });
+  const { data: watchlistSourcesResponse } = useQuery({
+    queryKey: queryKeys.watchlist.sources(),
+    queryFn: api.getWatchlistSources,
+    staleTime: 30_000,
+  });
+  const saveSourcesMutation = useMutation({
+    mutationFn: api.updateWatchlistSources,
+    onSuccess: async () => {
+      setDismissedUrls(new Set());
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlist.sources(),
+      });
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to save watchlist sources");
+    },
   });
   const ignoreMutation = useMutation({
     mutationFn: api.ignoreWatchlistJob,
@@ -328,24 +377,34 @@ export const WatchlistPage: React.FC = () => {
     let cancelled = false;
 
     async function fetchWatchlist() {
+      const sources = watchlistSourcesResponse?.selectedSources ?? [];
+      const enabledSources = sources.filter(
+        (source) => source.sourceType === "workday",
+      );
+
+      if (enabledSources.length === 0) {
+        setItems([]);
+        return;
+      }
+
       setItems(
-        WATCHLIST_URLS.map((careersUrl) => ({
+        enabledSources.map((source) => ({
           status: "loading",
-          careersUrl,
+          source,
         })),
       );
 
       await Promise.all(
-        WATCHLIST_URLS.map(async (careersUrl) => {
+        enabledSources.map(async (source) => {
           try {
-            const result = await fetchWorkdayCxsJobs(careersUrl, 40);
+            const result = await fetchWorkdayCxsJobs(source.careersUrl, 40);
 
             if (cancelled) return;
 
             setItems((current) =>
               current.map((item) =>
-                item.careersUrl === careersUrl
-                  ? { status: "success", ...result }
+                item.source.id === source.id
+                  ? { status: "success", source, response: result.response }
                   : item,
               ),
             );
@@ -354,10 +413,10 @@ export const WatchlistPage: React.FC = () => {
 
             setItems((current) =>
               current.map((item) =>
-                item.careersUrl === careersUrl
+                item.source.id === source.id
                   ? {
                       status: "error",
-                      careersUrl,
+                      source,
                       error:
                         error instanceof Error ? error.message : String(error),
                     }
@@ -369,16 +428,36 @@ export const WatchlistPage: React.FC = () => {
       );
     }
 
-    void fetchWatchlist();
+    if (watchlistSourcesResponse?.selectedSources) {
+      void fetchWatchlist();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [watchlistSourcesResponse?.selectedSources]);
+
+  useEffect(() => {
+    const selectedSources = watchlistSourcesResponse?.selectedSources ?? [];
+    if (selectedSources.length === 0) {
+      setSourceDrafts([createSourceDraft()]);
+      return;
+    }
+
+    setSourceDrafts(
+      selectedSources.map((source) => ({
+        id: source.id,
+        isCustom: source.isCustom,
+        catalogSourceId: source.catalogSourceId,
+        customUrl: source.isCustom ? source.careersUrl : "",
+      })),
+    );
+  }, [watchlistSourcesResponse?.selectedSources]);
 
   const visibleItems = items.filter(
-    (item) => !dismissedUrls.has(item.careersUrl),
+    (item) => !dismissedUrls.has(item.source.id),
   );
+  const catalogSources = watchlistSourcesResponse?.catalogSources ?? [];
   const pipelineSearchTerms = settings?.searchTerms.value ?? [];
   const locationIntent = createLocationIntentFromLegacyInputs({
     selectedCountry: normalizeUiCountryKey(
@@ -453,12 +532,83 @@ export const WatchlistPage: React.FC = () => {
     };
   }
 
-  function dismiss(careersUrl: string) {
+  function dismiss(sourceId: string) {
     setDismissedUrls((current) => {
       const next = new Set(current);
-      next.add(careersUrl);
+      next.add(sourceId);
       return next;
     });
+  }
+
+  function updateSourceCount(nextCount: number) {
+    setSourceDrafts((current) => {
+      if (nextCount <= current.length) {
+        return current.slice(0, nextCount);
+      }
+
+      return [
+        ...current,
+        ...Array.from({ length: nextCount - current.length }, () =>
+          createSourceDraft(),
+        ),
+      ];
+    });
+  }
+
+  function updateDraft(
+    index: number,
+    updater: (draft: SourceSelectionDraft) => SourceSelectionDraft,
+  ) {
+    setSourceDrafts((current) =>
+      current.map((draft, draftIndex) =>
+        draftIndex === index ? updater(draft) : draft,
+      ),
+    );
+  }
+
+  async function handleSaveSources() {
+    const selections = sourceDrafts.map((draft, index) => {
+      if (draft.isCustom) {
+        const careersUrl = draft.customUrl.trim();
+        if (!careersUrl) {
+          throw new Error(`Source ${index + 1} is missing a Workday URL.`);
+        }
+
+        return {
+          catalogSourceId: null,
+          sourceType: "workday" as const,
+          label: careersUrl,
+          careersUrl,
+        };
+      }
+
+      if (!draft.catalogSourceId) {
+        throw new Error(`Source ${index + 1} is not selected.`);
+      }
+
+      const catalogSource = catalogSources.find(
+        (source) => source.id === draft.catalogSourceId,
+      );
+      if (!catalogSource) {
+        throw new Error(`Source ${index + 1} is no longer available.`);
+      }
+
+      return {
+        catalogSourceId: catalogSource.id,
+        sourceType: catalogSource.sourceType,
+        label: catalogSource.label,
+        careersUrl: catalogSource.careersUrl,
+      };
+    });
+
+    const uniqueUrls = new Set(
+      selections.map((selection) => selection.careersUrl),
+    );
+    if (uniqueUrls.size !== selections.length) {
+      throw new Error("Choose unique watchlist URLs.");
+    }
+
+    await saveSourcesMutation.mutateAsync({ selections });
   }
 
   async function loadJobDetails(
@@ -536,20 +686,160 @@ export const WatchlistPage: React.FC = () => {
 
       <PageMain>
         <div className="space-y-3">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-1">
+                <h2 className="text-sm font-medium text-foreground">
+                  Watched sources
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose catalog sources or add your own Workday URL.
+                </p>
+              </div>
+
+              <div className="w-full max-w-[180px]">
+                <Select
+                  value={String(sourceDrafts.length)}
+                  onValueChange={(value) => updateSourceCount(Number(value))}
+                >
+                  <SelectTrigger aria-label="Number of watchlist sources">
+                    <SelectValue placeholder="Source count" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WATCHLIST_SOURCE_COUNT_OPTIONS.map((count) => (
+                      <SelectItem key={`count-${count}`} value={String(count)}>
+                        {count} {count === 1 ? "source" : "sources"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {sourceDrafts.length === 0 ? (
+                <div className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                  No watchlist sources selected.
+                </div>
+              ) : null}
+
+              {sourceDrafts.map((draft, index) => (
+                <div
+                  key={draft.id}
+                  className="grid gap-3 rounded-md border border-border/60 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+                >
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Source {index + 1}
+                    </div>
+                    <Select
+                      value={
+                        draft.isCustom
+                          ? CUSTOM_SOURCE_VALUE
+                          : (draft.catalogSourceId ?? undefined)
+                      }
+                      onValueChange={(value) => {
+                        if (value === CUSTOM_SOURCE_VALUE) {
+                          updateDraft(index, (current) => ({
+                            ...current,
+                            isCustom: true,
+                            catalogSourceId: null,
+                          }));
+                          return;
+                        }
+
+                        updateDraft(index, (current) => ({
+                          ...current,
+                          isCustom: false,
+                          catalogSourceId: value,
+                        }));
+                      }}
+                    >
+                      <SelectTrigger
+                        aria-label={`Watchlist source ${index + 1}`}
+                      >
+                        <SelectValue placeholder="Select a source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {catalogSources.map((source) => (
+                          <SelectItem key={source.id} value={source.id}>
+                            {source.label}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value={CUSTOM_SOURCE_VALUE}>
+                          Choose your own Workday URL
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Workday URL
+                    </div>
+                    {draft.isCustom ? (
+                      <Input
+                        value={draft.customUrl}
+                        onChange={(event) =>
+                          updateDraft(index, (current) => ({
+                            ...current,
+                            customUrl: event.target.value,
+                          }))
+                        }
+                        placeholder="https://company.wd1.myworkdayjobs.com/..."
+                        aria-label={`Custom Workday URL ${index + 1}`}
+                      />
+                    ) : (
+                      <div className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
+                        {catalogSources.find(
+                          (source) => source.id === draft.catalogSourceId,
+                        )?.careersUrl ?? "Select a source to preview its URL"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                className="gap-2"
+                disabled={saveSourcesMutation.isPending}
+                onClick={() => {
+                  void handleSaveSources().catch((error) => {
+                    showErrorToast(error, "Failed to save watchlist sources");
+                  });
+                }}
+              >
+                {saveSourcesMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Save sources
+              </Button>
+            </div>
+          </div>
+
           {visibleItems.map((item) => (
             <div
-              key={item.careersUrl}
+              key={item.source.id}
               className="overflow-hidden rounded-lg border bg-card"
             >
               <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-foreground">
-                    {item.careersUrl}
+                    {item.source.label}
                   </div>
 
-                  {"cxsJobsUrl" in item && item.cxsJobsUrl ? (
+                  {item.source.careersUrl ? (
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      {item.source.careersUrl}
+                    </div>
+                  ) : null}
+
+                  {item.source.cxsJobsUrl ? (
                     <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                      {item.cxsJobsUrl}
+                      {item.source.cxsJobsUrl}
                     </div>
                   ) : null}
                 </div>
@@ -576,9 +866,9 @@ export const WatchlistPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => dismiss(item.careersUrl)}
+                    onClick={() => dismiss(item.source.id)}
                     className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label={`Dismiss ${item.careersUrl}`}
+                    aria-label={`Dismiss ${item.source.label}`}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -594,8 +884,10 @@ export const WatchlistPage: React.FC = () => {
                 <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                   {JSON.stringify(
                     {
-                      careersUrl: item.careersUrl,
-                      cxsJobsUrl: item.cxsJobsUrl,
+                      label: item.source.label,
+                      sourceType: item.source.sourceType,
+                      careersUrl: item.source.careersUrl,
+                      cxsJobsUrl: item.source.cxsJobsUrl,
                       error: item.error,
                     },
                     null,
@@ -606,18 +898,18 @@ export const WatchlistPage: React.FC = () => {
                 (() => {
                   const rankedJobs = rankWorkdayJobs(
                     item.response.jobs,
-                    item.careersUrl,
+                    item.source.careersUrl,
                     pipelineSearchTerms,
                     locationIntent,
                   ).map((rankedJob) => ({
                     ...rankedJob,
                     importedJob: getImportedWorkdayJob(
                       rankedJob.workdayJob,
-                      item.cxsJobsUrl,
+                      item.source.cxsJobsUrl ?? item.source.careersUrl,
                     ),
                     rowState: getWorkdayRowState(
                       rankedJob.workdayJob,
-                      item.cxsJobsUrl,
+                      item.source.cxsJobsUrl ?? item.source.careersUrl,
                     ),
                   }));
                   const hiddenIgnoredCount = rankedJobs.filter(
@@ -663,7 +955,7 @@ export const WatchlistPage: React.FC = () => {
                           const details = jobDetails[workdayJob.jobUrl];
                           const stateInput = getWorkdayStateInput(
                             workdayJob,
-                            item.cxsJobsUrl,
+                            item.source.cxsJobsUrl ?? item.source.careersUrl,
                           );
                           const isIgnoring =
                             ignoreMutation.isPending &&
@@ -747,8 +1039,9 @@ export const WatchlistPage: React.FC = () => {
                                       onClick={() =>
                                         void handleMoveToWorkspace(
                                           workdayJob,
-                                          item.careersUrl,
-                                          item.cxsJobsUrl,
+                                          item.source.careersUrl,
+                                          item.source.cxsJobsUrl ??
+                                            item.source.careersUrl,
                                         )
                                       }
                                     >

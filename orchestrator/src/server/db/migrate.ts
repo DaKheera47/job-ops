@@ -211,6 +211,24 @@ const migrations = [
     UNIQUE(tenant_id, source, source_job_id)
   )`,
 
+  `CREATE TABLE IF NOT EXISTS watchlist_selected_sources (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    catalog_source_id TEXT,
+    label TEXT NOT NULL,
+    careers_url TEXT NOT NULL,
+    cxs_jobs_url TEXT,
+    source_type TEXT NOT NULL,
+    is_custom INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id, sort_order),
+    UNIQUE(tenant_id, user_id, careers_url)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS analytics_install_state (
     id TEXT PRIMARY KEY,
     distinct_id TEXT NOT NULL,
@@ -783,6 +801,7 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_watchlist_job_states_tenant_state ON watchlist_job_states(tenant_id, state)`,
+  `CREATE INDEX IF NOT EXISTS idx_watchlist_selected_sources_tenant_user ON watchlist_selected_sources(tenant_id, user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_application_id ON stage_events(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_occurred_at ON stage_events(occurred_at)`,
