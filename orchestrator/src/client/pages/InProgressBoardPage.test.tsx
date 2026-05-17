@@ -26,6 +26,7 @@ vi.mock("sonner", () => ({
 const makeJob = (overrides: Partial<JobListItem>): JobListItem => ({
   id: "job-1",
   source: "manual",
+  sourceJobId: null,
   title: "Backend Engineer",
   employer: "Acme",
   jobUrl: "https://example.com/jobs/1",

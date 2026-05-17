@@ -1,6 +1,7 @@
 import {
   AppError,
   badRequest,
+  conflict,
   notFound,
   requestTimeout,
   toAppError,
@@ -269,10 +270,21 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
     const input = manualJobImportSchema.parse(req.body ?? {});
     const job = input.job;
     const source = cleanOptional(job.source) ?? "manual";
+    const sourceJobId = cleanOptional(job.sourceJobId);
+
+    if (sourceJobId) {
+      const existingJob = await jobsRepo.getJobBySourceJobId(
+        source,
+        sourceJobId,
+      );
+      if (existingJob) {
+        return fail(res, conflict("This job is already in your workspace."));
+      }
+    }
 
     const createdJob = await jobsRepo.createJob({
       source,
-      sourceJobId: cleanOptional(job.sourceJobId) ?? undefined,
+      sourceJobId: sourceJobId ?? undefined,
       title: job.title.trim(),
       employer: job.employer.trim(),
       jobUrl: job.jobUrl.trim(),

@@ -61,6 +61,7 @@ export function toJobListItem(
   return {
     id: job.id,
     source: job.source,
+    sourceJobId: job.sourceJobId,
     title: job.title,
     employer: job.employer,
     jobUrl: job.jobUrl,

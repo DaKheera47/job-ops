@@ -257,6 +257,7 @@ export type JobListItem = Pick<
   Job,
   | "id"
   | "source"
+  | "sourceJobId"
   | "title"
   | "employer"
   | "jobUrl"

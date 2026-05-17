@@ -17,10 +17,10 @@ import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type { JobListItem, ManualJobDraft } from "@shared/types.js";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, FolderInput, Loader2, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +101,7 @@ function toJobListItem(
   return {
     id: `workday:${careersUrl}:${job.externalId}`,
     source: "manual",
+    sourceJobId: null,
     title: job.title,
     employer: job.company ?? getEmployerFromCareersUrl(careersUrl),
     jobUrl: job.jobUrl,
@@ -154,14 +155,41 @@ function normalizeUiCountryKey(value: string): string {
   return normalized;
 }
 
-function toWorkdaySource(company: string): string {
-  const slug = company
+function toSourceSlug(value: string): string {
+  return value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
 
+function getWorkdayTenantFromUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const [tenant] = url.hostname.split(".");
+    return tenant || null;
+  } catch {
+    return null;
+  }
+}
+
+function toWorkdaySource(value: string): string {
+  const slug = toSourceSlug(getWorkdayTenantFromUrl(value) ?? value);
   return `workday:${slug || "unknown"}`;
+}
+
+function getWorkdayImportKey(source: string, externalId: string): string {
+  return `${source}:${externalId}`;
+}
+
+function getWorkspaceJobPath(job: JobListItem): string {
+  const tab =
+    job.status === "discovered"
+      ? "discovered"
+      : job.status === "applied" || job.status === "in_progress"
+        ? "applied"
+        : "ready";
+  return `/jobs/${tab}/${job.id}`;
 }
 
 function getSourceHost(value: string): string | null {
@@ -176,12 +204,13 @@ function buildManualDraftFromWorkdayJob(
   job: NormalizedWorkdayJob,
   details: NormalizedWorkdayJobDetails,
   careersUrl: string,
+  cxsJobsUrl: string,
 ): ManualJobDraft {
   const employer =
     details.company ?? job.company ?? getEmployerFromCareersUrl(careersUrl);
 
   return {
-    source: toWorkdaySource(employer),
+    source: toWorkdaySource(cxsJobsUrl || careersUrl || employer),
     sourceJobId: job.externalId,
     title: details.title || job.title,
     employer,
@@ -258,6 +287,11 @@ export const WatchlistPage: React.FC = () => {
     sourceHost: null,
   });
   const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
+  const { data: workspaceJobsResponse } = useQuery({
+    queryKey: queryKeys.jobs.list({ view: "list" }),
+    queryFn: () => api.getJobs({ view: "list" }),
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -324,6 +358,19 @@ export const WatchlistPage: React.FC = () => {
     searchScope: settings?.locationSearchScope.value,
     matchStrictness: settings?.locationMatchStrictness.value,
   });
+  const importedJobsByWorkdayKey = useMemo(() => {
+    const importedJobs = new Map<string, JobListItem>();
+    for (const job of workspaceJobsResponse?.jobs ?? []) {
+      if (!job.sourceJobId || !String(job.source).startsWith("workday:")) {
+        continue;
+      }
+      importedJobs.set(
+        getWorkdayImportKey(String(job.source), job.sourceJobId),
+        job,
+      );
+    }
+    return importedJobs;
+  }, [workspaceJobsResponse?.jobs]);
 
   function dismiss(careersUrl: string) {
     setDismissedUrls((current) => {
@@ -370,6 +417,7 @@ export const WatchlistPage: React.FC = () => {
   async function handleMoveToWorkspace(
     job: NormalizedWorkdayJob,
     careersUrl: string,
+    cxsJobsUrl: string,
   ) {
     try {
       setMovingJobUrl(job.jobUrl);
@@ -377,7 +425,12 @@ export const WatchlistPage: React.FC = () => {
       if (!details) {
         throw new Error("Couldn't fetch the job description yet.");
       }
-      const draft = buildManualDraftFromWorkdayJob(job, details, careersUrl);
+      const draft = buildManualDraftFromWorkdayJob(
+        job,
+        details,
+        careersUrl,
+        cxsJobsUrl,
+      );
       const source = draft.source ?? null;
       setImportState({
         open: true,
@@ -491,6 +544,15 @@ export const WatchlistPage: React.FC = () => {
                       locationPriority,
                     }) => {
                       const details = jobDetails[workdayJob.jobUrl];
+                      const source = toWorkdaySource(item.cxsJobsUrl);
+                      const importedJob =
+                        importedJobsByWorkdayKey.get(
+                          getWorkdayImportKey(source, workdayJob.externalId),
+                        ) ??
+                        workspaceJobsResponse?.jobs.find(
+                          (workspaceJob) =>
+                            workspaceJob.jobUrl === workdayJob.jobUrl,
+                        );
 
                       return (
                         <div key={job.id} className="px-4 py-3">
@@ -506,26 +568,46 @@ export const WatchlistPage: React.FC = () => {
                               size="sm"
                               className="shrink-0"
                             />
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="shrink-0 gap-2"
-                              disabled={movingJobUrl === workdayJob.jobUrl}
-                              onClick={() =>
-                                void handleMoveToWorkspace(
-                                  workdayJob,
-                                  item.careersUrl,
-                                )
-                              }
-                            >
-                              {movingJobUrl === workdayJob.jobUrl ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <FolderInput className="h-4 w-4" />
-                              )}
-                              Move to workspace
-                            </Button>
+                            {importedJob ? (
+                              <div className="flex shrink-0 items-center gap-2">
+                                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                                  Already in workspace
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="shrink-0"
+                                  onClick={() =>
+                                    navigate(getWorkspaceJobPath(importedJob))
+                                  }
+                                >
+                                  Open workspace job
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="shrink-0 gap-2"
+                                disabled={movingJobUrl === workdayJob.jobUrl}
+                                onClick={() =>
+                                  void handleMoveToWorkspace(
+                                    workdayJob,
+                                    item.careersUrl,
+                                    item.cxsJobsUrl,
+                                  )
+                                }
+                              >
+                                {movingJobUrl === workdayJob.jobUrl ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FolderInput className="h-4 w-4" />
+                                )}
+                                Move to workspace
+                              </Button>
+                            )}
                             {matchedSearchTerm ? (
                               <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
                                 {matchedSearchTerm} · {matchScore}
