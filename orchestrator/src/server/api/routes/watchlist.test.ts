@@ -111,6 +111,7 @@ describe.sequential("Watchlist API routes", () => {
         }),
         expect.objectContaining({
           catalogSourceId: null,
+          label: "Example",
           careersUrl: "https://example.wd1.myworkdayjobs.com/en-US/careers",
           sourceType: "workday",
           isCustom: true,
@@ -122,6 +123,40 @@ describe.sequential("Watchlist API routes", () => {
         (res) => res.json(),
       );
       expect(secondBody.data.selectedSources).toHaveLength(2);
+      expect(secondBody.data.selectedSources[1]).toEqual(
+        expect.objectContaining({
+          label: "Example",
+          careersUrl: "https://example.wd1.myworkdayjobs.com/en-US/careers",
+        }),
+      );
+    });
+
+    it("derives a custom label from Workday tenant slugs when the site slug is generic", async () => {
+      const res = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selections: [
+            {
+              sourceType: "workday",
+              careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+              label: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+            },
+          ],
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.selectedSources).toEqual([
+        expect.objectContaining({
+          label: "PG",
+          careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+          sourceType: "workday",
+          isCustom: true,
+        }),
+      ]);
     });
 
     it("upserts ignored states and removes them on unignore", async () => {

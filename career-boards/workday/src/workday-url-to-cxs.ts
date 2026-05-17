@@ -65,6 +65,16 @@ export function workdayUrlToCxsJobsUrl(input: string): string {
 }
 
 /**
+ * Best-effort display label for Workday career URLs.
+ * Prefers a non-generic site slug and otherwise falls back to the tenant slug.
+ */
+export function workdayUrlToCompanyLabel(input: string): string {
+  const source = parseWorkdayUrl(input);
+  const preferredSlug = choosePreferredCompanySlug(source);
+  return formatCompanySlug(preferredSlug);
+}
+
+/**
  * Convenience helper for callers that need the CXS job detail endpoint.
  */
 export function workdayJobUrlToCxsJobUrl(input: string): string {
@@ -505,4 +515,55 @@ function encodePathSegment(segment: string): string {
 
 function encodePath(path: string): string {
   return path.split("/").map(encodePathSegment).join("/");
+}
+
+function choosePreferredCompanySlug(source: WorkdaySourceConfig): string {
+  const tenantKey = normalizeCompanySlug(source.tenant);
+  const siteKey = normalizeCompanySlug(source.site);
+
+  if (!siteKey) return source.tenant;
+  if (siteKey === tenantKey) return source.site;
+  if (isGenericWorkdaySiteSlug(source.site)) return source.tenant;
+
+  return source.site;
+}
+
+function normalizeCompanySlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function isGenericWorkdaySiteSlug(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+
+  if (!normalized) return true;
+  if (/^\d+$/.test(normalized)) return true;
+
+  return [
+    "careers",
+    "career",
+    "jobs",
+    "job",
+    "external",
+    "ext",
+    "default",
+    "global",
+  ].includes(normalized);
+}
+
+function formatCompanySlug(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "Workday";
+
+  return trimmed
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (/^[A-Z0-9]+$/.test(part)) return part;
+      if (/^[a-z]{1,3}$/.test(part)) return part.toUpperCase();
+      return `${part[0]?.toUpperCase() ?? ""}${part.slice(1).toLowerCase()}`;
+    })
+    .join(" ");
 }

@@ -24,13 +24,16 @@ Ignored rows are stored in the workspace database, scoped to the active workspac
 ## How to use it
 
 1. Open **Watchlist** from the app navigation.
-2. Review the visible Workday rows.
-3. Click **Ignore** on a role you do not want to keep seeing.
-4. Turn on **Show ignored** to reveal ignored rows.
-5. Click **Unignore** to restore an ignored role to the default visible list.
-6. Click **Move to workspace** to import a new role.
+2. Choose catalog sources or add your own Workday URL.
+3. Review the visible Workday rows.
+4. Click **Ignore** on a role you do not want to keep seeing.
+5. Turn on **Show ignored** to reveal ignored rows.
+6. Click **Unignore** to restore an ignored role to the default visible list.
+7. Click **Move to workspace** to import a new role.
 
 Rows already imported into JobOps show **Already in workspace** and **Open workspace job**.
+
+When you add a custom Workday URL, JobOps tries to derive a readable company label from the Workday tenant or site slug. If the slug is too generic, the URL may still be the clearest identifier.
 
 ## Common problems
 

@@ -1,4 +1,7 @@
-import { workdayUrlToCxsJobsUrl } from "@career-boards/workday";
+import {
+  workdayUrlToCompanyLabel,
+  workdayUrlToCxsJobsUrl,
+} from "@career-boards/workday";
 import { badRequest, unprocessableEntity } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import {
@@ -42,11 +45,27 @@ function hydrateSelectedSources(
 ) {
   return selectedSources.map((source) => ({
     ...source,
+    label: getHydratedWatchlistLabel(source),
     cxsJobsUrl:
       source.sourceType === "workday"
         ? workdayUrlToCxsJobsUrl(source.careersUrl)
         : source.cxsJobsUrl,
   }));
+}
+
+function getHydratedWatchlistLabel(source: {
+  sourceType: string;
+  label: string;
+  careersUrl: string;
+}): string {
+  if (
+    source.sourceType === "workday" &&
+    (!source.label.trim() || source.label.trim() === source.careersUrl.trim())
+  ) {
+    return workdayUrlToCompanyLabel(source.careersUrl);
+  }
+
+  return source.label;
 }
 
 watchlistRouter.get("/states", async (_req: Request, res: Response) => {
@@ -129,7 +148,17 @@ watchlistRouter.put("/sources", async (req: Request, res: Response) => {
 
     if (selection.sourceType === "workday") {
       try {
-        workdayUrlToCxsJobsUrl(normalizedUrl);
+        const companyLabel = workdayUrlToCompanyLabel(normalizedUrl);
+        normalizedSelections.push({
+          catalogSourceId: null,
+          sourceType: selection.sourceType,
+          label:
+            selection.label?.trim() && selection.label.trim() !== normalizedUrl
+              ? selection.label.trim()
+              : companyLabel,
+          careersUrl: normalizedUrl,
+        });
+        continue;
       } catch (error) {
         return fail(
           res,
