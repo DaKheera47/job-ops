@@ -360,6 +360,18 @@ export interface ManualJobFetchResponse {
   url: string;
 }
 
+export interface WatchlistJobState {
+  source: JobSource;
+  sourceJobId: string;
+  state: "ignored" | "moved_to_workspace";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WatchlistJobStatesResponse {
+  states: WatchlistJobState[];
+}
+
 export interface UpdateJobInput {
   title?: string;
   employer?: string;

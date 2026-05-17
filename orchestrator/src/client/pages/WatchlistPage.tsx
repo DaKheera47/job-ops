@@ -17,12 +17,13 @@ import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type { JobListItem, ManualJobDraft } from "@shared/types.js";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, FolderInput, Loader2, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff, FolderInput, Loader2, RotateCcw, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
@@ -76,6 +77,8 @@ interface WorkdayImportState {
   source: string | null;
   sourceHost: string | null;
 }
+
+type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
 
 const WATCHLIST_URLS = [
   "https://autodesk.wd1.myworkdayjobs.com/Ext",
@@ -287,10 +290,38 @@ export const WatchlistPage: React.FC = () => {
     sourceHost: null,
   });
   const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
+  const [showIgnored, setShowIgnored] = useState(false);
   const { data: workspaceJobsResponse } = useQuery({
     queryKey: queryKeys.jobs.list({ view: "list" }),
     queryFn: () => api.getJobs({ view: "list" }),
     staleTime: 30_000,
+  });
+  const { data: watchlistStatesResponse } = useQuery({
+    queryKey: queryKeys.watchlist.states(),
+    queryFn: api.getWatchlistJobStates,
+    staleTime: 30_000,
+  });
+  const ignoreMutation = useMutation({
+    mutationFn: api.ignoreWatchlistJob,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlist.states(),
+      });
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to ignore watchlist job");
+    },
+  });
+  const unignoreMutation = useMutation({
+    mutationFn: api.unignoreWatchlistJob,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlist.states(),
+      });
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to restore watchlist job");
+    },
   });
 
   useEffect(() => {
@@ -371,6 +402,56 @@ export const WatchlistPage: React.FC = () => {
     }
     return importedJobs;
   }, [workspaceJobsResponse?.jobs]);
+  const ignoredWorkdayKeys = useMemo(() => {
+    const ignoredKeys = new Set<string>();
+    for (const state of watchlistStatesResponse?.states ?? []) {
+      if (state.state !== "ignored") continue;
+      ignoredKeys.add(
+        getWorkdayImportKey(String(state.source), state.sourceJobId),
+      );
+    }
+    return ignoredKeys;
+  }, [watchlistStatesResponse?.states]);
+
+  function getImportedWorkdayJob(
+    workdayJob: NormalizedWorkdayJob,
+    cxsJobsUrl: string,
+  ): JobListItem | undefined {
+    const source = toWorkdaySource(cxsJobsUrl);
+    return (
+      importedJobsByWorkdayKey.get(
+        getWorkdayImportKey(source, workdayJob.externalId),
+      ) ??
+      workspaceJobsResponse?.jobs.find(
+        (workspaceJob) => workspaceJob.jobUrl === workdayJob.jobUrl,
+      )
+    );
+  }
+
+  function getWorkdayRowState(
+    workdayJob: NormalizedWorkdayJob,
+    cxsJobsUrl: string,
+  ): WatchlistRowState {
+    if (getImportedWorkdayJob(workdayJob, cxsJobsUrl)) {
+      return "moved_to_workspace";
+    }
+    const source = toWorkdaySource(cxsJobsUrl);
+    return ignoredWorkdayKeys.has(
+      getWorkdayImportKey(source, workdayJob.externalId),
+    )
+      ? "ignored"
+      : "new";
+  }
+
+  function getWorkdayStateInput(
+    workdayJob: NormalizedWorkdayJob,
+    cxsJobsUrl: string,
+  ) {
+    return {
+      source: toWorkdaySource(cxsJobsUrl),
+      sourceJobId: workdayJob.externalId,
+    };
+  }
 
   function dismiss(careersUrl: string) {
     setDismissedUrls((current) => {
@@ -522,128 +603,223 @@ export const WatchlistPage: React.FC = () => {
                   )}
                 </pre>
               ) : (
-                <div className="divide-y divide-border/40">
-                  <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
-                    <span>
-                      {item.response.fetched} of {item.response.total} jobs
-                    </span>
-                  </div>
-
-                  {rankWorkdayJobs(
+                (() => {
+                  const rankedJobs = rankWorkdayJobs(
                     item.response.jobs,
                     item.careersUrl,
                     pipelineSearchTerms,
                     locationIntent,
-                  ).map(
-                    ({
-                      workdayJob,
-                      job,
-                      matchScore,
-                      matchedSearchTerm,
-                      locationMatched,
-                      locationPriority,
-                    }) => {
-                      const details = jobDetails[workdayJob.jobUrl];
-                      const source = toWorkdaySource(item.cxsJobsUrl);
-                      const importedJob =
-                        importedJobsByWorkdayKey.get(
-                          getWorkdayImportKey(source, workdayJob.externalId),
-                        ) ??
-                        workspaceJobsResponse?.jobs.find(
-                          (workspaceJob) =>
-                            workspaceJob.jobUrl === workdayJob.jobUrl,
-                        );
+                  ).map((rankedJob) => ({
+                    ...rankedJob,
+                    importedJob: getImportedWorkdayJob(
+                      rankedJob.workdayJob,
+                      item.cxsJobsUrl,
+                    ),
+                    rowState: getWorkdayRowState(
+                      rankedJob.workdayJob,
+                      item.cxsJobsUrl,
+                    ),
+                  }));
+                  const hiddenIgnoredCount = rankedJobs.filter(
+                    (rankedJob) => rankedJob.rowState === "ignored",
+                  ).length;
+                  const visibleRankedJobs = showIgnored
+                    ? rankedJobs
+                    : rankedJobs.filter(
+                        (rankedJob) => rankedJob.rowState !== "ignored",
+                      );
 
-                      return (
-                        <div key={job.id} className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <JobRowContent
-                              job={job}
-                              showStatusDot={false}
-                              showSuitabilityScore={false}
-                              className="min-w-0 flex-1"
-                            />
-                            <OpenJobListingButton
-                              href={workdayJob.jobUrl}
-                              size="sm"
-                              className="shrink-0"
-                            />
-                            {importedJob ? (
-                              <div className="flex shrink-0 items-center gap-2">
-                                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                                  Already in workspace
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="secondary"
+                  return (
+                    <div className="divide-y divide-border/40">
+                      <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+                        <span>
+                          {visibleRankedJobs.length} of {item.response.total}{" "}
+                          jobs
+                          {hiddenIgnoredCount > 0 && !showIgnored
+                            ? ` (${hiddenIgnoredCount} ignored hidden)`
+                            : null}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={showIgnored}
+                            onCheckedChange={setShowIgnored}
+                            aria-label="Show ignored watchlist jobs"
+                          />
+                          Show ignored
+                        </div>
+                      </div>
+
+                      {visibleRankedJobs.map(
+                        ({
+                          workdayJob,
+                          job,
+                          matchScore,
+                          matchedSearchTerm,
+                          locationMatched,
+                          locationPriority,
+                          importedJob,
+                          rowState,
+                        }) => {
+                          const details = jobDetails[workdayJob.jobUrl];
+                          const stateInput = getWorkdayStateInput(
+                            workdayJob,
+                            item.cxsJobsUrl,
+                          );
+                          const isIgnoring =
+                            ignoreMutation.isPending &&
+                            ignoreMutation.variables?.source ===
+                              stateInput.source &&
+                            ignoreMutation.variables?.sourceJobId ===
+                              stateInput.sourceJobId;
+                          const isUnignoring =
+                            unignoreMutation.isPending &&
+                            unignoreMutation.variables?.source ===
+                              stateInput.source &&
+                            unignoreMutation.variables?.sourceJobId ===
+                              stateInput.sourceJobId;
+
+                          return (
+                            <div key={job.id} className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <JobRowContent
+                                  job={job}
+                                  showStatusDot={false}
+                                  showSuitabilityScore={false}
+                                  className="min-w-0 flex-1"
+                                />
+                                <OpenJobListingButton
+                                  href={workdayJob.jobUrl}
                                   size="sm"
                                   className="shrink-0"
-                                  onClick={() =>
-                                    navigate(getWorkspaceJobPath(importedJob))
-                                  }
-                                >
-                                  Open workspace job
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="shrink-0 gap-2"
-                                disabled={movingJobUrl === workdayJob.jobUrl}
-                                onClick={() =>
-                                  void handleMoveToWorkspace(
-                                    workdayJob,
-                                    item.careersUrl,
-                                    item.cxsJobsUrl,
-                                  )
-                                }
-                              >
-                                {movingJobUrl === workdayJob.jobUrl ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                />
+                                {importedJob ? (
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                                      Already in workspace
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="sm"
+                                      className="shrink-0"
+                                      onClick={() =>
+                                        navigate(
+                                          getWorkspaceJobPath(importedJob),
+                                        )
+                                      }
+                                    >
+                                      Open workspace job
+                                    </Button>
+                                  </div>
+                                ) : rowState === "ignored" ? (
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span className="rounded-full border border-muted-foreground/20 bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                                      Ignored
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="sm"
+                                      className="shrink-0 gap-2"
+                                      disabled={isUnignoring}
+                                      onClick={() =>
+                                        unignoreMutation.mutate(stateInput)
+                                      }
+                                    >
+                                      {isUnignoring ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <RotateCcw className="h-4 w-4" />
+                                      )}
+                                      Unignore
+                                    </Button>
+                                  </div>
                                 ) : (
-                                  <FolderInput className="h-4 w-4" />
+                                  <>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="sm"
+                                      className="shrink-0 gap-2"
+                                      disabled={
+                                        movingJobUrl === workdayJob.jobUrl
+                                      }
+                                      onClick={() =>
+                                        void handleMoveToWorkspace(
+                                          workdayJob,
+                                          item.careersUrl,
+                                          item.cxsJobsUrl,
+                                        )
+                                      }
+                                    >
+                                      {movingJobUrl === workdayJob.jobUrl ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <FolderInput className="h-4 w-4" />
+                                      )}
+                                      Move to workspace
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="shrink-0 gap-2 text-muted-foreground"
+                                      disabled={isIgnoring}
+                                      onClick={() =>
+                                        ignoreMutation.mutate(stateInput)
+                                      }
+                                    >
+                                      {isIgnoring ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <EyeOff className="h-4 w-4" />
+                                      )}
+                                      Ignore
+                                    </Button>
+                                  </>
                                 )}
-                                Move to workspace
-                              </Button>
-                            )}
-                            {matchedSearchTerm ? (
-                              <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
-                                {matchedSearchTerm} · {matchScore}
-                              </span>
-                            ) : null}
-                            {locationMatched ? (
-                              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                                {locationPriority > 0 ? "location" : "remote"}
-                              </span>
-                            ) : null}
-                          </div>
+                                {matchedSearchTerm ? (
+                                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
+                                    {matchedSearchTerm} · {matchScore}
+                                  </span>
+                                ) : null}
+                                {locationMatched ? (
+                                  <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                                    {locationPriority > 0
+                                      ? "location"
+                                      : "remote"}
+                                  </span>
+                                ) : null}
+                              </div>
 
-                          <JobDescriptionPanel
-                            description={
-                              details?.status === "success"
-                                ? details.details.jobDescriptionText
-                                : null
-                            }
-                            helperText="Fetched only when this panel is opened."
-                            jobUrl={workdayJob.jobUrl}
-                            defaultOpen={false}
-                            isLoading={details?.status === "loading"}
-                            error={
-                              details?.status === "error" ? details.error : null
-                            }
-                            onOpen={() =>
-                              void loadJobDetails(workdayJob.jobUrl)
-                            }
-                            maxHeightClassName="max-h-72"
-                            className="mt-3"
-                          />
-                        </div>
-                      );
-                    },
-                  )}
-                </div>
+                              <JobDescriptionPanel
+                                description={
+                                  details?.status === "success"
+                                    ? details.details.jobDescriptionText
+                                    : null
+                                }
+                                helperText="Fetched only when this panel is opened."
+                                jobUrl={workdayJob.jobUrl}
+                                defaultOpen={false}
+                                isLoading={details?.status === "loading"}
+                                error={
+                                  details?.status === "error"
+                                    ? details.error
+                                    : null
+                                }
+                                onOpen={() =>
+                                  void loadJobDetails(workdayJob.jobUrl)
+                                }
+                                maxHeightClassName="max-h-72"
+                                className="mt-3"
+                              />
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </div>
           ))}

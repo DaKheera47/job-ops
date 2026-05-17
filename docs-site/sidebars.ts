@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
         "features/post-application-tracking",
         "features/visa-sponsors",
         "features/tracer-links",
+        "features/watchlist",
       ],
     },
     {

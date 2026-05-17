@@ -416,6 +416,33 @@ export const settings = sqliteTable(
   }),
 );
 
+export const watchlistJobStates = sqliteTable(
+  "watchlist_job_states",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    sourceJobId: text("source_job_id").notNull(),
+    state: text("state", { enum: ["ignored", "moved_to_workspace"] })
+      .notNull()
+      .default("ignored"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantSourceJobUnique: uniqueIndex(
+      "idx_watchlist_job_states_tenant_source_job_unique",
+    ).on(table.tenantId, table.source, table.sourceJobId),
+    tenantStateIndex: index("idx_watchlist_job_states_tenant_state").on(
+      table.tenantId,
+      table.state,
+    ),
+  }),
+);
+
 export const analyticsInstallState = sqliteTable("analytics_install_state", {
   id: text("id").primaryKey(),
   distinctId: text("distinct_id").notNull(),

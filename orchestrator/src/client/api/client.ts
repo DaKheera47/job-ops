@@ -6,3 +6,4 @@ export * from "./jobs";
 export * from "./pipeline";
 export * from "./post-application";
 export * from "./settings-profile";
+export * from "./watchlist";

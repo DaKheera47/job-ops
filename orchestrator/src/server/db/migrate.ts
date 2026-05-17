@@ -199,6 +199,18 @@ const migrations = [
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
+  `CREATE TABLE IF NOT EXISTS watchlist_job_states (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    source TEXT NOT NULL,
+    source_job_id TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'ignored' CHECK(state IN ('ignored', 'moved_to_workspace')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, source, source_job_id)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS analytics_install_state (
     id TEXT PRIMARY KEY,
     distinct_id TEXT NOT NULL,
@@ -770,6 +782,7 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_jobs_tenant_status ON jobs(tenant_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_watchlist_job_states_tenant_state ON watchlist_job_states(tenant_id, state)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_application_id ON stage_events(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_occurred_at ON stage_events(occurred_at)`,
