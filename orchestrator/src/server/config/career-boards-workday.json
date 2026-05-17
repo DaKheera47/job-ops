@@ -1,10 +1,227 @@
 [
   {
+    "id": "autodesk-workday",
     "label": "Autodesk",
-    "workdayUrl": "https://autodesk.wd1.myworkdayjobs.com/Ext"
+    "ats": "workday",
+    "workdayUrl": "https://autodesk.wd1.myworkdayjobs.com/Ext",
+    "tags": ["software", "engineering", "design", "construction-tech"],
+    "countries": ["US", "UK", "Canada", "India"],
+    "status": "active"
   },
   {
+    "id": "pg-workday",
     "label": "P&G",
-    "workdayUrl": "https://pg.wd5.myworkdayjobs.com/en-US/1000"
+    "ats": "workday",
+    "workdayUrl": "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+    "tags": ["consumer-goods", "engineering", "data", "technology"],
+    "countries": ["US", "UK", "Germany", "India"],
+    "status": "active"
+  },
+  {
+    "id": "barclays-workday",
+    "label": "Barclays",
+    "ats": "workday",
+    "workdayUrl": "https://barclays.wd3.myworkdayjobs.com/External_Career_Site_Barclays",
+    "tags": ["finance", "banking", "technology", "data"],
+    "countries": ["UK", "India", "US"],
+    "status": "active"
+  },
+  {
+    "id": "lloyds-banking-group-workday",
+    "label": "Lloyds Banking Group",
+    "ats": "workday",
+    "workdayUrl": "https://lbg.wd3.myworkdayjobs.com/LBG_Careers",
+    "tags": ["finance", "banking", "technology", "data"],
+    "countries": ["UK"],
+    "status": "active"
+  },
+  {
+    "id": "nvidia-workday",
+    "label": "NVIDIA",
+    "ats": "workday",
+    "workdayUrl": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+    "tags": ["ai", "semiconductors", "software", "hardware"],
+    "countries": ["US", "UK", "India", "Germany"],
+    "status": "active"
+  },
+  {
+    "id": "adobe-workday",
+    "label": "Adobe",
+    "ats": "workday",
+    "workdayUrl": "https://adobe.wd5.myworkdayjobs.com/external_experienced",
+    "tags": ["software", "design", "ai", "product"],
+    "countries": ["US", "UK", "India", "Canada"],
+    "status": "active"
+  },
+  {
+    "id": "salesforce-workday",
+    "label": "Salesforce",
+    "ats": "workday",
+    "workdayUrl": "https://salesforce.wd12.myworkdayjobs.com/External_Career_Site",
+    "tags": ["software", "sales", "cloud", "ai"],
+    "countries": ["US", "UK", "India", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "workday-workday",
+    "label": "Workday",
+    "ats": "workday",
+    "workdayUrl": "https://workday.wd5.myworkdayjobs.com/Workday",
+    "tags": ["software", "cloud", "hr-tech", "enterprise"],
+    "countries": ["US", "UK", "Ireland", "Canada"],
+    "status": "active"
+  },
+  {
+    "id": "mastercard-workday",
+    "label": "Mastercard",
+    "ats": "workday",
+    "workdayUrl": "https://mastercard.wd1.myworkdayjobs.com/CorporateCareers",
+    "tags": ["payments", "finance", "technology", "data"],
+    "countries": ["US", "UK", "India", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "visa-workday",
+    "label": "Visa",
+    "ats": "workday",
+    "workdayUrl": "https://visa.wd5.myworkdayjobs.com/Visa",
+    "tags": ["payments", "finance", "technology", "data"],
+    "countries": ["US", "UK", "India", "Singapore"],
+    "status": "active"
+  },
+  {
+    "id": "bloomberg-industry-group-workday",
+    "label": "Bloomberg Industry Group",
+    "ats": "workday",
+    "workdayUrl": "https://bloomberg.wd1.myworkdayjobs.com/Bloombergindustrygroup_External_Career_Site",
+    "tags": ["media", "data", "legal-tech", "software"],
+    "countries": ["US"],
+    "status": "active"
+  },
+  {
+    "id": "astrazeneca-workday",
+    "label": "AstraZeneca",
+    "ats": "workday",
+    "workdayUrl": "https://astrazeneca.wd3.myworkdayjobs.com/Careers",
+    "tags": ["pharma", "biotech", "data", "science"],
+    "countries": ["UK", "US", "Sweden", "India"],
+    "status": "active"
+  },
+  {
+    "id": "gsk-workday",
+    "label": "GSK",
+    "ats": "workday",
+    "workdayUrl": "https://gsk.wd5.myworkdayjobs.com/GSKCareers",
+    "tags": ["pharma", "healthcare", "science", "data"],
+    "countries": ["UK", "US", "Belgium", "India"],
+    "status": "active"
+  },
+  {
+    "id": "pfizer-workday",
+    "label": "Pfizer",
+    "ats": "workday",
+    "workdayUrl": "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers",
+    "tags": ["pharma", "healthcare", "science", "data"],
+    "countries": ["US", "UK", "Ireland", "India"],
+    "status": "active"
+  },
+  {
+    "id": "roche-workday",
+    "label": "Roche",
+    "ats": "workday",
+    "workdayUrl": "https://roche.wd3.myworkdayjobs.com/roche-ext",
+    "tags": ["pharma", "biotech", "healthcare", "data"],
+    "countries": ["Switzerland", "UK", "US", "Germany"],
+    "status": "active"
+  },
+  {
+    "id": "blackrock-workday",
+    "label": "BlackRock",
+    "ats": "workday",
+    "workdayUrl": "https://blackrock.wd1.myworkdayjobs.com/BlackRock_Professional",
+    "tags": ["finance", "asset-management", "technology", "data"],
+    "countries": ["US", "UK", "India", "Hungary"],
+    "status": "active"
+  },
+  {
+    "id": "morgan-stanley-workday",
+    "label": "Morgan Stanley",
+    "ats": "workday",
+    "workdayUrl": "https://ms.wd5.myworkdayjobs.com/External",
+    "tags": ["finance", "banking", "technology", "data"],
+    "countries": ["US", "UK", "India", "Hungary"],
+    "status": "active"
+  },
+  {
+    "id": "accenture-workday",
+    "label": "Accenture",
+    "ats": "workday",
+    "workdayUrl": "https://accenture.wd103.myworkdayjobs.com/AccentureCareers",
+    "tags": ["consulting", "technology", "cloud", "data"],
+    "countries": ["US", "UK", "India", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "pwc-workday",
+    "label": "PwC",
+    "ats": "workday",
+    "workdayUrl": "https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers",
+    "tags": ["consulting", "audit", "technology", "data"],
+    "countries": ["UK", "US", "India", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "deloitte-ireland-workday",
+    "label": "Deloitte Ireland",
+    "ats": "workday",
+    "workdayUrl": "https://deloitteie.wd3.myworkdayjobs.com/experienced_professionals",
+    "tags": ["consulting", "technology", "data", "audit"],
+    "countries": ["Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "unilever-workday",
+    "label": "Unilever",
+    "ats": "workday",
+    "workdayUrl": "https://unilever.wd3.myworkdayjobs.com/Unilever_Experienced_Professionals",
+    "tags": ["consumer-goods", "supply-chain", "data", "technology"],
+    "countries": ["UK", "India", "Netherlands", "US"],
+    "status": "active"
+  },
+  {
+    "id": "aviva-workday",
+    "label": "Aviva",
+    "ats": "workday",
+    "workdayUrl": "https://aviva.wd1.myworkdayjobs.com/External",
+    "tags": ["insurance", "finance", "technology", "data"],
+    "countries": ["UK", "Canada", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "checkout-workday",
+    "label": "Checkout.com",
+    "ats": "workday",
+    "workdayUrl": "https://checkout.wd3.myworkdayjobs.com/CheckoutCareers",
+    "tags": ["payments", "fintech", "software", "data"],
+    "countries": ["UK", "US", "France", "UAE"],
+    "status": "active"
+  },
+  {
+    "id": "zendesk-workday",
+    "label": "Zendesk",
+    "ats": "workday",
+    "workdayUrl": "https://zendesk.wd1.myworkdayjobs.com/zendesk",
+    "tags": ["software", "saas", "support-tech", "ai"],
+    "countries": ["US", "UK", "Poland", "Ireland"],
+    "status": "active"
+  },
+  {
+    "id": "crowdstrike-workday",
+    "label": "CrowdStrike",
+    "ats": "workday",
+    "workdayUrl": "https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers",
+    "tags": ["cybersecurity", "software", "cloud", "ai"],
+    "countries": ["US", "UK", "India", "Romania"],
+    "status": "active"
   }
 ]
