@@ -41,6 +41,7 @@ vi.mock("../api", () => ({
   getJobs: vi.fn(),
   getWatchlistJobStates: vi.fn(),
   getWatchlistSources: vi.fn(),
+  recordWatchlistCheck: vi.fn(),
   updateWatchlistSources: vi.fn(),
   ignoreWatchlistJob: vi.fn(),
   unignoreWatchlistJob: vi.fn(),
@@ -138,6 +139,11 @@ beforeEach(() => {
 
   vi.mocked(api.getJobs).mockResolvedValue(makeJobsResponse([]) as never);
   vi.mocked(api.getWatchlistJobStates).mockResolvedValue({ states: [] });
+  vi.mocked(api.recordWatchlistCheck).mockResolvedValue({
+    previousLastCheckedAt: null,
+    checkedAt: "2026-05-17T00:05:00.000Z",
+    jobs: [],
+  });
   vi.mocked(api.getWatchlistSources).mockResolvedValue({
     catalogSources: [
       {
@@ -248,6 +254,35 @@ describe("WatchlistPage", () => {
     expect(
       screen.getByRole("button", { name: /unignore/i }),
     ).toBeInTheDocument();
+  });
+
+  it("marks jobs that are new since the previous check", async () => {
+    vi.mocked(api.recordWatchlistCheck).mockResolvedValue({
+      previousLastCheckedAt: "2026-05-16T12:00:00.000Z",
+      checkedAt: "2026-05-17T00:05:00.000Z",
+      jobs: [
+        {
+          source: "workday:autodesk",
+          sourceJobId: "26WD97952",
+          isNewSinceLastCheck: true,
+          firstSeenAt: "2026-05-17T00:05:00.000Z",
+          lastSeenAt: "2026-05-17T00:05:00.000Z",
+        },
+        {
+          source: "workday:autodesk",
+          sourceJobId: "IGNORED1",
+          isNewSinceLastCheck: false,
+          firstSeenAt: "2026-05-16T11:00:00.000Z",
+          lastSeenAt: "2026-05-17T00:05:00.000Z",
+        },
+      ],
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
+    expect(screen.getByText("New since last check")).toBeInTheDocument();
+    expect(screen.getByText(/1 new since/i)).toBeInTheDocument();
   });
 
   it("shows moved rows as already in workspace even when ignored", async () => {

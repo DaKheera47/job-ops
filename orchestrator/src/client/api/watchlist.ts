@@ -1,5 +1,7 @@
 import type {
   UpdateWatchlistSelectionsInput,
+  WatchlistCheckInput,
+  WatchlistCheckResponse,
   WatchlistJobState,
   WatchlistJobStatesResponse,
   WatchlistSourcesResponse,
@@ -16,6 +18,15 @@ export async function getWatchlistJobStates(): Promise<WatchlistJobStatesRespons
 
 export async function getWatchlistSources(): Promise<WatchlistSourcesResponse> {
   return fetchApi<WatchlistSourcesResponse>("/watchlist/sources");
+}
+
+export async function recordWatchlistCheck(
+  input: WatchlistCheckInput,
+): Promise<WatchlistCheckResponse> {
+  return fetchApi<WatchlistCheckResponse>("/watchlist/checks", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function updateWatchlistSources(

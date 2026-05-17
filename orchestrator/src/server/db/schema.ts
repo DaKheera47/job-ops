@@ -424,6 +424,7 @@ export const watchlistJobStates = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
     source: text("source").notNull(),
     sourceJobId: text("source_job_id").notNull(),
     state: text("state", { enum: ["ignored", "moved_to_workspace"] })
@@ -433,13 +434,59 @@ export const watchlistJobStates = sqliteTable(
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => ({
-    tenantSourceJobUnique: uniqueIndex(
-      "idx_watchlist_job_states_tenant_source_job_unique",
-    ).on(table.tenantId, table.source, table.sourceJobId),
-    tenantStateIndex: index("idx_watchlist_job_states_tenant_state").on(
+    tenantUserSourceJobUnique: uniqueIndex(
+      "idx_watchlist_job_states_tenant_user_source_job_unique",
+    ).on(table.tenantId, table.userId, table.source, table.sourceJobId),
+    tenantUserStateIndex: index(
+      "idx_watchlist_job_states_tenant_user_state",
+    ).on(table.tenantId, table.userId, table.state),
+  }),
+);
+
+export const watchlistChecks = sqliteTable(
+  "watchlist_checks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    lastCheckedAt: text("last_checked_at").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserUnique: uniqueIndex("idx_watchlist_checks_tenant_user_unique").on(
       table.tenantId,
-      table.state,
+      table.userId,
     ),
+  }),
+);
+
+export const watchlistSeenJobs = sqliteTable(
+  "watchlist_seen_jobs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    source: text("source").notNull(),
+    sourceJobId: text("source_job_id").notNull(),
+    firstSeenAt: text("first_seen_at").notNull(),
+    lastSeenAt: text("last_seen_at").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserSourceJobUnique: uniqueIndex(
+      "idx_watchlist_seen_jobs_tenant_user_source_job_unique",
+    ).on(table.tenantId, table.userId, table.source, table.sourceJobId),
+    tenantUserLastSeenIndex: index(
+      "idx_watchlist_seen_jobs_tenant_user_last_seen",
+    ).on(table.tenantId, table.userId, table.lastSeenAt),
   }),
 );
 

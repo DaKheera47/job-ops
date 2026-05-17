@@ -2,14 +2,21 @@ import { randomUUID } from "node:crypto";
 import { getUserId } from "@server/infra/request-context";
 import type {
   UpdateWatchlistSelectionsInput,
+  WatchlistCheckInput,
+  WatchlistCheckResponse,
   WatchlistJobState,
   WatchlistSelectedSource,
 } from "@shared/types";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import { getActiveTenantId } from "../tenancy/context";
 
-const { watchlistJobStates, watchlistSelectedSources } = schema;
+const {
+  watchlistChecks,
+  watchlistJobStates,
+  watchlistSeenJobs,
+  watchlistSelectedSources,
+} = schema;
 
 function requireActiveUserId(): string {
   const userId = getUserId();
@@ -112,10 +119,16 @@ export async function replaceWatchlistSelectedSources(
 }
 
 export async function listWatchlistJobStates(): Promise<WatchlistJobState[]> {
+  const userId = requireActiveUserId();
   const rows = await db
     .select()
     .from(watchlistJobStates)
-    .where(eq(watchlistJobStates.tenantId, getActiveTenantId()));
+    .where(
+      and(
+        eq(watchlistJobStates.tenantId, getActiveTenantId()),
+        eq(watchlistJobStates.userId, userId),
+      ),
+    );
 
   return rows.map(mapRowToWatchlistJobState);
 }
@@ -126,6 +139,7 @@ export async function setWatchlistJobState(input: {
   state: WatchlistJobState["state"];
 }): Promise<WatchlistJobState> {
   const tenantId = getActiveTenantId();
+  const userId = requireActiveUserId();
   const now = new Date().toISOString();
 
   const [existing] = await db
@@ -134,6 +148,7 @@ export async function setWatchlistJobState(input: {
     .where(
       and(
         eq(watchlistJobStates.tenantId, tenantId),
+        eq(watchlistJobStates.userId, userId),
         eq(watchlistJobStates.source, input.source),
         eq(watchlistJobStates.sourceJobId, input.sourceJobId),
       ),
@@ -153,6 +168,7 @@ export async function setWatchlistJobState(input: {
     await db.insert(watchlistJobStates).values({
       id: randomUUID(),
       tenantId,
+      userId,
       source: input.source,
       sourceJobId: input.sourceJobId,
       state: input.state,
@@ -167,6 +183,7 @@ export async function setWatchlistJobState(input: {
     .where(
       and(
         eq(watchlistJobStates.tenantId, tenantId),
+        eq(watchlistJobStates.userId, userId),
         eq(watchlistJobStates.source, input.source),
         eq(watchlistJobStates.sourceJobId, input.sourceJobId),
       ),
@@ -182,15 +199,137 @@ export async function clearWatchlistJobState(input: {
   source: string;
   sourceJobId: string;
 }): Promise<number> {
+  const userId = requireActiveUserId();
   const result = await db
     .delete(watchlistJobStates)
     .where(
       and(
         eq(watchlistJobStates.tenantId, getActiveTenantId()),
+        eq(watchlistJobStates.userId, userId),
         eq(watchlistJobStates.source, input.source),
         eq(watchlistJobStates.sourceJobId, input.sourceJobId),
       ),
     );
 
   return result.changes;
+}
+
+export async function recordWatchlistCheck(
+  input: WatchlistCheckInput,
+): Promise<WatchlistCheckResponse> {
+  const tenantId = getActiveTenantId();
+  const userId = requireActiveUserId();
+  const now = new Date().toISOString();
+
+  const normalizedChecks = input.checks
+    .map((check) => ({
+      source: String(check.source),
+      sourceJobIds: Array.from(
+        new Set(
+          check.sourceJobIds
+            .map((sourceJobId) => sourceJobId.trim())
+            .filter(Boolean),
+        ),
+      ),
+    }))
+    .filter((check) => check.sourceJobIds.length > 0);
+
+  const [existingCheckpoint] = await db
+    .select()
+    .from(watchlistChecks)
+    .where(
+      and(
+        eq(watchlistChecks.tenantId, tenantId),
+        eq(watchlistChecks.userId, userId),
+      ),
+    );
+
+  const previousLastCheckedAt = existingCheckpoint?.lastCheckedAt ?? null;
+  const existingSeenRows = await Promise.all(
+    normalizedChecks.map((check) =>
+      db
+        .select()
+        .from(watchlistSeenJobs)
+        .where(
+          and(
+            eq(watchlistSeenJobs.tenantId, tenantId),
+            eq(watchlistSeenJobs.userId, userId),
+            eq(watchlistSeenJobs.source, check.source),
+            inArray(watchlistSeenJobs.sourceJobId, check.sourceJobIds),
+          ),
+        ),
+    ),
+  );
+
+  const existingSeenByKey = new Map<
+    string,
+    (typeof existingSeenRows)[number][number]
+  >(
+    existingSeenRows
+      .flat()
+      .map((row) => [`${row.source}:${row.sourceJobId}`, row] as const),
+  );
+
+  for (const check of normalizedChecks) {
+    for (const sourceJobId of check.sourceJobIds) {
+      const key = `${check.source}:${sourceJobId}`;
+      const existing = existingSeenByKey.get(key);
+      if (existing) {
+        await db
+          .update(watchlistSeenJobs)
+          .set({ lastSeenAt: now, updatedAt: now })
+          .where(eq(watchlistSeenJobs.id, existing.id));
+        continue;
+      }
+
+      await db.insert(watchlistSeenJobs).values({
+        id: randomUUID(),
+        tenantId,
+        userId,
+        source: check.source,
+        sourceJobId,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  if (existingCheckpoint) {
+    await db
+      .update(watchlistChecks)
+      .set({ lastCheckedAt: now, updatedAt: now })
+      .where(eq(watchlistChecks.id, existingCheckpoint.id));
+  } else {
+    await db.insert(watchlistChecks).values({
+      id: randomUUID(),
+      tenantId,
+      userId,
+      lastCheckedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const jobs = normalizedChecks.flatMap((check) =>
+    check.sourceJobIds.map((sourceJobId) => {
+      const existing = existingSeenByKey.get(`${check.source}:${sourceJobId}`);
+      const firstSeenAt = existing?.firstSeenAt ?? now;
+      return {
+        source: check.source,
+        sourceJobId,
+        isNewSinceLastCheck:
+          previousLastCheckedAt !== null && existing === undefined,
+        firstSeenAt,
+        lastSeenAt: now,
+      };
+    }),
+  );
+
+  return {
+    previousLastCheckedAt,
+    checkedAt: now,
+    jobs,
+  };
 }

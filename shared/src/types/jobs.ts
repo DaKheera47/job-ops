@@ -372,6 +372,29 @@ export interface WatchlistJobStatesResponse {
   states: WatchlistJobState[];
 }
 
+export interface WatchlistCheck {
+  source: JobSource;
+  sourceJobIds: string[];
+}
+
+export interface WatchlistCheckInput {
+  checks: WatchlistCheck[];
+}
+
+export interface WatchlistCheckJobDelta {
+  source: JobSource;
+  sourceJobId: string;
+  isNewSinceLastCheck: boolean;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+export interface WatchlistCheckResponse {
+  previousLastCheckedAt: string | null;
+  checkedAt: string;
+  jobs: WatchlistCheckJobDelta[];
+}
+
 export type WatchedSourceType = "workday" | (string & {});
 
 export interface WatchlistSource {

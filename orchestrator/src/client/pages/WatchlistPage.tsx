@@ -97,6 +97,12 @@ interface WorkdayImportState {
 
 type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
 
+interface WatchlistCheckState {
+  checkedAt: string | null;
+  previousLastCheckedAt: string | null;
+  newJobKeys: Set<string>;
+}
+
 const CUSTOM_SOURCE_VALUE = "__custom__";
 const WATCHLIST_SOURCE_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
 let sourceDraftSequence = 0;
@@ -214,6 +220,19 @@ function getWorkdayImportKey(source: string, externalId: string): string {
   return `${source}:${externalId}`;
 }
 
+function formatWatchlistCheckTimestamp(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
 function getWorkspaceJobPath(job: JobListItem): string {
   const tab =
     job.status === "discovered"
@@ -323,6 +342,12 @@ export const WatchlistPage: React.FC = () => {
   const [sourceDrafts, setSourceDrafts] = useState<SourceSelectionDraft[]>([
     createSourceDraft(),
   ]);
+  const [watchlistCheckState, setWatchlistCheckState] =
+    useState<WatchlistCheckState>({
+      checkedAt: null,
+      previousLastCheckedAt: null,
+      newJobKeys: new Set(),
+    });
   const { data: workspaceJobsResponse } = useQuery({
     queryKey: queryKeys.jobs.list({ view: "list" }),
     queryFn: () => api.getJobs({ view: "list" }),
@@ -384,8 +409,18 @@ export const WatchlistPage: React.FC = () => {
 
       if (enabledSources.length === 0) {
         setItems([]);
+        setWatchlistCheckState({
+          checkedAt: null,
+          previousLastCheckedAt: null,
+          newJobKeys: new Set(),
+        });
         return;
       }
+
+      setWatchlistCheckState((current) => ({
+        ...current,
+        newJobKeys: new Set(),
+      }));
 
       setItems(
         enabledSources.map((source) => ({
@@ -394,12 +429,19 @@ export const WatchlistPage: React.FC = () => {
         })),
       );
 
+      const checks: Array<{ source: string; sourceJobIds: string[] }> = [];
+
       await Promise.all(
         enabledSources.map(async (source) => {
           try {
             const result = await fetchWorkdayCxsJobs(source.careersUrl, 40);
 
             if (cancelled) return;
+
+            checks.push({
+              source: toWorkdaySource(result.cxsJobsUrl || source.careersUrl),
+              sourceJobIds: result.response.jobs.map((job) => job.externalId),
+            });
 
             setItems((current) =>
               current.map((item) =>
@@ -426,6 +468,30 @@ export const WatchlistPage: React.FC = () => {
           }
         }),
       );
+
+      if (cancelled || checks.length === 0) {
+        return;
+      }
+
+      try {
+        const check = await api.recordWatchlistCheck({ checks });
+        if (cancelled) return;
+
+        setWatchlistCheckState({
+          checkedAt: check.checkedAt,
+          previousLastCheckedAt: check.previousLastCheckedAt,
+          newJobKeys: new Set(
+            check.jobs
+              .filter((job) => job.isNewSinceLastCheck)
+              .map((job) =>
+                getWorkdayImportKey(String(job.source), job.sourceJobId),
+              ),
+          ),
+        });
+      } catch (error) {
+        if (cancelled) return;
+        showErrorToast(error, "Failed to update watchlist check");
+      }
     }
 
     if (watchlistSourcesResponse?.selectedSources) {
@@ -458,6 +524,13 @@ export const WatchlistPage: React.FC = () => {
     (item) => !dismissedUrls.has(item.source.id),
   );
   const catalogSources = watchlistSourcesResponse?.catalogSources ?? [];
+  const newJobsCount = watchlistCheckState.newJobKeys.size;
+  const formattedLastCheckedAt = formatWatchlistCheckTimestamp(
+    watchlistCheckState.checkedAt,
+  );
+  const formattedPreviousLastCheckedAt = formatWatchlistCheckTimestamp(
+    watchlistCheckState.previousLastCheckedAt,
+  );
   const pipelineSearchTerms = settings?.searchTerms.value ?? [];
   const locationIntent = createLocationIntentFromLegacyInputs({
     selectedCountry: normalizeUiCountryKey(
@@ -695,6 +768,14 @@ export const WatchlistPage: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Choose catalog sources or add your own Workday URL.
                 </p>
+                {formattedLastCheckedAt ? (
+                  <p className="text-xs text-muted-foreground">
+                    Last checked: {formattedLastCheckedAt}
+                    {formattedPreviousLastCheckedAt
+                      ? ` · ${newJobsCount} new since ${formattedPreviousLastCheckedAt}`
+                      : " · First check saved your baseline"}
+                  </p>
+                ) : null}
               </div>
 
               <div className="w-full max-w-[180px]">
@@ -969,6 +1050,14 @@ export const WatchlistPage: React.FC = () => {
                               stateInput.source &&
                             unignoreMutation.variables?.sourceJobId ===
                               stateInput.sourceJobId;
+                          const isNewSinceLastCheck =
+                            rowState === "new" &&
+                            watchlistCheckState.newJobKeys.has(
+                              getWorkdayImportKey(
+                                stateInput.source,
+                                stateInput.sourceJobId,
+                              ),
+                            );
 
                           return (
                             <div key={job.id} className="px-4 py-3">
@@ -1081,6 +1170,11 @@ export const WatchlistPage: React.FC = () => {
                                     {locationPriority > 0
                                       ? "location"
                                       : "remote"}
+                                  </span>
+                                ) : null}
+                                {isNewSinceLastCheck ? (
+                                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">
+                                    New since last check
                                   </span>
                                 ) : null}
                               </div>

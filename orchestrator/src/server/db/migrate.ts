@@ -67,6 +67,10 @@ const pipelineRunsHasConfigSnapshot = tableHasColumn(
 const pipelineRunsHasTenantId = tableHasColumn("pipeline_runs", "tenant_id");
 const jobsHasPdfRegenerating = tableHasColumn("jobs", "pdf_regenerating");
 const jobsHasJobBrief = tableHasColumn("jobs", "job_brief");
+const watchlistJobStatesHasUserId = tableHasColumn(
+  "watchlist_job_states",
+  "user_id",
+);
 
 const migrations = [
   `CREATE TABLE IF NOT EXISTS tenants (
@@ -202,13 +206,39 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS watchlist_job_states (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
     source TEXT NOT NULL,
     source_job_id TEXT NOT NULL,
     state TEXT NOT NULL DEFAULT 'ignored' CHECK(state IN ('ignored', 'moved_to_workspace')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    UNIQUE(tenant_id, source, source_job_id)
+    UNIQUE(tenant_id, user_id, source, source_job_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS watchlist_checks (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    last_checked_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS watchlist_seen_jobs (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    source TEXT NOT NULL,
+    source_job_id TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id, source, source_job_id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS watchlist_selected_sources (
@@ -789,6 +819,47 @@ const migrations = [
   FROM jobs`,
   `DROP TABLE IF EXISTS jobs`,
   `ALTER TABLE jobs_new RENAME TO jobs`,
+  `DROP TABLE IF EXISTS watchlist_job_states_new`,
+  `CREATE TABLE watchlist_job_states_new (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    source TEXT NOT NULL,
+    source_job_id TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'ignored' CHECK(state IN ('ignored', 'moved_to_workspace')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id, source, source_job_id)
+  )`,
+  `INSERT OR IGNORE INTO watchlist_job_states_new (
+    id, tenant_id, user_id, source, source_job_id, state, created_at, updated_at
+  )
+  SELECT
+    ${
+      watchlistJobStatesHasUserId
+        ? "watchlist_job_states.id"
+        : "lower(hex(randomblob(16)))"
+    },
+    watchlist_job_states.tenant_id,
+    ${
+      watchlistJobStatesHasUserId
+        ? "watchlist_job_states.user_id"
+        : "tenant_memberships.user_id"
+    },
+    watchlist_job_states.source,
+    watchlist_job_states.source_job_id,
+    watchlist_job_states.state,
+    watchlist_job_states.created_at,
+    watchlist_job_states.updated_at
+  FROM watchlist_job_states
+  ${
+    watchlistJobStatesHasUserId
+      ? ""
+      : "JOIN tenant_memberships ON tenant_memberships.tenant_id = watchlist_job_states.tenant_id"
+  }`,
+  `DROP TABLE IF EXISTS watchlist_job_states`,
+  `ALTER TABLE watchlist_job_states_new RENAME TO watchlist_job_states`,
   `UPDATE jobs
    SET pdf_source = 'generated'
    WHERE pdf_path IS NOT NULL
@@ -800,7 +871,11 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_jobs_tenant_status ON jobs(tenant_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
-  `CREATE INDEX IF NOT EXISTS idx_watchlist_job_states_tenant_state ON watchlist_job_states(tenant_id, state)`,
+  `CREATE INDEX IF NOT EXISTS idx_watchlist_job_states_tenant_user_state ON watchlist_job_states(tenant_id, user_id, state)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_job_states_tenant_user_source_job_unique ON watchlist_job_states(tenant_id, user_id, source, source_job_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_checks_tenant_user_unique ON watchlist_checks(tenant_id, user_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_seen_jobs_tenant_user_source_job_unique ON watchlist_seen_jobs(tenant_id, user_id, source, source_job_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_watchlist_seen_jobs_tenant_user_last_seen ON watchlist_seen_jobs(tenant_id, user_id, last_seen_at)`,
   `CREATE INDEX IF NOT EXISTS idx_watchlist_selected_sources_tenant_user ON watchlist_selected_sources(tenant_id, user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_application_id ON stage_events(application_id)`,

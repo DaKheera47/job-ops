@@ -19,6 +19,17 @@ const watchlistStateParamsSchema = z.object({
   sourceJobId: z.string().trim().min(1).max(500),
 });
 
+const watchlistCheckSchema = z.object({
+  checks: z
+    .array(
+      z.object({
+        source: z.string().trim().min(1).max(120),
+        sourceJobIds: z.array(z.string().trim().min(1).max(500)).max(200),
+      }),
+    )
+    .max(20),
+});
+
 const updateWatchlistSelectionsSchema = z.object({
   selections: z
     .array(
@@ -82,6 +93,18 @@ watchlistRouter.get("/sources", async (_req: Request, res: Response) => {
     catalogSources,
     selectedSources: hydrateSelectedSources(selectedSources),
   });
+});
+
+watchlistRouter.post("/checks", async (req: Request, res: Response) => {
+  const parsedBody = watchlistCheckSchema.safeParse(req.body ?? {});
+  if (!parsedBody.success) {
+    return fail(
+      res,
+      badRequest("Invalid watchlist check payload", parsedBody.error.flatten()),
+    );
+  }
+
+  ok(res, await watchlistRepo.recordWatchlistCheck(parsedBody.data));
 });
 
 watchlistRouter.put("/sources", async (req: Request, res: Response) => {

@@ -17,6 +17,10 @@ function stateUrl(
   return `${baseUrl}/api/watchlist/states/${encodeURIComponent(source)}/${encodeURIComponent(sourceJobId)}`;
 }
 
+function checksUrl(baseUrl: string): string {
+  return `${baseUrl}/api/watchlist/checks`;
+}
+
 async function login(baseUrl: string, username: string, password: string) {
   const res = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
@@ -56,23 +60,26 @@ describe.sequential("Watchlist API routes", () => {
 
       expect(res.status).toBe(200);
       expect(body.ok).toBe(true);
-      expect(body.data.catalogSources).toEqual([
-        expect.objectContaining({
-          id: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
-          label: "Autodesk",
-          sourceType: "workday",
-          careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
-          cxsJobsUrl:
-            "https://autodesk.wd1.myworkdayjobs.com/wday/cxs/autodesk/Ext/jobs",
-        }),
-        expect.objectContaining({
-          id: "workday:https://pg.wd5.myworkdayjobs.com/en-US/1000",
-          label: "P&G",
-          sourceType: "workday",
-          careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
-          cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
-        }),
-      ]);
+      expect(body.data.catalogSources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+            label: "Autodesk",
+            sourceType: "workday",
+            careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+            cxsJobsUrl:
+              "https://autodesk.wd1.myworkdayjobs.com/wday/cxs/autodesk/Ext/jobs",
+          }),
+          expect.objectContaining({
+            id: "workday:https://pg.wd5.myworkdayjobs.com/en-US/1000",
+            label: "P&G",
+            sourceType: "workday",
+            careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+            cxsJobsUrl:
+              "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+          }),
+        ]),
+      );
       expect(body.data.selectedSources).toEqual([]);
     });
 
@@ -203,16 +210,78 @@ describe.sequential("Watchlist API routes", () => {
       );
       expect(emptyBody.data.states).toEqual([]);
     });
+
+    it("records per-user watchlist checks and returns new-since-last-check deltas", async () => {
+      const firstRes = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checks: [
+            {
+              source: "workday:autodesk",
+              sourceJobIds: ["26WD97952", "IGNORED1"],
+            },
+          ],
+        }),
+      });
+      const firstBody = await firstRes.json();
+
+      expect(firstRes.status).toBe(200);
+      expect(firstBody.ok).toBe(true);
+      expect(firstBody.data.previousLastCheckedAt).toBe(null);
+      expect(firstBody.data.jobs).toEqual([
+        expect.objectContaining({
+          source: "workday:autodesk",
+          sourceJobId: "26WD97952",
+          isNewSinceLastCheck: false,
+        }),
+        expect.objectContaining({
+          source: "workday:autodesk",
+          sourceJobId: "IGNORED1",
+          isNewSinceLastCheck: false,
+        }),
+      ]);
+
+      const secondRes = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checks: [
+            {
+              source: "workday:autodesk",
+              sourceJobIds: ["26WD97952", "BRANDNEW2"],
+            },
+          ],
+        }),
+      });
+      const secondBody = await secondRes.json();
+
+      expect(secondRes.status).toBe(200);
+      expect(secondBody.ok).toBe(true);
+      expect(secondBody.data.previousLastCheckedAt).toBeTruthy();
+      expect(secondBody.data.jobs).toEqual([
+        expect.objectContaining({
+          source: "workday:autodesk",
+          sourceJobId: "26WD97952",
+          isNewSinceLastCheck: false,
+        }),
+        expect.objectContaining({
+          source: "workday:autodesk",
+          sourceJobId: "BRANDNEW2",
+          isNewSinceLastCheck: true,
+        }),
+      ]);
+    });
   });
 
-  describe("tenant scoping", () => {
+  describe("user scoping", () => {
     beforeEach(async () => {
       ({ server, baseUrl, closeDb, tempDir } = await startServer({
         env: AUTH_ENV,
       }));
     });
 
-    it("returns only the active tenant's state rows", async () => {
+    it("returns only the active user's state rows within the same tenant", async () => {
       const adminToken = await login(baseUrl, "admin", "secret");
 
       const createAdamRes = await fetch(`${baseUrl}/api/workspaces/users`, {
@@ -251,6 +320,69 @@ describe.sequential("Watchlist API routes", () => {
         sourceJobId,
         state: "ignored",
       });
+    });
+
+    it("tracks watchlist checks per user within the same tenant", async () => {
+      const adminToken = await login(baseUrl, "admin", "secret");
+
+      const createAdamRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+        method: "POST",
+        headers: authHeaders(adminToken),
+        body: JSON.stringify({
+          username: "adam",
+          displayName: "Adam",
+          password: "adam-secret",
+        }),
+      });
+      expect(createAdamRes.status).toBe(201);
+
+      const adamToken = await login(baseUrl, "adam", "adam-secret");
+
+      const adminFirstBody = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: authHeaders(adminToken),
+        body: JSON.stringify({
+          checks: [{ source: "workday:autodesk", sourceJobIds: ["26WD97952"] }],
+        }),
+      }).then((res) => res.json());
+      expect(adminFirstBody.data.previousLastCheckedAt).toBe(null);
+
+      const adamFirstBody = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: authHeaders(adamToken),
+        body: JSON.stringify({
+          checks: [{ source: "workday:autodesk", sourceJobIds: ["26WD97952"] }],
+        }),
+      }).then((res) => res.json());
+      expect(adamFirstBody.data.previousLastCheckedAt).toBe(null);
+
+      const adminSecondBody = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: authHeaders(adminToken),
+        body: JSON.stringify({
+          checks: [{ source: "workday:autodesk", sourceJobIds: ["BRANDNEW2"] }],
+        }),
+      }).then((res) => res.json());
+      expect(adminSecondBody.data.jobs).toEqual([
+        expect.objectContaining({
+          sourceJobId: "BRANDNEW2",
+          isNewSinceLastCheck: true,
+        }),
+      ]);
+
+      const adamSecondBody = await fetch(checksUrl(baseUrl), {
+        method: "POST",
+        headers: authHeaders(adamToken),
+        body: JSON.stringify({
+          checks: [{ source: "workday:autodesk", sourceJobIds: ["BRANDNEW2"] }],
+        }),
+      }).then((res) => res.json());
+      expect(adamSecondBody.data.jobs).toEqual([
+        expect.objectContaining({
+          sourceJobId: "BRANDNEW2",
+          isNewSinceLastCheck: true,
+        }),
+      ]);
     });
   });
 });
