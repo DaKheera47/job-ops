@@ -461,7 +461,8 @@ export const WatchlistPage: React.FC = () => {
         open: true,
         draft,
         source,
-        sourceHost: source ?? getSourceHost(job.jobUrl),
+        sourceHost:
+          getSourceHost(careersUrl) ?? getSourceHost(job.jobUrl) ?? null,
       });
     } catch (error) {
       showErrorToast(error, "Failed to prepare Workday job");

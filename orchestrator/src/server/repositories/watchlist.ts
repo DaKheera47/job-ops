@@ -234,102 +234,115 @@ export async function recordWatchlistCheck(
     }))
     .filter((check) => check.sourceJobIds.length > 0);
 
-  const [existingCheckpoint] = await db
-    .select()
-    .from(watchlistChecks)
-    .where(
-      and(
-        eq(watchlistChecks.tenantId, tenantId),
-        eq(watchlistChecks.userId, userId),
+  return db.transaction(async (tx) => {
+    const [existingCheckpoint] = await tx
+      .select()
+      .from(watchlistChecks)
+      .where(
+        and(
+          eq(watchlistChecks.tenantId, tenantId),
+          eq(watchlistChecks.userId, userId),
+        ),
+      );
+
+    const previousLastCheckedAt = existingCheckpoint?.lastCheckedAt ?? null;
+    const existingSeenRows = await Promise.all(
+      normalizedChecks.map((check) =>
+        tx
+          .select()
+          .from(watchlistSeenJobs)
+          .where(
+            and(
+              eq(watchlistSeenJobs.tenantId, tenantId),
+              eq(watchlistSeenJobs.userId, userId),
+              eq(watchlistSeenJobs.source, check.source),
+              inArray(watchlistSeenJobs.sourceJobId, check.sourceJobIds),
+            ),
+          ),
       ),
     );
 
-  const previousLastCheckedAt = existingCheckpoint?.lastCheckedAt ?? null;
-  const existingSeenRows = await Promise.all(
-    normalizedChecks.map((check) =>
-      db
-        .select()
-        .from(watchlistSeenJobs)
-        .where(
-          and(
-            eq(watchlistSeenJobs.tenantId, tenantId),
-            eq(watchlistSeenJobs.userId, userId),
-            eq(watchlistSeenJobs.source, check.source),
-            inArray(watchlistSeenJobs.sourceJobId, check.sourceJobIds),
-          ),
-        ),
-    ),
-  );
+    const existingSeenByKey = new Map<
+      string,
+      (typeof existingSeenRows)[number][number]
+    >(
+      existingSeenRows
+        .flat()
+        .map((row) => [`${row.source}:${row.sourceJobId}`, row] as const),
+    );
 
-  const existingSeenByKey = new Map<
-    string,
-    (typeof existingSeenRows)[number][number]
-  >(
-    existingSeenRows
-      .flat()
-      .map((row) => [`${row.source}:${row.sourceJobId}`, row] as const),
-  );
+    for (const check of normalizedChecks) {
+      for (const sourceJobId of check.sourceJobIds) {
+        const key = `${check.source}:${sourceJobId}`;
+        const existing = existingSeenByKey.get(key);
 
-  for (const check of normalizedChecks) {
-    for (const sourceJobId of check.sourceJobIds) {
-      const key = `${check.source}:${sourceJobId}`;
-      const existing = existingSeenByKey.get(key);
-      if (existing) {
-        await db
-          .update(watchlistSeenJobs)
-          .set({ lastSeenAt: now, updatedAt: now })
-          .where(eq(watchlistSeenJobs.id, existing.id));
-        continue;
+        await tx
+          .insert(watchlistSeenJobs)
+          .values({
+            id: existing?.id ?? randomUUID(),
+            tenantId,
+            userId,
+            source: check.source,
+            sourceJobId,
+            firstSeenAt: existing?.firstSeenAt ?? now,
+            lastSeenAt: now,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [
+              watchlistSeenJobs.tenantId,
+              watchlistSeenJobs.userId,
+              watchlistSeenJobs.source,
+              watchlistSeenJobs.sourceJobId,
+            ],
+            set: {
+              lastSeenAt: now,
+              updatedAt: now,
+            },
+          })
+          .run();
       }
+    }
 
-      await db.insert(watchlistSeenJobs).values({
-        id: randomUUID(),
+    await tx
+      .insert(watchlistChecks)
+      .values({
+        id: existingCheckpoint?.id ?? randomUUID(),
         tenantId,
         userId,
-        source: check.source,
-        sourceJobId,
-        firstSeenAt: now,
-        lastSeenAt: now,
-        createdAt: now,
+        lastCheckedAt: now,
+        createdAt: existingCheckpoint?.createdAt ?? now,
         updatedAt: now,
-      });
-    }
-  }
+      })
+      .onConflictDoUpdate({
+        target: [watchlistChecks.tenantId, watchlistChecks.userId],
+        set: {
+          lastCheckedAt: now,
+          updatedAt: now,
+        },
+      })
+      .run();
 
-  if (existingCheckpoint) {
-    await db
-      .update(watchlistChecks)
-      .set({ lastCheckedAt: now, updatedAt: now })
-      .where(eq(watchlistChecks.id, existingCheckpoint.id));
-  } else {
-    await db.insert(watchlistChecks).values({
-      id: randomUUID(),
-      tenantId,
-      userId,
-      lastCheckedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
+    const jobs = normalizedChecks.flatMap((check) =>
+      check.sourceJobIds.map((sourceJobId) => {
+        const existing = existingSeenByKey.get(`${check.source}:${sourceJobId}`);
+        const firstSeenAt = existing?.firstSeenAt ?? now;
+        return {
+          source: check.source,
+          sourceJobId,
+          isNewSinceLastCheck:
+            previousLastCheckedAt !== null && existing === undefined,
+          firstSeenAt,
+          lastSeenAt: now,
+        };
+      }),
+    );
 
-  const jobs = normalizedChecks.flatMap((check) =>
-    check.sourceJobIds.map((sourceJobId) => {
-      const existing = existingSeenByKey.get(`${check.source}:${sourceJobId}`);
-      const firstSeenAt = existing?.firstSeenAt ?? now;
-      return {
-        source: check.source,
-        sourceJobId,
-        isNewSinceLastCheck:
-          previousLastCheckedAt !== null && existing === undefined,
-        firstSeenAt,
-        lastSeenAt: now,
-      };
-    }),
-  );
-
-  return {
-    previousLastCheckedAt,
-    checkedAt: now,
-    jobs,
-  };
+    return {
+      previousLastCheckedAt,
+      checkedAt: now,
+      jobs,
+    };
+  });
 }

@@ -845,7 +845,7 @@ const migrations = [
     ${
       watchlistJobStatesHasUserId
         ? "watchlist_job_states.user_id"
-        : "tenant_memberships.user_id"
+        : "tenant_owners.user_id"
     },
     watchlist_job_states.source,
     watchlist_job_states.source_job_id,
@@ -856,7 +856,7 @@ const migrations = [
   ${
     watchlistJobStatesHasUserId
       ? ""
-      : "JOIN tenant_memberships ON tenant_memberships.tenant_id = watchlist_job_states.tenant_id"
+      : "JOIN (SELECT tenant_id, MIN(user_id) AS user_id FROM tenant_memberships GROUP BY tenant_id) AS tenant_owners ON tenant_owners.tenant_id = watchlist_job_states.tenant_id"
   }`,
   `DROP TABLE IF EXISTS watchlist_job_states`,
   `ALTER TABLE watchlist_job_states_new RENAME TO watchlist_job_states`,
