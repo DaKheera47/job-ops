@@ -180,14 +180,14 @@ export function WatchlistSourcesCard({
             <article
               key={draft.id}
               className={cn(
-                "group rounded-2xl border p-3 transition-colors",
+                "group rounded border p-3 transition-colors",
                 isSelected
                   ? "border-border/70 bg-background/80 shadow-sm"
                   : "border-dashed border-border/70 bg-background/45",
               )}
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 bg-white shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
+                <div className="flex w-1/3 p-2 bg-white shrink-0 items-center justify-center rounded border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
                   {companyLogoUrl ? (
                     <img
                       src={companyLogoUrl}
