@@ -173,31 +173,26 @@ export function WatchlistSourcesCard({
             ? draft.customUrl
             : (selectedSource?.careersUrl ?? "");
           const host = getSourceHost(careersUrl);
-          const isSelected = draft.isCustom || Boolean(draft.catalogSourceId);
+          const isEmpty = Boolean(draft.catalogSourceId);
           const companyLogoUrl = logoDataUrls[careersUrl.trim()] ?? null;
 
           return (
             <article
               key={draft.id}
-              className={cn(
-                "group rounded border p-3 transition-colors",
-                isSelected
-                  ? "border-border/70 bg-background/80 shadow-sm"
-                  : "border-dashed border-border/70 bg-background/45",
-              )}
+              className={cn("group rounded border p-3 transition-colors")}
             >
               <div className="flex items-start gap-3">
-                <div className="flex w-1/3 p-2 bg-white shrink-0 items-center justify-center rounded border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
-                  {companyLogoUrl ? (
+                {companyLogoUrl || isEmpty ? (
+                  <div className="flex w-fit p-2 bg-white shrink-0 items-center justify-center rounded border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
                     <img
-                      src={companyLogoUrl}
+                      src={companyLogoUrl ?? undefined}
                       alt={label}
-                      className="h-full w-full object-contain"
+                      className="h-full w-full max-h-12 object-contain"
                     />
-                  ) : (
-                    <span className="text-lg">{getCompanyInitials(label)}</span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <span className="text-lg">{getCompanyInitials(label)}</span>
+                )}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
