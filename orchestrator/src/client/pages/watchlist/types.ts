@@ -72,6 +72,7 @@ export interface WatchlistCheckState {
 
 export interface WatchlistSourceDraftCardProps {
   sourceDrafts: SourceSelectionDraft[];
+  sourceStatusByDraftId: Record<string, "watching" | "unsaved">;
   catalogSources: WatchlistSource[];
   formattedLastCheckedAt: string | null;
   formattedPreviousLastCheckedAt: string | null;

@@ -1,4 +1,5 @@
 import { fetchWorkdayLogo } from "@client/api/workday";
+import { StatusIndicator } from "@client/components/StatusIndicator";
 import type { WatchlistSource } from "@shared/types.js";
 import { Loader2, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -55,8 +56,31 @@ function formatCustomSourceLabel(careersUrl: string): string {
   return employer.length <= 3 ? employer.toUpperCase() : employer;
 }
 
+function getWatchlistStatusCopy(status: "watching" | "unsaved"): {
+  label: string;
+  variant: "emerald" | "amber";
+  tooltip: string;
+} {
+  if (status === "watching") {
+    return {
+      label: "Watching",
+      variant: "emerald",
+      tooltip:
+        "This source matches your saved watchlist settings and is currently being monitored.",
+    };
+  }
+
+  return {
+    label: "Unsaved",
+    variant: "amber",
+    tooltip:
+      "This source has local changes that have not been saved yet, so watchlist monitoring is not using this version.",
+  };
+}
+
 export function WatchlistSourcesCard({
   sourceDrafts,
+  sourceStatusByDraftId,
   catalogSources,
   formattedLastCheckedAt,
   formattedPreviousLastCheckedAt,
@@ -193,6 +217,9 @@ export function WatchlistSourcesCard({
                   draft.catalogSourceId,
                   catalogSources,
                 );
+                const sourceStatus =
+                  sourceStatusByDraftId[draft.id] ?? "unsaved";
+                const statusCopy = getWatchlistStatusCopy(sourceStatus);
                 const label = draft.isCustom
                   ? draft.customUrl.trim()
                     ? formatCustomSourceLabel(draft.customUrl.trim())
@@ -237,11 +264,12 @@ export function WatchlistSourcesCard({
                           </p>
                           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{draft.isCustom ? "Custom" : "Workday"}</span>
-                            <span
-                              aria-hidden="true"
-                              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                            <StatusIndicator
+                              label={statusCopy.label}
+                              variant={statusCopy.variant}
+                              tooltip={statusCopy.tooltip}
+                              tooltipClassName="max-w-64 text-xs leading-relaxed"
                             />
-                            <span>Active</span>
                           </div>
                           <p className="mt-2 truncate text-xs text-muted-foreground">
                             {careersUrl ||

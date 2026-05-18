@@ -244,6 +244,30 @@ export const WatchlistPage: React.FC = () => {
     (item) => !dismissedUrls.has(item.source.id),
   );
   const catalogSources = watchlistSourcesResponse?.catalogSources ?? [];
+  const selectedSources = watchlistSourcesResponse?.selectedSources ?? [];
+  const sourceStatusByDraftId = useMemo(() => {
+    const savedById = new Map(
+      selectedSources.map((source) => [source.id, source]),
+    );
+
+    return Object.fromEntries(
+      sourceDrafts.map((draft) => {
+        const savedSource = savedById.get(draft.id);
+        if (!savedSource) {
+          return [draft.id, "unsaved"] as const;
+        }
+
+        const isWatching = draft.isCustom
+          ? savedSource.isCustom &&
+            savedSource.catalogSourceId === null &&
+            savedSource.careersUrl === draft.customUrl.trim()
+          : !savedSource.isCustom &&
+            savedSource.catalogSourceId === draft.catalogSourceId;
+
+        return [draft.id, isWatching ? "watching" : "unsaved"] as const;
+      }),
+    );
+  }, [selectedSources, sourceDrafts]);
   const newJobsCount = watchlistCheckState.newJobKeys.size;
   const formattedLastCheckedAt = formatWatchlistCheckTimestamp(
     watchlistCheckState.checkedAt,
@@ -483,6 +507,7 @@ export const WatchlistPage: React.FC = () => {
         <div className="space-y-3">
           <WatchlistSourcesCard
             sourceDrafts={sourceDrafts}
+            sourceStatusByDraftId={sourceStatusByDraftId}
             catalogSources={catalogSources}
             formattedLastCheckedAt={formattedLastCheckedAt}
             formattedPreviousLastCheckedAt={formattedPreviousLastCheckedAt}
