@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
 import {
   CUSTOM_SOURCE_VALUE,
+  getEmployerFromCareersUrl,
   getSourceHost,
   WATCHLIST_SOURCE_COUNT_OPTIONS,
 } from "./utils";
@@ -46,6 +47,12 @@ function getCompanyInitials(label: string): string {
   if (parts.length === 0) return "WD";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
+function formatCustomSourceLabel(careersUrl: string): string {
+  const employer = getEmployerFromCareersUrl(careersUrl).trim();
+  if (!employer) return "Custom Workday URL";
+  return employer.length <= 3 ? employer.toUpperCase() : employer;
 }
 
 export function WatchlistSourcesCard({
@@ -187,7 +194,9 @@ export function WatchlistSourcesCard({
                   catalogSources,
                 );
                 const label = draft.isCustom
-                  ? draft.customUrl.trim() || "Custom Workday URL"
+                  ? draft.customUrl.trim()
+                    ? formatCustomSourceLabel(draft.customUrl.trim())
+                    : "Custom Workday URL"
                   : (selectedSource?.label ?? `Source ${index + 1}`);
                 const careersUrl = draft.isCustom
                   ? draft.customUrl
@@ -200,15 +209,15 @@ export function WatchlistSourcesCard({
                   <article
                     key={draft.id}
                     className={cn(
-                      "group rounded-2xl border px-3 pb-4 pt-3 transition-colors md:min-h-56",
+                      "group min-w-0 rounded-2xl border px-3 pb-4 pt-3 transition-colors md:min-h-56",
                       isEmpty
                         ? "border-border/70 bg-background/80 shadow-sm"
                         : "border-dashed border-border/70 bg-background/45",
                     )}
                   >
                     <div className="flex items-start gap-2">
-                      <div className="flex flex-1 items-start gap-3">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] p-2 text-sm font-semibold text-primary-foreground shadow-inner">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex h-16 w-16 p-2">
                           {companyLogoUrl || isEmpty ? (
                             <img
                               src={companyLogoUrl ?? undefined}
