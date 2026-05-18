@@ -234,8 +234,8 @@ export async function recordWatchlistCheck(
     }))
     .filter((check) => check.sourceJobIds.length > 0);
 
-  return db.transaction(async (tx) => {
-    const [existingCheckpoint] = await tx
+  return db.transaction((tx) => {
+    const existingCheckpoint = tx
       .select()
       .from(watchlistChecks)
       .where(
@@ -243,23 +243,23 @@ export async function recordWatchlistCheck(
           eq(watchlistChecks.tenantId, tenantId),
           eq(watchlistChecks.userId, userId),
         ),
-      );
+      )
+      .get();
 
     const previousLastCheckedAt = existingCheckpoint?.lastCheckedAt ?? null;
-    const existingSeenRows = await Promise.all(
-      normalizedChecks.map((check) =>
-        tx
-          .select()
-          .from(watchlistSeenJobs)
-          .where(
-            and(
-              eq(watchlistSeenJobs.tenantId, tenantId),
-              eq(watchlistSeenJobs.userId, userId),
-              eq(watchlistSeenJobs.source, check.source),
-              inArray(watchlistSeenJobs.sourceJobId, check.sourceJobIds),
-            ),
+    const existingSeenRows = normalizedChecks.map((check) =>
+      tx
+        .select()
+        .from(watchlistSeenJobs)
+        .where(
+          and(
+            eq(watchlistSeenJobs.tenantId, tenantId),
+            eq(watchlistSeenJobs.userId, userId),
+            eq(watchlistSeenJobs.source, check.source),
+            inArray(watchlistSeenJobs.sourceJobId, check.sourceJobIds),
           ),
-      ),
+        )
+        .all(),
     );
 
     const existingSeenByKey = new Map<
@@ -276,8 +276,7 @@ export async function recordWatchlistCheck(
         const key = `${check.source}:${sourceJobId}`;
         const existing = existingSeenByKey.get(key);
 
-        await tx
-          .insert(watchlistSeenJobs)
+        tx.insert(watchlistSeenJobs)
           .values({
             id: existing?.id ?? randomUUID(),
             tenantId,
@@ -305,8 +304,7 @@ export async function recordWatchlistCheck(
       }
     }
 
-    await tx
-      .insert(watchlistChecks)
+    tx.insert(watchlistChecks)
       .values({
         id: existingCheckpoint?.id ?? randomUUID(),
         tenantId,
