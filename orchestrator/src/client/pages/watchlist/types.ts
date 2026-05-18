@@ -77,7 +77,8 @@ export interface WatchlistSourceDraftCardProps {
   formattedPreviousLastCheckedAt: string | null;
   newJobsCount: number;
   isSaving: boolean;
-  onSourceCountChange: (nextCount: number) => void;
+  onAddSource: () => void;
+  onRemoveSource: (index: number) => void;
   onUpdateDraft: (
     index: number,
     updater: (draft: SourceSelectionDraft) => SourceSelectionDraft,

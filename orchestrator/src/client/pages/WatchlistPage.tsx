@@ -61,9 +61,7 @@ export const WatchlistPage: React.FC = () => {
   });
   const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
   const [showIgnored, setShowIgnored] = useState(false);
-  const [sourceDrafts, setSourceDrafts] = useState<SourceSelectionDraft[]>([
-    createSourceDraft(),
-  ]);
+  const [sourceDrafts, setSourceDrafts] = useState<SourceSelectionDraft[]>([]);
   const [watchlistCheckState, setWatchlistCheckState] =
     useState<WatchlistCheckState>({
       checkedAt: null,
@@ -228,7 +226,7 @@ export const WatchlistPage: React.FC = () => {
   useEffect(() => {
     const selectedSources = watchlistSourcesResponse?.selectedSources ?? [];
     if (selectedSources.length === 0) {
-      setSourceDrafts([createSourceDraft()]);
+      setSourceDrafts([]);
       return;
     }
 
@@ -341,19 +339,14 @@ export const WatchlistPage: React.FC = () => {
     });
   }
 
-  function updateSourceCount(nextCount: number) {
-    setSourceDrafts((current) => {
-      if (nextCount <= current.length) {
-        return current.slice(0, nextCount);
-      }
+  function addSourceDraft() {
+    setSourceDrafts((current) => [...current, createSourceDraft()]);
+  }
 
-      return [
-        ...current,
-        ...Array.from({ length: nextCount - current.length }, () =>
-          createSourceDraft(),
-        ),
-      ];
-    });
+  function removeSourceDraft(index: number) {
+    setSourceDrafts((current) =>
+      current.filter((_, draftIndex) => draftIndex !== index),
+    );
   }
 
   function updateDraft(
@@ -494,7 +487,8 @@ export const WatchlistPage: React.FC = () => {
             formattedPreviousLastCheckedAt={formattedPreviousLastCheckedAt}
             newJobsCount={newJobsCount}
             isSaving={saveSourcesMutation.isPending}
-            onSourceCountChange={updateSourceCount}
+            onAddSource={addSourceDraft}
+            onRemoveSource={removeSourceDraft}
             onUpdateDraft={updateDraft}
             onSave={() => {
               void handleSaveSources().catch((error) => {
