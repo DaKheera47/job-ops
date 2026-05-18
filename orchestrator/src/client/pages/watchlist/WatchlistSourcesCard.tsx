@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
 import {
   CUSTOM_SOURCE_VALUE,
+  getCompanyLogoUrl,
   getSourceHost,
   WATCHLIST_SOURCE_COUNT_OPTIONS,
 } from "./utils";
@@ -128,11 +129,15 @@ export function WatchlistSourcesCard({
               )}
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
-                  {getCompanyInitials(
-                    draft.isCustom
-                      ? (host ?? "Workday")
-                      : (selectedSource?.label ?? "Workday"),
+                <div className="flex h-11 w-11 bg-white shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
+                  {getCompanyLogoUrl(careersUrl) ? (
+                    <img
+                      src={getCompanyLogoUrl(careersUrl) ?? undefined}
+                      alt={label}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-lg">{getCompanyInitials(label)}</span>
                   )}
                 </div>
 
