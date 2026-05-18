@@ -231,12 +231,3 @@ export function rankWorkdayJobs(
       return left.index - right.index;
     });
 }
-
-export function getCompanyLogoUrl(careersUrl: string): string | null {
-  // source url + /assets/logo
-  try {
-    return `${careersUrl}/assets/logo`;
-  } catch {
-    return null;
-  }
-}

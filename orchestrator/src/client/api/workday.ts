@@ -57,6 +57,13 @@ export interface WorkdayFetchJobDetailsResponse {
   };
 }
 
+export interface WorkdayFetchLogoResponse {
+  careersUrl: string;
+  logoUrl: string;
+  mimeType: string;
+  imageDataUrl: string;
+}
+
 export async function fetchWorkdayCxsJobs(
   careersUrl: string,
   maxJobs = 40,
@@ -77,4 +84,13 @@ export async function fetchWorkdayCxsJobDetails(
       body: JSON.stringify({ jobUrl }),
     },
   );
+}
+
+export async function fetchWorkdayLogo(
+  careersUrl: string,
+): Promise<WorkdayFetchLogoResponse> {
+  return fetchApi<WorkdayFetchLogoResponse>("/workday/fetch-logo", {
+    method: "POST",
+    body: JSON.stringify({ careersUrl }),
+  });
 }

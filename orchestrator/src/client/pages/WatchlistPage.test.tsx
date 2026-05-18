@@ -14,6 +14,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
 vi.mock("@client/api/workday", () => ({
   fetchWorkdayCxsJobs: vi.fn(),
   fetchWorkdayCxsJobDetails: vi.fn(),
+  fetchWorkdayLogo: vi.fn(),
 }));
 
 vi.mock("@client/hooks/useSettings", () => ({

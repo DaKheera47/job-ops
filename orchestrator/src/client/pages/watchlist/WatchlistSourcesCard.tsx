@@ -1,5 +1,7 @@
+import { fetchWorkdayLogo } from "@client/api/workday";
 import type { WatchlistSource } from "@shared/types.js";
 import { Loader2, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +16,6 @@ import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
 import {
   CUSTOM_SOURCE_VALUE,
-  getCompanyLogoUrl,
   getSourceHost,
   WATCHLIST_SOURCE_COUNT_OPTIONS,
 } from "./utils";
@@ -53,6 +54,62 @@ export function WatchlistSourcesCard({
   onUpdateDraft,
   onSave,
 }: WatchlistSourceDraftCardProps) {
+  const [logoDataUrls, setLogoDataUrls] = useState<
+    Record<string, string | null>
+  >({});
+  const logoCareersUrls = useMemo(() => {
+    const urls = new Set<string>();
+
+    for (const draft of sourceDrafts) {
+      const selectedSource = getSourceDraftDetails(
+        draft.catalogSourceId,
+        catalogSources,
+      );
+      const careersUrl = draft.isCustom
+        ? draft.customUrl.trim()
+        : (selectedSource?.careersUrl ?? "").trim();
+
+      if (!careersUrl) continue;
+      urls.add(careersUrl);
+    }
+
+    return [...urls];
+  }, [catalogSources, sourceDrafts]);
+
+  useEffect(() => {
+    const pendingUrls = logoCareersUrls.filter(
+      (careersUrl) => logoDataUrls[careersUrl] === undefined,
+    );
+    if (pendingUrls.length === 0) return;
+
+    let cancelled = false;
+
+    void Promise.all(
+      pendingUrls.map(async (careersUrl) => {
+        try {
+          const response = await fetchWorkdayLogo(careersUrl);
+          return [careersUrl, response.imageDataUrl] as const;
+        } catch {
+          return [careersUrl, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+
+      setLogoDataUrls((current) => {
+        const next = { ...current };
+        for (const [careersUrl, imageDataUrl] of entries) {
+          next[careersUrl] = imageDataUrl;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [logoCareersUrls, logoDataUrls]);
+
   return (
     <section className="rounded-2xl border border-border/60 bg-[linear-gradient(180deg,hsl(var(--card))_0%,color-mix(in_oklab,hsl(var(--card))_88%,hsl(var(--background)))_100%)] p-4 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -117,6 +174,7 @@ export function WatchlistSourcesCard({
             : (selectedSource?.careersUrl ?? "");
           const host = getSourceHost(careersUrl);
           const isSelected = draft.isCustom || Boolean(draft.catalogSourceId);
+          const companyLogoUrl = logoDataUrls[careersUrl.trim()] ?? null;
 
           return (
             <article
@@ -130,9 +188,9 @@ export function WatchlistSourcesCard({
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 bg-white shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,hsl(var(--primary))_72%,black),color-mix(in_oklab,hsl(var(--primary))_42%,hsl(var(--muted))))] text-sm font-semibold text-primary-foreground shadow-inner">
-                  {getCompanyLogoUrl(careersUrl) ? (
+                  {companyLogoUrl ? (
                     <img
-                      src={getCompanyLogoUrl(careersUrl) ?? undefined}
+                      src={companyLogoUrl}
                       alt={label}
                       className="h-full w-full object-contain"
                     />
