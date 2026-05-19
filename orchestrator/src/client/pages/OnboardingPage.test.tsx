@@ -974,6 +974,79 @@ describe("OnboardingPage", () => {
     });
   });
 
+  it("lets onboarding upload a Reactive Resume JSON file", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Reactive Resume is not configured",
+    });
+    vi.mocked(api.validateResumeConfig)
+      .mockResolvedValueOnce({
+        valid: false,
+        message: "No resume yet",
+      })
+      .mockResolvedValueOnce({
+        valid: true,
+        message: null,
+      });
+    vi.mocked(api.importDesignResumeFromFile).mockResolvedValue({
+      id: "primary",
+      title: "Taylor Resume",
+      resumeJson: {} as any,
+      revision: 1,
+      sourceResumeId: null,
+      sourceMode: "v5",
+      importedAt: "2026-04-11T00:00:00.000Z",
+      createdAt: "2026-04-11T00:00:00.000Z",
+      updatedAt: "2026-04-11T00:00:00.000Z",
+      assets: [],
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...currentSettings,
+      pdfRenderer: {
+        value: "latex",
+        default: "rxresume",
+        override: null,
+      },
+    });
+
+    const { container } = renderPage();
+
+    fireEvent.click(getStepButton(/^Resume$/i));
+
+    const input = container.querySelector(
+      'input[type="file"][accept*=".json"]',
+    ) as HTMLInputElement | null;
+    if (!input) {
+      throw new Error("Expected resume upload input to accept JSON");
+    }
+
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(
+            [JSON.stringify({ data: { basics: {}, sections: {} } })],
+            "resume.json",
+            {
+              type: "application/json",
+            },
+          ),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(api.importDesignResumeFromFile).toHaveBeenCalledWith({
+        fileName: "resume.json",
+        mediaType: "application/json",
+        dataBase64: expect.any(String),
+      });
+    });
+  });
+
   it("marks the search terms step stale after the resume changes", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,

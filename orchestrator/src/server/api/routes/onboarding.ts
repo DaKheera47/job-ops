@@ -107,7 +107,7 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
       return {
         valid: false,
         message:
-          "No local resume is ready yet. Upload a PDF or DOCX resume, or connect Reactive Resume and select a template resume.",
+          "No local resume is ready yet. Upload a PDF, DOCX, or Reactive Resume JSON, or connect Reactive Resume and select a template resume.",
       };
     }
 

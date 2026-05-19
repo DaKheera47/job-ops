@@ -25,7 +25,7 @@ export const STEP_COPY: Record<
     eyebrow: "Step 2",
     title: "Import your current resume.",
     description:
-      "Choose how to bring your base resume into Job Ops. Upload a PDF or DOCX to create a local Resume Studio document, or connect Reactive Resume with a v5 API key and select an existing resume there.",
+      "Choose how to bring your base resume into Job Ops. Upload a PDF, DOCX, or Reactive Resume JSON to create a local Resume Studio document, or connect Reactive Resume with a v5 API key and select an existing resume there.",
   },
   searchterms: {
     eyebrow: "Step 3",

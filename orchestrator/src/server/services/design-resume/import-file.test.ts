@@ -101,6 +101,78 @@ describe("importDesignResumeFromFile", () => {
     );
   });
 
+  it("imports Reactive Resume JSON directly without model extraction", async () => {
+    const resumeJson = buildDefaultReactiveResumeDocument() as DesignResumeJson;
+    resumeJson.basics.name = "Jordan Park";
+
+    const result = await importDesignResumeFromFile({
+      fileName: "resume.json",
+      mediaType: "application/json",
+      dataBase64: Buffer.from(JSON.stringify(resumeJson), "utf8").toString(
+        "base64",
+      ),
+    });
+
+    expect(modelSelection.resolveLlmRuntimeSettings).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).toHaveBeenCalledWith({
+      importedAt: expect.any(String),
+      resumeJson: expect.objectContaining({
+        basics: expect.objectContaining({ name: "Jordan Park" }),
+      }),
+      sourceMode: "v5",
+      sourceResumeId: null,
+    });
+    expect(result.resumeJson.basics.name).toBe("Jordan Park");
+  });
+
+  it("accepts data-wrapped Reactive Resume JSON exports", async () => {
+    const resumeJson = buildDefaultReactiveResumeDocument() as DesignResumeJson;
+    resumeJson.basics.name = "Sam Rivera";
+
+    const result = await importDesignResumeFromFile({
+      fileName: "resume.json",
+      mediaType: "",
+      dataBase64: Buffer.from(
+        JSON.stringify({ data: resumeJson }),
+        "utf8",
+      ).toString("base64"),
+    });
+
+    expect(result.resumeJson.basics.name).toBe("Sam Rivera");
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceMode: "v5",
+        sourceResumeId: null,
+      }),
+    );
+  });
+
+  it("rejects non Reactive Resume JSON files", async () => {
+    await expect(
+      importDesignResumeFromFile({
+        fileName: "not-a-resume.json",
+        mediaType: "application/json",
+        dataBase64: Buffer.from(
+          JSON.stringify({ hello: "world" }),
+          "utf8",
+        ).toString("base64"),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        "Reactive Resume JSON must contain a v5 resume document or a data-wrapped v5 resume document.",
+    });
+
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).not.toHaveBeenCalled();
+  });
+
   it("sends the attached file directly to the configured model and saves the normalized document", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(

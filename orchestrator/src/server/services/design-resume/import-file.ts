@@ -30,7 +30,8 @@ import { replaceCurrentDesignResumeDocument } from "./index";
 
 type SupportedImportMediaType =
   | "application/pdf"
-  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "application/json";
 
 type SupportedRuntimeProvider =
   | "openai"
@@ -85,6 +86,7 @@ const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
 > = {
   pdf: "application/pdf",
   docx: DOCX_MIME,
+  json: "application/json",
 };
 
 const SYSTEM_PROMPT = `
@@ -162,6 +164,12 @@ function normalizeImportMediaType(input: {
   const normalizedMediaType = input.mediaType?.trim().toLowerCase() ?? "";
   if (normalizedMediaType === "application/pdf") return "application/pdf";
   if (normalizedMediaType === DOCX_MIME) return DOCX_MIME;
+  if (
+    normalizedMediaType === "application/json" ||
+    normalizedMediaType === "text/json"
+  ) {
+    return "application/json";
+  }
 
   if (
     (!normalizedMediaType ||
@@ -171,7 +179,9 @@ function normalizeImportMediaType(input: {
     return fromExtension;
   }
 
-  throw badRequest("Only PDF and DOCX resumes are supported.");
+  throw badRequest(
+    "Only PDF, DOCX, and Reactive Resume JSON files are supported.",
+  );
 }
 
 function normalizeBase64Payload(dataBase64: string): string {
@@ -801,6 +811,46 @@ function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
   return parsed.data as DesignResumeJson;
 }
 
+function asReactiveResumeExportObject(input: unknown): RecordLike | null {
+  const record = asRecord(input);
+  if (!record) return null;
+  if (asRecord(record.basics) && asRecord(record.sections)) return record;
+
+  const data = asRecord(record.data);
+  if (data && asRecord(data.basics) && asRecord(data.sections)) return data;
+
+  const resume = asRecord(record.resume);
+  const resumeData = asRecord(resume?.data);
+  if (
+    resumeData &&
+    asRecord(resumeData.basics) &&
+    asRecord(resumeData.sections)
+  ) {
+    return resumeData;
+  }
+
+  return null;
+}
+
+function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
+  const parsed = parseImportedResumeJson(content);
+  const candidate = asReactiveResumeExportObject(parsed);
+  if (!candidate) {
+    throw badRequest(
+      "Reactive Resume JSON must contain a v5 resume document or a data-wrapped v5 resume document.",
+    );
+  }
+
+  const validation = safeParseV5ResumeData(candidate);
+  if (!validation.success) {
+    throw badRequest(
+      `Reactive Resume JSON must be a valid v5 resume document. ${getResumeSchemaValidationMessage(validation.error)}`,
+    );
+  }
+
+  return validation.data as DesignResumeJson;
+}
+
 function buildCapabilityErrorMessage(provider: string): string {
   return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, Gemini (CLI), OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
@@ -1370,6 +1420,51 @@ export async function importDesignResumeFromFile(
   });
   const { decoded, normalizedBase64 } = decodeBase64Payload(input.dataBase64);
   const requestId = getRequestId();
+
+  if (mediaType === "application/json") {
+    logger.info("Reactive Resume JSON import started", {
+      requestId: requestId ?? null,
+      fileName,
+      mediaType,
+      byteSize: decoded.byteLength,
+    });
+
+    try {
+      const resumeJson = parseReactiveResumeJsonFile(decoded.toString("utf8"));
+      const saved = await replaceCurrentDesignResumeDocument({
+        importedAt: new Date().toISOString(),
+        resumeJson,
+        sourceMode: "v5",
+        sourceResumeId: null,
+      });
+
+      logger.info("Reactive Resume JSON import completed", {
+        requestId: requestId ?? null,
+        fileName,
+        mediaType,
+        documentId: saved.id,
+      });
+
+      return saved;
+    } catch (error) {
+      logger.warn("Reactive Resume JSON import failed", {
+        requestId: requestId ?? null,
+        fileName,
+        mediaType,
+        error: sanitizeUnknown(error),
+      });
+
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Reactive Resume JSON import failed.";
+      throw badRequest(truncate(message, 400));
+    }
+  }
 
   const runtime = await resolveLlmRuntimeSettings();
   const provider = normalizeRuntimeProvider(runtime.provider);
