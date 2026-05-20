@@ -519,7 +519,7 @@ function peelLocale(segments: string[]): { locale?: string; rest: string[] } {
 }
 
 function isLocaleSegment(segment: string): boolean {
-  return /^[a-z]{2}(?:-[A-Z]{2})?$/.test(segment);
+  return /^[a-z]{2}(?:-[a-z]{2})?$/i.test(segment);
 }
 
 function extractShard(host: string): string | undefined {

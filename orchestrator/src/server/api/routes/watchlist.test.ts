@@ -1,6 +1,8 @@
 import type { Server } from "node:http";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
+
+const nativeFetch = globalThis.fetch;
 
 const AUTH_ENV = {
   BASIC_AUTH_USER: "admin",
@@ -46,6 +48,7 @@ describe.sequential("Watchlist API routes", () => {
   let tempDir: string;
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await stopServer({ server, closeDb, tempDir });
   });
 
@@ -63,7 +66,7 @@ describe.sequential("Watchlist API routes", () => {
       expect(body.data.catalogSources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            id: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+            id: "autodesk-workday",
             label: "Autodesk",
             sourceType: "workday",
             careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
@@ -71,7 +74,7 @@ describe.sequential("Watchlist API routes", () => {
               "https://autodesk.wd1.myworkdayjobs.com/wday/cxs/autodesk/Ext/jobs",
           }),
           expect.objectContaining({
-            id: "workday:https://pg.wd5.myworkdayjobs.com/en-US/1000",
+            id: "pg-workday",
             label: "P&G",
             sourceType: "workday",
             careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
@@ -98,8 +101,7 @@ describe.sequential("Watchlist API routes", () => {
         body: JSON.stringify({
           selections: [
             {
-              catalogSourceId:
-                "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+              catalogSourceId: "autodesk-workday",
               sourceType: "workday",
               careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
             },
@@ -117,7 +119,7 @@ describe.sequential("Watchlist API routes", () => {
       expect(firstBody.ok).toBe(true);
       expect(firstBody.data.selectedSources).toEqual([
         expect.objectContaining({
-          catalogSourceId: "workday:https://autodesk.wd1.myworkdayjobs.com/Ext",
+          catalogSourceId: "autodesk-workday",
           label: "Autodesk",
           careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
           sourceType: "workday",
@@ -146,6 +148,52 @@ describe.sequential("Watchlist API routes", () => {
       );
     });
 
+    it("caps oversized source-branding responses", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(Uint8Array.from([0x89, 0x50, 0x4e, 0x47]), {
+            status: 200,
+            headers: {
+              "content-type": "image/png",
+              "content-length": "1000001",
+            },
+          }),
+        ),
+      );
+
+      const res = await nativeFetch(
+        `${baseUrl}/api/watchlist/source-branding`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-request-id": "watchlist-branding-size-cap",
+          },
+          body: JSON.stringify({
+            sourceType: "workday",
+            careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+          }),
+        },
+      );
+      const body = await res.json();
+
+      expect(res.status).toBe(502);
+      expect(body).toMatchObject({
+        ok: false,
+        error: {
+          code: "UPSTREAM_ERROR",
+          message: "Workday company logo exceeded size limit",
+          details: {
+            maxBytes: 1_000_000,
+          },
+        },
+        meta: {
+          requestId: "watchlist-branding-size-cap",
+        },
+      });
+    });
+
     it("derives a custom label from Workday tenant slugs when the site slug is generic", async () => {
       const res = await fetch(`${baseUrl}/api/watchlist/sources`, {
         method: "PUT",
@@ -168,6 +216,34 @@ describe.sequential("Watchlist API routes", () => {
         expect.objectContaining({
           label: "PG",
           careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
+          sourceType: "workday",
+          isCustom: true,
+        }),
+      ]);
+    });
+
+    it("stores custom Workday URLs in canonical form", async () => {
+      const res = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selections: [
+            {
+              sourceType: "workday",
+              careersUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000/",
+              label: "https://pg.wd5.myworkdayjobs.com/en-us/1000/",
+            },
+          ],
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.selectedSources).toEqual([
+        expect.objectContaining({
+          label: "PG",
+          careersUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000",
           sourceType: "workday",
           isCustom: true,
         }),

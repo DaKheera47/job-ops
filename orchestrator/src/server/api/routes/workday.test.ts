@@ -98,6 +98,38 @@ describe.sequential("Workday API routes", () => {
     expect(body.data.imageDataUrl).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 
+  it("accepts lowercase locale segments in Workday URLs", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(Uint8Array.from([0x89, 0x50, 0x4e, 0x47]), {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+          "content-length": "4",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await nativeFetch(`${baseUrl}/api/workday/fetch-logo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        careersUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      data: {
+        careersUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000",
+        logoUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000/assets/logo",
+        mimeType: "image/png",
+      },
+    });
+  });
+
   it("rejects invalid Workday URLs for logo fetches", async () => {
     const res = await nativeFetch(`${baseUrl}/api/workday/fetch-logo`, {
       method: "POST",

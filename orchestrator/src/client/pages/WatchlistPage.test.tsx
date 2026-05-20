@@ -161,14 +161,14 @@ beforeEach(() => {
   watchlistSourcesState = {
     catalogSources: [
       {
-        id: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+        id: "autodesk-workday",
         label: "Autodesk",
         sourceType: "workday",
         careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
         cxsJobsUrl: autodeskCxsJobsUrl,
       },
       {
-        id: `workday:https://pg.wd5.myworkdayjobs.com/en-US/1000`,
+        id: "pg-workday",
         label: "P&G",
         sourceType: "workday",
         careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
@@ -178,7 +178,7 @@ beforeEach(() => {
     selectedSources: [
       {
         id: "selected-autodesk",
-        catalogSourceId: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+        catalogSourceId: "autodesk-workday",
         label: "Autodesk",
         sourceType: "workday",
         careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
@@ -190,7 +190,7 @@ beforeEach(() => {
       },
       {
         id: "selected-pg",
-        catalogSourceId: `workday:https://pg.wd5.myworkdayjobs.com/en-US/1000`,
+        catalogSourceId: "pg-workday",
         label: "P&G",
         sourceType: "workday",
         careersUrl: "https://pg.wd5.myworkdayjobs.com/en-US/1000",
@@ -420,7 +420,7 @@ describe("WatchlistPage", () => {
       expect(vi.mocked(api.updateWatchlistSources).mock.calls[0]?.[0]).toEqual({
         selections: [
           {
-            catalogSourceId: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+            catalogSourceId: "autodesk-workday",
             sourceType: "workday",
             label: "Autodesk",
             careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",

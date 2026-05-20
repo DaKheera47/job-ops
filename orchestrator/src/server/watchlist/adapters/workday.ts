@@ -7,14 +7,18 @@ import {
   workdayUrlToCxsJobsUrl,
   workdayUrlToSourceKey,
 } from "@career-boards/workday";
+import { upstreamError } from "@infra/errors";
 import type { ManualJobDraft, WatchlistSelectedSource } from "@shared/types";
 import { z } from "zod";
 import type { WatchlistCatalogSourceAdapter } from "./types";
 
 const workdaySourceSchema = z.object({
+  id: z.string().trim().min(1).max(120),
   label: z.string().trim().min(1).max(200),
   workdayUrl: z.string().trim().url().max(2000),
 });
+
+const WORKDAY_LOGO_MAX_BYTES = 1_000_000;
 
 export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
   sourceType: "workday",
@@ -40,7 +44,7 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
       .array(workdaySourceSchema)
       .parse(entries)
       .map((entry) => ({
-        id: buildSourceId("workday", entry.workdayUrl),
+        id: entry.id,
         label: entry.label,
         sourceType: "workday",
         careersUrl: entry.workdayUrl,
@@ -55,13 +59,19 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
     };
   },
   normalizeCustomSelection(input) {
+    const canonicalCareersUrl = parseWorkdayUrl(
+      input.careersUrl,
+    ).canonicalCareersUrl;
+    const trimmedLabel = input.label?.trim();
     const label =
-      input.label?.trim() && input.label.trim() !== input.careersUrl.trim()
-        ? input.label.trim()
-        : workdayUrlToCompanyLabel(input.careersUrl);
+      trimmedLabel &&
+      trimmedLabel !== input.careersUrl.trim() &&
+      trimmedLabel !== canonicalCareersUrl
+        ? trimmedLabel
+        : workdayUrlToCompanyLabel(canonicalCareersUrl);
     return {
       label,
-      careersUrl: input.careersUrl,
+      careersUrl: canonicalCareersUrl,
     };
   },
   async fetchJobs(input) {
@@ -129,11 +139,33 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
       );
     }
 
+    const contentLength = Number(response.headers.get("content-length"));
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > WORKDAY_LOGO_MAX_BYTES
+    ) {
+      throw upstreamError("Workday company logo exceeded size limit", {
+        url: logoUrl,
+        contentLength,
+        maxBytes: WORKDAY_LOGO_MAX_BYTES,
+      });
+    }
+
     const contentType = response.headers.get("content-type");
     const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength > WORKDAY_LOGO_MAX_BYTES) {
+      throw upstreamError("Workday company logo exceeded size limit", {
+        url: logoUrl,
+        contentLength: bytes.byteLength,
+        maxBytes: WORKDAY_LOGO_MAX_BYTES,
+      });
+    }
     const mimeType = detectLogoMimeType(bytes, contentType);
     if (!mimeType) {
-      throw new Error("Workday logo response was not an image.");
+      throw upstreamError("Workday logo response was not an image.", {
+        url: logoUrl,
+        contentType: contentType?.trim() || null,
+      });
     }
 
     return {
@@ -144,10 +176,6 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
     };
   },
 };
-
-function buildSourceId(sourceType: string, careersUrl: string): string {
-  return `${sourceType}:${careersUrl}`;
-}
 
 function getHydratedWorkdayLabel(source: {
   sourceType: string;
