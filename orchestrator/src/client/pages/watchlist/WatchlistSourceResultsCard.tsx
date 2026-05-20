@@ -435,7 +435,7 @@ function WatchlistJobRow({
       <TableRow className="group/row align-top even:bg-muted/20 odd:bg-muted/0">
         <TableCell className="px-3 py-2.5">
           <div className="min-w-[16rem]">
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2">
               {signals.length > 0 ? (
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
@@ -468,18 +468,20 @@ function WatchlistJobRow({
                 href={rankedJob.workdayJob.jobUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
+                className={cn(buttonVariants({ variant: "link" }), "px-0")}
               >
                 {rankedJob.job.title}
               </a>
             </div>
           </div>
         </TableCell>
+        {/* company */}
         <TableCell className="py-2.5">
           <div className="text-sm text-muted-foreground">
             {formatCustomSourceLabel(rankedJob.job.jobUrl)}
           </div>
         </TableCell>
+        {/* location */}
         <TableCell className="py-2.5">
           <div className="text-sm text-muted-foreground">
             {rankedJob.job.location ||
@@ -487,6 +489,7 @@ function WatchlistJobRow({
               "Unknown"}
           </div>
         </TableCell>
+
         <TableCell className="px-3 py-2.5">
           <div className="flex items-center justify-end">
             {rankedJob.importedJob ? (
