@@ -1,12 +1,27 @@
 import type { NormalizedWorkdayJob } from "@client/api/workday";
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
-import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
-import { EyeOff, FolderInput, Loader2, RotateCcw, X } from "lucide-react";
+import {
+  EyeOff,
+  FileText,
+  FolderInput,
+  Loader2,
+  RotateCcw,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { JobRowContent } from "../orchestrator/JobRowContent";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   JobDetailsState,
   RankedWorkdayJob,
@@ -237,7 +252,7 @@ function WatchlistSourceJobs({
     : rankedJobs.filter((rankedJob) => rankedJob.rowState !== "ignored");
 
   return (
-    <div className="divide-y divide-border/40">
+    <div className="space-y-0">
       <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
         <span>
           {visibleRankedJobs.length} of {item.response.total} jobs
@@ -255,26 +270,41 @@ function WatchlistSourceJobs({
         </div>
       </div>
 
-      {visibleRankedJobs.map((rankedJob) => (
-        <WatchlistJobRow
-          key={rankedJob.job.id}
-          rankedJob={rankedJob}
-          source={item.source}
-          getWorkdayStateInput={getWorkdayStateInput}
-          details={jobDetails[rankedJob.workdayJob.jobUrl]}
-          movingJobUrl={movingJobUrl}
-          ignorePending={ignorePending}
-          ignoreVariables={ignoreVariables}
-          unignorePending={unignorePending}
-          unignoreVariables={unignoreVariables}
-          watchlistCheckState={watchlistCheckState}
-          onIgnore={onIgnore}
-          onUnignore={onUnignore}
-          onMoveToWorkspace={onMoveToWorkspace}
-          onOpenWorkspaceJob={onOpenWorkspaceJob}
-          onLoadJobDetails={onLoadJobDetails}
-        />
-      ))}
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="h-9 px-3 text-xs">Job</TableHead>
+            <TableHead className="h-9 w-[180px] text-xs">Company</TableHead>
+            <TableHead className="h-9 w-[220px] text-xs">Location</TableHead>
+            <TableHead className="h-9 w-[220px] text-xs">Signals</TableHead>
+            <TableHead className="h-9 w-[320px] px-3 text-xs">
+              Actions
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleRankedJobs.map((rankedJob) => (
+            <WatchlistJobRow
+              key={rankedJob.job.id}
+              rankedJob={rankedJob}
+              source={item.source}
+              getWorkdayStateInput={getWorkdayStateInput}
+              details={jobDetails[rankedJob.workdayJob.jobUrl]}
+              movingJobUrl={movingJobUrl}
+              ignorePending={ignorePending}
+              ignoreVariables={ignoreVariables}
+              unignorePending={unignorePending}
+              unignoreVariables={unignoreVariables}
+              watchlistCheckState={watchlistCheckState}
+              onIgnore={onIgnore}
+              onUnignore={onUnignore}
+              onMoveToWorkspace={onMoveToWorkspace}
+              onOpenWorkspaceJob={onOpenWorkspaceJob}
+              onLoadJobDetails={onLoadJobDetails}
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -326,6 +356,7 @@ function WatchlistJobRow({
   onOpenWorkspaceJob,
   onLoadJobDetails,
 }: WatchlistJobRowProps) {
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const stateInput = getWorkdayStateInput(
     rankedJob.workdayJob,
     source.cxsJobsUrl ?? source.careersUrl,
@@ -343,133 +374,186 @@ function WatchlistJobRow({
     watchlistCheckState.newJobKeys.has(
       getWorkdayImportKey(stateInput.source, stateInput.sourceJobId),
     );
+  const handleDescriptionOpenChange = (open: boolean) => {
+    setIsDescriptionOpen(open);
+    if (open) {
+      onLoadJobDetails(rankedJob.workdayJob.jobUrl);
+    }
+  };
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center gap-3">
-        <JobRowContent
-          job={rankedJob.job}
-          showStatusDot={false}
-          showSuitabilityScore={false}
-          className="min-w-0 flex-1"
-        />
-        <OpenJobListingButton
-          href={rankedJob.workdayJob.jobUrl}
-          size="sm"
-          className="shrink-0"
-        />
-        {rankedJob.importedJob ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-              Already in workspace
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              onClick={() => {
-                if (rankedJob.importedJob) {
-                  onOpenWorkspaceJob(rankedJob.importedJob);
-                }
-              }}
-            >
-              Open workspace job
-            </Button>
+    <>
+      <TableRow className="group/row align-top">
+        <TableCell className="px-3 py-2.5">
+          <div className="min-w-[16rem]">
+            <div className="flex items-center gap-2">
+              <div className="font-medium leading-tight">
+                {rankedJob.job.title}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 rounded-xl border-border/70 bg-background/80 px-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground opacity-0 shadow-sm transition-all group-hover/row:opacity-100 group-focus-within/row:opacity-100"
+                onClick={() => handleDescriptionOpenChange(true)}
+              >
+                <span className="mr-2 inline-flex h-4 w-4 items-center justify-center border border-current/35">
+                  <FileText className="h-3 w-3" />
+                </span>
+                Description
+              </Button>
+            </div>
           </div>
-        ) : rankedJob.rowState === "ignored" ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border border-muted-foreground/20 bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-              Ignored
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shrink-0 gap-2"
-              disabled={isUnignoring}
-              onClick={() => onUnignore(stateInput)}
-            >
-              {isUnignoring ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4" />
-              )}
-              Unignore
-            </Button>
+        </TableCell>
+        <TableCell className="py-2.5">
+          <div className="text-sm text-muted-foreground">
+            {rankedJob.job.employer}
           </div>
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shrink-0 gap-2"
-              disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
-              onClick={() =>
-                onMoveToWorkspace(
-                  rankedJob.workdayJob,
-                  source.careersUrl,
-                  source.cxsJobsUrl ?? source.careersUrl,
-                )
-              }
-            >
-              {movingJobUrl === rankedJob.workdayJob.jobUrl ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FolderInput className="h-4 w-4" />
-              )}
-              Move to workspace
-            </Button>
+        </TableCell>
+        <TableCell className="py-2.5">
+          <div className="text-sm text-muted-foreground">
+            {rankedJob.job.location ||
+              rankedJob.workdayJob.locationText ||
+              "Unknown"}
+          </div>
+        </TableCell>
+        <TableCell className="py-2.5">
+          <div className="flex flex-wrap gap-1.5">
+            {rankedJob.importedJob ? (
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                Already in workspace
+              </span>
+            ) : null}
+            {rankedJob.rowState === "ignored" && !rankedJob.importedJob ? (
+              <span className="rounded-full border border-muted-foreground/20 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+                Ignored
+              </span>
+            ) : null}
+            {rankedJob.matchedSearchTerm ? (
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                {rankedJob.matchedSearchTerm} · {rankedJob.matchScore}
+              </span>
+            ) : null}
+            {rankedJob.locationMatched ? (
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                {rankedJob.locationPriority > 0 ? "location" : "remote"}
+              </span>
+            ) : null}
+            {isNewSinceLastCheck ? (
+              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300">
+                New since last check
+              </span>
+            ) : null}
+          </div>
+        </TableCell>
+        <TableCell className="px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="shrink-0 gap-2 text-muted-foreground"
-              disabled={isIgnoring}
-              onClick={() => onIgnore(stateInput)}
+              onClick={() => handleDescriptionOpenChange(true)}
             >
-              {isIgnoring ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <EyeOff className="h-4 w-4" />
-              )}
-              Ignore
+              <FileText className="h-4 w-4" />
+              Job description
             </Button>
-          </>
-        )}
-        {rankedJob.matchedSearchTerm ? (
-          <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
-            {rankedJob.matchedSearchTerm} · {rankedJob.matchScore}
-          </span>
-        ) : null}
-        {rankedJob.locationMatched ? (
-          <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-            {rankedJob.locationPriority > 0 ? "location" : "remote"}
-          </span>
-        ) : null}
-        {isNewSinceLastCheck ? (
-          <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300">
-            New since last check
-          </span>
-        ) : null}
-      </div>
-
-      <JobDescriptionPanel
-        description={
-          details?.status === "success"
-            ? details.details.jobDescriptionText
-            : null
-        }
-        helperText="Fetched only when this panel is opened."
-        jobUrl={rankedJob.workdayJob.jobUrl}
-        defaultOpen={false}
-        isLoading={details?.status === "loading"}
-        error={details?.status === "error" ? details.error : null}
-        onOpen={() => onLoadJobDetails(rankedJob.workdayJob.jobUrl)}
-        maxHeightClassName="max-h-72"
-        className="mt-3"
-      />
-    </div>
+            {rankedJob.importedJob ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                onClick={() => {
+                  if (rankedJob.importedJob) {
+                    onOpenWorkspaceJob(rankedJob.importedJob);
+                  }
+                }}
+              >
+                Open workspace job
+              </Button>
+            ) : rankedJob.rowState === "ignored" ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 gap-2"
+                disabled={isUnignoring}
+                onClick={() => onUnignore(stateInput)}
+              >
+                {isUnignoring ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4" />
+                )}
+                Unignore
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 gap-2"
+                  disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
+                  onClick={() =>
+                    onMoveToWorkspace(
+                      rankedJob.workdayJob,
+                      source.careersUrl,
+                      source.cxsJobsUrl ?? source.careersUrl,
+                    )
+                  }
+                >
+                  {movingJobUrl === rankedJob.workdayJob.jobUrl ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderInput className="h-4 w-4" />
+                  )}
+                  Move to workspace
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 gap-2 text-muted-foreground"
+                  disabled={isIgnoring}
+                  onClick={() => onIgnore(stateInput)}
+                >
+                  {isIgnoring ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <EyeOff className="h-4 w-4" />
+                  )}
+                  Ignore
+                </Button>
+              </>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+      <Dialog
+        open={isDescriptionOpen}
+        onOpenChange={handleDescriptionOpenChange}
+      >
+        <DialogContent className="max-h-[85vh] max-w-5xl overflow-hidden p-0">
+          <DialogTitle className="sr-only">
+            {rankedJob.job.title} job description
+          </DialogTitle>
+          <JobDescriptionPanel
+            description={
+              details?.status === "success"
+                ? details.details.jobDescriptionText
+                : null
+            }
+            helperText="Fetched only when this panel is opened."
+            jobUrl={rankedJob.workdayJob.jobUrl}
+            collapsible={false}
+            isLoading={details?.status === "loading"}
+            error={details?.status === "error" ? details.error : null}
+            maxHeightClassName="max-h-[calc(85vh-5rem)]"
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
