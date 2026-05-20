@@ -38,10 +38,11 @@ function getSourceDraftDetails(
   return catalogSources.find((source) => source.id === draftCatalogSourceId);
 }
 
-function formatCustomSourceLabel(careersUrl: string): string {
+export function formatCustomSourceLabel(careersUrl: string): string {
   const employer = getEmployerFromCareersUrl(careersUrl).trim();
   if (!employer) return "Custom Workday URL";
-  return employer.length <= 3 ? employer.toUpperCase() : employer;
+  // else capitalise
+  return employer.length <= 3 ? employer.toUpperCase() : employer.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getWatchlistStatusCopy(status: "watching" | "unsaved"): {
@@ -140,10 +141,11 @@ export function WatchlistSourcesCard({
       type="single"
       collapsible
       defaultValue="watched-sources"
+      className="w-full rounded-lg border border-border bg-card"
     >
       <AccordionItem value="watched-sources">
         <div className="relative">
-          <AccordionTrigger className="cursor-pointer items-center justify-between gap-2 px-3 py-3 text-left hover:no-underline rounded-t-lg border border-border bg-card">
+          <AccordionTrigger className="cursor-pointer items-center justify-between gap-2 px-3 py-3 text-left hover:no-underline">
             <div className="min-w-0 w-full">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold tracking-tight text-foreground/90">
@@ -203,8 +205,8 @@ export function WatchlistSourcesCard({
           </div>
         </div>
 
-        <AccordionContent className="border-border/0">
-          <div className="overflow-y-auto p-4 bg-card rounded-b-lg border border-t-0 border-border">
+        <AccordionContent>
+          <div className="overflow-y-auto px-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {sourceDrafts.map((draft, index) => {
                 const selectedSource = getSourceDraftDetails(

@@ -7,12 +7,19 @@ import {
   FileText,
   FolderInput,
   Loader2,
+  MoreHorizontal,
   RotateCcw,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -30,6 +37,7 @@ import type {
   WatchlistRowState,
 } from "./types";
 import { getWorkdayImportKey, rankWorkdayJobs } from "./utils";
+import { formatCustomSourceLabel } from "./WatchlistSourcesCard";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
@@ -277,9 +285,6 @@ function WatchlistSourceJobs({
             <TableHead className="h-9 w-[180px] text-xs">Company</TableHead>
             <TableHead className="h-9 w-[220px] text-xs">Location</TableHead>
             <TableHead className="h-9 w-[220px] text-xs">Signals</TableHead>
-            <TableHead className="h-9 w-[320px] px-3 text-xs">
-              Actions
-            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -386,33 +391,19 @@ function WatchlistJobRow({
       <TableRow className="group/row align-top">
         <TableCell className="px-3 py-2.5">
           <div className="min-w-[16rem]">
-            <div className="flex items-center gap-2">
-              <a
-                href={rankedJob.workdayJob.jobUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
-              >
-                {rankedJob.job.title}
-              </a>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 rounded-xl border-border/70 bg-background/80 px-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground opacity-0 shadow-sm transition-all group-hover/row:opacity-100 group-focus-within/row:opacity-100"
-                onClick={() => handleDescriptionOpenChange(true)}
-              >
-                <span className="mr-2 inline-flex h-4 w-4 items-center justify-center border border-current/35">
-                  <FileText className="h-3 w-3" />
-                </span>
-                Description
-              </Button>
-            </div>
+            <a
+              href={rankedJob.workdayJob.jobUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
+            >
+              {rankedJob.job.title}
+            </a>
           </div>
         </TableCell>
         <TableCell className="py-2.5">
           <div className="text-sm text-muted-foreground">
-            {rankedJob.job.employer}
+            {formatCustomSourceLabel(rankedJob.job.jobUrl)}
           </div>
         </TableCell>
         <TableCell className="py-2.5">
@@ -452,54 +443,84 @@ function WatchlistJobRow({
           </div>
         </TableCell>
         <TableCell className="px-3 py-2.5">
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0 gap-2 text-muted-foreground"
-              onClick={() => handleDescriptionOpenChange(true)}
-            >
-              <FileText className="h-4 w-4" />
-              Job description
-            </Button>
+          <div className="flex items-center justify-end gap-1.5">
             {rankedJob.importedJob ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  if (rankedJob.importedJob) {
-                    onOpenWorkspaceJob(rankedJob.importedJob);
-                  }
-                }}
-              >
-                Open workspace job
-              </Button>
-            ) : rankedJob.rowState === "ignored" ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="shrink-0 gap-2"
-                disabled={isUnignoring}
-                onClick={() => onUnignore(stateInput)}
-              >
-                {isUnignoring ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-4 w-4" />
-                )}
-                Unignore
-              </Button>
-            ) : (
               <>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="shrink-0 gap-2"
+                  className="shrink-0"
+                  onClick={() => {
+                    if (rankedJob.importedJob) {
+                      onOpenWorkspaceJob(rankedJob.importedJob);
+                    }
+                  }}
+                >
+                  Open workspace job
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground"
+                      aria-label="More actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleDescriptionOpenChange(true)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Job description
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : rankedJob.rowState === "ignored" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleDescriptionOpenChange(true)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Job description
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isUnignoring}
+                    onClick={() => onUnignore(stateInput)}
+                  >
+                    {isUnignoring ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                    )}
+                    Unignore
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="shrink-0 gap-2 px-0"
                   disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
                   onClick={() =>
                     onMoveToWorkspace(
@@ -516,21 +537,38 @@ function WatchlistJobRow({
                   )}
                   Move to workspace
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 gap-2 text-muted-foreground"
-                  disabled={isIgnoring}
-                  onClick={() => onIgnore(stateInput)}
-                >
-                  {isIgnoring ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <EyeOff className="h-4 w-4" />
-                  )}
-                  Ignore
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground"
+                      aria-label="More actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleDescriptionOpenChange(true)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Job description
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={isIgnoring}
+                      onClick={() => onIgnore(stateInput)}
+                    >
+                      {isIgnoring ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <EyeOff className="mr-2 h-4 w-4" />
+                      )}
+                      Ignore
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>
