@@ -1,3 +1,4 @@
+import { workdayUrlToSourceKey } from "@career-boards/workday";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
@@ -96,6 +97,14 @@ export function normalizeUiCountryKey(value: string): string {
 
 export function getWatchlistJobKey(source: string, externalId: string): string {
   return `${source}:${externalId}`;
+}
+
+export function getWatchlistSourceKey(value: string): string {
+  try {
+    return workdayUrlToSourceKey(value);
+  } catch {
+    return "workday:unknown:unknown";
+  }
 }
 
 export function formatWatchlistCheckTimestamp(

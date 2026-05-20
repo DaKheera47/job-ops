@@ -75,6 +75,15 @@ export function workdayUrlToCompanyLabel(input: string): string {
 }
 
 /**
+ * Stable source key used by watchlist dedupe and ignored-state tracking.
+ * Includes both tenant and site so distinct myworkdaysite.com paths do not collide.
+ */
+export function workdayUrlToSourceKey(input: string): string {
+  const source = parseWorkdayUrl(input);
+  return `workday:${toSourceKeyPart(source.tenant)}:${toSourceKeyPart(source.site)}`;
+}
+
+/**
  * Convenience helper for callers that need the CXS job detail endpoint.
  */
 export function workdayJobUrlToCxsJobUrl(input: string): string {
@@ -274,6 +283,14 @@ function parseExistingCxsJobEndpoint(
     cxsJobUrl: buildCxsJobUrl(origin, tenant, site, externalPath),
     canonicalJobUrl: `${canonicalCareersUrl}${externalPath}`,
   };
+}
+
+function toSourceKeyPart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function parseLegacyMyworkdayjobsUrl(args: {

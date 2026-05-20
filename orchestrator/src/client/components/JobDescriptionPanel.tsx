@@ -170,7 +170,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
           placeholder="Enter job description..."
         />
       ) : renderMarkdownInJobDescriptions ? (
-        <JobDescriptionMarkdown description={rawDescription ?? description} />
+        <JobDescriptionMarkdown description={description} />
       ) : (
         <div className="whitespace-pre-wrap leading-7">{description}</div>
       )}

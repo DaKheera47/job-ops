@@ -1,6 +1,5 @@
 import type React from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +43,6 @@ export const JobDescriptionMarkdown: React.FC<JobDescriptionMarkdownProps> = ({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
         components={{
           img: () => null,
           a: ({ children, href, ...props }) => {

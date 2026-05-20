@@ -302,7 +302,8 @@ describe("JobDetailPanel", () => {
 
     expect(
       screen.getByText(
-        (_, node) => node?.tagName === "P" && node.textContent === "Hello world",
+        (_, node) =>
+          node?.tagName === "P" && node.textContent === "Hello world",
       ),
     ).toBeInTheDocument();
   });

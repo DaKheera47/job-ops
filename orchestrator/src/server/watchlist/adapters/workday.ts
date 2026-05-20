@@ -5,6 +5,7 @@ import {
   parseWorkdayUrl,
   workdayUrlToCompanyLabel,
   workdayUrlToCxsJobsUrl,
+  workdayUrlToSourceKey,
 } from "@career-boards/workday";
 import type { ManualJobDraft, WatchlistSelectedSource } from "@shared/types";
 import { z } from "zod";
@@ -72,7 +73,7 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
       maxJobs: 40,
       signal: input.signal,
     });
-    const source = toWorkdaySource(cxsJobsUrl);
+    const source = workdayUrlToSourceKey(cxsJobsUrl);
 
     return {
       total: response.total,
@@ -98,7 +99,7 @@ export const workdayWatchlistAdapter: WatchlistCatalogSourceAdapter = {
       jobUrl: input.jobRef,
       signal: input.signal,
     });
-    const source = toWorkdaySource(
+    const source = workdayUrlToSourceKey(
       input.source.cxsJobsUrl ?? input.source.careersUrl,
     );
     const draft = buildManualDraftFromWorkdayDetails(
@@ -214,34 +215,6 @@ function getSourceHost(value: string): string | null {
   } catch {
     return null;
   }
-}
-
-function toSourceSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function getWorkdayTenantFromUrl(value: string): string | null {
-  try {
-    const parsed = parseWorkdayUrl(value);
-    return parsed.tenant;
-  } catch {
-    try {
-      const url = new URL(value);
-      const [tenant] = url.hostname.split(".");
-      return tenant || null;
-    } catch {
-      return null;
-    }
-  }
-}
-
-function toWorkdaySource(value: string): string {
-  const slug = toSourceSlug(getWorkdayTenantFromUrl(value) ?? value);
-  return `workday:${slug || "unknown"}`;
 }
 
 function detectLogoMimeType(
