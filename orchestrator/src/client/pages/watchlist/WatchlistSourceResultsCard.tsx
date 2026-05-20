@@ -3,6 +3,7 @@ import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
 import {
+  ExternalLinkIcon,
   EyeOff,
   FileText,
   FolderInput,
@@ -166,7 +167,10 @@ export function WatchlistSourceResultsCard({
           <button
             type="button"
             onClick={() => dismiss(item.source.id)}
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "icon",
+            })}
             aria-label={`Dismiss ${item.source.label}`}
           >
             <X className="h-4 w-4" />
@@ -484,6 +488,8 @@ function WatchlistJobRow({
                 className={cn(buttonVariants({ variant: "link" }), "px-0")}
               >
                 {rankedJob.job.title}
+
+                <ExternalLinkIcon className="size-3 text-muted-foreground" />
               </a>
             </div>
           </div>

@@ -553,12 +553,6 @@ export const WatchlistPage: React.FC = () => {
               }}
             />
           ))}
-
-          {visibleItems.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              All watchlist responses dismissed.
-            </div>
-          ) : null}
         </div>
       </PageMain>
 
