@@ -135,6 +135,13 @@ function renderPage() {
   );
 }
 
+async function openSourceResults(companyLabel: string) {
+  const trigger = await screen.findByRole("button", {
+    name: new RegExp(`${companyLabel} Careers Page`, "i"),
+  });
+  fireEvent.click(trigger);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 
@@ -217,8 +224,26 @@ beforeEach(() => {
 });
 
 describe("WatchlistPage", () => {
+  it("keeps Save sources disabled until the source draft becomes stale", async () => {
+    renderPage();
+
+    await screen.findAllByRole("button", {
+      name: /remove watchlist source/i,
+    });
+
+    const saveButton = screen.getByRole("button", {
+      name: /save sources/i,
+    });
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /add source/i }));
+
+    expect(screen.getByRole("button", { name: /save sources/i })).toBeEnabled();
+  });
+
   it("shows new rows by default with ignore actions", async () => {
     renderPage();
+    await openSourceResults("Autodesk");
 
     expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
     expect(screen.getByText("Sales Manager")).toBeInTheDocument();
@@ -226,7 +251,9 @@ describe("WatchlistPage", () => {
       screen.getByRole("columnheader", { name: "Posted" }),
     ).toBeInTheDocument();
     expect(screen.getByText("May 1, 2026")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /ignore/i })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("button", { name: /more actions/i }),
+    ).toHaveLength(2);
   });
 
   it("hides ignored rows by default and reveals them with unignore", async () => {
@@ -243,6 +270,7 @@ describe("WatchlistPage", () => {
     });
 
     renderPage();
+    await openSourceResults("Autodesk");
 
     expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Sales Manager")).not.toBeInTheDocument();
@@ -255,9 +283,8 @@ describe("WatchlistPage", () => {
     );
 
     expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
-    expect(screen.getByText("Ignored")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /unignore/i }),
+      screen.getByLabelText(/view signals for sales manager/i),
     ).toBeInTheDocument();
   });
 
@@ -284,10 +311,13 @@ describe("WatchlistPage", () => {
     });
 
     renderPage();
+    await openSourceResults("Autodesk");
 
     expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
-    expect(screen.getByText("New since last check")).toBeInTheDocument();
     expect(screen.getByText(/1 new since/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/view signals for backend engineer/i),
+    ).toBeInTheDocument();
   });
 
   it("shows moved rows as already in workspace even when ignored", async () => {
@@ -316,15 +346,51 @@ describe("WatchlistPage", () => {
     });
 
     renderPage();
+    await openSourceResults("Autodesk");
 
     expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
-    expect(screen.getByText("Already in workspace")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /open workspace job/i }),
+      screen.getByLabelText(/view signals for sales manager/i),
     ).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByText("Ignored")).not.toBeInTheDocument();
+    });
+  });
+
+  it("disables Save sources again after persisting the draft", async () => {
+    renderPage();
+
+    const removeButtons = await screen.findAllByRole("button", {
+      name: /remove watchlist source/i,
+    });
+    const secondRemoveButton = removeButtons[1];
+    expect(secondRemoveButton).toBeDefined();
+    if (!secondRemoveButton) {
+      throw new Error("Expected a second remove button");
+    }
+    fireEvent.click(secondRemoveButton);
+
+    const saveButton = screen.getByRole("button", { name: /save sources/i });
+    expect(saveButton).toBeEnabled();
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.updateWatchlistSources).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(api.updateWatchlistSources).mock.calls[0]?.[0]).toEqual({
+        selections: [
+          {
+            catalogSourceId: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
+            sourceType: "workday",
+            label: "Autodesk",
+            careersUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext",
+          },
+        ],
+      });
+      expect(
+        screen.getByRole("button", { name: /save sources/i }),
+      ).toBeDisabled();
     });
   });
 });

@@ -12,7 +12,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
@@ -86,6 +85,7 @@ export function WatchlistSourcesCard({
   formattedLastCheckedAt,
   formattedPreviousLastCheckedAt,
   newJobsCount,
+  hasUnsavedChanges,
   isSaving,
   onAddSource,
   onRemoveSource,
@@ -202,8 +202,8 @@ export function WatchlistSourcesCard({
             <Button
               type="button"
               size="sm"
-              variant="secondary"
-              disabled={isSaving}
+              variant={hasUnsavedChanges ? "default" : "secondary"}
+              disabled={isSaving || !hasUnsavedChanges}
               onClick={(e) => {
                 e.preventDefault();
                 onSave();

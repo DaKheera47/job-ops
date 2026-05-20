@@ -17,6 +17,7 @@ import { Eye } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Accordion } from "@/components/ui/accordion";
 import {
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
@@ -41,7 +42,26 @@ import {
 } from "./watchlist/utils";
 import { WatchlistSourceResultsCard } from "./watchlist/WatchlistSourceResultsCard";
 import { WatchlistSourcesCard } from "./watchlist/WatchlistSourcesCard";
-import { Accordion } from "@/components/ui/accordion";
+
+interface DraftSelectionPayload {
+  catalogSourceId: string | null;
+  sourceType: string;
+  label: string;
+  careersUrl: string;
+}
+
+function getWatchlistSelectionsKey(
+  selections: DraftSelectionPayload[],
+): string {
+  return JSON.stringify(
+    selections.map((selection) => ({
+      catalogSourceId: selection.catalogSourceId,
+      sourceType: selection.sourceType,
+      label: selection.label,
+      careersUrl: selection.careersUrl,
+    })),
+  );
+}
 
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
@@ -385,48 +405,121 @@ export const WatchlistPage: React.FC = () => {
     );
   }
 
-  async function handleSaveSources() {
-    const selections = sourceDrafts.map((draft, index) => {
+  const draftSelectionsState = useMemo(() => {
+    const selections: DraftSelectionPayload[] = [];
+
+    for (const [index, draft] of sourceDrafts.entries()) {
       if (draft.isCustom) {
         const careersUrl = draft.customUrl.trim();
         if (!careersUrl) {
-          throw new Error(`Source ${index + 1} is missing a Workday URL.`);
+          return {
+            selections: null,
+            error: new Error(`Source ${index + 1} is missing a Workday URL.`),
+          };
         }
 
-        return {
+        selections.push({
           catalogSourceId: null,
-          sourceType: "workday" as const,
+          sourceType: "workday",
           label: careersUrl,
           careersUrl,
-        };
+        });
+        continue;
       }
 
       if (!draft.catalogSourceId) {
-        throw new Error(`Source ${index + 1} is not selected.`);
+        return {
+          selections: null,
+          error: new Error(`Source ${index + 1} is not selected.`),
+        };
       }
 
       const catalogSource = catalogSources.find(
         (source) => source.id === draft.catalogSourceId,
       );
       if (!catalogSource) {
-        throw new Error(`Source ${index + 1} is no longer available.`);
+        return {
+          selections: null,
+          error: new Error(`Source ${index + 1} is no longer available.`),
+        };
       }
 
-      return {
+      selections.push({
         catalogSourceId: catalogSource.id,
         sourceType: catalogSource.sourceType,
         label: catalogSource.label,
         careersUrl: catalogSource.careersUrl,
-      };
-    });
+      });
+    }
 
     const uniqueUrls = new Set(
       selections.map((selection) => selection.careersUrl),
     );
     if (uniqueUrls.size !== selections.length) {
-      throw new Error("Choose unique watchlist URLs.");
+      return {
+        selections: null,
+        error: new Error("Choose unique watchlist URLs."),
+      };
     }
 
+    return {
+      selections,
+      error: null,
+    };
+  }, [catalogSources, sourceDrafts]);
+  const persistedSelectionsKey = useMemo(
+    () =>
+      getWatchlistSelectionsKey(
+        selectedSources.map((source) => ({
+          catalogSourceId: source.catalogSourceId,
+          sourceType: source.sourceType,
+          label: source.label,
+          careersUrl: source.careersUrl,
+        })),
+      ),
+    [selectedSources],
+  );
+  const draftSelectionsKey = useMemo(
+    () =>
+      draftSelectionsState.selections
+        ? getWatchlistSelectionsKey(draftSelectionsState.selections)
+        : null,
+    [draftSelectionsState],
+  );
+  const hasDraftLevelUnsavedChanges = useMemo(
+    () =>
+      selectedSources.length !== sourceDrafts.length ||
+      sourceDrafts.some(
+        (draft) => sourceStatusByDraftId[draft.id] !== "watching",
+      ),
+    [selectedSources.length, sourceDrafts, sourceStatusByDraftId],
+  );
+  const hasUnsavedChanges = useMemo(() => {
+    if (!watchlistSourcesResponse?.selectedSources) {
+      return false;
+    }
+    if (!draftSelectionsState.selections) {
+      return hasDraftLevelUnsavedChanges;
+    }
+    return draftSelectionsKey !== persistedSelectionsKey;
+  }, [
+    draftSelectionsKey,
+    draftSelectionsState.selections,
+    hasDraftLevelUnsavedChanges,
+    persistedSelectionsKey,
+    watchlistSourcesResponse?.selectedSources,
+  ]);
+
+  async function handleSaveSources() {
+    if (draftSelectionsState.error) {
+      throw draftSelectionsState.error;
+    }
+
+    if (!draftSelectionsState.selections || !hasUnsavedChanges) {
+      return;
+    }
+
+    const selections = draftSelectionsState.selections;
     await saveSourcesMutation.mutateAsync({ selections });
   }
 
@@ -513,6 +606,7 @@ export const WatchlistPage: React.FC = () => {
             formattedLastCheckedAt={formattedLastCheckedAt}
             formattedPreviousLastCheckedAt={formattedPreviousLastCheckedAt}
             newJobsCount={newJobsCount}
+            hasUnsavedChanges={hasUnsavedChanges}
             isSaving={saveSourcesMutation.isPending}
             onAddSource={addSourceDraft}
             onRemoveSource={removeSourceDraft}
