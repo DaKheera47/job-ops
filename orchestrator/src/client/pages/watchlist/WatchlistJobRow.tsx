@@ -19,6 +19,7 @@ import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
 import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
 import {
   ExternalLinkIcon,
+  Eye,
   EyeOff,
   FileText,
   FolderInput,
@@ -230,19 +231,27 @@ export default function WatchlistJobRow({
           <div className="flex items-center justify-end">
             {rankedJob.importedJob ? (
               <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => {
-                    if (rankedJob.importedJob) {
-                      onOpenWorkspaceJob(rankedJob.importedJob);
-                    }
-                  }}
-                >
-                  Open workspace job
-                </Button>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => {
+                          if (rankedJob.importedJob) {
+                            onOpenWorkspaceJob(rankedJob.importedJob);
+                          }
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>View in JobOps workspace</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button

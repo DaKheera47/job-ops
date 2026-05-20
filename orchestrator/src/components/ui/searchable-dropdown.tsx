@@ -29,6 +29,7 @@ interface SearchableDropdownProps {
   triggerClassName?: string;
   contentClassName?: string;
   listClassName?: string;
+  allowCustomValue?: boolean;
 }
 
 type SearchableDropdownRow =
@@ -80,6 +81,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   triggerClassName,
   contentClassName,
   listClassName,
+  allowCustomValue = true,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -93,6 +95,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   const trimmedQuery = query.trim();
   const deferredTrimmedQuery = deferredQuery.trim();
   const hasCustomValue =
+    allowCustomValue &&
     trimmedQuery.length > 0 &&
     !options.some(
       (option) =>

@@ -12,13 +12,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
 import {
@@ -38,11 +33,28 @@ function getSourceDraftDetails(
   return catalogSources.find((source) => source.id === draftCatalogSourceId);
 }
 
+function getSourceDropdownOptions(catalogSources: WatchlistSource[]) {
+  return [
+    ...catalogSources.map((source) => ({
+      value: source.id,
+      label: source.label,
+      searchText: `${source.label} ${source.careersUrl}`.trim(),
+    })),
+    {
+      value: CUSTOM_SOURCE_VALUE,
+      label: "Choose your own Workday URL",
+      searchText: "custom workday url",
+    },
+  ];
+}
+
 export function formatCustomSourceLabel(careersUrl: string): string {
   const employer = getEmployerFromCareersUrl(careersUrl).trim();
   if (!employer) return "Custom Workday URL";
   // else capitalise
-  return employer.length <= 3 ? employer.toUpperCase() : employer.replace(/\b\w/g, (char) => char.toUpperCase());
+  return employer.length <= 3
+    ? employer.toUpperCase()
+    : employer.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getWatchlistStatusCopy(status: "watching" | "unsaved"): {
@@ -83,6 +95,10 @@ export function WatchlistSourcesCard({
   const [logoDataUrls, setLogoDataUrls] = useState<
     Record<string, string | null>
   >({});
+  const sourceDropdownOptions = useMemo(
+    () => getSourceDropdownOptions(catalogSources),
+    [catalogSources],
+  );
   const logoCareersUrls = useMemo(() => {
     const urls = new Set<string>();
 
@@ -151,11 +167,7 @@ export function WatchlistSourcesCard({
                 <h2 className="text-sm font-semibold tracking-tight text-foreground/90">
                   Watched sources
                 </h2>
-                <Badge
-                  variant="secondary"
-                >
-                  {sourceDrafts.length}
-                </Badge>
+                <Badge variant="secondary">{sourceDrafts.length}</Badge>
               </div>
               <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground/70">
                 Pick the company boards you want to monitor manually or add your
@@ -216,6 +228,7 @@ export function WatchlistSourcesCard({
                 const sourceStatus =
                   sourceStatusByDraftId[draft.id] ?? "unsaved";
                 const statusCopy = getWatchlistStatusCopy(sourceStatus);
+                const dropdownInputId = `watchlist-source-${draft.id}`;
                 const label = draft.isCustom
                   ? draft.customUrl.trim()
                     ? formatCustomSourceLabel(draft.customUrl.trim())
@@ -231,16 +244,16 @@ export function WatchlistSourcesCard({
                   <article
                     key={draft.id}
                     className={cn(
-                      "group min-w-0 rounded-2xl border border-border/70 bg-card p-4 flex items-center w-full relative gap-x-4",
+                      "group min-w-0 rounded-2xl border border-border/70 bg-card p-4 flex items-center w-full relative gap-x-4 size=full",
                     )}
                   >
                     <div
                       className={cn(
-                        "flex items-start gap-2",
+                        "flex items-center gap-2",
                         isEmpty ? "flex-1" : "",
                       )}
                     >
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         {companyLogoUrl && (
                           <div className="flex h-16 w-16 p-2">
                             <img
@@ -252,22 +265,19 @@ export function WatchlistSourcesCard({
                         )}
 
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {label}
-                          </p>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                            {!isEmpty && (
+                          {isEmpty ? null : (
+                            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                               <span>
                                 {draft.isCustom ? "Custom" : "Workday"}
                               </span>
-                            )}
-                            <StatusIndicator
-                              label={statusCopy.label}
-                              variant={statusCopy.variant}
-                              tooltip={statusCopy.tooltip}
-                              tooltipClassName="max-w-64 text-xs leading-relaxed"
-                            />
-                          </div>
+                              <StatusIndicator
+                                label={statusCopy.label}
+                                variant={statusCopy.variant}
+                                tooltip={statusCopy.tooltip}
+                                tooltipClassName="max-w-64 text-xs leading-relaxed"
+                              />
+                            </div>
+                          )}
 
                           {careersUrl && (
                             <a
@@ -298,13 +308,15 @@ export function WatchlistSourcesCard({
                     </div>
 
                     {isEmpty && (
-                      <div className="w-full">
-                        <Select
+                      <div className="w-full space-y-2">
+                        <SearchableDropdown
+                          inputId={dropdownInputId}
                           value={
                             draft.isCustom
                               ? CUSTOM_SOURCE_VALUE
-                              : (draft.catalogSourceId ?? undefined)
+                              : (draft.catalogSourceId ?? "")
                           }
+                          options={sourceDropdownOptions}
                           onValueChange={(value) => {
                             if (value === CUSTOM_SOURCE_VALUE) {
                               onUpdateDraft(index, (current) => ({
@@ -321,24 +333,14 @@ export function WatchlistSourcesCard({
                               catalogSourceId: value,
                             }));
                           }}
-                        >
-                          <SelectTrigger
-                            aria-label={`Watchlist source ${index + 1}`}
-                            className="h-9 rounded-xl border-border/70 bg-background/70"
-                          >
-                            <SelectValue placeholder="Select a source" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {catalogSources.map((source) => (
-                              <SelectItem key={source.id} value={source.id}>
-                                {source.label}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value={CUSTOM_SOURCE_VALUE}>
-                              Choose your own Workday URL
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          placeholder="Choose company"
+                          searchPlaceholder="Search companies..."
+                          emptyText="No companies found."
+                          ariaLabel={`Watchlist source ${index + 1}`}
+                          allowCustomValue={false}
+                          triggerClassName="h-9 w-full justify-between rounded-xl border-border/70 bg-background/70"
+                          contentClassName="w-[var(--radix-popover-trigger-width)] min-w-[320px]"
+                        />
                         {draft.isCustom ? (
                           <Input
                             value={draft.customUrl}

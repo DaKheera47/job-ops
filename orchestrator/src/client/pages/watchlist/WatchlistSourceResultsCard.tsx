@@ -136,7 +136,7 @@ export function WatchlistSourceResultsCard({
         {item.status === "loading" ? (
           <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Fetching Workday CXS response...
+            Fetching from Workday...
           </div>
         ) : item.status === "error" ? (
           <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
