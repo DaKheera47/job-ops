@@ -30,6 +30,8 @@ interface SearchableDropdownProps {
   contentClassName?: string;
   listClassName?: string;
   allowCustomValue?: boolean;
+  onSearchChange?: (query: string) => void;
+  onEmptyResults?: (query: string) => void;
 }
 
 type SearchableDropdownRow =
@@ -82,6 +84,8 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   contentClassName,
   listClassName,
   allowCustomValue = true,
+  onSearchChange,
+  onEmptyResults,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -110,6 +114,25 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       getSearchableValue(option).toLowerCase().includes(normalizedQuery),
     );
   }, [deferredTrimmedQuery, options]);
+
+  React.useEffect(() => {
+    onSearchChange?.(query);
+  }, [onSearchChange, query]);
+
+  React.useEffect(() => {
+    if (!onEmptyResults) return;
+    if (!open) return;
+    if (!deferredTrimmedQuery) return;
+    if (filteredOptions.length > 0) return;
+    if (hasCustomValue) return;
+    onEmptyResults(deferredTrimmedQuery);
+  }, [
+    open,
+    deferredTrimmedQuery,
+    filteredOptions.length,
+    hasCustomValue,
+    onEmptyResults,
+  ]);
 
   const rows = React.useMemo<SearchableDropdownRow[]>(() => {
     const nextRows: SearchableDropdownRow[] = [];

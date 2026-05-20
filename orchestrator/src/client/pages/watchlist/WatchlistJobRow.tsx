@@ -1,3 +1,17 @@
+import type { NormalizedWorkdayJob } from "@client/api/workday";
+import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
+import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
+import {
+  ExternalLinkIcon,
+  Eye,
+  EyeOff,
+  FileText,
+  FolderInput,
+  Loader2,
+  MoreHorizontal,
+  RotateCcw,
+} from "lucide-react";
+import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -14,20 +28,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { NormalizedWorkdayJob } from "@client/api/workday";
-import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
-import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
-import {
-  ExternalLinkIcon,
-  Eye,
-  EyeOff,
-  FileText,
-  FolderInput,
-  Loader2,
-  MoreHorizontal,
-  RotateCcw,
-} from "lucide-react";
-import { useState } from "react";
 import type {
   JobDetailsState,
   RankedWorkdayJob,
@@ -60,8 +60,7 @@ interface WatchlistJobRowProps {
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
     job: NormalizedWorkdayJob,
-    careersUrl: string,
-    cxsJobsUrl: string,
+    source: WatchlistSelectedSource,
   ) => void;
   onOpenWorkspaceJob: (job: JobListItem) => void;
   onLoadJobDetails: (jobUrl: string) => void;
@@ -319,11 +318,7 @@ export default function WatchlistJobRow({
                         className="shrink-0 gap-2"
                         disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
                         onClick={() =>
-                          onMoveToWorkspace(
-                            rankedJob.workdayJob,
-                            source.careersUrl,
-                            source.cxsJobsUrl ?? source.careersUrl,
-                          )
+                          onMoveToWorkspace(rankedJob.workdayJob, source)
                         }
                       >
                         {movingJobUrl === rankedJob.workdayJob.jobUrl ? (

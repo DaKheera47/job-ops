@@ -60,6 +60,9 @@ export interface WorkdayImportState {
   draft: ManualJobDraft | null;
   source: string | null;
   sourceHost: string | null;
+  workdaySource: string | null;
+  sourceType: string | null;
+  catalogSourceId: string | null;
 }
 
 export type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
@@ -85,5 +88,11 @@ export interface WatchlistSourceDraftCardProps {
     index: number,
     updater: (draft: SourceSelectionDraft) => SourceSelectionDraft,
   ) => void;
+  onSourceMethodSelected: (input: {
+    method: "catalog" | "custom_url";
+    catalogSourceId?: string;
+    workdaySource?: string;
+  }) => void;
+  onSourceSearchNoResults: (input: { searchText: string }) => void;
   onSave: () => void;
 }

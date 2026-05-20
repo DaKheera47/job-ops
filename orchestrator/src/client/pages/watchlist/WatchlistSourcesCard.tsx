@@ -90,6 +90,8 @@ export function WatchlistSourcesCard({
   onAddSource,
   onRemoveSource,
   onUpdateDraft,
+  onSourceMethodSelected,
+  onSourceSearchNoResults,
   onSave,
 }: WatchlistSourceDraftCardProps) {
   const [logoDataUrls, setLogoDataUrls] = useState<
@@ -319,6 +321,9 @@ export function WatchlistSourcesCard({
                           options={sourceDropdownOptions}
                           onValueChange={(value) => {
                             if (value === CUSTOM_SOURCE_VALUE) {
+                              onSourceMethodSelected({
+                                method: "custom_url",
+                              });
                               onUpdateDraft(index, (current) => ({
                                 ...current,
                                 isCustom: true,
@@ -327,6 +332,15 @@ export function WatchlistSourcesCard({
                               return;
                             }
 
+                            const selectedCatalogSource = catalogSources.find(
+                              (source) => source.id === value,
+                            );
+                            onSourceMethodSelected({
+                              method: "catalog",
+                              catalogSourceId: value,
+                              workdaySource:
+                                selectedCatalogSource?.careersUrl ?? undefined,
+                            });
                             onUpdateDraft(index, (current) => ({
                               ...current,
                               isCustom: false,
@@ -338,6 +352,9 @@ export function WatchlistSourcesCard({
                           emptyText="No companies found."
                           ariaLabel={`Watchlist source ${index + 1}`}
                           allowCustomValue={false}
+                          onEmptyResults={(searchText) =>
+                            onSourceSearchNoResults({ searchText })
+                          }
                           triggerClassName="h-9 w-full justify-between rounded-xl border-border/70 bg-background/70"
                           contentClassName="w-[var(--radix-popover-trigger-width)] min-w-[320px]"
                         />

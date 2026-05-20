@@ -1,3 +1,12 @@
+import type { NormalizedWorkdayJob } from "@client/api/workday";
+import type { LocationIntent } from "@shared/location-intelligence.js";
+import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
+import { Loader2 } from "lucide-react";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -8,10 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { NormalizedWorkdayJob } from "@client/api/workday";
-import type { LocationIntent } from "@shared/location-intelligence.js";
-import type { JobListItem } from "@shared/types.js";
-import { Loader2, X } from "lucide-react";
 import type {
   JobDetailsState,
   WatchlistCheckState,
@@ -20,19 +25,12 @@ import type {
 } from "./types";
 import { rankWorkdayJobs } from "./utils";
 import WatchlistJobRow from "./WatchlistJobRow";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
   pipelineSearchTerms: string[];
   locationIntent: LocationIntent;
   showIgnored: boolean;
-  dismiss: (sourceId: string) => void;
   setShowIgnored: (next: boolean) => void;
   getImportedWorkdayJob: (
     workdayJob: NormalizedWorkdayJob,
@@ -57,8 +55,7 @@ interface WatchlistSourceResultsCardProps {
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
     job: NormalizedWorkdayJob,
-    careersUrl: string,
-    cxsJobsUrl: string,
+    source: WatchlistSelectedSource,
   ) => void;
   onOpenWorkspaceJob: (job: JobListItem) => void;
   onLoadJobDetails: (jobUrl: string) => void;
@@ -88,7 +85,6 @@ export function WatchlistSourceResultsCard({
   pipelineSearchTerms,
   locationIntent,
   showIgnored,
-  dismiss,
   setShowIgnored,
   getImportedWorkdayJob,
   getWorkdayRowState,

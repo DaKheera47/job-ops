@@ -11,13 +11,14 @@ import { useSettings } from "@client/hooks/useSettings";
 import { showErrorToast } from "@client/lib/error-toast";
 import { queryKeys } from "@client/lib/queryKeys";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
-import type { JobListItem } from "@shared/types.js";
+import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Accordion } from "@/components/ui/accordion";
+import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import {
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
@@ -63,6 +64,31 @@ function getWatchlistSelectionsKey(
   );
 }
 
+function getWorkdayHost(value: string): string | null {
+  try {
+    return new URL(value).hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function getWorkdayTenantSlug(value: string): string | null {
+  const host = getWorkdayHost(value);
+  if (!host) return null;
+  const [tenantSlug] = host.split(".");
+  return tenantSlug?.trim() || null;
+}
+
+function getNormalizedWorkdayKey(value: string): string {
+  try {
+    const parsed = new URL(value);
+    const pathname = parsed.pathname.replace(/\/+$/, "") || "/";
+    return `${parsed.hostname}${pathname}`;
+  } catch {
+    return value.trim();
+  }
+}
+
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -71,14 +97,14 @@ export const WatchlistPage: React.FC = () => {
   const [jobDetails, setJobDetails] = useState<Record<string, JobDetailsState>>(
     {},
   );
-  const [dismissedUrls, setDismissedUrls] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [importState, setImportState] = useState<WorkdayImportState>({
     open: false,
     draft: null,
     source: null,
     sourceHost: null,
+    workdaySource: null,
+    sourceType: null,
+    catalogSourceId: null,
   });
   const [movingJobUrl, setMovingJobUrl] = useState<string | null>(null);
   const [showIgnored, setShowIgnored] = useState(false);
@@ -109,7 +135,6 @@ export const WatchlistPage: React.FC = () => {
   const saveSourcesMutation = useMutation({
     mutationFn: api.updateWatchlistSources,
     onSuccess: async () => {
-      setDismissedUrls(new Set());
       await queryClient.invalidateQueries({
         queryKey: queryKeys.watchlist.sources(),
       });
@@ -218,6 +243,31 @@ export const WatchlistPage: React.FC = () => {
         const check = await api.recordWatchlistCheck({ checks });
         if (cancelled) return;
 
+        const jobsCount = checks.reduce(
+          (total, entry) => total + entry.sourceJobIds.length,
+          0,
+        );
+        const newJobsCount = check.jobs.filter(
+          (job) => job.isNewSinceLastCheck,
+        ).length;
+
+        trackProductEvent("watchlist_check_completed", {
+          source_count: enabledSources.length,
+          jobs_count: jobsCount,
+          new_jobs_count: newJobsCount,
+        });
+        if (newJobsCount > 0) {
+          trackProductEvent("watchlist_new_jobs_detected", {
+            source_count: enabledSources.length,
+            new_jobs_count: newJobsCount,
+          });
+        }
+        if (jobsCount === 0) {
+          trackProductEvent("watchlist_no_jobs_returned", {
+            source_count: enabledSources.length,
+          });
+        }
+
         setWatchlistCheckState({
           checkedAt: check.checkedAt,
           previousLastCheckedAt: check.previousLastCheckedAt,
@@ -261,9 +311,6 @@ export const WatchlistPage: React.FC = () => {
     );
   }, [watchlistSourcesResponse?.selectedSources]);
 
-  const visibleItems = items.filter(
-    (item) => !dismissedUrls.has(item.source.id),
-  );
   const catalogSources = watchlistSourcesResponse?.catalogSources ?? [];
   const selectedSources = watchlistSourcesResponse?.selectedSources ?? [];
   const sourceStatusByDraftId = useMemo(() => {
@@ -376,19 +423,33 @@ export const WatchlistPage: React.FC = () => {
     };
   }
 
-  function dismiss(sourceId: string) {
-    setDismissedUrls((current) => {
-      const next = new Set(current);
-      next.add(sourceId);
-      return next;
-    });
-  }
-
   function addSourceDraft() {
     setSourceDrafts((current) => [...current, createSourceDraft()]);
   }
 
   function removeSourceDraft(index: number) {
+    const draft = sourceDrafts[index];
+    if (draft) {
+      const savedSource = selectedSources.find(
+        (source) => source.id === draft.id,
+      );
+      const selectedCatalogSource =
+        draft.catalogSourceId !== null
+          ? catalogSources.find((source) => source.id === draft.catalogSourceId)
+          : null;
+      const workdaySource = draft.isCustom
+        ? draft.customUrl.trim()
+        : (selectedCatalogSource?.careersUrl ?? savedSource?.careersUrl ?? "");
+
+      trackProductEvent("watchlist_source_removed", {
+        source_type: "workday",
+        ...(draft.catalogSourceId
+          ? { catalog_source_id: draft.catalogSourceId }
+          : {}),
+        workday_source: workdaySource,
+      });
+    }
+
     setSourceDrafts((current) =>
       current.filter((_, draftIndex) => draftIndex !== index),
     );
@@ -512,6 +573,17 @@ export const WatchlistPage: React.FC = () => {
 
   async function handleSaveSources() {
     if (draftSelectionsState.error) {
+      const customDraft = sourceDrafts.find((draft) => draft.isCustom);
+      const isUrlValidationError = /workday|url/i.test(
+        draftSelectionsState.error.message,
+      );
+      if (customDraft?.customUrl.trim() && isUrlValidationError) {
+        trackProductEvent("watchlist_url_validation_failed", {
+          source_type: "workday",
+          workday_source: customDraft.customUrl.trim(),
+          error_message: draftSelectionsState.error.message,
+        });
+      }
       throw draftSelectionsState.error;
     }
 
@@ -520,7 +592,47 @@ export const WatchlistPage: React.FC = () => {
     }
 
     const selections = draftSelectionsState.selections;
-    await saveSourcesMutation.mutateAsync({ selections });
+    try {
+      await saveSourcesMutation.mutateAsync({ selections });
+
+      const catalogCount = selections.filter(
+        (selection) => selection.catalogSourceId !== null,
+      ).length;
+      const customSelections = selections.filter(
+        (selection) => selection.catalogSourceId === null,
+      );
+      const customCount = customSelections.length;
+
+      trackProductEvent("watchlist_sources_saved", {
+        source_count: selections.length,
+        catalog_count: catalogCount,
+        custom_count: customCount,
+      });
+
+      for (const selection of customSelections) {
+        const workdaySource = selection.careersUrl;
+        trackProductEvent("watchlist_custom_url_saved", {
+          workday_source: workdaySource,
+          normalized_workday_key: getNormalizedWorkdayKey(workdaySource),
+          host: getWorkdayHost(workdaySource) ?? "unknown",
+          ...(getWorkdayTenantSlug(workdaySource)
+            ? { tenant_slug: getWorkdayTenantSlug(workdaySource) ?? undefined }
+            : {}),
+        });
+      }
+    } catch (error) {
+      const customDraft = sourceDrafts.find((draft) => draft.isCustom);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (customDraft?.customUrl.trim() && /workday|url/i.test(errorMessage)) {
+        trackProductEvent("watchlist_url_validation_failed", {
+          source_type: "workday",
+          workday_source: customDraft.customUrl.trim(),
+          error_message: errorMessage,
+        });
+      }
+      throw error;
+    }
   }
 
   async function loadJobDetails(
@@ -559,8 +671,7 @@ export const WatchlistPage: React.FC = () => {
 
   async function handleMoveToWorkspace(
     job: NormalizedWorkdayJob,
-    careersUrl: string,
-    cxsJobsUrl: string,
+    source: WatchlistSelectedSource,
   ) {
     try {
       setMovingJobUrl(job.jobUrl);
@@ -568,25 +679,71 @@ export const WatchlistPage: React.FC = () => {
       if (!details) {
         throw new Error("Couldn't fetch the job description yet.");
       }
+      const careersUrl = source.careersUrl;
+      const cxsJobsUrl = source.cxsJobsUrl ?? source.careersUrl;
       const draft = buildManualDraftFromWorkdayJob(
         job,
         details,
         careersUrl,
         cxsJobsUrl,
       );
-      const source = draft.source ?? null;
+      const draftSource = draft.source ?? null;
       setImportState({
         open: true,
         draft,
-        source,
+        source: draftSource,
         sourceHost:
           getSourceHost(careersUrl) ?? getSourceHost(job.jobUrl) ?? null,
+        workdaySource: careersUrl,
+        sourceType: source.sourceType,
+        catalogSourceId: source.catalogSourceId,
       });
     } catch (error) {
       showErrorToast(error, "Failed to prepare Workday job");
     } finally {
       setMovingJobUrl(null);
     }
+  }
+
+  function handleWatchlistSourceMethodSelected(input: {
+    method: "catalog" | "custom_url";
+    catalogSourceId?: string;
+    workdaySource?: string;
+  }) {
+    trackProductEvent("watchlist_source_add_method_selected", {
+      method: input.method,
+      ...(input.catalogSourceId
+        ? { catalog_source_id: input.catalogSourceId }
+        : {}),
+      ...(input.workdaySource ? { workday_source: input.workdaySource } : {}),
+    });
+  }
+
+  function handleWatchlistSourceSearchNoResults(input: { searchText: string }) {
+    trackProductEvent("watchlist_source_search_no_results", {
+      search_text: input.searchText,
+      search_length_bucket: bucketQueryLength(input.searchText),
+    });
+  }
+
+  function handleIgnoreWatchlistJob(input: {
+    source: string;
+    sourceJobId: string;
+  }) {
+    const selectedSource = items.find((item) => {
+      const cxsJobsUrl = item.source.cxsJobsUrl ?? item.source.careersUrl;
+      return toWorkdaySource(cxsJobsUrl) === input.source;
+    })?.source;
+
+    trackProductEvent("watchlist_job_ignored", {
+      source_type: selectedSource?.sourceType ?? "workday",
+      ...(selectedSource?.catalogSourceId
+        ? { catalog_source_id: selectedSource.catalogSourceId }
+        : {}),
+      workday_source: selectedSource?.careersUrl ?? input.source,
+    });
+
+    ignoreMutation.mutate(input);
   }
 
   return (
@@ -611,6 +768,8 @@ export const WatchlistPage: React.FC = () => {
             onAddSource={addSourceDraft}
             onRemoveSource={removeSourceDraft}
             onUpdateDraft={updateDraft}
+            onSourceMethodSelected={handleWatchlistSourceMethodSelected}
+            onSourceSearchNoResults={handleWatchlistSourceSearchNoResults}
             onSave={() => {
               void handleSaveSources().catch((error) => {
                 showErrorToast(error, "Failed to save watchlist sources");
@@ -623,14 +782,13 @@ export const WatchlistPage: React.FC = () => {
             collapsible
             className="overflow-hidden rounded-lg border bg-card"
           >
-            {visibleItems.map((item) => (
+            {items.map((item) => (
               <WatchlistSourceResultsCard
                 key={item.source.id}
                 item={item}
                 pipelineSearchTerms={pipelineSearchTerms}
                 locationIntent={locationIntent}
                 showIgnored={showIgnored}
-                dismiss={dismiss}
                 setShowIgnored={setShowIgnored}
                 getImportedWorkdayJob={getImportedWorkdayJob}
                 getWorkdayRowState={getWorkdayRowState}
@@ -642,10 +800,10 @@ export const WatchlistPage: React.FC = () => {
                 unignorePending={unignoreMutation.isPending}
                 unignoreVariables={unignoreMutation.variables}
                 watchlistCheckState={watchlistCheckState}
-                onIgnore={(input) => ignoreMutation.mutate(input)}
+                onIgnore={handleIgnoreWatchlistJob}
                 onUnignore={(input) => unignoreMutation.mutate(input)}
-                onMoveToWorkspace={(job, careersUrl, cxsJobsUrl) => {
-                  void handleMoveToWorkspace(job, careersUrl, cxsJobsUrl);
+                onMoveToWorkspace={(job, source) => {
+                  void handleMoveToWorkspace(job, source);
                 }}
                 onOpenWorkspaceJob={(job) => navigate(getWorkspaceJobPath(job))}
                 onLoadJobDetails={(jobUrl) => {
@@ -666,9 +824,21 @@ export const WatchlistPage: React.FC = () => {
             draft: open ? current.draft : null,
             source: open ? current.source : null,
             sourceHost: open ? current.sourceHost : null,
+            workdaySource: open ? current.workdaySource : null,
+            sourceType: open ? current.sourceType : null,
+            catalogSourceId: open ? current.catalogSourceId : null,
           }))
         }
         onImported={async (result) => {
+          if (importState.workdaySource) {
+            trackProductEvent("watchlist_job_moved_to_workspace", {
+              source_type: importState.sourceType ?? "workday",
+              ...(importState.catalogSourceId
+                ? { catalog_source_id: importState.catalogSourceId }
+                : {}),
+              workday_source: importState.workdaySource,
+            });
+          }
           await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
           await queryClient.fetchQuery({
             queryKey: queryKeys.jobs.list({ view: "list" }),

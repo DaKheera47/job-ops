@@ -207,6 +207,58 @@ type ProductEventMap = {
     to_mode: "manual" | "ai-selectable" | "must-include";
     project_count_bucket: string;
   };
+  watchlist_sources_saved: {
+    source_count: number;
+    catalog_count: number;
+    custom_count: number;
+  };
+  watchlist_source_add_method_selected: {
+    method: "catalog" | "custom_url";
+    catalog_source_id?: string;
+    workday_source?: string;
+  };
+  watchlist_check_completed: {
+    source_count: number;
+    jobs_count: number;
+    new_jobs_count: number;
+  };
+  watchlist_new_jobs_detected: {
+    source_count: number;
+    new_jobs_count: number;
+  };
+  watchlist_job_moved_to_workspace: {
+    source_type: string;
+    catalog_source_id?: string;
+    workday_source: string;
+  };
+  watchlist_job_ignored: {
+    source_type: string;
+    catalog_source_id?: string;
+    workday_source: string;
+  };
+  watchlist_source_search_no_results: {
+    search_text: string;
+    search_length_bucket: string;
+  };
+  watchlist_url_validation_failed: {
+    source_type: string;
+    workday_source: string;
+    error_message: string;
+  };
+  watchlist_source_removed: {
+    source_type: string;
+    catalog_source_id?: string;
+    workday_source: string;
+  };
+  watchlist_no_jobs_returned: {
+    source_count: number;
+  };
+  watchlist_custom_url_saved: {
+    workday_source: string;
+    normalized_workday_key: string;
+    host: string;
+    tenant_slug?: string;
+  };
 };
 
 type ProductEventName = keyof ProductEventMap;
