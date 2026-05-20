@@ -135,6 +135,9 @@ export function useOnboardingFlow() {
   }, [reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
+  const llmBaseUrlValue = watch("llmBaseUrl");
+  const llmApiKeyValue = watch("llmApiKey");
+  const modelDraftValue = watch("model");
   const selectedProvider = normalizeLlmProvider(
     llmProvider || settings?.llmProvider?.value || "openrouter",
   );
@@ -707,6 +710,27 @@ export function useOnboardingFlow() {
   const baseResumeValue = watch("rxresumeBaseResumeId");
   const hasRxResumeAccess =
     rxresumeValidation.valid || Boolean(settings?.rxresumeApiKeyHint);
+  const hasPendingLlmChanges = useMemo(() => {
+    if (!settings) return true;
+
+    const normalizedProviderDraft = normalizeLlmProvider(
+      llmProvider || settings.llmProvider?.value || "openrouter",
+    );
+    const normalizedSavedProvider = normalizeLlmProvider(
+      settings.llmProvider?.value || "openrouter",
+    );
+    const draftBaseUrl = llmBaseUrlValue.trim();
+    const savedBaseUrl = settings.llmBaseUrl?.value?.trim() ?? "";
+    const draftModel = modelDraftValue.trim();
+    const savedModelOverride = settings.model?.override?.trim() ?? "";
+
+    return (
+      normalizedProviderDraft !== normalizedSavedProvider ||
+      draftBaseUrl !== savedBaseUrl ||
+      draftModel !== savedModelOverride ||
+      llmApiKeyValue.trim().length > 0
+    );
+  }, [llmApiKeyValue, llmBaseUrlValue, llmProvider, modelDraftValue, settings]);
 
   const handleConfirmRxresumeTemplate = useCallback(async () => {
     const selectedResumeId = getValues().rxresumeBaseResumeId;
@@ -733,6 +757,9 @@ export function useOnboardingFlow() {
   const handlePrimaryAction = useCallback(async () => {
     if (!currentStep) return null;
     if (currentStep === "llm") {
+      if (llmValidated && !hasPendingLlmChanges) {
+        return settings ?? null;
+      }
       return await handleSaveLlm();
     }
     if (currentStep === "baseresume") {
@@ -757,7 +784,10 @@ export function useOnboardingFlow() {
     handleSaveSearchTerms,
     handleSaveRxresume,
     hasRxResumeAccess,
+    hasPendingLlmChanges,
+    llmValidated,
     resumeSetupMode,
+    settings,
   ]);
 
   const stepIndex = currentStep
@@ -778,7 +808,9 @@ export function useOnboardingFlow() {
   const primaryLabel =
     currentStep === "llm"
       ? llmValidated
-        ? "Revalidate connection"
+        ? hasPendingLlmChanges
+          ? "Revalidate connection"
+          : "Continue"
         : "Save connection"
       : currentStep === "baseresume"
         ? resumeSetupMode === "rxresume"

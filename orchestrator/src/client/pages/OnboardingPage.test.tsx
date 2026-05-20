@@ -402,6 +402,48 @@ describe("OnboardingPage", () => {
     });
   });
 
+  it("lets a verified unchanged LLM setup continue without saving credentials again", async () => {
+    vi.mocked(useOnboardingRequirement).mockReturnValue({
+      checking: false,
+      complete: false,
+    });
+    currentSettings = {
+      ...baseSettings,
+      searchTerms: {
+        value: ["Platform Engineer"],
+        default: ["web developer"],
+        override: ["Platform Engineer"],
+      },
+    };
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /^continue$/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ready page")).toBeInTheDocument();
+    });
+    expect(api.updateSettings).not.toHaveBeenCalled();
+  });
+
   it("renders the three active onboarding steps in the rail", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
@@ -690,7 +732,7 @@ describe("OnboardingPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not auto-advance after saving the LLM step", async () => {
+  it("does not auto-advance after continuing past a verified LLM step", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -703,8 +745,6 @@ describe("OnboardingPage", () => {
       valid: true,
       message: null,
     });
-    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings as any);
-
     renderPage();
 
     await waitFor(() => {
@@ -713,18 +753,14 @@ describe("OnboardingPage", () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /revalidate connection/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
 
     await waitFor(() => {
-      expect(api.updateSettings).toHaveBeenCalled();
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should use."),
+      ).toBeInTheDocument();
     });
-    expect(api.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: null,
-      }),
-    );
+    expect(api.updateSettings).not.toHaveBeenCalled();
 
     expect(
       screen.getByText("Choose the LLM connection Job Ops should use."),
