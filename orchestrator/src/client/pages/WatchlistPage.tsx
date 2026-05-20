@@ -30,6 +30,8 @@ import type {
 import {
   createSourceDraft,
   formatWatchlistCheckTimestamp,
+  getNormalizedWatchlistCareersUrl,
+  getWatchlistSelectionIdentityKey,
   getWorkspaceJobPath,
   normalizeUiCountryKey,
 } from "./watchlist/utils";
@@ -47,12 +49,7 @@ function getWatchlistSelectionsKey(
   selections: DraftSelectionPayload[],
 ): string {
   return JSON.stringify(
-    selections.map((selection) => ({
-      catalogSourceId: selection.catalogSourceId,
-      sourceType: selection.sourceType,
-      label: selection.label,
-      careersUrl: selection.careersUrl,
-    })),
+    selections.map((selection) => getWatchlistSelectionIdentityKey(selection)),
   );
 }
 
@@ -201,7 +198,14 @@ export const WatchlistPage: React.FC = () => {
           ? savedSource.isCustom &&
             savedSource.catalogSourceId === null &&
             savedSource.sourceType === draft.sourceType &&
-            savedSource.careersUrl === draft.customUrl.trim()
+            getNormalizedWatchlistCareersUrl(
+              savedSource.sourceType,
+              savedSource.careersUrl,
+            ) ===
+              getNormalizedWatchlistCareersUrl(
+                draft.sourceType,
+                draft.customUrl,
+              )
           : !savedSource.isCustom &&
             savedSource.catalogSourceId === draft.catalogSourceId;
 
@@ -296,7 +300,10 @@ export const WatchlistPage: React.FC = () => {
 
     for (const [index, draft] of sourceDrafts.entries()) {
       if (draft.isCustom) {
-        const careersUrl = draft.customUrl.trim();
+        const careersUrl = getNormalizedWatchlistCareersUrl(
+          draft.sourceType,
+          draft.customUrl,
+        );
         if (!careersUrl) {
           const descriptor = getSourceTypeDescriptor(
             sourceTypes,
@@ -368,7 +375,10 @@ export const WatchlistPage: React.FC = () => {
           catalogSourceId: source.catalogSourceId,
           sourceType: source.sourceType,
           label: source.label,
-          careersUrl: source.careersUrl,
+          careersUrl: getNormalizedWatchlistCareersUrl(
+            source.sourceType,
+            source.careersUrl,
+          ),
         })),
       ),
     [selectedSources],

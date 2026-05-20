@@ -68,6 +68,21 @@ export function getNormalizedWatchlistCareersUrl(
   return trimmed;
 }
 
+export function getWatchlistSelectionIdentityKey(selection: {
+  catalogSourceId: string | null;
+  sourceType: WatchedSourceType;
+  careersUrl: string;
+}): string {
+  return JSON.stringify({
+    catalogSourceId: selection.catalogSourceId,
+    sourceType: selection.sourceType,
+    careersUrl: getNormalizedWatchlistCareersUrl(
+      selection.sourceType,
+      selection.careersUrl,
+    ),
+  });
+}
+
 export function getWatchlistPreviewLabel(
   sourceType: WatchedSourceType,
   careersUrl: string,

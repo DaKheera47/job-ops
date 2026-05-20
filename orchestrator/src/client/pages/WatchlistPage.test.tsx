@@ -63,6 +63,22 @@ const workdaySourceType = {
   supportsBranding: true,
 };
 
+const bamboohrSourceType = {
+  sourceType: "bamboohr" as const,
+  label: "BambooHR",
+  catalogLabel: "BambooHR company",
+  customSourceOptionLabel: "Choose your own BambooHR URL",
+  customSourceSearchText: "custom bamboohr url",
+  customSourceInputLabel: "Custom BambooHR URL",
+  customSourcePlaceholder: "https://company.bamboohr.com/careers",
+  customSourceHelpText: "Use the public BambooHR careers URL.",
+  emptyCatalogText: "No BambooHR companies found.",
+  fetchingLabel: "Fetching from BambooHR...",
+  invalidUrlMessage: "Invalid BambooHR URL",
+  supportsCustomSource: true,
+  supportsBranding: true,
+};
+
 const backendJob: WatchlistJobResult = {
   jobRef: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/backend",
   source: "workday:autodesk",
@@ -201,7 +217,7 @@ beforeEach(() => {
         updatedAt: "2026-05-17T00:00:00.000Z",
       },
     ],
-    availableSourceTypes: [workdaySourceType],
+    availableSourceTypes: [workdaySourceType, bamboohrSourceType],
   };
   vi.mocked(api.getWatchlistSources).mockImplementation(
     async () => watchlistSourcesState,

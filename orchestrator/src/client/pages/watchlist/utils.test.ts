@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getNormalizedWatchlistCareersUrl,
   getWatchlistPreviewLabel,
+  getWatchlistSelectionIdentityKey,
   getWatchlistSourceKey,
 } from "./utils";
 
@@ -51,5 +52,20 @@ describe("getWatchlistSourceKey", () => {
         "https://ashteadtechnology.bamboohr.com/careers/134/detail",
       ),
     ).toBe("Ashteadtechnology");
+  });
+
+  it("matches equivalent BambooHR selections even when labels differ", () => {
+    const saved = getWatchlistSelectionIdentityKey({
+      catalogSourceId: null,
+      sourceType: "bamboohr",
+      careersUrl: "https://ashteadtechnology.bamboohr.com/careers",
+    });
+    const draft = getWatchlistSelectionIdentityKey({
+      catalogSourceId: null,
+      sourceType: "bamboohr",
+      careersUrl: "https://ashteadtechnology.bamboohr.com/careers/134/detail",
+    });
+
+    expect(saved).toBe(draft);
   });
 });
