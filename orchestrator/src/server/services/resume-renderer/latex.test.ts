@@ -15,10 +15,14 @@ import type { LatexResumeDocument } from "./types";
 const baseDocument: LatexResumeDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
+  location: "London, UK",
+  picture: null,
   contactItems: [
     { text: "jane@example.com", url: "mailto:jane@example.com" },
     { text: "Portfolio", url: "https://jane.dev" },
   ],
+  profileItems: [],
+  customFieldItems: [],
   summary: "Builds resilient platform systems.",
   experience: [
     {
@@ -38,6 +42,13 @@ const baseDocument: LatexResumeDocument = {
       keywords: ["TypeScript", "Node.js", "PostgreSQL"],
     },
   ],
+  languages: [],
+  interests: [],
+  awards: [],
+  certifications: [],
+  publications: [],
+  volunteer: [],
+  references: [],
 };
 
 async function createTempDir(): Promise<string> {
@@ -114,11 +125,20 @@ describe("latex resume renderer", () => {
           },
         ],
         sectionTitles: {
+          profiles: "Perfiles",
           summary: "Resumen",
+          customFields: "Campos personalizados",
           experience: "Experiencia",
           education: "Educación",
           projects: "Proyectos",
           skills: "Habilidades técnicas",
+          languages: "Idiomas",
+          interests: "Intereses",
+          awards: "Premios",
+          certifications: "Certificaciones",
+          publications: "Publicaciones",
+          volunteer: "Voluntariado",
+          references: "Referencias",
         },
       },
       "__NAME__\n__HEADLINE_BLOCK__\n__CONTACT_BLOCK__\n__BODY__",
@@ -129,6 +149,90 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("\\section{Educación}");
     expect(latex).toContain("\\section{Proyectos}");
     expect(latex).toContain("\\section{Habilidades técnicas}");
+  });
+
+  it("renders the newly supported sections and picture block", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: "/tmp/resume-picture.png",
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+        profileItems: [
+          {
+            network: "LinkedIn",
+            username: "janedoe",
+            url: "https://linkedin.com/in/janedoe",
+          },
+        ],
+        customFieldItems: [{ text: "Eligible to work in the UK", url: null }],
+        languages: [{ language: "English", fluency: "Native", level: 5 }],
+        interests: [{ name: "Climbing", keywords: ["Bouldering"] }],
+        awards: [
+          {
+            title: "Engineer of the Year",
+            subtitle: "Acme",
+            date: "2024",
+            bullets: ["Recognized for platform leadership"],
+          },
+        ],
+        certifications: [
+          {
+            title: "AWS Solutions Architect",
+            subtitle: "Amazon",
+            date: "2023",
+            bullets: ["Professional level"],
+          },
+        ],
+        publications: [
+          {
+            title: "Scaling JobOps",
+            subtitle: "InfoQ",
+            date: "2022",
+            bullets: ["Published architecture write-up"],
+          },
+        ],
+        volunteer: [
+          {
+            title: "STEM Mentor",
+            subtitle: "Code Club",
+            date: "2021 -- Present",
+            bullets: ["Mentor students weekly"],
+          },
+        ],
+        references: [
+          {
+            title: "Alex Manager",
+            subtitle: "Director | +44 1234 567890",
+            bullets: ["Reference available on request"],
+          },
+        ],
+      },
+      "__PICTURE_BLOCK__\n__NAME__\n__HEADLINE_BLOCK__\n__CONTACT_BLOCK__\n__LOCATION_BLOCK__\n__BODY__",
+    );
+
+    expect(latex).toContain("\\includegraphics");
+    expect(latex).toContain("London, UK");
+    expect(latex).toContain("\\section{Profiles}");
+    expect(latex).toContain("\\section{Custom Fields}");
+    expect(latex).toContain("\\section{Languages}");
+    expect(latex).toContain("\\section{Interests}");
+    expect(latex).toContain("\\section{Awards}");
+    expect(latex).toContain("\\section{Certifications}");
+    expect(latex).toContain("\\section{Publications}");
+    expect(latex).toContain("\\section{Volunteer}");
+    expect(latex).toContain("\\section{References}");
   });
 
   it("fails with a helpful error when tectonic is unavailable", async () => {

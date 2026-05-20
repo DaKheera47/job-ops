@@ -21,10 +21,14 @@ const nativeThemes = new Set(["classic", "compact"]);
 const baseDocument: LatexResumeDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
+  location: "London, UK",
+  picture: null,
   contactItems: [
     { text: "jane@example.com", url: "mailto:jane@example.com" },
     { text: "Portfolio", url: "https://jane.dev" },
   ],
+  profileItems: [],
+  customFieldItems: [],
   summary: "Builds resilient platform systems.",
   experience: [
     {
@@ -44,6 +48,13 @@ const baseDocument: LatexResumeDocument = {
       keywords: ["TypeScript", "Node.js", "PostgreSQL"],
     },
   ],
+  languages: [],
+  interests: [],
+  awards: [],
+  certifications: [],
+  publications: [],
+  volunteer: [],
+  references: [],
 };
 
 async function createTempDir(): Promise<string> {
@@ -137,11 +148,20 @@ describe("typst resume renderer", () => {
       {
         ...baseDocument,
         sectionTitles: {
+          profiles: "Perfiles",
           summary: "Resumen",
+          customFields: "Campos personalizados",
           experience: "Experiencia",
           education: "Educación",
           projects: "Proyectos",
           skills: "Habilidades técnicas",
+          languages: "Idiomas",
+          interests: "Intereses",
+          awards: "Premios",
+          certifications: "Certificaciones",
+          publications: "Publicaciones",
+          volunteer: "Voluntariado",
+          references: "Referencias",
         },
       },
       "__PAGE_MARGIN__\n__BODY_SIZE__\n__NAME__\n__BODY__",
@@ -170,10 +190,96 @@ describe("typst resume renderer", () => {
     const template = await readTypstTemplate("clean-print-cv");
 
     expect(template).toContain("link-or-text");
-    expect(template).toContain("contact-label-matching(is-linkedin)");
-    expect(template).toContain("contact-label-matching(is-github)");
+    expect(template).toContain("profile-label-matching(is-linkedin-profile)");
+    expect(template).toContain("profile-label-matching(is-github-profile)");
     expect(template).toContain("linked-entry-label(entry");
-    expect(template).toContain("linked-url-label(entry)");
+    expect(template).toContain('link(text-of-item(entry, "url"))');
+  });
+
+  it("renders the newly supported native sections and picture block", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: "/tmp/resume-picture.png",
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+        profileItems: [
+          {
+            network: "LinkedIn",
+            username: "janedoe",
+            url: "https://linkedin.com/in/janedoe",
+          },
+        ],
+        customFieldItems: [{ text: "Open to relocation", url: null }],
+        languages: [{ language: "English", fluency: "Native", level: 5 }],
+        interests: [{ name: "Climbing", keywords: ["Bouldering"] }],
+        awards: [
+          {
+            title: "Engineer of the Year",
+            subtitle: "Acme",
+            date: "2024",
+            bullets: ["Recognized for platform leadership"],
+          },
+        ],
+        certifications: [
+          {
+            title: "AWS Solutions Architect",
+            subtitle: "Amazon",
+            date: "2023",
+            bullets: ["Professional level"],
+          },
+        ],
+        publications: [
+          {
+            title: "Scaling JobOps",
+            subtitle: "InfoQ",
+            date: "2022",
+            bullets: ["Published architecture write-up"],
+          },
+        ],
+        volunteer: [
+          {
+            title: "STEM Mentor",
+            subtitle: "Code Club",
+            date: "2021 -- Present",
+            bullets: ["Mentor students weekly"],
+          },
+        ],
+        references: [
+          {
+            title: "Alex Manager",
+            subtitle: "Director | +44 1234 567890",
+            bullets: ["Reference available on request"],
+          },
+        ],
+      },
+      "__PICTURE_BLOCK__\n__NAME__\n__HEADLINE_BLOCK__\n__LOCATION_BLOCK__\n__CONTACT_BLOCK__\n__BODY__",
+      tokens,
+    );
+
+    expect(typst).toContain('#image("/tmp/resume-picture.png"');
+    expect(typst).toContain("London, UK");
+    expect(typst).toContain("= Profiles");
+    expect(typst).toContain("= Custom Fields");
+    expect(typst).toContain("= Languages");
+    expect(typst).toContain("= Interests");
+    expect(typst).toContain("= Awards");
+    expect(typst).toContain("= Certifications");
+    expect(typst).toContain("= Publications");
+    expect(typst).toContain("= Volunteer");
+    expect(typst).toContain("= References");
   });
 
   it("escapes Typst markup characters in resume content", async () => {
@@ -226,6 +332,45 @@ describe("typst resume renderer", () => {
         outputPath,
         jobId: "job-render-success",
         typstTheme: "compact",
+      });
+
+      const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {
+        stdio: "ignore",
+      });
+      expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
+    "renders the clean-print-cv theme when typst is installed",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+      const outputPath = join(tempDir, "clean-print-cv.pdf");
+
+      await renderTypstPdf({
+        document: {
+          ...baseDocument,
+          profileItems: [
+            {
+              network: "LinkedIn",
+              username: "janedoe",
+              url: "https://linkedin.com/in/janedoe",
+            },
+          ],
+          languages: [{ language: "English", fluency: "Native", level: 5 }],
+          certifications: [
+            {
+              title: "AWS Solutions Architect",
+              subtitle: "Amazon",
+              date: "2023",
+              bullets: ["Professional level"],
+            },
+          ],
+        },
+        outputPath,
+        jobId: "job-render-clean-print-cv",
+        typstTheme: "clean-print-cv",
       });
 
       const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {

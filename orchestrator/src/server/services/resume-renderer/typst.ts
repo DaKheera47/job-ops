@@ -8,10 +8,14 @@ import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
 import { getLatexResumeSectionTitles } from "./document";
+import { materializeResumePicture } from "./picture";
 import type {
   LatexResumeContactItem,
+  LatexResumeCustomFieldItem,
   LatexResumeDocument,
   LatexResumeEntry,
+  LatexResumeInterestItem,
+  LatexResumeLanguageItem,
   ResumeRenderer,
 } from "./types";
 
@@ -299,6 +303,83 @@ function renderSkillsSection(document: LatexResumeDocument): string {
   return [`= ${escapeTypstText(titles.skills)}`, items].join("\n\n");
 }
 
+function renderLineSection(title: string, lines: string[]): string {
+  if (lines.length === 0) return "";
+  return [
+    `= ${escapeTypstText(title)}`,
+    ...lines.map((line) => `- ${line}`),
+  ].join("\n");
+}
+
+function renderProfilesSection(document: LatexResumeDocument): string {
+  if (document.profileItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.profileItems.map((item) => {
+    const label = escapeTypstText(item.network);
+    const value = renderLink(
+      item.username || item.url || item.network,
+      item.url,
+    );
+    return `*${label}:* ${value}`;
+  });
+  return renderLineSection(titles.profiles, lines);
+}
+
+function renderCustomFieldsSection(document: LatexResumeDocument): string {
+  if (document.customFieldItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.customFieldItems.map(
+    (item: LatexResumeCustomFieldItem) =>
+      item.url ? renderLink(item.text, item.url) : escapeTypstText(item.text),
+  );
+  return renderLineSection(titles.customFields, lines);
+}
+
+function renderLanguagesSection(document: LatexResumeDocument): string {
+  if (document.languages.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.languages.map((item: LatexResumeLanguageItem) => {
+    const detail = [item.fluency, item.level ? `Level ${item.level}` : ""]
+      .filter(Boolean)
+      .map((part) => escapeTypstText(String(part)))
+      .join(" | ");
+    return detail
+      ? `*${escapeTypstText(item.language)}:* ${detail}`
+      : `*${escapeTypstText(item.language)}*`;
+  });
+  return renderLineSection(titles.languages, lines);
+}
+
+function renderInterestsSection(document: LatexResumeDocument): string {
+  if (document.interests.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.interests.map((item: LatexResumeInterestItem) => {
+    const keywords = item.keywords.map((keyword) => escapeTypstText(keyword));
+    return keywords.length > 0
+      ? `*${escapeTypstText(item.name)}:* ${keywords.join(", ")}`
+      : `*${escapeTypstText(item.name)}*`;
+  });
+  return renderLineSection(titles.interests, lines);
+}
+
+function renderPictureBlock(document: LatexResumeDocument): string {
+  const picture = document.picture;
+  if (!picture?.renderPath || picture.hidden) return "";
+
+  const width = Math.max(48, Math.min(picture.size, 144));
+  const image = `#image(${escapeTypstUrl(picture.renderPath)}, width: ${width}pt)`;
+  const renderedImage = picture.rotation
+    ? `#rotate(angle: ${Math.round(picture.rotation)}deg, reflow: true)[${image}]`
+    : image;
+
+  return `${renderedImage} \\\n  #v(4pt)\n`;
+}
+
+function renderLocationBlock(document: LatexResumeDocument): string {
+  if (!document.location) return "";
+  return `  #text(size: 9pt)[${escapeTypstText(document.location)}] \\\n`;
+}
+
 export async function readTypstThemeManifest(
   theme: TypstTheme = "classic",
 ): Promise<TypstThemeManifest> {
@@ -343,15 +424,19 @@ export function buildTypstDocument(
   tokens: TypstThemeTokens,
 ): string {
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const pictureBlock = renderPictureBlock(document);
   const headlineBlock = document.headline
     ? `  #text(size: ${tokens.headlineSize})[${escapeTypstText(document.headline)}] \\\n`
     : "";
+  const locationBlock = renderLocationBlock(document);
   const contactBlock =
     document.contactItems.length > 0
       ? `  #text(size: ${tokens.contactSize})[${renderContactItems(document.contactItems)}]\n`
       : "";
   const body = [
     renderSummarySection(document),
+    renderProfilesSection(document),
+    renderCustomFieldsSection(document),
     renderEntrySection({
       title: titles.experience,
       entries: document.experience,
@@ -371,6 +456,38 @@ export function buildTypstDocument(
       metaSize: tokens.entryMetaSize,
     }),
     renderSkillsSection(document),
+    renderLanguagesSection(document),
+    renderInterestsSection(document),
+    renderEntrySection({
+      title: titles.awards,
+      entries: document.awards,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.certifications,
+      entries: document.certifications,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.publications,
+      entries: document.publications,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.volunteer,
+      entries: document.volunteer,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.references,
+      entries: document.references,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -385,8 +502,10 @@ export function buildTypstDocument(
     .replace("__LINE_WIDTH__", tokens.lineWidth)
     .replace("__SECTION_BOTTOM__", tokens.sectionBottom)
     .replace("__NAME_SIZE__", tokens.nameSize)
+    .replace("__PICTURE_BLOCK__", pictureBlock)
     .replace("__NAME__", escapeTypstText(document.name))
     .replace("__HEADLINE_BLOCK__", headlineBlock)
+    .replace("__LOCATION_BLOCK__", locationBlock)
     .replace("__CONTACT_BLOCK__", contactBlock)
     .replace("__BODY__", body);
 }
@@ -481,6 +600,10 @@ export const typstResumeRenderer: ResumeRenderer = {
 
     try {
       const { manifest, template, tokens } = await loadTemplate(typstTheme);
+      const renderableDocument = await materializeResumePicture(
+        document,
+        tempDir,
+      );
       let typst: string;
       if (manifest.kind === "native") {
         if (!tokens) {
@@ -488,12 +611,16 @@ export const typstResumeRenderer: ResumeRenderer = {
             `Typst theme ${typstTheme} is missing native tokens.`,
           );
         }
-        typst = buildTypstDocument(document, template, tokens);
+        typst = buildTypstDocument(renderableDocument, template, tokens);
       } else {
         typst = buildAdaptedTypstDocument(template);
       }
 
-      await writeFile(resumeDataPath, JSON.stringify(document), "utf8");
+      await writeFile(
+        resumeDataPath,
+        JSON.stringify(renderableDocument),
+        "utf8",
+      );
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,
@@ -517,10 +644,18 @@ export const typstResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
+          location: document.location,
           experienceCount: document.experience.length,
           educationCount: document.education.length,
           projectCount: document.projects.length,
           skillGroupCount: document.skillGroups.length,
+          languageCount: document.languages.length,
+          interestCount: document.interests.length,
+          awardCount: document.awards.length,
+          certificationCount: document.certifications.length,
+          publicationCount: document.publications.length,
+          volunteerCount: document.volunteer.length,
+          referenceCount: document.references.length,
         }),
       });
       throw error;

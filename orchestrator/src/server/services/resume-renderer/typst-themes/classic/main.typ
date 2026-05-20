@@ -12,8 +12,8 @@
 ]
 
 #align(center)[
-  #text(size: __NAME_SIZE__, weight: "bold")[__NAME__] \
-__HEADLINE_BLOCK____CONTACT_BLOCK__
+__PICTURE_BLOCK__  #text(size: __NAME_SIZE__, weight: "bold")[__NAME__] \
+__HEADLINE_BLOCK____LOCATION_BLOCK____CONTACT_BLOCK__
 ]
 
 __BODY__

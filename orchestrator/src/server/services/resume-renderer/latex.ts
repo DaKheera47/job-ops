@@ -7,10 +7,14 @@ import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getLatexResumeSectionTitles } from "./document";
+import { materializeResumePicture } from "./picture";
 import type {
   LatexResumeContactItem,
+  LatexResumeCustomFieldItem,
   LatexResumeDocument,
   LatexResumeEntry,
+  LatexResumeInterestItem,
+  LatexResumeLanguageItem,
   ResumeRenderer,
 } from "./types";
 
@@ -190,6 +194,95 @@ function renderSkillsSection(document: LatexResumeDocument): string {
   ].join("\n");
 }
 
+function renderLineSection(title: string, lines: string[]): string {
+  if (lines.length === 0) return "";
+  return [
+    `\\section{${escapeForCommand(title)}}`,
+    " \\begin{itemize}[leftmargin=0.15in, label={}]",
+    ...lines.map((line) => `    \\small{\\item{${line}}}`),
+    " \\end{itemize}",
+    "",
+  ].join("\n");
+}
+
+function renderProfilesSection(document: LatexResumeDocument): string {
+  if (document.profileItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.profileItems.map((item) => {
+    const label = escapeForCommand(item.network);
+    const value = renderLink(
+      item.username || item.url || item.network,
+      item.url,
+    );
+    return `\\textbf{${label}}{: ${value}}`;
+  });
+  return renderLineSection(titles.profiles, lines);
+}
+
+function renderCustomFieldsSection(document: LatexResumeDocument): string {
+  if (document.customFieldItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.customFieldItems.map(
+    (item: LatexResumeCustomFieldItem) =>
+      item.url ? renderLink(item.text, item.url) : escapeForCommand(item.text),
+  );
+  return renderLineSection(titles.customFields, lines);
+}
+
+function renderLanguagesSection(document: LatexResumeDocument): string {
+  if (document.languages.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.languages.map((item: LatexResumeLanguageItem) => {
+    const detailParts = [
+      item.fluency ? escapeForCommand(item.fluency) : "",
+      item.level !== null && item.level !== undefined
+        ? `Level ${escapeForCommand(String(item.level))}`
+        : "",
+    ].filter(Boolean);
+    const detail = detailParts.join(" | ");
+    return detail
+      ? `\\textbf{${escapeForCommand(item.language)}}{: ${detail}}`
+      : `\\textbf{${escapeForCommand(item.language)}}`;
+  });
+  return renderLineSection(titles.languages, lines);
+}
+
+function renderInterestsSection(document: LatexResumeDocument): string {
+  if (document.interests.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.interests.map((item: LatexResumeInterestItem) => {
+    const keywords = item.keywords.map((keyword) => escapeForCommand(keyword));
+    return keywords.length > 0
+      ? `\\textbf{${escapeForCommand(item.name)}}{: ${keywords.join(", ")}}`
+      : `\\textbf{${escapeForCommand(item.name)}}`;
+  });
+  return renderLineSection(titles.interests, lines);
+}
+
+function renderPictureBlock(document: LatexResumeDocument): string {
+  const picture = document.picture;
+  if (!picture?.renderPath || picture.hidden) return "";
+
+  const width = Math.max(48, Math.min(picture.size, 144));
+  const height = Math.max(
+    48,
+    Math.round(width / Math.max(picture.aspectRatio, 0.5)),
+  );
+  const angle = picture.rotation
+    ? `,angle=${Math.round(picture.rotation)}`
+    : "";
+
+  return [
+    `    \\includegraphics[width=${width}pt,height=${height}pt,keepaspectratio${angle}]{\\detokenize{${picture.renderPath}}} \\\\`,
+    "    \\vspace{4pt}",
+  ].join("\n");
+}
+
+function renderLocationBlock(document: LatexResumeDocument): string {
+  if (!document.location) return "";
+  return `\\begin{center}\\small ${escapeForCommand(document.location)}\\end{center}\n`;
+}
+
 async function loadTemplate(): Promise<string> {
   return await readFile(TEMPLATE_PATH, "utf8");
 }
@@ -208,6 +301,8 @@ export function buildLatexDocument(
       : "";
   const body = [
     renderSummarySection(document),
+    renderProfilesSection(document),
+    renderCustomFieldsSection(document),
     renderEntrySection({
       title: titles.experience,
       entries: document.experience,
@@ -224,14 +319,43 @@ export function buildLatexDocument(
       kind: "project",
     }),
     renderSkillsSection(document),
+    renderLanguagesSection(document),
+    renderInterestsSection(document),
+    renderEntrySection({
+      title: titles.awards,
+      entries: document.awards,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.certifications,
+      entries: document.certifications,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.publications,
+      entries: document.publications,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.volunteer,
+      entries: document.volunteer,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.references,
+      entries: document.references,
+      kind: "subheading",
+    }),
   ]
     .filter(Boolean)
     .join("\n");
 
   return template
+    .replace("__PICTURE_BLOCK__", renderPictureBlock(document))
     .replace("__NAME__", escapeForCommand(document.name))
     .replace("__HEADLINE_BLOCK__", headlineBlock)
     .replace("__CONTACT_BLOCK__", contactBlock)
+    .replace("__LOCATION_BLOCK__", renderLocationBlock(document))
     .replace("__BODY__", body);
 }
 
@@ -282,7 +406,7 @@ async function runTectonic(args: {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         reject(
           new Error(
-            `Tectonic binary not found. Install tectonic or set TECTONIC_BIN to the executable path.`,
+            "Tectonic binary not found. Install tectonic or set TECTONIC_BIN to the executable path.",
           ),
         );
         return;
@@ -325,7 +449,11 @@ export const latexResumeRenderer: ResumeRenderer = {
 
     try {
       const template = await loadTemplate();
-      const latex = buildLatexDocument(document, template);
+      const renderableDocument = await materializeResumePicture(
+        document,
+        tempDir,
+      );
+      const latex = buildLatexDocument(renderableDocument, template);
 
       await writeFile(texPath, latex, "utf8");
       await runTectonic({ cwd: tempDir, texPath, jobId });
@@ -343,10 +471,18 @@ export const latexResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
+          location: document.location,
           experienceCount: document.experience.length,
           educationCount: document.education.length,
           projectCount: document.projects.length,
           skillGroupCount: document.skillGroups.length,
+          languageCount: document.languages.length,
+          interestCount: document.interests.length,
+          awardCount: document.awards.length,
+          certificationCount: document.certifications.length,
+          publicationCount: document.publications.length,
+          volunteerCount: document.volunteer.length,
+          referenceCount: document.references.length,
         }),
       });
       throw error;
