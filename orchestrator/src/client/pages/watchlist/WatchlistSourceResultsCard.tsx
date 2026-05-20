@@ -20,6 +20,12 @@ import type {
 } from "./types";
 import { rankWorkdayJobs } from "./utils";
 import WatchlistJobRow from "./WatchlistJobRow";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
@@ -101,89 +107,77 @@ export function WatchlistSourceResultsCard({
   onLoadJobDetails,
 }: WatchlistSourceResultsCardProps) {
   return (
-    <div
-      key={item.source.id}
-      className="overflow-hidden rounded-lg border bg-card"
-    >
-      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
-        <div className="min-w-0">
-          <a
-            href={item.source.careersUrl}
-            rel="noreferrer"
-            target="_blank"
-            className={cn(
-              buttonVariants({
-                size: "sm",
-                variant: "link",
-              }),
-              "px-0",
+    <AccordionItem value={item.source.id} className="border-0">
+      <AccordionTrigger className="flex items-center justify-between gap-4 border-b px-4 py-3">
+        <div className="flex items-center justify-start gap-x-4">
+          <div className="min-w-0">
+            <a
+              href={item.source.careersUrl}
+              rel="noreferrer"
+              target="_blank"
+              className={cn(
+                buttonVariants({
+                  size: "sm",
+                  variant: "link",
+                }),
+                "px-0",
+              )}
+            >
+              {item.source.label} Careers Page
+            </a>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {getStatusBadge(item)}
+          </div>
+        </div>
+      </AccordionTrigger>
+
+      <AccordionContent key={item.source.id}>
+        {item.status === "loading" ? (
+          <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Fetching Workday CXS response...
+          </div>
+        ) : item.status === "error" ? (
+          <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+            {JSON.stringify(
+              {
+                label: item.source.label,
+                sourceType: item.source.sourceType,
+                careersUrl: item.source.careersUrl,
+                cxsJobsUrl: item.source.cxsJobsUrl,
+                error: item.error,
+              },
+              null,
+              2,
             )}
-          >
-            {item.source.label} Careers Page
-          </a>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          {getStatusBadge(item)}
-
-          <button
-            type="button"
-            onClick={() => dismiss(item.source.id)}
-            className={buttonVariants({
-              variant: "ghost",
-              size: "icon",
-            })}
-            aria-label={`Dismiss ${item.source.label}`}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {item.status === "loading" ? (
-        <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Fetching Workday CXS response...
-        </div>
-      ) : item.status === "error" ? (
-        <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-          {JSON.stringify(
-            {
-              label: item.source.label,
-              sourceType: item.source.sourceType,
-              careersUrl: item.source.careersUrl,
-              cxsJobsUrl: item.source.cxsJobsUrl,
-              error: item.error,
-            },
-            null,
-            2,
-          )}
-        </pre>
-      ) : (
-        <WatchlistSourceJobs
-          item={item}
-          pipelineSearchTerms={pipelineSearchTerms}
-          locationIntent={locationIntent}
-          showIgnored={showIgnored}
-          setShowIgnored={setShowIgnored}
-          getImportedWorkdayJob={getImportedWorkdayJob}
-          getWorkdayRowState={getWorkdayRowState}
-          getWorkdayStateInput={getWorkdayStateInput}
-          jobDetails={jobDetails}
-          movingJobUrl={movingJobUrl}
-          ignorePending={ignorePending}
-          ignoreVariables={ignoreVariables}
-          unignorePending={unignorePending}
-          unignoreVariables={unignoreVariables}
-          watchlistCheckState={watchlistCheckState}
-          onIgnore={onIgnore}
-          onUnignore={onUnignore}
-          onMoveToWorkspace={onMoveToWorkspace}
-          onOpenWorkspaceJob={onOpenWorkspaceJob}
-          onLoadJobDetails={onLoadJobDetails}
-        />
-      )}
-    </div>
+          </pre>
+        ) : (
+          <WatchlistSourceJobs
+            item={item}
+            pipelineSearchTerms={pipelineSearchTerms}
+            locationIntent={locationIntent}
+            showIgnored={showIgnored}
+            setShowIgnored={setShowIgnored}
+            getImportedWorkdayJob={getImportedWorkdayJob}
+            getWorkdayRowState={getWorkdayRowState}
+            getWorkdayStateInput={getWorkdayStateInput}
+            jobDetails={jobDetails}
+            movingJobUrl={movingJobUrl}
+            ignorePending={ignorePending}
+            ignoreVariables={ignoreVariables}
+            unignorePending={unignorePending}
+            unignoreVariables={unignoreVariables}
+            watchlistCheckState={watchlistCheckState}
+            onIgnore={onIgnore}
+            onUnignore={onUnignore}
+            onMoveToWorkspace={onMoveToWorkspace}
+            onOpenWorkspaceJob={onOpenWorkspaceJob}
+            onLoadJobDetails={onLoadJobDetails}
+          />
+        )}
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 

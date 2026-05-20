@@ -41,6 +41,7 @@ import {
 } from "./watchlist/utils";
 import { WatchlistSourceResultsCard } from "./watchlist/WatchlistSourceResultsCard";
 import { WatchlistSourcesCard } from "./watchlist/WatchlistSourcesCard";
+import { Accordion } from "@/components/ui/accordion";
 
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
@@ -523,36 +524,42 @@ export const WatchlistPage: React.FC = () => {
             }}
           />
 
-          {visibleItems.map((item) => (
-            <WatchlistSourceResultsCard
-              key={item.source.id}
-              item={item}
-              pipelineSearchTerms={pipelineSearchTerms}
-              locationIntent={locationIntent}
-              showIgnored={showIgnored}
-              dismiss={dismiss}
-              setShowIgnored={setShowIgnored}
-              getImportedWorkdayJob={getImportedWorkdayJob}
-              getWorkdayRowState={getWorkdayRowState}
-              getWorkdayStateInput={getWorkdayStateInput}
-              jobDetails={jobDetails}
-              movingJobUrl={movingJobUrl}
-              ignorePending={ignoreMutation.isPending}
-              ignoreVariables={ignoreMutation.variables}
-              unignorePending={unignoreMutation.isPending}
-              unignoreVariables={unignoreMutation.variables}
-              watchlistCheckState={watchlistCheckState}
-              onIgnore={(input) => ignoreMutation.mutate(input)}
-              onUnignore={(input) => unignoreMutation.mutate(input)}
-              onMoveToWorkspace={(job, careersUrl, cxsJobsUrl) => {
-                void handleMoveToWorkspace(job, careersUrl, cxsJobsUrl);
-              }}
-              onOpenWorkspaceJob={(job) => navigate(getWorkspaceJobPath(job))}
-              onLoadJobDetails={(jobUrl) => {
-                void loadJobDetails(jobUrl);
-              }}
-            />
-          ))}
+          <Accordion
+            type="single"
+            collapsible
+            className="overflow-hidden rounded-lg border bg-card"
+          >
+            {visibleItems.map((item) => (
+              <WatchlistSourceResultsCard
+                key={item.source.id}
+                item={item}
+                pipelineSearchTerms={pipelineSearchTerms}
+                locationIntent={locationIntent}
+                showIgnored={showIgnored}
+                dismiss={dismiss}
+                setShowIgnored={setShowIgnored}
+                getImportedWorkdayJob={getImportedWorkdayJob}
+                getWorkdayRowState={getWorkdayRowState}
+                getWorkdayStateInput={getWorkdayStateInput}
+                jobDetails={jobDetails}
+                movingJobUrl={movingJobUrl}
+                ignorePending={ignoreMutation.isPending}
+                ignoreVariables={ignoreMutation.variables}
+                unignorePending={unignoreMutation.isPending}
+                unignoreVariables={unignoreMutation.variables}
+                watchlistCheckState={watchlistCheckState}
+                onIgnore={(input) => ignoreMutation.mutate(input)}
+                onUnignore={(input) => unignoreMutation.mutate(input)}
+                onMoveToWorkspace={(job, careersUrl, cxsJobsUrl) => {
+                  void handleMoveToWorkspace(job, careersUrl, cxsJobsUrl);
+                }}
+                onOpenWorkspaceJob={(job) => navigate(getWorkspaceJobPath(job))}
+                onLoadJobDetails={(jobUrl) => {
+                  void loadJobDetails(jobUrl);
+                }}
+              />
+            ))}
+          </Accordion>
         </div>
       </PageMain>
 
