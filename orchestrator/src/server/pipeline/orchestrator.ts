@@ -34,6 +34,7 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
+import { LlmNotConfiguredError } from "../services/llm-errors";
 import { generateTailoring } from "../services/summary";
 import {
   type PendingChallenge,
@@ -79,11 +80,16 @@ type TenantPipelineState = {
   activePipelineRunId: string | null;
   cancelRequestedAt: string | null;
   activeChallengeState: ChallengeState | null;
+  activeLlmConfigState: LlmConfigState | null;
 };
 
 type ChallengeState = {
   challenges: Map<string, PendingChallenge>;
   /** Resolves the Promise that blocks the pipeline in `runPipeline`. */
+  resolve: () => void;
+};
+
+type LlmConfigState = {
   resolve: () => void;
 };
 
@@ -97,10 +103,24 @@ function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
       activePipelineRunId: null,
       cancelRequestedAt: null,
       activeChallengeState: null,
+      activeLlmConfigState: null,
     };
     pipelineStateByTenant.set(tenantId, state);
   }
   return state;
+}
+
+/**
+ * Resume a pipeline that paused because the LLM was not configured.
+ * Called by the POST /api/pipeline/resume-scoring endpoint after the user
+ * configures an API key in Settings.
+ */
+export function resumePipelineScoring(): { resolved: boolean } {
+  const state = getPipelineState();
+  if (!state.activeLlmConfigState) return { resolved: false };
+  state.activeLlmConfigState.resolve();
+  state.activeLlmConfigState = null;
+  return { resolved: true };
 }
 
 function parseWorkplaceTypes(
@@ -435,11 +455,20 @@ export async function runPipeline(
           skipped: relocationSkipped,
         });
       }
+      await persistResultSummary({
+        stage: "import",
+        filterMetrics: {
+          ...(resultSummary.filterMetrics ?? {}),
+          relocationSkipped,
+        },
+      });
 
       ensureNotCancelled(tenantId);
       const {
         markedCount: antiDomainSkipped,
         byReason: antiDomainByReason,
+        degraded: screeningDegraded,
+        degradationReason: screeningDegradationReason,
       } = await filterAntiDomainJobsStep();
       if (antiDomainSkipped > 0) {
         pipelineLogger.info("Anti-domain / resume-signal filter skipped jobs", {
@@ -447,6 +476,33 @@ export async function runPipeline(
           byReason: antiDomainByReason,
         });
       }
+      // Split anti-domain bucket into language-gate vs no-signal vs domain
+      // for the Telegram funnel summary.  byReason keys look like
+      // "anti_domain:healthcare" / "language_required:polish" / "no_resume_signal".
+      const languageGateSkipped = Object.entries(antiDomainByReason)
+        .filter(([k]) => k.startsWith("language_required:"))
+        .reduce((acc, [, v]) => acc + v, 0);
+      const noResumeSignalSkipped = antiDomainByReason["no_resume_signal"] ?? 0;
+      const antiDomainOnlySkipped = Object.entries(antiDomainByReason)
+        .filter(([k]) => k.startsWith("anti_domain:"))
+        .reduce((acc, [, v]) => acc + v, 0);
+      const antiDomainByReasonClean = Object.fromEntries(
+        Object.entries(antiDomainByReason)
+          .filter(([k]) => k.startsWith("anti_domain:"))
+          .map(([k, v]) => [k.replace("anti_domain:", ""), v]),
+      );
+      await persistResultSummary({
+        stage: "import",
+        filterMetrics: {
+          ...(resultSummary.filterMetrics ?? {}),
+          antiDomainSkipped: antiDomainOnlySkipped,
+          antiDomainByReason: antiDomainByReasonClean,
+          languageGateSkipped,
+          noResumeSignalSkipped,
+          screeningDegraded,
+          screeningDegradationReason,
+        },
+      });
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "liveness" });
@@ -467,21 +523,48 @@ export async function runPipeline(
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "scoring" });
+      const scoreOnce = () =>
+        scoreJobsStep({
+          profile,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        });
+      let scoringResult: Awaited<ReturnType<typeof scoreOnce>>;
+      try {
+        scoringResult = await scoreOnce();
+      } catch (error) {
+        if (!(error instanceof LlmNotConfiguredError)) throw error;
+        const message = error.message;
+        progressHelpers.configurationRequired(message);
+        pipelineLogger.warn("Pipeline paused — LLM not configured", { error });
+
+        await new Promise<void>((resolve) => {
+          tenantState.activeLlmConfigState = { resolve };
+        });
+        tenantState.activeLlmConfigState = null;
+
+        ensureNotCancelled(tenantId);
+        pipelineLogger.info("LLM configured, resuming scoring");
+        scoringResult = await scoreOnce();
+      }
       const {
         unprocessedJobs,
         scoredJobs,
         autoSkipped: scoringAutoSkipped,
         ghostFlagged,
         deferredCount: scoringDeferred,
-      } = await scoreJobsStep({
-        profile,
-        shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
-      });
+        transientFailures: scoringTransientFailures,
+      } = scoringResult;
       if (scoringDeferred > 0) {
         pipelineLogger.info(
           "Scoring deferred extra jobs to next run (pipelineMaxJobsToScore cap)",
           { deferred: scoringDeferred },
+        );
+      }
+      if (scoringTransientFailures > 0) {
+        pipelineLogger.warn(
+          "Scoring absorbed transient LLM failures",
+          { transientFailures: scoringTransientFailures },
         );
       }
       await persistResultSummary({
@@ -489,6 +572,10 @@ export async function runPipeline(
         jobsScored: scoredJobs.length,
         jobsAutoSkipped: scoringAutoSkipped,
         jobsGhostFlagged: ghostFlagged,
+        filterMetrics: {
+          ...(resultSummary.filterMetrics ?? {}),
+          scoringTransientFailures,
+        },
       });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsScored: scoredJobs.length,
@@ -496,35 +583,10 @@ export async function runPipeline(
         jobsGhostFlagged: ghostFlagged,
       });
 
-      // Auto-skip jobs below threshold (if configured)
-      let pipelineAutoSkipCount = 0;
-      const autoSkipRaw = await settingsRepo.getSetting("pipelineAutoSkipBelow");
-      if (autoSkipRaw) {
-        const autoSkipThreshold = parseInt(autoSkipRaw, 10);
-        if (!Number.isNaN(autoSkipThreshold) && autoSkipThreshold > 0) {
-          const toSkip = scoredJobs.filter(
-            (j) =>
-              j.suitabilityScore !== null &&
-              j.suitabilityScore < autoSkipThreshold,
-          );
-          if (toSkip.length > 0) {
-            for (const job of toSkip) {
-              await jobsRepo.updateJob(job.id, { status: "skipped" });
-            }
-            pipelineAutoSkipCount = toSkip.length;
-            pipelineLogger.info("Auto-skipped jobs below threshold", {
-              threshold: autoSkipThreshold,
-              skipped: toSkip.length,
-            });
-          }
-        }
-      }
-      const totalAutoSkipped = scoringAutoSkipped + pipelineAutoSkipCount;
-      if (totalAutoSkipped > scoringAutoSkipped) {
-        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-          jobsAutoSkipped: totalAutoSkipped,
-        });
-      }
+      // Auto-skip-below-threshold runs INSIDE scoreJobsStep (single source of
+      // truth, see resolution of autoSkipScoreThreshold + legacy
+      // pipelineAutoSkipBelow there).  The previous second pass here was
+      // applying the threshold twice when both settings were set — removed.
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "selection" });
@@ -550,12 +612,35 @@ export async function runPipeline(
         jobsScored: scoredJobs.length,
         jobsSelected: jobsToProcess.length,
       });
-      const { processedCount } = await processJobsStep({
-        jobsToProcess,
-        processJob,
-        shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
-      });
+      const processOnce = () =>
+        processJobsStep({
+          jobsToProcess,
+          processJob,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        });
+      let processResult: Awaited<ReturnType<typeof processOnce>>;
+      try {
+        processResult = await processOnce();
+      } catch (error) {
+        if (!(error instanceof LlmNotConfiguredError)) throw error;
+        const message = error.message;
+        progressHelpers.configurationRequired(message);
+        pipelineLogger.warn(
+          "Pipeline paused during processing — LLM not configured",
+          { error },
+        );
+
+        await new Promise<void>((resolve) => {
+          tenantState.activeLlmConfigState = { resolve };
+        });
+        tenantState.activeLlmConfigState = null;
+
+        ensureNotCancelled(tenantId);
+        pipelineLogger.info("LLM configured, resuming processing");
+        processResult = await processOnce();
+      }
+      const { processedCount } = processResult;
       jobsProcessed = processedCount;
 
       resultSummary = updatePipelineRunResultSummary(resultSummary, {
@@ -640,6 +725,7 @@ export async function runPipeline(
       tenantState.activePipelineRunId = null;
       tenantState.cancelRequestedAt = null;
       tenantState.activeChallengeState = null;
+      tenantState.activeLlmConfigState = null;
     }
   });
 }
@@ -728,6 +814,10 @@ export async function summarizeJob(
 
           selectedProjectIds = [...locked, ...picked].join(",");
         } catch (error) {
+          // LLM-config failures must surface so the pipeline can pause.
+          // Other project-selection errors (extractor bugs, malformed
+          // resumeProjects setting, etc.) keep the prior soft-fail behavior.
+          if (error instanceof LlmNotConfiguredError) throw error;
           jobLogger.warn("Failed to suggest projects", error);
         }
       }
@@ -741,6 +831,10 @@ export async function summarizeJob(
 
       return { success: true };
     } catch (error) {
+      // Propagate LLM-config failures so processJobsStep can pause the
+      // whole pipeline — same pattern as scoreJobsStep. All other errors
+      // are isolated to this job and the pipeline keeps processing.
+      if (error instanceof LlmNotConfiguredError) throw error;
       const message = error instanceof Error ? error.message : "Unknown error";
       jobLogger.error("Summarization failed", error);
       return { success: false, error: message };
@@ -923,6 +1017,11 @@ export function requestPipelineCancel(): {
   if (state.activeChallengeState) {
     state.activeChallengeState.resolve();
     state.activeChallengeState = null;
+  }
+  // Same idea for the LLM configuration pause.
+  if (state.activeLlmConfigState) {
+    state.activeLlmConfigState.resolve();
+    state.activeLlmConfigState = null;
   }
 
   return {

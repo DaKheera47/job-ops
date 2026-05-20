@@ -644,16 +644,17 @@ describe("salary penalty", () => {
     });
   });
 
-  describe("mock scoring with penalty", () => {
-    it("should apply penalty in mock scoring fallback", async () => {
-      const { scoreJobSuitability } = await import("./scorer");
+  describe("LLM failure handling", () => {
+    it("throws LlmNotConfiguredError when LLM fails — pipeline must pause, never fake-score", async () => {
+      const { scoreJobSuitability, LlmNotConfiguredError } = await import(
+        "./scorer"
+      );
       getEffectiveSettingsMock.mockResolvedValue({
         penalizeMissingSalary: { value: true, default: true, override: null },
         missingSalaryPenalty: { value: 10, default: 10, override: null },
         rxresumeBaseResumeId: "base-resume-123",
       } as any);
 
-      // Simulate API key error to trigger mock scoring
       callJsonMock.mockResolvedValue({
         success: false,
         error: "API key not configured",
@@ -664,16 +665,41 @@ describe("salary penalty", () => {
         salary: null,
         title: "Software Engineer",
       });
-      const result = await scoreJobSuitability(job, {});
 
-      // Mock score base is 50, with keyword bonuses from "Software Engineer"
-      // After 10 point penalty, should be reduced
-      expect(result.score).toBeLessThanOrEqual(50);
-      expect(result.reason).toContain("missing salary information");
+      await expect(scoreJobSuitability(job, {})).rejects.toBeInstanceOf(
+        LlmNotConfiguredError,
+      );
     });
 
-    it("should not apply penalty in mock scoring when disabled", async () => {
-      const { scoreJobSuitability } = await import("./scorer");
+    it("throws LlmTransientError when LLM returns an invalid score payload (per-job parse problem, not config)", async () => {
+      const { scoreJobSuitability, LlmTransientError } = await import(
+        "./scorer"
+      );
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: { score: "not-a-number", reason: "garbage" },
+      });
+
+      const job = createJob({ id: "test-job-2", title: "Anything" });
+
+      // Invalid payload from the model is a per-response problem — the
+      // caller (score-jobs step) skips this one job and continues, with
+      // pipeline escalation only happening if the failure rate is high.
+      await expect(scoreJobSuitability(job, {})).rejects.toBeInstanceOf(
+        LlmTransientError,
+      );
+    });
+
+    it("throws LlmTransientError on a transient upstream failure (5xx / rate-limit / network)", async () => {
+      const { scoreJobSuitability, LlmTransientError } = await import(
+        "./scorer"
+      );
       getEffectiveSettingsMock.mockResolvedValue({
         penalizeMissingSalary: { value: false, default: false, override: null },
         missingSalaryPenalty: { value: 10, default: 10, override: null },
@@ -682,17 +708,17 @@ describe("salary penalty", () => {
 
       callJsonMock.mockResolvedValue({
         success: false,
-        error: "API key not configured",
+        error: "503 Service Unavailable",
       });
 
-      const job = createJob({
-        id: "test-job-1",
-        salary: null,
-        title: "Software Engineer",
-      });
-      const result = await scoreJobSuitability(job, {});
+      const job = createJob({ id: "test-job-3", title: "Anything" });
 
-      expect(result.reason).not.toContain("missing salary");
+      // A 503 must NOT pause the whole pipeline. score-jobs catches the
+      // transient error and either skips this single job or, if too many
+      // pile up, escalates to LlmNotConfiguredError separately.
+      await expect(scoreJobSuitability(job, {})).rejects.toBeInstanceOf(
+        LlmTransientError,
+      );
     });
   });
 });

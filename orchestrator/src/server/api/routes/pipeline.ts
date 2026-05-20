@@ -23,6 +23,7 @@ import {
   getProgress,
   requestPipelineCancel,
   resolvePipelineChallenge,
+  resumePipelineScoring,
   runPipeline,
   subscribeToProgress,
 } from "@server/pipeline/index";
@@ -375,6 +376,32 @@ pipelineRouter.post("/cancel", async (_req: Request, res: Response) => {
       pipelineRunId: cancelResult.pipelineRunId,
       alreadyRequested: cancelResult.alreadyRequested,
     });
+  } catch (error) {
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+/**
+ * POST /api/pipeline/resume-scoring - Resume a pipeline paused because LLM
+ * was not configured. Called after the user configures an API key in Settings.
+ */
+pipelineRouter.post("/resume-scoring", async (_req: Request, res: Response) => {
+  try {
+    const { resolved } = resumePipelineScoring();
+    if (!resolved) {
+      return fail(
+        res,
+        conflict("Pipeline is not paused waiting for LLM configuration"),
+      );
+    }
+    ok(res, { resolved: true });
   } catch (error) {
     fail(
       res,

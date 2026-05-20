@@ -22,10 +22,8 @@ vi.mock("./profile", () => ({
   getProfile: vi.fn(),
 }));
 
-import {
-  buildFallbackSearchTerms,
-  suggestOnboardingSearchTerms,
-} from "./onboarding-search-terms";
+import { LlmNotConfiguredError } from "./llm-errors";
+import { suggestOnboardingSearchTerms } from "./onboarding-search-terms";
 import { getProfile } from "./profile";
 
 describe("suggestOnboardingSearchTerms", () => {
@@ -75,11 +73,9 @@ describe("suggestOnboardingSearchTerms", () => {
     });
   });
 
-  it("falls back to headline and visible experience titles when AI generation fails", async () => {
+  it("throws LlmNotConfiguredError when AI generation fails — no fake fallback", async () => {
     vi.mocked(getProfile).mockResolvedValue({
-      basics: {
-        headline: "Staff Software Engineer",
-      },
+      basics: { headline: "Staff Software Engineer" },
       sections: {
         experience: {
           items: [
@@ -92,15 +88,6 @@ describe("suggestOnboardingSearchTerms", () => {
               summary: "Built services",
               visible: true,
             },
-            {
-              id: "exp-2",
-              company: "Hidden",
-              position: "Principal Engineer",
-              location: "Remote",
-              date: "2023",
-              summary: "Hidden role",
-              visible: false,
-            },
           ],
         },
       },
@@ -110,78 +97,24 @@ describe("suggestOnboardingSearchTerms", () => {
       error: "LLM provider unavailable",
     });
 
-    const result = await suggestOnboardingSearchTerms();
-
-    expect(result).toEqual({
-      terms: ["Staff Software Engineer", "Platform Engineer"],
-      source: "fallback",
-    });
+    await expect(suggestOnboardingSearchTerms()).rejects.toBeInstanceOf(
+      LlmNotConfiguredError,
+    );
   });
 
-  it("falls back to project and skill context when no headline or visible positions exist", async () => {
+  it("throws LlmNotConfiguredError when AI returns no usable terms", async () => {
     vi.mocked(getProfile).mockResolvedValue({
-      basics: {
-        summary: "Backend platform engineer focused on distributed systems.",
-      },
-      sections: {
-        experience: {
-          items: [
-            {
-              id: "exp-1",
-              company: "Hidden",
-              position: "Principal Engineer",
-              location: "Remote",
-              date: "2023",
-              summary: "Hidden role",
-              visible: false,
-            },
-          ],
-        },
-        projects: {
-          items: [
-            {
-              id: "proj-1",
-              name: "Developer Platform",
-              description: "Internal platform tooling",
-              date: "2024",
-              summary: "Platform project",
-              keywords: ["Platform Engineer", "Internal tooling"],
-              visible: true,
-            },
-          ],
-        },
-        skills: {
-          items: [
-            {
-              id: "skill-1",
-              name: "Site Reliability Engineering",
-              description: "Reliability and production operations",
-              level: 5,
-              keywords: ["Distributed Systems"],
-              visible: true,
-            },
-          ],
-        },
-      },
+      basics: { headline: "Senior Engineer" },
+      sections: { experience: { items: [] } },
     } satisfies ResumeProfile);
     callJsonMock.mockResolvedValue({
-      success: false,
-      error: "LLM provider unavailable",
+      success: true,
+      data: { terms: [] },
     });
 
-    const result = await suggestOnboardingSearchTerms();
-
-    expect(result).toEqual({
-      terms: [
-        "Developer Platform",
-        "Site Reliability Engineering",
-        "Platform Engineer",
-        "Internal tooling",
-        "Distributed Systems",
-        "Backend platform engineer focused on distributed systems.",
-      ],
-      source: "fallback",
-    });
+    await expect(suggestOnboardingSearchTerms()).rejects.toBeInstanceOf(
+      LlmNotConfiguredError,
+    );
   });
 
   it("throws a conflict when no usable resume profile exists", async () => {
@@ -195,33 +128,5 @@ describe("suggestOnboardingSearchTerms", () => {
       code: "CONFLICT",
       message: "Resume must be configured before suggesting search terms.",
     });
-  });
-
-  it("caps and deduplicates fallback search terms", () => {
-    const profile: ResumeProfile = {
-      basics: {
-        headline: "Senior Engineer",
-      },
-      sections: {
-        experience: {
-          items: Array.from({ length: 12 }, (_, index) => ({
-            id: `exp-${index}`,
-            company: "Example",
-            position: `Platform Engineer ${index}`,
-            location: "Remote",
-            date: "2024",
-            summary: "Built services",
-            visible: true,
-          })),
-        },
-      },
-    };
-
-    const result = buildFallbackSearchTerms(profile);
-
-    expect(result.source).toBe("fallback");
-    expect(result.terms).toHaveLength(10);
-    expect(result.terms[0]).toBe("Senior Engineer");
-    expect(result.terms).not.toContain("Platform Engineer 10");
   });
 });

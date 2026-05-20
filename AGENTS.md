@@ -1,4 +1,17 @@
-# Error/Logging/Sanitization Standards
+# Agent Instructions
+
+> **Read [CLAUDE.md](./CLAUDE.md) first.** It is the canonical onboarding doc
+> for every AI coding agent working in this repository (Claude Code, Gemini
+> CLI, OpenCode, Cursor, Codex, and any future tooling) — project overview,
+> Docker environment, mandatory validation steps, changelog rules, pipeline
+> architecture (discovery → filters → scoring → processing), LLM model mix,
+> cost guard rails, common pitfalls, and the four Karpathy coding principles.
+> If anything in this file conflicts with CLAUDE.md, CLAUDE.md wins.
+
+The rest of this document captures the cross-cutting **operability /
+privacy / API-shape standards** that apply to every change in the codebase.
+
+## Error/Logging/Sanitization Standards
 
 This project uses strict operability and privacy defaults for server-side code.
 

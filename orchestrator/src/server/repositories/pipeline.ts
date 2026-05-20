@@ -179,6 +179,32 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
 }
 
 /**
+ * Get the latest pipeline run paired with its full saved details (snapshot
+ * + resultSummary including filterMetrics).  Used by the Telegram bot's
+ * end-of-run notification to render the funnel breakdown ("Discovered → …
+ * → Selected").
+ */
+export async function getLatestPipelineRunWithDetails(): Promise<{
+  run: PipelineRun;
+  savedDetails: PipelineRunSavedDetails | null;
+} | null> {
+  const tenantId = getActiveTenantId();
+  const [row] = await db
+    .select()
+    .from(pipelineRuns)
+    .where(eq(pipelineRuns.tenantId, tenantId))
+    .orderBy(desc(pipelineRuns.startedAt))
+    .limit(1);
+
+  if (!row) return null;
+
+  return {
+    run: mapRowToPipelineRun(row),
+    savedDetails: mapRowToSavedDetails(row),
+  };
+}
+
+/**
  * Get recent pipeline runs.
  */
 export async function getRecentPipelineRuns(

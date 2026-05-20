@@ -10,6 +10,7 @@ import {
 import {
   runPipeline,
   requestPipelineCancel,
+  resumePipelineScoring,
   getPipelineStatus,
 } from "../../../pipeline/orchestrator";
 import * as settingsRepo from "../../../repositories/settings";
@@ -414,5 +415,28 @@ export function registerPipelineHandlers(bot: Bot): void {
   bot.callbackQuery("p:cancel", async (ctx) => {
     requestPipelineCancel();
     await ctx.answerCallbackQuery("Cancelling pipeline...");
+  });
+
+  // Resume a pipeline paused on the LLM-config wait (either config error or
+  // the transient-failure-rate escalation).  The orchestrator's
+  // `resumePipelineScoring()` resolves the in-memory Promise; from there the
+  // pipeline retries scoring exactly once.
+  bot.callbackQuery("p:resume-scoring", async (ctx) => {
+    const { resolved } = resumePipelineScoring();
+    if (resolved) {
+      await ctx.answerCallbackQuery("Resuming AI scoring…");
+      // Update the message so the user sees we acted, without re-rendering
+      // the whole pause card.
+      try {
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+      } catch {
+        // Old message may be gone — fine.
+      }
+    } else {
+      await ctx.answerCallbackQuery({
+        text: "Pipeline isn't paused waiting on the AI right now.",
+        show_alert: true,
+      });
+    }
   });
 }

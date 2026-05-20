@@ -13,6 +13,7 @@ import {
   MAX_SEARCH_TERMS,
   normalizeSearchTerms,
 } from "@shared/utils/search-terms";
+import { LlmNotConfiguredError } from "./llm-errors";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { getProfile } from "./profile";
 
@@ -114,27 +115,6 @@ function hasUsableContext(context: SearchTermContext): boolean {
   );
 }
 
-export function buildFallbackSearchTerms(
-  profile: ResumeProfile,
-): SearchTermsSuggestionResponse {
-  const context = collectContext(profile);
-
-  return {
-    terms: dedupe([
-      context.headline,
-      ...context.experiencePositions,
-      ...context.projectNames,
-      ...context.skillNames,
-      ...context.projectKeywords,
-      ...context.skillKeywords,
-      // Summary is a last resort so AI failures still return something
-      // deterministic for resumes that lack explicit title-like fields.
-      context.summary,
-    ]),
-    source: "fallback",
-  };
-}
-
 function buildPrompt(context: SearchTermContext): string {
   return [
     "Suggest 5 to 8 concise job-title search terms for a job seeker based on this resume snapshot.",
@@ -178,61 +158,36 @@ export async function suggestOnboardingSearchTerms(): Promise<SearchTermsSuggest
     throw conflict("Resume must be configured before suggesting search terms.");
   }
 
-  const fallback = buildFallbackSearchTerms(profile);
+  const model = await resolveLlmModel("tailoring");
+  const llm = await createConfiguredLlmService();
+  const result = await llm.callJson<SearchTermSuggestionModelResponse>({
+    model,
+    messages: [{ role: "user", content: buildPrompt(context) }],
+    jsonSchema: SEARCH_TERMS_SCHEMA,
+  });
 
-  try {
-    const model = await resolveLlmModel("tailoring");
-    const llm = await createConfiguredLlmService();
-    const result = await llm.callJson<SearchTermSuggestionModelResponse>({
-      model,
-      messages: [{ role: "user", content: buildPrompt(context) }],
-      jsonSchema: SEARCH_TERMS_SCHEMA,
+  if (!result.success) {
+    logger.warn("Onboarding search-term suggestion failed", {
+      route: "POST /api/onboarding/search-terms/suggest",
+      error: result.error,
     });
-
-    if (!result.success) {
-      logger.warn(
-        "Onboarding search-term suggestion fell back after AI generation failed",
-        {
-          route: "POST /api/onboarding/search-terms/suggest",
-          error: result.error,
-          fallbackTermsCount: fallback.terms.length,
-        },
-      );
-      if (fallback.terms.length > 0) return fallback;
-      throw conflict(
-        "Resume must be configured before suggesting search terms.",
-      );
-    }
-
-    const terms = dedupe(result.data?.terms ?? []);
-    if (terms.length === 0) {
-      logger.warn(
-        "Onboarding search-term suggestion produced no usable AI terms",
-        {
-          route: "POST /api/onboarding/search-terms/suggest",
-          fallbackTermsCount: fallback.terms.length,
-        },
-      );
-      if (fallback.terms.length > 0) return fallback;
-      throw conflict(
-        "Resume must be configured before suggesting search terms.",
-      );
-    }
-
-    return {
-      terms,
-      source: "ai",
-    };
-  } catch (error) {
-    logger.warn(
-      "Onboarding search-term suggestion fell back after unexpected generation error",
-      {
-        route: "POST /api/onboarding/search-terms/suggest",
-        error,
-        fallbackTermsCount: fallback.terms.length,
-      },
+    throw new LlmNotConfiguredError(
+      `AI search-term suggestion failed: ${result.error}. Check your LLM configuration in Settings → Integrations.`,
     );
-    if (fallback.terms.length > 0) return fallback;
-    throw conflict("Resume must be configured before suggesting search terms.");
   }
+
+  const terms = dedupe(result.data?.terms ?? []);
+  if (terms.length === 0) {
+    logger.warn("Onboarding search-term suggestion produced no usable AI terms", {
+      route: "POST /api/onboarding/search-terms/suggest",
+    });
+    throw new LlmNotConfiguredError(
+      "AI search-term suggestion returned no usable terms. Try again or refine your resume.",
+    );
+  }
+
+  return {
+    terms,
+    source: "ai",
+  };
 }

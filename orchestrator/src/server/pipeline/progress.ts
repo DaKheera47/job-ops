@@ -484,6 +484,15 @@ export const progressHelpers = {
       completedAt: new Date().toISOString(),
     }),
 
+  configurationRequired: (error: string) =>
+    updateProgress({
+      step: "configuration_required",
+      message: "Configuration required",
+      detail: error,
+      error,
+      completedAt: new Date().toISOString(),
+    }),
+
   challengeRequired: (challenges: PendingChallenge[]) =>
     updateProgress({
       step: "challenge_required",

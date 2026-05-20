@@ -1,9 +1,33 @@
-# syntax=docker/dockerfile:1.6
+# NOTE: the `# syntax=docker/dockerfile:1.6` directive was removed from
+# the very first line because the Intel corporate network cannot reach
+# auth.docker.io to fetch the syntax frontend image (DeadlineExceeded on
+# the auth token request).  This Dockerfile only uses
+# `RUN --mount=type=cache` and `RUN --mount=type=secret`, both stable
+# since BuildKit 1.2, so the bundled parser handles them fine.
+# Re-add `# syntax=docker/dockerfile:1.6` as the first line if/when
+# Docker Desktop's proxy is configured for the Intel network
+# (Settings → Resources → Proxies → http://proxy-dmz.intel.com:912).
 
 # ============================================================================
 # SHARED BASE IMAGES
 # ============================================================================
 FROM node:22-slim AS runtime-base
+
+# Build-time proxy plumbing for Intel corporate network (and any other
+# environment that injects HTTP_PROXY).  Picked up by apt / pip / npm /
+# fetch through both the upper-case and lower-case standard env vars.
+# The ARG values come from docker-compose.yml's build.args block, which
+# in turn reads .env via Compose env substitution.  Empty values are
+# harmless — apt and friends ignore blank proxies.
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY} \
+    http_proxy=${HTTP_PROXY} \
+    https_proxy=${HTTPS_PROXY} \
+    no_proxy=${NO_PROXY}
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production

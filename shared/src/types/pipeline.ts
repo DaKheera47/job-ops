@@ -114,6 +114,33 @@ export interface PipelineRunEffectiveConfig {
   resumeProjects: PipelineRunResumeProjectsSnapshot;
 }
 
+export interface PipelineFilterMetrics {
+  /** Jobs flagged by the Munich-or-remote relocation filter. */
+  relocationSkipped?: number;
+  /** Jobs flagged by the anti-domain title regex (healthcare, retail, …). */
+  antiDomainSkipped?: number;
+  /** Breakdown of antiDomainSkipped by domain key, e.g. {"healthcare": 12}. */
+  antiDomainByReason?: Record<string, number>;
+  /** Jobs flagged by the language gate (job needs lang the candidate lacks). */
+  languageGateSkipped?: number;
+  /** Jobs with zero overlap against the resume's keyword set. */
+  noResumeSignalSkipped?: number;
+  /**
+   * Set when the resume keyword loader failed and the screening step ran
+   * with anti-domain only.  Surfaces in the Telegram run summary so the
+   * user knows that the language + signal gates were silently disabled
+   * for that run.
+   */
+  screeningDegraded?: boolean;
+  /** Short reason for the degradation, e.g. "no_design_resume". */
+  screeningDegradationReason?: string | null;
+  /**
+   * Per-job LLM scoring failures that were absorbed (job kept in
+   * `discovered` with no score, to be retried in the next run).
+   */
+  scoringTransientFailures?: number;
+}
+
 export interface PipelineRunResultSummary {
   stage: PipelineRunExecutionStage;
   jobsScored: number | null;
@@ -123,6 +150,13 @@ export interface PipelineRunResultSummary {
   jobsLivenessFiltered?: number | null;
   jobsDeduplicated?: number | null;
   sourceErrors: string[];
+  /**
+   * Detailed breakdown of jobs dropped by pre-scoring filters and the
+   * scorer's transient-failure handling.  Populated as each step runs so
+   * the Telegram bot can show a transparent funnel ("Discovered 1240 →
+   * Relocation 412 → Anti-domain 88 → Scored 740 → Selected 20").
+   */
+  filterMetrics?: PipelineFilterMetrics;
 }
 
 export interface PipelineRunSavedDetails {
@@ -141,6 +175,7 @@ export type PipelineProgressStep =
   | "idle"
   | "crawling"
   | "challenge_required"
+  | "configuration_required"
   | "importing"
   | "scoring"
   | "processing"

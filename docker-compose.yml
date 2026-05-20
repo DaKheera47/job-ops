@@ -7,6 +7,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Pipe proxy env vars from .env / shell into the build stages so
+      # apt-get / npm / pip can reach the internet from inside Intel's
+      # corporate network. Empty/unset on non-Intel machines is harmless —
+      # apt ignores blank `http_proxy` values.
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
       secrets:
         - github_token
     image: ghcr.io/dakheera47/job-ops:latest

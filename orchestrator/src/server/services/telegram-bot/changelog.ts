@@ -37,6 +37,33 @@ export interface ChangelogItem {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.0",
+    date: "2026-05-19",
+    items: [
+      {
+        title: "🔎 Transparent run summary — see where every job went",
+        description:
+          "After each pipeline run the bot now shows the full funnel: searched → imported → relocation-skipped → wrong-domain-skipped → language-skipped → no-keyword-overlap-skipped → scored → ready. If an unexpected job slips into your queue, the breakdown tells you which filter let it through.",
+      },
+      {
+        title: "🏠 Hybrid roles outside Munich are now skipped",
+        description:
+          "Some job boards mark hybrid roles as \"remote\". A hybrid posting in Berlin or San Francisco still needs you on-site some days, so it's now treated as relocation and auto-skipped. Munich hybrid roles are still kept.",
+      },
+      {
+        title: "⏸️ Smarter pause when the AI is having a bad day",
+        description:
+          "A single AI hiccup no longer kills the whole run. One failing job is skipped (will retry on the next run) and the pipeline keeps going. Only if more than 30% of jobs fail does the bot pause and ask you what to do.",
+        tip: "When the bot pauses, you get two buttons: \"▶️ Resume\" to retry now, or \"❌ Cancel run\" to stop and keep everything scored so far.",
+      },
+      {
+        title: "⚠️ Loud warning if your resume can't be read",
+        description:
+          "If the design resume fails to load, the screening that protects you from off-topic jobs (language gate, keyword overlap) is silently disabled. The bot now flags this clearly in the run summary so you know to re-upload your resume.",
+      },
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-05-16",
     items: [

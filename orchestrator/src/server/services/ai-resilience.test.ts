@@ -66,42 +66,28 @@ describe("AI Service Resilience", () => {
       expect(result.reason).toBe("Great match");
     });
 
-    it("should fallback to mock scoring if API Key is missing", async () => {
+    it("should throw LlmNotConfiguredError if API Key is missing", async () => {
       delete process.env.OPENROUTER_API_KEY;
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
 
-      // Should NOT call fetch
-      const result = await scoreJobSuitability(mockJob, mockProfile);
-
-      expect(global.fetch).not.toHaveBeenCalled();
-      // Mock score logic gives 50 + points for keywords.
-      // 'TypeScript' and 'React' are in JD (5+5) -> 60?
-      // "Senior" is bad keyword (-10)? -> 50?
-      // Let's just check it didn't crash and returned a number
-      expect(typeof result.score).toBe("number");
-      expect(result.reason).toContain("keyword matching");
+      await expect(scoreJobSuitability(mockJob, mockProfile)).rejects.toThrow(
+        "LLM API key not configured",
+      );
     });
 
-    it("should handle API 500/400 errors gracefully (fallback)", async () => {
+    it("should throw LlmNotConfiguredError on API 500/400 errors", async () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: false,
         status: 500,
         statusText: "Internal Server Error",
       } as any);
 
-      // Spy on console.error to keep test output clean
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-      const result = await scoreJobSuitability(mockJob, mockProfile);
-
-      expect(result.score).toBeDefined(); // Fallback score
-      expect(result.reason).toContain("keyword matching"); // Fallback reason
-      expect(consoleSpy).toHaveBeenCalled();
+      await expect(scoreJobSuitability(mockJob, mockProfile)).rejects.toThrow(
+        "AI scoring failed",
+      );
     });
 
-    it("should handle Malformed/Invalid JSON in API response", async () => {
+    it("should throw LlmNotConfiguredError on Malformed/Invalid JSON in API response", async () => {
       const mockResponse = {
         ok: true,
         json: async () => ({
@@ -111,11 +97,10 @@ describe("AI Service Resilience", () => {
         }),
       };
       vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
-      vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const result = await scoreJobSuitability(mockJob, mockProfile);
-
-      expect(result.reason).toContain("keyword matching"); // Fell back
+      await expect(scoreJobSuitability(mockJob, mockProfile)).rejects.toThrow(
+        "AI scoring failed",
+      );
     });
 
     it("should extract JSON from markdown code blocks", async () => {

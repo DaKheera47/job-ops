@@ -17,15 +17,35 @@ import { getResumeKeywords } from "@server/services/resume-keywords-loader";
  * Idempotent: only acts on rows still in `status='discovered'` with no
  * suitability score yet (the underlying repository update already enforces
  * the status guard).
+ *
+ * Returns a `degraded` flag (true when the resume keyword load failed or
+ * returned empty) so the orchestrator can surface this in the run summary
+ * — a silently disabled language/signal gate must NOT look like "no jobs
+ * matched the rules".
  */
 export async function filterAntiDomainJobsStep(): Promise<{
   markedCount: number;
   byReason: Record<string, number>;
+  degraded: boolean;
+  degradationReason: string | null;
 }> {
   const discovered = await jobsRepo.getUnscoredDiscoveredJobs();
-  if (discovered.length === 0) return { markedCount: 0, byReason: {} };
+  if (discovered.length === 0)
+    return {
+      markedCount: 0,
+      byReason: {},
+      degraded: false,
+      degradationReason: null,
+    };
 
-  const resumeKeywords = await getResumeKeywords();
+  const loaded = await getResumeKeywords();
+  const resumeKeywords = loaded.keywords;
+  if (loaded.degraded) {
+    logger.warn(
+      "Anti-domain filter running in degraded mode — language gate and resume-signal gate disabled",
+      { reason: loaded.degradationReason, candidates: discovered.length },
+    );
+  }
   const byReason: Record<string, number> = {};
   const groupsByReasonText = new Map<string, string[]>();
 
@@ -59,8 +79,14 @@ export async function filterAntiDomainJobsStep(): Promise<{
     logger.info("Anti-domain filter: no discovered jobs matched skip rules", {
       candidates: discovered.length,
       resumeTokens: resumeKeywords.tokens.size,
+      degraded: loaded.degraded,
     });
-    return { markedCount: 0, byReason };
+    return {
+      markedCount: 0,
+      byReason,
+      degraded: loaded.degraded,
+      degradationReason: loaded.degradationReason,
+    };
   }
 
   let markedCount = 0;
@@ -73,7 +99,13 @@ export async function filterAntiDomainJobsStep(): Promise<{
     marked: markedCount,
     byReason,
     resumeTokens: resumeKeywords.tokens.size,
+    degraded: loaded.degraded,
   });
 
-  return { markedCount, byReason };
+  return {
+    markedCount,
+    byReason,
+    degraded: loaded.degraded,
+    degradationReason: loaded.degradationReason,
+  };
 }

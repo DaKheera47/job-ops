@@ -86,15 +86,19 @@ export interface RelocationFilterJob {
  *
  * Rules (most specific first):
  *   1. Empty location → unknown, don't filter.
- *   2. Munich (or one of its suburbs) → keep.
+ *   2. Munich (or one of its suburbs) → keep, regardless of remote/hybrid.
  *   3. Explicit remote marker in the location string ("Remote", "Anywhere",
  *      "Home Office", …) → keep regardless of `isRemote`.
- *   4. Country / region only ("Germany", "United States", "DE") → keep ONLY
+ *   4. `workFromHomeType === "hybrid"` outside Munich → relocation.  Hybrid
+ *      roles require physical presence in the office on most days, so even
+ *      with `isRemote=true` set by the source, a hybrid Berlin/SF posting
+ *      is not commutable from Munich.
+ *   5. Country / region only ("Germany", "United States", "DE") → keep ONLY
  *      if the source flagged the role as remote.  Without that flag, a bare
  *      country location almost always means "on-site at company HQ in that
  *      country" — for the US/UK/CA pool we just added this would otherwise
  *      flood the queue with relocation roles.
- *   5. Any other location string (city-level) → relocation.
+ *   6. Any other location string (city-level) → relocation.
  */
 export function requiresRelocation(job: RelocationFilterJob): boolean {
   const loc = (job.location ?? "").toLowerCase().trim();
@@ -102,6 +106,12 @@ export function requiresRelocation(job: RelocationFilterJob): boolean {
   if (MUNICH_KEYWORDS.some((k) => loc.includes(k))) return false;
 
   if (REMOTE_MARKERS.some((m) => loc.includes(m))) return false;
+
+  // Hybrid = on-site some days. Outside Munich, that means relocation even
+  // if the source set isRemote=true (LinkedIn/Indeed routinely do this for
+  // hybrid roles that still require physical presence near the office).
+  const workFromHomeType = (job.workFromHomeType ?? "").toLowerCase().trim();
+  if (workFromHomeType === "hybrid") return true;
 
   const normalized = loc.replace(/\s+/g, " ").trim();
   const isCountryOrRegionOnly =

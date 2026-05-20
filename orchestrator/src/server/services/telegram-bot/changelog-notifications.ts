@@ -26,7 +26,13 @@ async function setLastSentVersion(version: string): Promise<void> {
 }
 
 /**
- * Send unseen changelog entries to all authorized chats and pin them.
+ * Send unseen changelog entries to all authorized chats and pin the most
+ * recent one.  Each version goes out as its OWN message so Telegram's
+ * 4096-character message limit can never bite — previously the formatter
+ * packed every unseen version into a single message and silently failed
+ * with "Bad Request: message is too long" the moment the cursor drifted
+ * a few releases behind.
+ *
  * Called on bot startup and after a new user links.
  */
 export async function sendChangelogIfNeeded(): Promise<void> {
@@ -38,58 +44,77 @@ export async function sendChangelogIfNeeded(): Promise<void> {
 
   if (entries.length === 0) return;
 
-  const message = formatChangelogMessage(entries);
-  if (!message) return;
-
   const chatIds = await getAuthorizedChatIds();
   if (chatIds.size === 0) return;
 
-  let successCount = 0;
-  let failureCount = 0;
+  // entries are newest-first.  We send them in chronological order
+  // (oldest → newest) so the user sees the timeline correctly, and so
+  // the LAST message we send is the one to pin.
+  const entriesChronological = [...entries].reverse();
+  const latestVersion = getLatestChangelogVersion();
+
+  let totalFailureCount = 0;
+  let chatsThatGotLatest = 0;
 
   for (const chatId of chatIds) {
-    try {
-      const sent = await bot.api.sendMessage(chatId, message, {
-        parse_mode: "HTML",
-      });
+    let pinCandidate: number | null = null;
+    let chatFailed = false;
 
-      // Pin the message for easy access
+    for (const entry of entriesChronological) {
+      const message = formatChangelogMessage([entry]);
+      if (!message) continue;
       try {
-        await bot.api.pinChatMessage(chatId, sent.message_id, {
+        const sent = await bot.api.sendMessage(chatId, message, {
+          parse_mode: "HTML",
+        });
+        if (entry.version === latestVersion) {
+          pinCandidate = sent.message_id;
+        }
+      } catch (err) {
+        chatFailed = true;
+        totalFailureCount += 1;
+        logger.warn("Failed to send changelog notification", {
+          chatId,
+          version: entry.version,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        // Don't keep blasting more messages at this chat — move on.
+        break;
+      }
+    }
+
+    // Pin the latest-version message (only) for easy access.
+    if (pinCandidate !== null) {
+      try {
+        await bot.api.pinChatMessage(chatId, pinCandidate, {
           disable_notification: true,
         });
       } catch (pinErr) {
         // Pinning may fail if bot lacks admin rights — that's OK
         logger.debug("Could not pin changelog message", {
           chatId,
-          error:
-            pinErr instanceof Error ? pinErr.message : String(pinErr),
+          error: pinErr instanceof Error ? pinErr.message : String(pinErr),
         });
       }
-
-      successCount += 1;
-    } catch (err) {
-      failureCount += 1;
-      logger.warn("Failed to send changelog notification", {
-        chatId,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      if (!chatFailed) chatsThatGotLatest += 1;
     }
   }
 
-  // Only advance the cursor when every authorized chat got the message.
-  // Otherwise failed chats would silently miss this changelog forever.
-  if (failureCount === 0 && successCount > 0) {
-    await setLastSentVersion(getLatestChangelogVersion());
+  // Only advance the cursor when every authorized chat got the LATEST
+  // version (the older ones being best-effort context).  Otherwise failed
+  // chats would silently miss the latest entry forever.
+  if (totalFailureCount === 0 && chatsThatGotLatest > 0) {
+    await setLastSentVersion(latestVersion);
     logger.info("Changelog notification sent", {
-      version: getLatestChangelogVersion(),
+      version: latestVersion,
       chatCount: chatIds.size,
+      entriesSent: entriesChronological.length,
     });
-  } else if (failureCount > 0) {
+  } else if (totalFailureCount > 0) {
     logger.warn("Changelog cursor not advanced — will retry next startup", {
-      version: getLatestChangelogVersion(),
-      successCount,
-      failureCount,
+      version: latestVersion,
+      chatsThatGotLatest,
+      totalFailureCount,
     });
   }
 }

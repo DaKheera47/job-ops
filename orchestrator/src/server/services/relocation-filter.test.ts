@@ -66,4 +66,40 @@ describe("requiresRelocation", () => {
     expect(requiresRelocation({ location: "" })).toBe(false);
     expect(requiresRelocation({})).toBe(false);
   });
+
+  it("flags hybrid roles outside Munich as relocation regardless of isRemote", () => {
+    // Hybrid Berlin: source claims remote, but hybrid = on-site some days.
+    expect(
+      requiresRelocation({
+        location: "Berlin, Germany",
+        isRemote: true,
+        workFromHomeType: "hybrid",
+      }),
+    ).toBe(true);
+    // Hybrid in a country-only string: still relocation.
+    expect(
+      requiresRelocation({
+        location: "Germany",
+        isRemote: true,
+        workFromHomeType: "hybrid",
+      }),
+    ).toBe(true);
+    // Hybrid in Munich itself: still keep — that's what "hybrid" means for
+    // the local user.
+    expect(
+      requiresRelocation({
+        location: "Munich, Germany",
+        isRemote: false,
+        workFromHomeType: "hybrid",
+      }),
+    ).toBe(false);
+    // Explicitly remote (location string) overrides hybrid (data quirk —
+    // some sources tag fully-remote roles as workFromHomeType=hybrid).
+    expect(
+      requiresRelocation({
+        location: "Remote, EU",
+        workFromHomeType: "hybrid",
+      }),
+    ).toBe(false);
+  });
 });

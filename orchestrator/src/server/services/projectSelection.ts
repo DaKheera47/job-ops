@@ -2,6 +2,7 @@
  * Service for AI-powered project selection for resumes.
  */
 
+import { LlmNotConfiguredError } from "./llm-errors";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import type { ResumeProjectSelectionItem } from "./resumeProjects";
@@ -50,10 +51,8 @@ export async function pickProjectIdsForJob(args: {
   });
 
   if (!result.success) {
-    return fallbackPickProjectIds(
-      args.jobDescription,
-      args.eligibleProjects,
-      desiredCount,
+    throw new LlmNotConfiguredError(
+      `AI project selection failed: ${result.error}. Check your LLM configuration in Settings → Integrations, then resume scoring.`,
     );
   }
 
@@ -75,14 +74,10 @@ export async function pickProjectIdsForJob(args: {
     if (unique.length >= desiredCount) break;
   }
 
-  if (unique.length === 0) {
-    return fallbackPickProjectIds(
-      args.jobDescription,
-      args.eligibleProjects,
-      desiredCount,
-    );
-  }
-
+  // An empty array from a successful response is a legitimate AI choice
+  // ("none of these projects match this job"). Return it as-is — no fake
+  // fallback. The caller decides whether to keep the resume with no
+  // recommended projects or fall back to user-locked ones.
   return unique;
 }
 
@@ -120,53 +115,6 @@ Respond with JSON only, in this exact shape:
   "selectedProjectIds": ["id1", "id2"]
 }
 `.trim();
-}
-
-function fallbackPickProjectIds(
-  jobDescription: string,
-  eligibleProjects: ResumeProjectSelectionItem[],
-  desiredCount: number,
-): string[] {
-  const jd = (jobDescription || "").toLowerCase();
-
-  const signals = [
-    "react",
-    "typescript",
-    "javascript",
-    "node",
-    "next",
-    "nextjs",
-    "python",
-    "c++",
-    "c#",
-    "java",
-    "kotlin",
-    "sql",
-    "mongodb",
-    "aws",
-    "docker",
-    "graphql",
-    "php",
-    "unity",
-    "tailwind",
-  ];
-
-  const activeSignals = signals.filter((s) => jd.includes(s));
-
-  const scored = eligibleProjects
-    .map((p) => {
-      const text = `${p.name} ${p.description} ${p.summaryText}`.toLowerCase();
-      let score = 0;
-      for (const signal of activeSignals) {
-        if (text.includes(signal)) score += 5;
-      }
-      if (/\b(open source|oss)\b/.test(text)) score += 2;
-      if (/\b(api|backend|frontend|full[- ]?stack)\b/.test(text)) score += 1;
-      return { id: p.id, score };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  return scored.slice(0, desiredCount).map((s) => s.id);
 }
 
 function truncate(input: string, maxChars: number): string {
