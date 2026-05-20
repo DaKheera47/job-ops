@@ -184,6 +184,8 @@ export interface AppSettings {
   locationMatchStrictness: Resolved<LocationMatchStrictness>;
   jobspyResultsWanted: Resolved<number>;
   jobspyCountryIndeed: Resolved<string>;
+  relocationHomeCities: Resolved<string[]>;
+  relocationAccessibleRegions: Resolved<string[]>;
   showSponsorInfo: Resolved<boolean>;
   renderMarkdownInJobDescriptions: Resolved<boolean>;
   chatStyleTone: Resolved<string>;

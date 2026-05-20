@@ -68,6 +68,8 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   workplaceTypes: ["remote", "hybrid", "onsite"],
   searchScope: "selected_only",
   matchStrictness: "exact_only",
+  relocationHomeCities: [],
+  relocationAccessibleRegions: [],
 };
 const mockJobListScrollToIndex = vi.fn();
 
@@ -452,6 +454,8 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      relocationHomeCities: [],
+      relocationAccessibleRegions: [],
     };
   });
 
@@ -923,6 +927,8 @@ describe("OrchestratorPage", () => {
         searchCities: null,
         locationSearchScope: "selected_only",
         locationMatchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       });
     });
     expect(api.runPipeline).toHaveBeenCalledWith({
@@ -957,6 +963,8 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      relocationHomeCities: [],
+      relocationAccessibleRegions: [],
     };
 
     render(
@@ -994,6 +1002,8 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      relocationHomeCities: [],
+      relocationAccessibleRegions: [],
     };
 
     render(
@@ -1031,6 +1041,8 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      relocationHomeCities: [],
+      relocationAccessibleRegions: [],
     };
 
     render(
@@ -1140,6 +1152,8 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      relocationHomeCities: [],
+      relocationAccessibleRegions: [],
     };
 
     render(

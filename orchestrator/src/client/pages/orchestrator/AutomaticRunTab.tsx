@@ -47,6 +47,7 @@ import {
   normalizeWorkplaceTypes,
   parseCityLocationsInput,
   parseCityLocationsSetting,
+  parseRelocationTokensInput,
   parseSearchTermsInput,
   SEARCH_SCOPE_OPTIONS,
   saveAutomaticRunMemory,
@@ -77,6 +78,8 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   workplaceTypes: ["remote", "hybrid", "onsite"],
   searchScope: "selected_only",
   matchStrictness: "exact_only",
+  relocationHomeCities: [],
+  relocationAccessibleRegions: [],
 };
 
 interface AutomaticRunFormValues {
@@ -91,6 +94,10 @@ interface AutomaticRunFormValues {
   matchStrictness: LocationMatchStrictness;
   searchTerms: string[];
   searchTermDraft: string;
+  relocationHomeCities: string[];
+  relocationHomeCityDraft: string;
+  relocationAccessibleRegions: string[];
+  relocationAccessibleRegionDraft: string;
 }
 
 const GLASSDOOR_COUNTRY_REASON =
@@ -266,6 +273,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       matchStrictness: DEFAULT_VALUES.matchStrictness,
       searchTerms: DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
+      relocationHomeCities: DEFAULT_VALUES.relocationHomeCities,
+      relocationHomeCityDraft: "",
+      relocationAccessibleRegions: DEFAULT_VALUES.relocationAccessibleRegions,
+      relocationAccessibleRegionDraft: "",
     },
   });
 
@@ -280,6 +291,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const matchStrictness = watch("matchStrictness");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
+  const relocationHomeCitiesValue = watch("relocationHomeCities");
+  const relocationHomeCityDraft = watch("relocationHomeCityDraft");
+  const relocationAccessibleRegionsValue = watch("relocationAccessibleRegions");
+  const relocationAccessibleRegionDraft = watch(
+    "relocationAccessibleRegionDraft",
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -336,6 +353,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const rememberedMatchStrictness =
       settings?.locationMatchStrictness?.value ??
       DEFAULT_VALUES.matchStrictness;
+    const rememberedRelocationHomeCities =
+      settings?.relocationHomeCities?.value ??
+      DEFAULT_VALUES.relocationHomeCities;
+    const rememberedRelocationAccessibleRegions =
+      settings?.relocationAccessibleRegions?.value ??
+      DEFAULT_VALUES.relocationAccessibleRegions;
 
     setBrowserCountrySuggestion(suggestion);
     reset({
@@ -350,6 +373,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       matchStrictness: rememberedMatchStrictness,
       searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
+      relocationHomeCities: rememberedRelocationHomeCities,
+      relocationHomeCityDraft: "",
+      relocationAccessibleRegions: rememberedRelocationAccessibleRegions,
+      relocationAccessibleRegionDraft: "",
     });
     setSelectedPreset(memory?.presetId ?? "custom");
     setAdvancedOpen(false);
@@ -394,6 +421,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchScope,
       matchStrictness,
       searchTerms,
+      relocationHomeCities: relocationHomeCitiesValue,
+      relocationAccessibleRegions: relocationAccessibleRegionsValue,
     };
   }, [
     topNInput,
@@ -405,6 +434,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     searchScope,
     matchStrictness,
     searchTerms,
+    relocationHomeCitiesValue,
+    relocationAccessibleRegionsValue,
   ]);
 
   const workplaceTypeSelectionInvalid = workplaceTypes.length === 0;
@@ -893,6 +924,73 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         );
                       })}
                     </RadioGroup>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Relocation filter
+                      </p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Auto-skip jobs that would force you to move. Home
+                        cities pass automatically; remote jobs pass only if
+                        their region tag is in the accessible list.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="relocation-home-cities-input"
+                        className="text-sm font-semibold"
+                      >
+                        Home cities
+                      </Label>
+                      <TokenizedInput
+                        id="relocation-home-cities-input"
+                        values={relocationHomeCitiesValue}
+                        draft={relocationHomeCityDraft}
+                        parseInput={parseRelocationTokensInput}
+                        onDraftChange={(value) =>
+                          setValue("relocationHomeCityDraft", value)
+                        }
+                        onValuesChange={(value) =>
+                          setValue("relocationHomeCities", value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        placeholder='e.g. "München", "Garching"'
+                        helperText='Locations matching these substrings always pass the filter, regardless of remote/hybrid flag.'
+                        removeLabelPrefix="Remove home city"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="relocation-accessible-regions-input"
+                        className="text-sm font-semibold"
+                      >
+                        Accessible regions
+                      </Label>
+                      <TokenizedInput
+                        id="relocation-accessible-regions-input"
+                        values={relocationAccessibleRegionsValue}
+                        draft={relocationAccessibleRegionDraft}
+                        parseInput={parseRelocationTokensInput}
+                        onDraftChange={(value) =>
+                          setValue("relocationAccessibleRegionDraft", value)
+                        }
+                        onValuesChange={(value) =>
+                          setValue("relocationAccessibleRegions", value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        placeholder='e.g. "germany", "europe", "eu"'
+                        helperText='Countries / umbrella regions you can work remotely from. "Remote — US" is skipped if "us" / "usa" is NOT here. Short codes (us, uk, de, nl, eu) match at word boundaries.'
+                        removeLabelPrefix="Remove accessible region"
+                      />
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>

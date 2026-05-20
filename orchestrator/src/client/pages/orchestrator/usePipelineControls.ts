@@ -205,6 +205,8 @@ export function usePipelineControls(
         seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
         searchCities,
+        relocationHomeCities: values.relocationHomeCities,
+        relocationAccessibleRegions: values.relocationAccessibleRegions,
       });
       await refreshSettings();
       await startPipelineRun({

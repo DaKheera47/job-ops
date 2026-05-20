@@ -83,6 +83,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -175,6 +177,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -205,6 +209,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["adzuna"],
     });
@@ -225,6 +231,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["hiringcafe"],
     });
@@ -245,6 +253,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["startupjobs"],
     });
@@ -265,6 +275,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["workingnomads"],
     });
@@ -285,6 +297,8 @@ describe("automatic-run utilities", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         searchScope: "selected_only",
         matchStrictness: "exact_only",
+        relocationHomeCities: [],
+        relocationAccessibleRegions: [],
       },
       sources: ["seek"],
     });

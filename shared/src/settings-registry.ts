@@ -465,6 +465,108 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
+  // Relocation filter: locations the candidate calls home (city or suburb
+  // keywords).  Used by `requiresRelocation` to keep on-site postings that
+  // are commutable.  Empty list = no city is auto-allowed.
+  //
+  // Multi-tenant note: the default below encodes "Munich metro" today.
+  // For a different city, the user edits this in Settings — no code change.
+  relocationHomeCities: {
+    kind: "typed" as const,
+    schema: z.array(z.string().trim().min(1).max(100)).max(200),
+    default: (): string[] => [
+      "munich",
+      "münchen",
+      "muenchen",
+      "garching",
+      "gräfelfing",
+      "graefelfing",
+      "unterföhring",
+      "unterfoehring",
+      "kirchheim",
+      "germering",
+      "aschheim",
+      "ottobrunn",
+      "planegg",
+      "martinsried",
+      "neubiberg",
+      "haar",
+      "ismaning",
+      "oberhaching",
+      "vaterstetten",
+      "putzbrunn",
+      "pullach",
+      "taufkirchen",
+    ],
+    parse: parseJsonArrayOrNull,
+    serialize: serializeNullableJsonArray,
+  },
+  // Relocation filter: regions / countries the candidate can legally work
+  // remotely from.  When a job's location string contains a remote marker
+  // ("Remote", "Anywhere", "Worldwide", …) AND a known region tag (any
+  // country name from the world atlas or any region marker like EMEA /
+  // APAC), the region MUST be in this list — otherwise the posting is
+  // region-locked to a place the candidate cannot work from.
+  //
+  // Multi-tenant note: the default below encodes "EU/EEA resident".
+  // For a Tokyo-based candidate, the user replaces it with e.g.
+  // ["japan", "asia pacific", "apac", "worldwide"].
+  relocationAccessibleRegions: {
+    kind: "typed" as const,
+    schema: z.array(z.string().trim().min(1).max(100)).max(200),
+    default: (): string[] => [
+      // Anchor country + alternate spellings
+      "germany",
+      "deutschland",
+      "de",
+      // Adjacent home-base country with mutual work agreements
+      "netherlands",
+      "holland",
+      "nl",
+      // Regional umbrellas
+      "europe",
+      "european union",
+      "european",
+      "eu",
+      "emea",
+      // Worldwide / no-region markers
+      "worldwide",
+      "anywhere",
+      "global",
+      "distributed",
+      // EU27 + EEA (candidate has free movement / can be hired remote into)
+      "austria",
+      "belgium",
+      "bulgaria",
+      "croatia",
+      "cyprus",
+      "czech",
+      "czechia",
+      "denmark",
+      "estonia",
+      "finland",
+      "france",
+      "greece",
+      "hungary",
+      "italy",
+      "latvia",
+      "lithuania",
+      "luxembourg",
+      "malta",
+      "poland",
+      "portugal",
+      "romania",
+      "slovakia",
+      "slovenia",
+      "spain",
+      "sweden",
+      "switzerland",
+      "norway",
+      "iceland",
+    ],
+    parse: parseJsonArrayOrNull,
+    serialize: serializeNullableJsonArray,
+  },
   showSponsorInfo: {
     kind: "typed" as const,
     schema: z.boolean(),

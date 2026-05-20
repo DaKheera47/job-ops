@@ -60,7 +60,7 @@ describe.sequential("resume-keywords-loader", () => {
   it("marks degraded with empty_resume when the document parses to zero tokens", async () => {
     vi.mocked(designResumeRepo.getLatestDesignResumeDocument).mockResolvedValue({
       resumeJson: {
-        basics: { name: "Olga" },
+        basics: { name: "Jane Doe" },
         sections: {},
       },
     } as any);
@@ -73,24 +73,24 @@ describe.sequential("resume-keywords-loader", () => {
   it("returns healthy + keywords for a real-looking resume", async () => {
     vi.mocked(designResumeRepo.getLatestDesignResumeDocument).mockResolvedValue({
       resumeJson: {
-        basics: { name: "Olga", headline: "Technical Program Manager" },
+        basics: { name: "Jane Doe", headline: "Backend Engineer" },
         sections: {
           skills: {
             items: [
-              { name: "Program Management", keywords: ["PMP", "Agile"] },
-              { name: "Security", keywords: ["SDL", "OpenSSF"] },
+              { name: "Backend", keywords: ["Python", "PostgreSQL"] },
+              { name: "Infrastructure", keywords: ["Kubernetes", "Terraform"] },
             ],
           },
           experience: {
             items: [
               {
-                position: "Senior PM",
-                summary: "Delivered CI/CD security reviews at Intel.",
+                position: "Senior Engineer",
+                summary: "Built distributed systems for an analytics platform.",
               },
             ],
           },
           languages: {
-            items: [{ language: "English" }, { language: "Russian" }],
+            items: [{ language: "English" }, { language: "Spanish" }],
           },
         },
       },
@@ -102,16 +102,61 @@ describe.sequential("resume-keywords-loader", () => {
     expect(result.keywords.tokens.size).toBeGreaterThan(0);
     // Languages picked up from the languages section.
     expect(result.keywords.candidateLanguages.has("english")).toBe(true);
-    expect(result.keywords.candidateLanguages.has("russian")).toBe(true);
+    expect(result.keywords.candidateLanguages.has("spanish")).toBe(true);
+  });
+
+  it("works for a completely different candidate profile (multi-tenant smoke)", async () => {
+    // Multi-user invariant: the loader must not "know" about any particular
+    // candidate.  Swap the resume to a totally different person — different
+    // industry, different language set, different name — and the loader
+    // must still produce a non-degraded result with that profile's tokens
+    // and that profile's languages.  If a future change accidentally pins
+    // any token / language to the production user, this test catches it.
+    vi.mocked(designResumeRepo.getLatestDesignResumeDocument).mockResolvedValue({
+      resumeJson: {
+        basics: { name: "Akira Tanaka", headline: "UX Researcher" },
+        sections: {
+          skills: {
+            items: [
+              { name: "Research", keywords: ["ethnography", "interviewing"] },
+              { name: "Tools", keywords: ["Figma", "Dovetail"] },
+            ],
+          },
+          experience: {
+            items: [
+              {
+                position: "Lead UX Researcher",
+                summary: "Ran longitudinal studies for a consumer app.",
+              },
+            ],
+          },
+          languages: {
+            items: [{ language: "Japanese" }, { language: "Mandarin" }],
+          },
+        },
+      },
+    } as any);
+
+    const result = await mod.getResumeKeywords();
+    expect(result.degraded).toBe(false);
+    // Tokens reflect the new candidate's resume, not the previous one.
+    expect(result.keywords.tokens.has("research")).toBe(true);
+    expect(result.keywords.tokens.has("figma")).toBe(true);
+    // Languages reflect the new candidate's resume.
+    expect(result.keywords.candidateLanguages.has("japanese")).toBe(true);
+    expect(result.keywords.candidateLanguages.has("mandarin")).toBe(true);
+    // Importantly: previous candidate's tokens / languages MUST NOT leak.
+    expect(result.keywords.candidateLanguages.has("english")).toBe(false);
+    expect(result.keywords.candidateLanguages.has("spanish")).toBe(false);
   });
 
   it("caches the result across calls and refreshes after clearResumeKeywordsCache()", async () => {
     vi.mocked(designResumeRepo.getLatestDesignResumeDocument).mockResolvedValue({
       resumeJson: {
-        basics: { name: "Olga" },
+        basics: { name: "Jane Doe" },
         sections: {
           skills: {
-            items: [{ name: "Program", keywords: ["PMP"] }],
+            items: [{ name: "Backend", keywords: ["Python"] }],
           },
         },
       },

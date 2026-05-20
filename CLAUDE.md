@@ -88,6 +88,31 @@ If the developer says yes:
 - Keep it brief — 1-2 sentences per item max
 - Use English
 
+## Mandatory: Multi-User First Design
+
+The repo serves one user today, but every change MUST behave correctly when a **different** user uploads a different resume, sets different filters, lists different languages, or lives in a different city — without code edits.  Hardcoded candidate data passes review and then silently breaks the moment a second user is onboarded.  This rule catches an entire class of subtle bugs that type-checks and unit tests miss.
+
+**Rules**:
+
+- **Read from runtime sources, not inline constants.**  Candidate identity → `candidate-profile.ts` (reads design resume).  Resume keywords + candidate languages → `resume-keywords-loader.ts`.  User preferences → `settings-registry.ts` (loaded via `getEffectiveSettings()`).  Do NOT inline candidate names, emails, language codes, skill tokens, project names, industry domains, or resume-specific buzzwords anywhere in production code.
+- **Test fixtures must be neutral.**  Use `"Jane Doe"` / `"Test User"`, generic skills (`"backend engineer"`, `"Python"`, `"distributed systems"`), and a non-production city when the test is not specifically exercising a single-tenant predicate.  A fixture that's clearly the production user's actual name, email, or exact resume tokens is a red flag — anonymise it.  The job-screening `TPM_KEYWORDS` fixture is grandfathered for now; new fixtures use neutral data.
+- **Parameterise single-tenant predicates.**  If a function logically depends on user location (Munich), language set, or domain focus, accept those as arguments with defaults — not as module-scope constants.  Acceptable interim when adding new geo / domain logic: a single named constant at the top of the file with a `TODO(multi-tenant)` marker AND a unit test that proves the predicate accepts a different shape (e.g. flips Munich → Tokyo or English+Russian → German+French and produces the inverted decision).
+- **No filter should "know" the current user.**  A filter is `(job, candidateContext) → decision`.  `candidateContext` comes from the loaded resume / settings, not from constants.  If the filter has zero arguments and reads constants at module scope, it's a candidate for refactor.
+
+**Known single-tenant debt — do NOT extend**:
+
+- `services/relocation-filter.ts`: `MUNICH_KEYWORDS`, `ALLOWED_REGION_SUBSTRINGS`, `DISALLOWED_REGION_SUBSTRINGS` encode "Munich-based EU-resident candidate".  A Tokyo-based candidate would invert allow / disallow.  When generalising, take `homeCities` + `allowedRegions` + `disallowedRegions` parameters defaulted from a setting (`userHomeCities` / `userAllowedRegions`) and parameterise the existing tests.
+- `services/job-screening.ts`: `ANTI_DOMAIN_PATTERNS` lists career classes the production candidate is not pursuing (medical billing, ERP consulting, recruiting, …).  Tolerable today because these are orthogonal to most engineering candidates, but a user with the opposite trajectory (e.g. a recruiter looking for recruiter roles) would need an inverted list.  Generalise via a per-user "career anti-pattern" setting when the second user arrives.
+
+**Before merging, ask**:
+
+1. Would this code work for a candidate in a different city / country?
+2. Would this code work for a candidate with a different language set?
+3. Would this code work for a candidate from a different industry?
+4. Is any test fixture clearly the production user's actual name / email / resume token?
+
+If (1)-(3) is "no" because the predicate is logically single-tenant: put the user-specific axis behind a parameter with a default — never a bare module-scope constant.  If (4) is "yes": anonymise the fixture.
+
 ## Key Architecture Notes
 
 ### Telegram Bot
@@ -202,14 +227,14 @@ If the developer says yes:
   2. **Language gate** — when the candidate's resume lists ≥1 language, skip jobs that hard-require a language NOT in the candidate's set ("Fluent in Polish", "Native German speaker", "Must speak French"). Soft mentions ("knowledge of X is a plus") deliberately do NOT fire.
   3. **Resume signal** — keep jobs that share at least one keyword with the resume's skills / experience / certifications / projects. Falls open when the resume is empty.
 - Live loader: `orchestrator/src/server/services/resume-keywords-loader.ts` reads from `design_resume_documents`, 60 s cache, `clearResumeKeywordsCache()` on resume edit (mirrors `candidate-profile.ts`). Languages parsed from `sections.languages.items[].language` (reactive-resume schema) with `name` fallback (JSON-Resume schema).
-- **Resume is the source of truth for the language gate.** Update the candidate's design resume to add/remove languages — do NOT introduce a separate setting.
+- **Resume is the source of truth for the language gate.** Update the candidate's design resume to add/remove languages — do NOT introduce a separate setting. This already follows **`## Mandatory: Multi-User First Design`** — the language gate is fully driven by resume data, so it works for any candidate's language set without code changes.  Anti-domain regexes are the remaining single-tenant debt in this module.
 
 ### Relocation Filter (Munich-or-remote)
 - The current user is in Munich and does NOT relocate. Pipeline auto-skips listings that aren't in the Munich metro and aren't genuinely remote.
 - `orchestrator/src/server/services/relocation-filter.ts` — `requiresRelocation(job)` predicate. Hard-coded Munich-area keyword list (München / Garching / Gräfelfing / Unterföhring / Kirchheim / Germering / Aschheim / Ottobrunn / Planegg / Martinsried / Neubiberg / Haar / Ismaning / Oberhaching / Vaterstetten / Putzbrunn / Pullach / Taufkirchen) + country-only allow-list ("Germany"/"NL"/"Europe"/"DE"/...) + explicit remote markers ("Remote"/"Anywhere"/"Home Office"/"Telearbeit"/"Werk van thuis").
 - `orchestrator/src/server/pipeline/steps/filter-relocation.ts` — pipeline step that demotes discovered jobs requiring relocation to `skipped` status with reason `RELOCATION_SKIP_REASON`. Marks rather than deletes so users can still inspect them in "All Jobs".
 - **Country-only locations require `isRemote=true`.** A job with location="United States" and `isRemote=false/null` is treated as relocation (lazy posting at company HQ). A job with location="United States" and `isRemote=true` passes. City-level locations remain authoritative regardless of `isRemote` flag.
-- Currently single-tenant (Munich is hard-coded). If you generalize to other cities, parameterize the keyword list and remove the hard-coded constants — do NOT add per-tenant settings flags until that's actually needed.
+- Currently single-tenant (Munich is hard-coded). If you generalize to other cities, parameterize the keyword list and remove the hard-coded constants — do NOT add per-tenant settings flags until that's actually needed. See **`## Mandatory: Multi-User First Design`** above for the broader rule that governs this single-tenant carve-out — when generalising, take `homeCities` + `allowedRegions` + `disallowedRegions` parameters defaulted from settings, not new module-scope constants.
 
 ### Extractors
 - Each extractor is a workspace package in `extractors/<name>/`
@@ -246,6 +271,12 @@ If the developer says yes:
 - **Type errors in `Record<ExtractorSourceId, ...>`**: When adding source IDs, also update `demo-defaults.data.ts` and `extractor-health.ts`
 - **`docker compose restart` does NOT pick up source changes.** The container entrypoint runs `npx tsx src/server/index.ts` against code baked into the image (`ghcr.io/dakheera47/job-ops:latest`), and that image often lags behind `main`. After editing TypeScript: either `docker compose build --no-cache && docker compose up -d` to rebuild, or for quick iteration `docker cp <changed-files> job-ops:/app/orchestrator/...` followed by `docker compose restart`. Verify the running code with `MSYS_NO_PATHCONV=1 docker exec job-ops grep -n <symbol> /app/orchestrator/src/...` before assuming a fix landed.
 - **One-off DB scripts**: The container has no `sqlite3` CLI. Pattern: write `scripts/<name>.cjs` using `require("/app/orchestrator/node_modules/better-sqlite3")` against `/app/data/jobs.db`, then `docker cp scripts/x.cjs job-ops:/tmp/x.cjs` and `MSYS_NO_PATHCONV=1 docker exec job-ops node /tmp/x.cjs`. **Always back up before destructive ops**: `MSYS_NO_PATHCONV=1 docker exec job-ops sh -c "cp /app/data/jobs.db /app/data/jobs.db.bak-$(date +%Y%m%d-%H%M%S)"`. Existing scripts in `scripts/*.cjs` show the conventions.
+- **Delete one-shot scripts after they ship.** A `scripts/<name>.cjs` written to perform a one-time DB migration, retroactive filter pass, or config tweak (e.g. anything that changes settings to a specific value, replaces a specific email, advances a cursor past a specific version, applies a specific filter retroactively) MUST be deleted in the SAME commit that captures the result. Leaving applied one-shots in the repo creates ambiguity — future readers (and agents) can't tell what's still pending vs already done, and they'll occasionally re-run an already-applied script and clobber newer state.
+  - **Rule of thumb to classify a script**:
+    - **One-shot → DELETE after applying.** Hard-coded target values (a specific email, a specific version, a specific company slug list), addresses a specific past incident, or `apply-*` / `configure-*` / `update-*` / `restore-*` / `expand-*` / `advance-*` in the name.
+    - **Tool → KEEP.** Takes inputs from arguments, is read-only against the DB, or addresses a class of recurring problems generically. Naming: `diag-*` (read-only diagnostics), `smoke-test-*` (live API checks), `validate-*` (periodic cleanups), `reset-stuck-*` (recovery), generic setup helpers (`gnai-token.sh`).
+  - **Before adding a new `scripts/*.cjs`**: glance at the directory — if a similar diagnostic already exists, extend it instead of forking. If the script is genuinely one-shot, commit it WITH its deletion in a follow-up commit once the operation is confirmed applied (or skip the commit entirely if the operation is trivial enough to leave only in `git stash` / chat history).
+  - **If you find dead one-shots in `scripts/` while working on something else**: surface them in chat ("I see `scripts/foo.cjs` from a past one-shot — ok to delete?") and remove on confirmation. Do not silently leave them, and do not silently delete them either.
 - **Don't delete `applied`/`in_progress`/`ready` jobs.** These represent user investment (tailored PDFs, sent applications, ongoing interviews). Every pruning/cleanup path in the codebase (stale-jobs, relocation filter, score-threshold auto-skip) preserves them — keep that invariant.
 
 ## Karpathy Coding Principles

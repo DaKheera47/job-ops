@@ -30,6 +30,24 @@ export interface AutomaticRunValues {
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
+  relocationHomeCities: string[];
+  relocationAccessibleRegions: string[];
+}
+
+export function parseRelocationTokensInput(input: string): string[] {
+  const parsed = input
+    .split(/[\n,]/g)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const token of parsed) {
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(token);
+  }
+  return out;
 }
 
 export interface AutomaticPresetValues {

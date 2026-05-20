@@ -241,6 +241,16 @@ export const createAppSettings = (
     default: "",
     override: null,
   },
+  relocationHomeCities: {
+    value: [],
+    default: [],
+    override: null,
+  },
+  relocationAccessibleRegions: {
+    value: [],
+    default: [],
+    override: null,
+  },
   showSponsorInfo: { value: true, default: true, override: null },
   renderMarkdownInJobDescriptions: {
     value: true,

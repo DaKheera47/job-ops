@@ -78,40 +78,40 @@ describe.sequential("candidate-profile", () => {
     it("surfaces all five basics fields from the resume", async () => {
       setDoc({
         basics: {
-          name: "Olga Fadeeva",
-          email: "olga@example.com",
-          phone: "+49 89 123",
-          location: "Munich, Germany",
-          headline: "Technical Program Manager",
+          name: "Jane Doe",
+          email: "jane@example.com",
+          phone: "+1 555 0100",
+          location: "Helsinki, Finland",
+          headline: "Backend Engineer",
         },
       });
 
       const basics = await mod.getCandidateBasics();
       expect(basics).toEqual({
-        name: "Olga Fadeeva",
-        email: "olga@example.com",
-        phone: "+49 89 123",
-        location: "Munich, Germany",
-        headline: "Technical Program Manager",
+        name: "Jane Doe",
+        email: "jane@example.com",
+        phone: "+1 555 0100",
+        location: "Helsinki, Finland",
+        headline: "Backend Engineer",
       });
     });
 
     it("trims whitespace and treats empty strings as null", async () => {
       setDoc({
         basics: {
-          name: "  Olga  ",
+          name: "  Jane  ",
           email: "",
           phone: "   ",
-          location: "Munich",
+          location: "Helsinki",
           headline: null,
         },
       });
 
       const basics = await mod.getCandidateBasics();
-      expect(basics.name).toBe("Olga");
+      expect(basics.name).toBe("Jane");
       expect(basics.email).toBeNull();
       expect(basics.phone).toBeNull();
-      expect(basics.location).toBe("Munich");
+      expect(basics.location).toBe("Helsinki");
       expect(basics.headline).toBeNull();
     });
 
@@ -120,7 +120,7 @@ describe.sequential("candidate-profile", () => {
         basics: {
           name: 42,
           email: { nested: "x" },
-          phone: ["+49"],
+          phone: ["+1"],
         },
       });
 
@@ -142,7 +142,7 @@ describe.sequential("candidate-profile", () => {
 
   describe("cache", () => {
     it("only reads the repo once for two calls within TTL", async () => {
-      setDoc({ basics: { name: "Olga" } });
+      setDoc({ basics: { name: "Jane" } });
 
       const first = await mod.getCandidateBasics();
       const second = await mod.getCandidateBasics();
@@ -155,16 +155,16 @@ describe.sequential("candidate-profile", () => {
     });
 
     it("re-reads the repo after clearCandidateBasicsCache()", async () => {
-      setDoc({ basics: { name: "Olga" } });
+      setDoc({ basics: { name: "Jane" } });
 
       await mod.getCandidateBasics();
       mod.clearCandidateBasicsCache();
 
       // Change the underlying data — the next call must reflect it.
-      setDoc({ basics: { name: "Olga Fadeeva" } });
+      setDoc({ basics: { name: "Jane Doe" } });
       const after = await mod.getCandidateBasics();
 
-      expect(after.name).toBe("Olga Fadeeva");
+      expect(after.name).toBe("Jane Doe");
       expect(
         vi.mocked(designResumeRepo.getLatestDesignResumeDocument).mock.calls
           .length,
@@ -174,21 +174,21 @@ describe.sequential("candidate-profile", () => {
 
   describe("getCandidateNameParts", () => {
     it("splits a typical two-word name", async () => {
-      setDoc({ basics: { name: "Olga Fadeeva" } });
+      setDoc({ basics: { name: "Jane Doe" } });
       const parts = await mod.getCandidateNameParts();
       expect(parts).toEqual({
-        firstName: "Olga",
-        lastName: "Fadeeva",
-        fullName: "Olga Fadeeva",
+        firstName: "Jane",
+        lastName: "Doe",
+        fullName: "Jane Doe",
       });
     });
 
     it("treats a single token as first name with null last name", async () => {
-      setDoc({ basics: { name: "Olga" } });
+      setDoc({ basics: { name: "Jane" } });
       const parts = await mod.getCandidateNameParts();
-      expect(parts.firstName).toBe("Olga");
+      expect(parts.firstName).toBe("Jane");
       expect(parts.lastName).toBeNull();
-      expect(parts.fullName).toBe("Olga");
+      expect(parts.fullName).toBe("Jane");
     });
 
     it("treats the last token as last name for multi-part names", async () => {
@@ -199,7 +199,7 @@ describe.sequential("candidate-profile", () => {
     });
 
     it("returns all-null when the resume has no name", async () => {
-      setDoc({ basics: { headline: "TPM" } });
+      setDoc({ basics: { headline: "Engineer" } });
       const parts = await mod.getCandidateNameParts();
       expect(parts.firstName).toBeNull();
       expect(parts.lastName).toBeNull();
@@ -207,10 +207,19 @@ describe.sequential("candidate-profile", () => {
     });
 
     it("handles extra whitespace inside the name", async () => {
-      setDoc({ basics: { name: "Olga    Fadeeva" } });
+      setDoc({ basics: { name: "Jane    Doe" } });
       const parts = await mod.getCandidateNameParts();
-      expect(parts.firstName).toBe("Olga");
-      expect(parts.lastName).toBe("Fadeeva");
+      expect(parts.firstName).toBe("Jane");
+      expect(parts.lastName).toBe("Doe");
+    });
+
+    it("handles a non-Latin script name end-to-end (multi-tenant smoke)", async () => {
+      // Multi-user smoke: the splitter must not assume Latin glyphs.
+      setDoc({ basics: { name: "山田 太郎" } });
+      const parts = await mod.getCandidateNameParts();
+      expect(parts.firstName).toBe("山田");
+      expect(parts.lastName).toBe("太郎");
+      expect(parts.fullName).toBe("山田 太郎");
     });
   });
 });
