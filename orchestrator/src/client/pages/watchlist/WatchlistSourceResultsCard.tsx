@@ -488,7 +488,7 @@ function WatchlistJobRow({
           </div>
         </TableCell>
         <TableCell className="px-3 py-2.5">
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-end">
             {rankedJob.importedJob ? (
               <>
                 <Button
@@ -561,27 +561,33 @@ function WatchlistJobRow({
               </DropdownMenu>
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="shrink-0 gap-2 px-0"
-                  disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
-                  onClick={() =>
-                    onMoveToWorkspace(
-                      rankedJob.workdayJob,
-                      source.careersUrl,
-                      source.cxsJobsUrl ?? source.careersUrl,
-                    )
-                  }
-                >
-                  {movingJobUrl === rankedJob.workdayJob.jobUrl ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FolderInput className="h-4 w-4" />
-                  )}
-                  Move to workspace
-                </Button>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 gap-2"
+                        disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
+                        onClick={() =>
+                          onMoveToWorkspace(
+                            rankedJob.workdayJob,
+                            source.careersUrl,
+                            source.cxsJobsUrl ?? source.careersUrl,
+                          )
+                        }
+                      >
+                        {movingJobUrl === rankedJob.workdayJob.jobUrl ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FolderInput className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Move to JobOps workspace</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
