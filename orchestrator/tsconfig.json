@@ -17,6 +17,8 @@
       "@infra/*": ["src/server/infra/*"],
       "@client/*": ["src/client/*"],
       "@shared/*": ["../shared/src/*"],
+      "@career-boards/bamboohr": ["../career-boards/bamboohr/src/index.ts"],
+      "@career-boards/bamboohr/*": ["../career-boards/bamboohr/src/*"],
       "@career-boards/workday": ["../career-boards/workday/src/index.ts"],
       "@career-boards/workday/*": ["../career-boards/workday/src/*"]
     }

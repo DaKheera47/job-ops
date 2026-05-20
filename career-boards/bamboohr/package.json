@@ -1,0 +1,13 @@
+{
+  "name": "@career-boards/bamboohr",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bamboohr-url": "./src/bamboohr-url.ts",
+    "./get-company-info": "./src/get-company-info.ts",
+    "./get-job-details": "./src/get-job-details.ts",
+    "./get-jobs-from-careers-list": "./src/get-jobs-from-careers-list.ts"
+  }
+}

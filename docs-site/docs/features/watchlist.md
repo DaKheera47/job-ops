@@ -44,7 +44,7 @@ A custom source URL is a careers board you paste manually for your own workspace
 
 If the company is not in the built-in picker yet, you can choose the source type's custom URL option and save that public careers page directly. That custom source stays in your workspace unless it is later added to the shared catalog.
 
-Each source type owns its own URL rules and on-screen copy. Today, the supported Watchlist source type is Workday, so the custom-source option asks for a public Workday careers URL.
+Each source type owns its own URL rules and on-screen copy. Today, the supported Watchlist source types are Workday and BambooHR, so the custom-source option asks for a public careers URL that matches the adapter you chose.
 
 ### Baseline check
 
@@ -69,7 +69,7 @@ Ignored rows and watchlist check history are stored per user inside the active w
 1. Open **Watchlist** from the app navigation.
 2. Click **Add source**.
 3. Use **Choose company** to search the built-in company list, or pick the source type's custom URL option.
-4. If you chose a custom URL, paste a supported public careers URL. For Workday, use a URL like `https://company.wd1.myworkdayjobs.com/External`.
+4. If you chose a custom URL, paste a supported public careers URL. For Workday, use a URL like `https://company.wd1.myworkdayjobs.com/External`. For BambooHR, use a URL like `https://company.bamboohr.com/careers`.
 5. Click **Save sources**.
 6. Review the visible rows.
 7. Reopen Watchlist later to see roles marked **New since last check**.
@@ -88,7 +88,7 @@ When you add a custom source URL, JobOps asks that source adapter to derive a re
 - JobOps validates the URL through the selected source adapter when you save sources.
 - Built-in catalog companies are saved as curated sources.
 - Custom URLs are saved only in your workspace selections unless a contributor adds them to the shared catalog.
-- Today, Workday is the available Watchlist adapter. Additional source types can be added without changing the Watchlist page.
+- Today, Workday and BambooHR are available Watchlist adapters. Additional source types can be added without changing the Watchlist page.
 
 ## Common problems
 

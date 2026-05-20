@@ -66,6 +66,13 @@ describe.sequential("Watchlist API routes", () => {
       expect(body.data.catalogSources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
+            id: "bamboohr:https://ashteadtechnology.bamboohr.com/careers",
+            label: "Ashtead Technology",
+            sourceType: "bamboohr",
+            careersUrl: "https://ashteadtechnology.bamboohr.com/careers",
+            cxsJobsUrl: null,
+          }),
+          expect.objectContaining({
             id: "autodesk-workday",
             label: "Autodesk",
             sourceType: "workday",
@@ -84,14 +91,22 @@ describe.sequential("Watchlist API routes", () => {
         ]),
       );
       expect(body.data.selectedSources).toEqual([]);
-      expect(body.data.availableSourceTypes).toEqual([
-        expect.objectContaining({
-          sourceType: "workday",
-          label: "Workday",
-          supportsCustomSource: true,
-          supportsBranding: true,
-        }),
-      ]);
+      expect(body.data.availableSourceTypes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sourceType: "workday",
+            label: "Workday",
+            supportsCustomSource: true,
+            supportsBranding: true,
+          }),
+          expect.objectContaining({
+            sourceType: "bamboohr",
+            label: "BambooHR",
+            supportsCustomSource: true,
+            supportsBranding: true,
+          }),
+        ]),
+      );
     });
 
     it("stores only the user's selected watchlist sources", async () => {
@@ -245,6 +260,37 @@ describe.sequential("Watchlist API routes", () => {
           label: "PG",
           careersUrl: "https://pg.wd5.myworkdayjobs.com/en-us/1000",
           sourceType: "workday",
+          isCustom: true,
+        }),
+      ]);
+    });
+
+    it("stores custom BambooHR URLs in canonical form", async () => {
+      const res = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selections: [
+            {
+              sourceType: "bamboohr",
+              careersUrl:
+                "https://ashteadtechnology.bamboohr.com/careers/134/detail",
+              label:
+                "https://ashteadtechnology.bamboohr.com/careers/134/detail",
+            },
+          ],
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.selectedSources).toEqual([
+        expect.objectContaining({
+          label: "Ashteadtechnology",
+          careersUrl: "https://ashteadtechnology.bamboohr.com/careers",
+          sourceType: "bamboohr",
+          cxsJobsUrl: null,
           isCustom: true,
         }),
       ]);
