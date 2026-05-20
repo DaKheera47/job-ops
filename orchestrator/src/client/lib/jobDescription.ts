@@ -1,12 +1,14 @@
 import { stripHtml } from "@/lib/utils";
 
+export const looksLikeHtmlJobDescription = (jobDescription?: string | null) =>
+  /<([a-z][\w:-]*)(?:\s[^>]*)?>/i.test(jobDescription ?? "");
+
 export const getRenderableJobDescription = (jobDescription?: string | null) => {
   if (!jobDescription) return "No description available.";
 
-  const plainText =
-    jobDescription.includes("<") && jobDescription.includes(">")
-      ? stripHtml(jobDescription)
-      : jobDescription;
+  const plainText = looksLikeHtmlJobDescription(jobDescription)
+    ? stripHtml(jobDescription)
+    : jobDescription;
 
   const normalizedLineBreaks = plainText.replace(/\r\n/g, "\n");
   if (

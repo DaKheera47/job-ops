@@ -9,18 +9,20 @@ vi.mock("@client/hooks/useSettings", () => ({
 }));
 
 describe("JobDescriptionPanel", () => {
-  it("renders normalized text instead of raw HTML when markdown mode is enabled", () => {
+  it("renders sanitized HTML job descriptions with structure preserved", () => {
     const { container } = render(
       <JobDescriptionPanel
         collapsible={false}
         description={
-          "<strong>Senior Engineer</strong><script>alert(1)</script>"
+          "<h2>Senior Engineer</h2><ul><li>Build systems</li></ul><script>alert(1)</script>"
         }
       />,
     );
 
-    expect(screen.getByText(/senior engineer/i)).toBeInTheDocument();
-    expect(container.querySelector("strong")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: /senior engineer/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Build systems")).toBeInTheDocument();
     expect(container.querySelector("script")).toBeNull();
   });
 });

@@ -1,5 +1,8 @@
 import { useSettings } from "@client/hooks/useSettings";
-import { getRenderableJobDescription } from "@client/lib/jobDescription";
+import {
+  getRenderableJobDescription,
+  looksLikeHtmlJobDescription,
+} from "@client/lib/jobDescription";
 import {
   Copy,
   Edit2,
@@ -21,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, copyTextToClipboard } from "@/lib/utils";
 import { showErrorToast } from "../lib/error-toast";
+import { JobDescriptionHtml } from "./JobDescriptionHtml";
 import { JobDescriptionMarkdown } from "./JobDescriptionMarkdown";
 
 type JobDescriptionPanelProps = {
@@ -59,6 +63,10 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
     rawDescription ?? "",
   );
   const [isSaving, setIsSaving] = useState(false);
+  const hasHtmlDescription = useMemo(
+    () => looksLikeHtmlJobDescription(rawDescription),
+    [rawDescription],
+  );
   const description = useMemo(
     () => getRenderableJobDescription(rawDescription),
     [rawDescription],
@@ -169,6 +177,8 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
           className="min-h-[360px] bg-background/70 font-mono text-sm leading-relaxed focus-visible:ring-1"
           placeholder="Enter job description..."
         />
+      ) : hasHtmlDescription && rawDescription ? (
+        <JobDescriptionHtml description={rawDescription} />
       ) : renderMarkdownInJobDescriptions ? (
         <JobDescriptionMarkdown description={description} />
       ) : (
