@@ -663,7 +663,7 @@ function WatchlistJobRow({
           <JobDescriptionPanel
             description={
               details?.status === "success"
-                ? details.details.jobDescriptionText
+                ? details.details.jobDescriptionHtml
                 : null
             }
             helperText="Fetched only when this panel is opened."

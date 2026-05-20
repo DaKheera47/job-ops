@@ -151,7 +151,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   const body = (
     <div
       className={cn(
-        "overflow-y-auto bg-background/20 p-4 text-sm text-foreground/75",
+        "overflow-y-auto bg-background/20 p-4 w-full",
         maxHeightClassName,
       )}
     >
@@ -170,7 +170,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
           placeholder="Enter job description..."
         />
       ) : renderMarkdownInJobDescriptions ? (
-        <JobDescriptionMarkdown description={description} />
+        <JobDescriptionMarkdown description={rawDescription ?? description} />
       ) : (
         <div className="whitespace-pre-wrap leading-7">{description}</div>
       )}
@@ -186,7 +186,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
         )}
       >
         <div className="border-b border-border/35 bg-muted/5 px-3 py-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between w-[calc(100%_-_24px)]">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
                 <FileText className="h-3.5 w-3.5 text-sky-400/80" />

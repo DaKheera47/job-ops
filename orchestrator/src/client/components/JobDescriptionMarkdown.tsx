@@ -1,6 +1,8 @@
+import { cn } from "@/lib/utils";
 import type React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 interface JobDescriptionMarkdownProps {
   className?: string;
@@ -34,14 +36,10 @@ export const JobDescriptionMarkdown: React.FC<JobDescriptionMarkdownProps> = ({
   description,
 }) => {
   return (
-    <div
-      className={
-        className ??
-        "text-sm leading-relaxed text-foreground [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:bg-background [&_pre]:p-3 [&_code]:rounded [&_code]:bg-background/80 [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-primary [&_a]:underline"
-      }
-    >
+    <div className={cn("max-w-none prose dark:prose-invert dark:prose-a:text-primary", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           img: () => null,
           a: ({ children, href, ...props }) => {
