@@ -346,9 +346,7 @@ export default function WatchlistJobRow({
                       <FileText className="mr-2 h-4 w-4" />
                       Job description
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                        asChild
-                    >
+                    <DropdownMenuItem asChild>
                       <a
                         href={rankedJob.workdayJob.jobUrl}
                         target="_blank"
