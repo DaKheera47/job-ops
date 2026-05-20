@@ -20,7 +20,8 @@ import { cn } from "@/lib/utils";
 import type { WatchlistSourceDraftCardProps } from "./types";
 import {
   CUSTOM_SOURCE_VALUE,
-  getEmployerFromCareersUrl,
+  getNormalizedWatchlistCareersUrl,
+  getWatchlistPreviewLabel,
   WATCHLIST_SOURCE_COUNT_OPTIONS,
 } from "./utils";
 
@@ -57,14 +58,6 @@ function getSourceDropdownOptions(
         searchText: sourceType.customSourceSearchText,
       })),
   ];
-}
-
-export function formatCustomSourceLabel(careersUrl: string): string {
-  const employer = getEmployerFromCareersUrl(careersUrl).trim();
-  if (!employer) return "Custom source";
-  return employer.length <= 3
-    ? employer.toUpperCase()
-    : employer.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getWatchlistStatusCopy(status: "watching" | "unsaved"): {
@@ -130,7 +123,10 @@ export function WatchlistSourcesCard({
         catalogSources,
       );
       const careersUrl = draft.isCustom
-        ? draft.customUrl.trim()
+        ? getNormalizedWatchlistCareersUrl(
+            draft.sourceType,
+            draft.customUrl.trim(),
+          )
         : (selectedSource?.careersUrl ?? "").trim();
 
       if (!careersUrl) continue;
@@ -263,13 +259,30 @@ export function WatchlistSourcesCard({
                   sourceTypeById.get(draft.sourceType) ??
                   sourceTypes[0] ??
                   null;
+                const normalizedCustomUrl = draft.isCustom
+                  ? getNormalizedWatchlistCareersUrl(
+                      draft.sourceType,
+                      draft.customUrl,
+                    )
+                  : "";
+                const matchingCatalogSource = draft.isCustom
+                  ? catalogSources.find(
+                      (source) =>
+                        source.sourceType === draft.sourceType &&
+                        source.careersUrl === normalizedCustomUrl,
+                    )
+                  : null;
                 const label = draft.isCustom
                   ? draft.customUrl.trim()
-                    ? formatCustomSourceLabel(draft.customUrl.trim())
+                    ? (matchingCatalogSource?.label ??
+                      getWatchlistPreviewLabel(
+                        draft.sourceType,
+                        draft.customUrl,
+                      ))
                     : (descriptor?.customSourceInputLabel ?? "Custom source")
                   : (selectedSource?.label ?? `New Source`);
                 const careersUrl = draft.isCustom
-                  ? draft.customUrl
+                  ? normalizedCustomUrl
                   : (selectedSource?.careersUrl ?? "");
                 const isEmpty = !careersUrl.trim();
                 const showEditor =
@@ -280,12 +293,15 @@ export function WatchlistSourcesCard({
                   <article
                     key={draft.id}
                     className={cn(
-                      "group min-w-0 rounded-2xl border border-border/70 bg-card p-4 flex items-center w-full relative gap-x-4 h-full",
+                      "group relative min-w-0 w-full rounded-2xl border border-border/70 bg-card p-4 h-full",
+                      showEditor
+                        ? "flex flex-col items-stretch gap-4"
+                        : "flex items-center gap-4",
                     )}
                   >
                     <div
                       className={cn(
-                        "flex items-center gap-2",
+                        "flex items-start gap-2",
                         showEditor ? "flex-1" : "",
                       )}
                     >
@@ -311,7 +327,7 @@ export function WatchlistSourcesCard({
                             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                               <span>
                                 {draft.isCustom
-                                  ? "Custom"
+                                  ? (descriptor?.label ?? draft.sourceType)
                                   : (descriptor?.label ??
                                     selectedSource?.sourceType)}
                               </span>
@@ -353,7 +369,7 @@ export function WatchlistSourcesCard({
                     </div>
 
                     {showEditor && (
-                      <div className="w-full space-y-2">
+                      <div className="w-full space-y-2 pt-1">
                         <SearchableDropdown
                           inputId={dropdownInputId}
                           value={

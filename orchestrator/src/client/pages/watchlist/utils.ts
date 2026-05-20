@@ -1,8 +1,20 @@
-import { workdayUrlToSourceKey } from "@career-boards/workday";
+import {
+  bamboohrUrlToCompanyLabel,
+  parseBamboohrUrl,
+} from "@career-boards/bamboohr";
+import {
+  parseWorkdayUrl,
+  workdayUrlToCompanyLabel,
+  workdayUrlToSourceKey,
+} from "@career-boards/workday";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
-import type { JobListItem, WatchlistJobResult } from "@shared/types.js";
+import type {
+  JobListItem,
+  WatchedSourceType,
+  WatchlistJobResult,
+} from "@shared/types.js";
 import { computeJobMatchScore } from "../orchestrator/JobCommandBar.utils";
 import type { RankedWatchlistJob, SourceSelectionDraft } from "./types";
 
@@ -33,6 +45,51 @@ export function getEmployerFromCareersUrl(careersUrl: string): string {
   } catch {
     return "Careers";
   }
+}
+
+export function getNormalizedWatchlistCareersUrl(
+  sourceType: WatchedSourceType,
+  careersUrl: string,
+): string {
+  const trimmed = careersUrl.trim();
+  if (!trimmed) return "";
+
+  try {
+    if (sourceType === "bamboohr") {
+      return parseBamboohrUrl(trimmed).canonicalCareersUrl;
+    }
+    if (sourceType === "workday") {
+      return parseWorkdayUrl(trimmed).canonicalCareersUrl;
+    }
+  } catch {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+export function getWatchlistPreviewLabel(
+  sourceType: WatchedSourceType,
+  careersUrl: string,
+): string {
+  const normalizedCareersUrl = getNormalizedWatchlistCareersUrl(
+    sourceType,
+    careersUrl,
+  );
+  if (!normalizedCareersUrl) return "Custom source";
+
+  try {
+    if (sourceType === "bamboohr") {
+      return bamboohrUrlToCompanyLabel(normalizedCareersUrl);
+    }
+    if (sourceType === "workday") {
+      return workdayUrlToCompanyLabel(normalizedCareersUrl);
+    }
+  } catch {
+    return formatFallbackEmployerLabel(normalizedCareersUrl);
+  }
+
+  return formatFallbackEmployerLabel(normalizedCareersUrl);
 }
 
 export function toJobListItem(job: WatchlistJobResult): JobListItem {
@@ -105,6 +162,14 @@ export function getWatchlistSourceKey(value: string): string {
   } catch {
     return "workday:unknown:unknown";
   }
+}
+
+function formatFallbackEmployerLabel(careersUrl: string): string {
+  const employer = getEmployerFromCareersUrl(careersUrl).trim();
+  if (!employer) return "Custom source";
+  return employer.length <= 3
+    ? employer.toUpperCase()
+    : employer.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function formatWatchlistCheckTimestamp(
