@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { WatchlistCatalogSourceAdapter } from "./types";
 
 const BAMBOOHR_LOGO_MAX_BYTES = 1_000_000;
+const BAMBOOHR_WATCHLIST_MAX_JOBS = 40;
 
 const bamboohrSourceSchema = z.object({
   label: z.string().trim().min(1).max(200),
@@ -81,22 +82,35 @@ export const bamboohrWatchlistAdapter: WatchlistCatalogSourceAdapter = {
       signal: input.signal,
     });
     const source = bamboohrUrlToSourceKey(input.source.careersUrl);
+    const jobs = await Promise.all(
+      response.jobs.map(async (job) => {
+        const details = await getJobDetails({
+          jobUrl: job.jobUrl,
+          signal: input.signal,
+        });
+
+        return {
+          jobRef: details.job.jobUrl,
+          source,
+          sourceJobId: job.externalId,
+          sourceType: input.source.sourceType,
+          title: details.job.title,
+          employer: input.source.label,
+          jobUrl: details.job.jobUrl,
+          applicationLink: details.job.jobUrl,
+          location: details.job.locationText ?? job.locationText ?? null,
+          postedAt: details.job.postedOn ?? null,
+        };
+      }),
+    );
+    const sortedJobs = jobs
+      .sort((left, right) => comparePostedAtDesc(left.postedAt, right.postedAt))
+      .slice(0, BAMBOOHR_WATCHLIST_MAX_JOBS);
 
     return {
       total: response.total,
-      fetched: response.fetched,
-      jobs: response.jobs.map((job) => ({
-        jobRef: job.jobUrl,
-        source,
-        sourceJobId: job.externalId,
-        sourceType: input.source.sourceType,
-        title: job.title,
-        employer: input.source.label,
-        jobUrl: job.jobUrl,
-        applicationLink: job.jobUrl,
-        location: job.locationText ?? null,
-        postedAt: null,
-      })),
+      fetched: sortedJobs.length,
+      jobs: sortedJobs,
     };
   },
   async fetchJobDetails(input) {
@@ -301,4 +315,19 @@ function detectLogoMimeType(
   }
 
   return null;
+}
+
+function comparePostedAtDesc(
+  left: string | null,
+  right: string | null,
+): number {
+  const leftTime = left ? Date.parse(left) : Number.NaN;
+  const rightTime = right ? Date.parse(right) : Number.NaN;
+  const leftValid = Number.isFinite(leftTime);
+  const rightValid = Number.isFinite(rightTime);
+
+  if (leftValid && rightValid) return rightTime - leftTime;
+  if (leftValid) return -1;
+  if (rightValid) return 1;
+  return 0;
 }
