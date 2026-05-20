@@ -140,11 +140,10 @@ export function WatchlistSourcesCard({
       type="single"
       collapsible
       defaultValue="watched-sources"
-      className="overflow-hidden rounded-lg border border-border/45 bg-muted/25"
     >
-      <AccordionItem value="watched-sources" className="border-b-0">
+      <AccordionItem value="watched-sources">
         <div className="relative">
-          <AccordionTrigger className="cursor-pointer items-center justify-between gap-2 border-b border-border/35 bg-muted/5 px-3 py-3 pr-4 text-left hover:bg-muted/40 hover:no-underline">
+          <AccordionTrigger className="cursor-pointer items-center justify-between gap-2 px-3 py-3 text-left hover:no-underline rounded-t-lg border border-border bg-card">
             <div className="min-w-0 w-full">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold tracking-tight text-foreground/90">
@@ -152,7 +151,6 @@ export function WatchlistSourcesCard({
                 </h2>
                 <Badge
                   variant="secondary"
-                  className="rounded-full bg-foreground/8 px-2 py-0 text-[11px] font-medium text-foreground/80"
                 >
                   {sourceDrafts.length}
                 </Badge>
@@ -171,7 +169,9 @@ export function WatchlistSourcesCard({
               ) : null}
             </div>
           </AccordionTrigger>
-          <div className="flex flex-wrap justify-end gap-2 border-b border-border/35 bg-muted/5 px-3 pb-2 sm:absolute sm:right-12 sm:top-1/2 sm:border-b-0 sm:bg-transparent sm:p-0 sm:-translate-y-1/2">
+
+          {/* right controls */}
+          <div className="flex flex-wrap justify-end gap-2 px-3 pb-2 sm:absolute sm:right-12 sm:top-1/2 sm:border-b-0 sm:bg-transparent sm:p-0 sm:-translate-y-1/2">
             <Button
               type="button"
               size="sm"
@@ -203,8 +203,8 @@ export function WatchlistSourcesCard({
           </div>
         </div>
 
-        <AccordionContent className="p-0">
-          <div className="overflow-y-auto p-4 bg-transparent">
+        <AccordionContent className="border-border/0">
+          <div className="overflow-y-auto p-4 bg-card rounded-b-lg border border-t-0 border-border">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {sourceDrafts.map((draft, index) => {
                 const selectedSource = getSourceDraftDetails(

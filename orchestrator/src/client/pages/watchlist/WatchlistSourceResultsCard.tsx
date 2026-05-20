@@ -387,9 +387,14 @@ function WatchlistJobRow({
         <TableCell className="px-3 py-2.5">
           <div className="min-w-[16rem]">
             <div className="flex items-center gap-2">
-              <div className="font-medium leading-tight">
+              <a
+                href={rankedJob.workdayJob.jobUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
+              >
                 {rankedJob.job.title}
-              </div>
+              </a>
               <Button
                 type="button"
                 variant="outline"
