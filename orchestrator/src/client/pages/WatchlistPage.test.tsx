@@ -222,6 +222,10 @@ describe("WatchlistPage", () => {
 
     expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
     expect(screen.getByText("Sales Manager")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Posted" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("May 1, 2026")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /ignore/i })).toHaveLength(2);
   });
 

@@ -35,6 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import type {
   JobDetailsState,
   RankedWorkdayJob,
@@ -44,7 +45,6 @@ import type {
 } from "./types";
 import { getWorkdayImportKey, rankWorkdayJobs } from "./utils";
 import { formatCustomSourceLabel } from "./WatchlistSourcesCard";
-import { cn } from "@/lib/utils";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
@@ -81,6 +81,18 @@ interface WatchlistSourceResultsCardProps {
   ) => void;
   onOpenWorkspaceJob: (job: JobListItem) => void;
   onLoadJobDetails: (jobUrl: string) => void;
+}
+
+function formatPostedDate(value: string | undefined): string {
+  if (!value) return "—";
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
 }
 
 function getStatusBadge(item: WatchlistFetchState) {
@@ -284,6 +296,7 @@ function WatchlistSourceJobs({
             <TableHead className="h-9 px-3 text-xs">Job</TableHead>
             <TableHead className="h-9 w-[180px] text-xs">Company</TableHead>
             <TableHead className="h-9 w-[220px] text-xs">Location</TableHead>
+            <TableHead className="h-9 w-[140px] text-xs">Posted</TableHead>
             <TableHead className="h-9 px-3 text-xs text-right">
               <span className="sr-only">Actions</span>
             </TableHead>
@@ -487,6 +500,11 @@ function WatchlistJobRow({
             {rankedJob.job.location ||
               rankedJob.workdayJob.locationText ||
               "Unknown"}
+          </div>
+        </TableCell>
+        <TableCell className="py-2.5">
+          <div className="text-sm text-muted-foreground">
+            {formatPostedDate(rankedJob.workdayJob.postedOn)}
           </div>
         </TableCell>
 
