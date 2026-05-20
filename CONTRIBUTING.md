@@ -20,6 +20,7 @@ Use the path that matches your change:
 | --- | --- | --- | --- |
 | Docs/content | `docs-site/docs` | `npm run docs:dev` | [Docs style guide](https://jobops.dakheera47.com/docs/next/reference/documentation-style-guide), [FAQ](https://jobops.dakheera47.com/docs/next/reference/faq) |
 | App/UI/API | `orchestrator`, `shared` | `npm --workspace orchestrator run dev` | [Self-hosting](https://jobops.dakheera47.com/docs/getting-started/self-hosting), [Troubleshooting](https://jobops.dakheera47.com/docs/next/troubleshooting/common-problems) |
+| Watchlist company catalog | `orchestrator/src/server/config`, `career-boards/workday` | `npm --workspace orchestrator run dev` | [Watchlist](https://jobops.dakheera47.com/docs/next/features/watchlist) |
 | Extractors | `extractors/*`, sometimes `shared` | Relevant type checks + tests | [Add an extractor](https://jobops.dakheera47.com/docs/next/workflows/add-an-extractor), [Extractors overview](https://jobops.dakheera47.com/docs/extractors/overview) |
 | Typst resume themes | `orchestrator/src/server/services/resume-renderer/typst-themes` | `npm run typst-theme:validate` | [Reactive Resume](https://jobops.dakheera47.com/docs/features/reactive-resume) |
 
@@ -63,6 +64,40 @@ Local URLs:
 3. If the change is user-visible, update docs (or link the relevant docs update in the same PR).
 4. Include screenshots or short clips for UI changes when helpful.
 5. Mention any tradeoffs or follow-up work in the PR description.
+
+## Adding a Company to Watchlist
+
+This is one of the smallest high-impact contribution paths in the repo.
+
+If a company uses Workday and its public careers site is missing from the Watchlist picker, add it to the curated catalog in `orchestrator/src/server/config/career-boards-workday.json`.
+
+Use this shape:
+
+```json
+{
+  "id": "company-workday",
+  "label": "Company",
+  "ats": "workday",
+  "workdayUrl": "https://company.wd1.myworkdayjobs.com/External",
+  "tags": ["software", "engineering"],
+  "countries": ["US", "UK"],
+  "status": "active"
+}
+```
+
+Rules:
+
+- Add only public Workday careers URLs, not individual job posting URLs.
+- Prefer the main external careers page for that tenant.
+- Keep `id` stable and kebab-case.
+- Keep `label` human-readable because it is shown directly in the Watchlist company picker.
+- Use concise `tags` and broad `countries` values only when you are reasonably confident they are correct.
+
+Before opening the PR:
+
+- Launch the app and confirm the company appears in Watchlist search.
+- Verify the URL resolves to the expected Workday site.
+- Update docs if the user-visible flow changed.
 
 ## Adding a Typst Resume Theme
 

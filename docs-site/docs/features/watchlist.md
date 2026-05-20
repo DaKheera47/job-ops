@@ -24,17 +24,28 @@ Ignored rows and watchlist check history are stored per user inside the active w
 ## How to use it
 
 1. Open **Watchlist** from the app navigation.
-2. Choose catalog sources or add your own Workday URL.
-3. Review the visible Workday rows.
-4. Reopen Watchlist later to see roles marked **New since last check**.
-5. Click **Ignore** on a role you do not want to keep seeing.
-6. Turn on **Show ignored** to reveal ignored rows.
-7. Click **Unignore** to restore an ignored role to the default visible list.
-8. Click **Move to workspace** to import a new role.
+2. Click **Add source**.
+3. Use **Choose company** to search the built-in company list, or pick **Choose your own Workday URL**.
+4. If you chose a custom URL, paste the Workday careers URL, for example `https://company.wd1.myworkdayjobs.com/External`.
+5. Click **Save sources**.
+6. Review the visible Workday rows.
+7. Reopen Watchlist later to see roles marked **New since last check**.
+8. Click **Ignore** on a role you do not want to keep seeing.
+9. Turn on **Show ignored** to reveal ignored rows.
+10. Click **Unignore** to restore an ignored role to the default visible list.
+11. Click **Move to workspace** to import a new role.
 
 Rows already imported into JobOps show **Already in workspace** and **Open workspace job**.
 
 When you add a custom Workday URL, JobOps tries to derive a readable company label from the Workday tenant or site slug. If the slug is too generic, the URL may still be the clearest identifier.
+
+### Workday URL rules
+
+- The custom source flow is for Workday career sites only.
+- Use the public careers URL, not an individual job posting URL.
+- JobOps validates the URL when you save sources.
+- Built-in catalog companies are saved as curated sources.
+- Custom Workday URLs are saved only in your workspace selections unless a contributor adds them to the shared catalog.
 
 ## Common problems
 
@@ -53,6 +64,12 @@ Imported roles stay visible intentionally. They show **Already in workspace** so
 ### A duplicate import is blocked
 
 JobOps uses the Workday source plus the external job ID as the dedupe key, for example `workday:autodesk` and `26WD97952`. Open the existing workspace job from the Watchlist row.
+
+### My Workday URL is rejected
+
+- Make sure you pasted the Workday careers site URL, not a specific job page.
+- Confirm the URL still opens in the browser without requiring an authenticated employee session.
+- If the company is missing from the built-in list, you can still use **Choose your own Workday URL**.
 
 ## Related pages
 
