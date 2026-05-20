@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -29,6 +29,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type {
   JobDetailsState,
   RankedWorkdayJob,
@@ -38,6 +44,7 @@ import type {
 } from "./types";
 import { getWorkdayImportKey, rankWorkdayJobs } from "./utils";
 import { formatCustomSourceLabel } from "./WatchlistSourcesCard";
+import { cn } from "@/lib/utils";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
@@ -86,13 +93,7 @@ function getStatusBadge(item: WatchlistFetchState) {
     );
   }
 
-  if (item.status === "success") {
-    return (
-      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-        Success
-      </span>
-    );
-  }
+  if (item.status === "success") return null;
 
   return (
     <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive">
@@ -131,21 +132,20 @@ export function WatchlistSourceResultsCard({
     >
       <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-foreground">
-            {item.source.label}
-          </div>
-
-          {item.source.careersUrl ? (
-            <div className="mt-1 truncate text-xs text-muted-foreground">
-              {item.source.careersUrl}
-            </div>
-          ) : null}
-
-          {item.source.cxsJobsUrl ? (
-            <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-              {item.source.cxsJobsUrl}
-            </div>
-          ) : null}
+          <a
+            href={item.source.careersUrl}
+            rel="noreferrer"
+            target="_blank"
+            className={cn(
+              buttonVariants({
+                size: "sm",
+                variant: "link",
+              }),
+              "px-0",
+            )}
+          >
+            {item.source.label} Careers Page
+          </a>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -263,7 +263,7 @@ function WatchlistSourceJobs({
     <div className="space-y-0">
       <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
         <span>
-          {visibleRankedJobs.length} of {item.response.total} jobs
+          {visibleRankedJobs.length} jobs
           {hiddenIgnoredCount > 0 && !showIgnored
             ? ` (${hiddenIgnoredCount} ignored hidden)`
             : null}
@@ -284,7 +284,9 @@ function WatchlistSourceJobs({
             <TableHead className="h-9 px-3 text-xs">Job</TableHead>
             <TableHead className="h-9 w-[180px] text-xs">Company</TableHead>
             <TableHead className="h-9 w-[220px] text-xs">Location</TableHead>
-            <TableHead className="h-9 w-[220px] text-xs">Signals</TableHead>
+            <TableHead className="h-9 px-3 text-xs text-right">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -344,6 +346,11 @@ interface WatchlistJobRowProps {
   onLoadJobDetails: (jobUrl: string) => void;
 }
 
+type WatchlistSignal = {
+  label: string;
+  dotClassName: string;
+};
+
 function WatchlistJobRow({
   rankedJob,
   source,
@@ -379,6 +386,43 @@ function WatchlistJobRow({
     watchlistCheckState.newJobKeys.has(
       getWorkdayImportKey(stateInput.source, stateInput.sourceJobId),
     );
+  const signals: WatchlistSignal[] = [];
+
+  if (rankedJob.importedJob) {
+    signals.push({
+      label: "Already in workspace",
+      dotClassName: "bg-emerald-400",
+    });
+  }
+
+  if (rankedJob.rowState === "ignored" && !rankedJob.importedJob) {
+    signals.push({
+      label: "Ignored",
+      dotClassName: "bg-muted-foreground/70",
+    });
+  }
+
+  if (rankedJob.matchedSearchTerm) {
+    signals.push({
+      label: `${rankedJob.matchedSearchTerm} search match (${rankedJob.matchScore})`,
+      dotClassName: "bg-primary",
+    });
+  }
+
+  if (rankedJob.locationMatched) {
+    signals.push({
+      label: rankedJob.locationPriority > 0 ? "Location match" : "Remote match",
+      dotClassName: "bg-emerald-400",
+    });
+  }
+
+  if (isNewSinceLastCheck) {
+    signals.push({
+      label: "New since last check",
+      dotClassName: "bg-sky-400",
+    });
+  }
+
   const handleDescriptionOpenChange = (open: boolean) => {
     setIsDescriptionOpen(open);
     if (open) {
@@ -388,17 +432,47 @@ function WatchlistJobRow({
 
   return (
     <>
-      <TableRow className="group/row align-top">
+      <TableRow className="group/row align-top even:bg-muted/20 odd:bg-muted/0">
         <TableCell className="px-3 py-2.5">
           <div className="min-w-[16rem]">
-            <a
-              href={rankedJob.workdayJob.jobUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
-            >
-              {rankedJob.job.title}
-            </a>
+            <div className="flex items-start gap-2">
+              {signals.length > 0 ? (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`View signals for ${rankedJob.job.title}`}
+                        className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        {signals.map((signal) => (
+                          <span
+                            key={signal.label}
+                            aria-hidden="true"
+                            className={`h-2 w-2 rounded-full ${signal.dotClassName}`}
+                          />
+                        ))}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-64 text-xs">
+                      <div className="space-y-1">
+                        {signals.map((signal) => (
+                          <div key={signal.label}>{signal.label}</div>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
+              <a
+                href={rankedJob.workdayJob.jobUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium leading-tight transition-colors hover:text-foreground/80 hover:underline"
+              >
+                {rankedJob.job.title}
+              </a>
+            </div>
           </div>
         </TableCell>
         <TableCell className="py-2.5">
@@ -411,35 +485,6 @@ function WatchlistJobRow({
             {rankedJob.job.location ||
               rankedJob.workdayJob.locationText ||
               "Unknown"}
-          </div>
-        </TableCell>
-        <TableCell className="py-2.5">
-          <div className="flex flex-wrap gap-1.5">
-            {rankedJob.importedJob ? (
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
-                Already in workspace
-              </span>
-            ) : null}
-            {rankedJob.rowState === "ignored" && !rankedJob.importedJob ? (
-              <span className="rounded-full border border-muted-foreground/20 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
-                Ignored
-              </span>
-            ) : null}
-            {rankedJob.matchedSearchTerm ? (
-              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                {rankedJob.matchedSearchTerm} · {rankedJob.matchScore}
-              </span>
-            ) : null}
-            {rankedJob.locationMatched ? (
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
-                {rankedJob.locationPriority > 0 ? "location" : "remote"}
-              </span>
-            ) : null}
-            {isNewSinceLastCheck ? (
-              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300">
-                New since last check
-              </span>
-            ) : null}
           </div>
         </TableCell>
         <TableCell className="px-3 py-2.5">
@@ -459,7 +504,7 @@ function WatchlistJobRow({
                 >
                   Open workspace job
                 </Button>
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
@@ -482,7 +527,7 @@ function WatchlistJobRow({
                 </DropdownMenu>
               </>
             ) : rankedJob.rowState === "ignored" ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
@@ -537,7 +582,7 @@ function WatchlistJobRow({
                   )}
                   Move to workspace
                 </Button>
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
