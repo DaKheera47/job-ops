@@ -75,6 +75,8 @@ const salesJob: NormalizedWorkdayJob = {
   raw: {},
 };
 
+let watchlistSourcesState: Awaited<ReturnType<typeof api.getWatchlistSources>>;
+
 function makeWorkspaceJob(overrides: Partial<JobListItem>): JobListItem {
   const now = new Date().toISOString();
   return {
@@ -152,7 +154,7 @@ beforeEach(() => {
     checkedAt: "2026-05-17T00:05:00.000Z",
     jobs: [],
   });
-  vi.mocked(api.getWatchlistSources).mockResolvedValue({
+  watchlistSourcesState = {
     catalogSources: [
       {
         id: `workday:https://autodesk.wd1.myworkdayjobs.com/Ext`,
@@ -195,6 +197,33 @@ beforeEach(() => {
         updatedAt: "2026-05-17T00:00:00.000Z",
       },
     ],
+  };
+  vi.mocked(api.getWatchlistSources).mockImplementation(
+    async () => watchlistSourcesState,
+  );
+  vi.mocked(api.updateWatchlistSources).mockImplementation(async (input) => {
+    watchlistSourcesState = {
+      ...watchlistSourcesState,
+      selectedSources: input.selections.map((selection, index) => ({
+        id: `selected-${index}`,
+        catalogSourceId: selection.catalogSourceId,
+        label: selection.label,
+        sourceType: selection.sourceType,
+        careersUrl: selection.careersUrl,
+        cxsJobsUrl:
+          selection.sourceType === "workday"
+            ? selection.careersUrl.includes("autodesk")
+              ? autodeskCxsJobsUrl
+              : null
+            : null,
+        isCustom: selection.catalogSourceId === null,
+        sortOrder: index,
+        createdAt: "2026-05-17T00:00:00.000Z",
+        updatedAt: "2026-05-17T00:00:00.000Z",
+      })),
+    };
+
+    return undefined as never;
   });
   vi.mocked(fetchWorkdayCxsJobs).mockImplementation(
     async (careersUrl: string) => {

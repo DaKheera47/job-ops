@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -140,6 +140,10 @@ const isolatedEnvKeys = [
 ] as const;
 
 const nativeFetch = globalThis.fetch;
+const nativeConsoleLog = console.log;
+const nativeConsoleWarn = console.warn;
+const nativeConsoleError = console.error;
+let migratedDbTemplatePromise: Promise<string> | null = null;
 
 function createTestExtractorRegistry(): ExtractorRegistry {
   const manifests = new Map<string, ExtractorManifest>();
@@ -176,6 +180,60 @@ function restoreNativeFetch(): void {
   globalThis.fetch = nativeFetch;
 }
 
+async function importMigrationsSilently(): Promise<void> {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+
+  try {
+    await import("@server/db/migrate");
+  } finally {
+    console.log = nativeConsoleLog;
+    console.warn = nativeConsoleWarn;
+    console.error = nativeConsoleError;
+  }
+}
+
+function buildBaseTestEnv(): NodeJS.ProcessEnv {
+  const nextEnv = { ...originalEnv };
+  for (const key of isolatedEnvKeys) {
+    delete nextEnv[key];
+  }
+
+  return {
+    ...nextEnv,
+    NODE_ENV: "test",
+    JOBOPS_TEST_AUTH_BYPASS: "1",
+    MODEL: "test-model",
+    JOBSPY_SEARCH_TERMS: "alpha|beta",
+  };
+}
+
+async function ensureMigratedDbTemplate(): Promise<string> {
+  if (migratedDbTemplatePromise) {
+    return migratedDbTemplatePromise;
+  }
+
+  migratedDbTemplatePromise = (async () => {
+    const templateDir = await mkdtemp(join(tmpdir(), "job-ops-api-template-"));
+    const previousEnv = process.env;
+
+    try {
+      process.env = {
+        ...buildBaseTestEnv(),
+        DATA_DIR: templateDir,
+      };
+      await importMigrationsSilently();
+    } finally {
+      process.env = previousEnv;
+    }
+
+    return join(templateDir, "jobs.db");
+  })();
+
+  return migratedDbTemplatePromise;
+}
+
 export async function startServer(options?: {
   env?: Record<string, string | undefined>;
 }): Promise<{
@@ -189,21 +247,23 @@ export async function startServer(options?: {
   vi.resetModules();
   const tempDir = await mkdtemp(join(tmpdir(), "job-ops-api-test-"));
   const envOverrides = options?.env ?? {};
-  const nextEnv = { ...originalEnv };
-  for (const key of isolatedEnvKeys) {
-    delete nextEnv[key];
-  }
+  const requiresLegacyBasicAuthSeed =
+    typeof envOverrides.BASIC_AUTH_USER === "string" &&
+    envOverrides.BASIC_AUTH_USER.trim().length > 0 &&
+    typeof envOverrides.BASIC_AUTH_PASSWORD === "string" &&
+    envOverrides.BASIC_AUTH_PASSWORD.trim().length > 0;
+
   process.env = {
-    ...nextEnv,
+    ...buildBaseTestEnv(),
     DATA_DIR: tempDir,
-    NODE_ENV: "test",
-    JOBOPS_TEST_AUTH_BYPASS: "1",
-    MODEL: "test-model",
-    JOBSPY_SEARCH_TERMS: "alpha|beta",
     ...envOverrides,
   };
 
-  await import("@server/db/migrate");
+  if (requiresLegacyBasicAuthSeed) {
+    await importMigrationsSilently();
+  } else {
+    await copyFile(await ensureMigratedDbTemplate(), join(tempDir, "jobs.db"));
+  }
   const { applyStoredEnvOverrides } = await import(
     "@server/services/envSettings"
   );
@@ -226,10 +286,13 @@ export async function startServer(options?: {
   await applyStoredEnvOverrides();
 
   const app = createApp();
-  const server = app.listen(0);
-  await new Promise<void>((resolve) =>
-    server.once("listening", () => resolve()),
-  );
+  const server = await new Promise<Server>((resolve, reject) => {
+    let listeningServer: Server;
+    listeningServer = app.listen(0, "127.0.0.1", () =>
+      resolve(listeningServer),
+    );
+    listeningServer.once("error", reject);
+  });
   const address = server.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to resolve server address");

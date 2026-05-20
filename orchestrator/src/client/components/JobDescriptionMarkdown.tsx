@@ -1,8 +1,8 @@
-import { cn } from "@/lib/utils";
 import type React from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
 
 interface JobDescriptionMarkdownProps {
   className?: string;
@@ -36,7 +36,12 @@ export const JobDescriptionMarkdown: React.FC<JobDescriptionMarkdownProps> = ({
   description,
 }) => {
   return (
-    <div className={cn("max-w-none prose dark:prose-invert dark:prose-a:text-primary", className)}>
+    <div
+      className={cn(
+        "max-w-none prose dark:prose-invert dark:prose-a:text-primary",
+        className,
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}

@@ -300,7 +300,11 @@ describe("JobDetailPanel", () => {
       onJobUpdated: vi.fn().mockResolvedValue(undefined),
     });
 
-    expect(screen.getByText("Hello world")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, node) => node?.tagName === "P" && node.textContent === "Hello world",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("renders markdown in the brief job description when enabled", async () => {

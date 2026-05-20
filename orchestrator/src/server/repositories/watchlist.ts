@@ -324,7 +324,9 @@ export async function recordWatchlistCheck(
 
     const jobs = normalizedChecks.flatMap((check) =>
       check.sourceJobIds.map((sourceJobId) => {
-        const existing = existingSeenByKey.get(`${check.source}:${sourceJobId}`);
+        const existing = existingSeenByKey.get(
+          `${check.source}:${sourceJobId}`,
+        );
         const firstSeenAt = existing?.firstSeenAt ?? now;
         return {
           source: check.source,
