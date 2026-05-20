@@ -2,8 +2,15 @@ import type {
   UpdateWatchlistSelectionsInput,
   WatchlistCheckInput,
   WatchlistCheckResponse,
+  WatchlistImportDraftInput,
+  WatchlistImportDraftResponse,
+  WatchlistJobDetailsInput,
+  WatchlistJobDetailsResponse,
   WatchlistJobState,
   WatchlistJobStatesResponse,
+  WatchlistResultsResponse,
+  WatchlistSourceBrandingInput,
+  WatchlistSourceBrandingResponse,
   WatchlistSourcesResponse,
 } from "@shared/types";
 import { fetchApi } from "./core";
@@ -27,6 +34,43 @@ export async function recordWatchlistCheck(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function fetchWatchlistResults(): Promise<WatchlistResultsResponse> {
+  return fetchApi<WatchlistResultsResponse>("/watchlist/results", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function fetchWatchlistJobDetails(
+  input: WatchlistJobDetailsInput,
+): Promise<WatchlistJobDetailsResponse> {
+  return fetchApi<WatchlistJobDetailsResponse>("/watchlist/job-details", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function prepareWatchlistImportDraft(
+  input: WatchlistImportDraftInput,
+): Promise<WatchlistImportDraftResponse> {
+  return fetchApi<WatchlistImportDraftResponse>("/watchlist/import-draft", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchWatchlistSourceBranding(
+  input: WatchlistSourceBrandingInput,
+): Promise<WatchlistSourceBrandingResponse> {
+  return fetchApi<WatchlistSourceBrandingResponse>(
+    "/watchlist/source-branding",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export async function updateWatchlistSources(

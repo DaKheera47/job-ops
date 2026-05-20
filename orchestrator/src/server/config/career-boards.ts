@@ -1,24 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { workdayUrlToCxsJobsUrl } from "@career-boards/workday";
 import type { WatchedSourceType, WatchlistSource } from "@shared/types";
-import { z } from "zod";
+import { getWatchlistSourceAdapter } from "../watchlist/adapters";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
 const careerBoardFilePrefix = "career-boards-";
-
-const workdaySourceSchema = z.object({
-  label: z.string().trim().min(1).max(200),
-  workdayUrl: z.string().trim().url().max(2000),
-});
-
-function buildSourceId(
-  sourceType: WatchedSourceType,
-  careersUrl: string,
-): string {
-  return `${sourceType}:${careersUrl}`;
-}
 
 function getSourceTypeFromFilename(fileName: string): WatchedSourceType | null {
   if (
@@ -42,19 +29,10 @@ async function loadCareerBoardFile(
 
   const raw = await readFile(join(configDir, fileName), "utf8");
   const parsed = JSON.parse(raw) as unknown;
+  const adapter = getWatchlistSourceAdapter(sourceType);
+  if (!adapter) return [];
 
-  if (sourceType === "workday") {
-    const entries = z.array(workdaySourceSchema).parse(parsed);
-    return entries.map((entry) => ({
-      id: buildSourceId(sourceType, entry.workdayUrl),
-      label: entry.label,
-      sourceType,
-      careersUrl: entry.workdayUrl,
-      cxsJobsUrl: workdayUrlToCxsJobsUrl(entry.workdayUrl),
-    }));
-  }
-
-  return [];
+  return adapter.parseCatalogSources(Array.isArray(parsed) ? parsed : []);
 }
 
 export async function listCareerBoardSources(): Promise<WatchlistSource[]> {

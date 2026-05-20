@@ -1,7 +1,7 @@
 ---
 id: watchlist
 title: Watchlist
-description: Review watched Workday roles, ignore irrelevant rows, and move matching jobs into the workspace.
+description: Review watched careers-source roles, ignore irrelevant rows, and move matching jobs into the workspace.
 sidebar_position: 14
 ---
 
@@ -38,11 +38,13 @@ A catalog source is a company already curated into the built-in Watchlist picker
 
 If you choose a company from the searchable company list, you are adding a catalog source. These shared entries come from JobOps' maintained source catalog.
 
-### Custom Workday URL
+### Custom source URL
 
 A custom source URL is a careers board you paste manually for your own workspace.
 
-If the company is not in the built-in picker yet, you can choose **Choose your own Workday URL** and save that public careers page directly. That custom source stays in your workspace unless it is later added to the shared catalog.
+If the company is not in the built-in picker yet, you can choose the source type's custom URL option and save that public careers page directly. That custom source stays in your workspace unless it is later added to the shared catalog.
+
+Each source type owns its own URL rules and on-screen copy. Today, the supported Watchlist source type is Workday, so the custom-source option asks for a public Workday careers URL.
 
 ### Baseline check
 
@@ -60,16 +62,16 @@ Ignoring a role does not delete it from the source website or from JobOps storag
 
 Watchlist helps you scan recurring roles from watched company sources without repeatedly seeing the same irrelevant jobs.
 
-Ignored rows and watchlist check history are stored per user inside the active workspace. Jobs already imported into the workspace are detected from the Workday source and external job ID, so they stay visible as workspace jobs even if you ignored the same external role earlier.
+Ignored rows and watchlist check history are stored per user inside the active workspace. Jobs already imported into the workspace are detected from the source adapter's canonical source key and external job ID, so they stay visible as workspace jobs even if you ignored the same external role earlier.
 
 ## How to use it
 
 1. Open **Watchlist** from the app navigation.
 2. Click **Add source**.
-3. Use **Choose company** to search the built-in company list, or pick **Choose your own Workday URL**.
-4. If you chose a custom URL, paste the Workday careers URL, for example `https://company.wd1.myworkdayjobs.com/External`.
+3. Use **Choose company** to search the built-in company list, or pick the source type's custom URL option.
+4. If you chose a custom URL, paste a supported public careers URL. For Workday, use a URL like `https://company.wd1.myworkdayjobs.com/External`.
 5. Click **Save sources**.
-6. Review the visible Workday rows.
+6. Review the visible rows.
 7. Reopen Watchlist later to see roles marked **New since last check**.
 8. Click **Ignore** on a role you do not want to keep seeing.
 9. Turn on **Show ignored** to reveal ignored rows.
@@ -78,15 +80,15 @@ Ignored rows and watchlist check history are stored per user inside the active w
 
 Rows already imported into JobOps show **Already in workspace** and **Open workspace job**.
 
-When you add a custom Workday URL, JobOps tries to derive a readable company label from the Workday tenant or site slug. If the slug is too generic, the URL may still be the clearest identifier.
+When you add a custom source URL, JobOps asks that source adapter to derive a readable company label. If the adapter cannot derive a better label, the URL may still be the clearest identifier.
 
-### Workday URL rules
+### Source URL rules
 
-- The custom source flow is for Workday career sites only.
 - Use the public careers URL, not an individual job posting URL.
-- JobOps validates the URL when you save sources.
+- JobOps validates the URL through the selected source adapter when you save sources.
 - Built-in catalog companies are saved as curated sources.
-- Custom Workday URLs are saved only in your workspace selections unless a contributor adds them to the shared catalog.
+- Custom URLs are saved only in your workspace selections unless a contributor adds them to the shared catalog.
+- Today, Workday is the available Watchlist adapter. Additional source types can be added without changing the Watchlist page.
 
 ## Common problems
 
@@ -104,13 +106,13 @@ Imported roles stay visible intentionally. They show **Already in workspace** so
 
 ### A duplicate import is blocked
 
-JobOps uses the Workday source plus the external job ID as the dedupe key, for example `workday:autodesk` and `26WD97952`. Open the existing workspace job from the Watchlist row.
+JobOps uses the source adapter's canonical source key plus the external job ID as the dedupe key, for example `workday:autodesk` and `26WD97952`. Open the existing workspace job from the Watchlist row.
 
-### My Workday URL is rejected
+### My custom URL is rejected
 
-- Make sure you pasted the Workday careers site URL, not a specific job page.
+- Make sure you pasted a supported public careers site URL, not a specific job page.
 - Confirm the URL still opens in the browser without requiring an authenticated employee session.
-- If the company is missing from the built-in list, you can still use **Choose your own Workday URL**.
+- If the company is missing from the built-in list, you can still use the source type's custom URL option when that adapter supports custom sources.
 
 ## Related pages
 

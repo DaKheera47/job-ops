@@ -421,6 +421,104 @@ export interface WatchlistSelectedSource {
 export interface WatchlistSourcesResponse {
   catalogSources: WatchlistSource[];
   selectedSources: WatchlistSelectedSource[];
+  availableSourceTypes: WatchlistSourceTypeDescriptor[];
+}
+
+export interface WatchlistSourceTypeDescriptor {
+  sourceType: WatchedSourceType;
+  label: string;
+  catalogLabel: string;
+  customSourceOptionLabel: string;
+  customSourceSearchText: string;
+  customSourceInputLabel: string;
+  customSourcePlaceholder: string;
+  customSourceHelpText: string;
+  emptyCatalogText: string;
+  fetchingLabel: string;
+  invalidUrlMessage: string;
+  supportsCustomSource: boolean;
+  supportsBranding: boolean;
+}
+
+export type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
+
+export interface WatchlistWorkspaceJobReference {
+  id: string;
+  status: JobStatus;
+}
+
+export interface WatchlistJobResult {
+  jobRef: string;
+  source: JobSource;
+  sourceJobId: string;
+  sourceType: WatchedSourceType;
+  title: string;
+  employer: string;
+  jobUrl: string;
+  applicationLink: string | null;
+  location: string | null;
+  postedAt: string | null;
+  rowState: WatchlistRowState;
+  isNewSinceLastCheck: boolean;
+  workspaceJob: WatchlistWorkspaceJobReference | null;
+}
+
+export type WatchlistSourceResult =
+  | {
+      status: "success";
+      source: WatchlistSelectedSource;
+      jobs: WatchlistJobResult[];
+      total: number;
+      fetched: number;
+    }
+  | {
+      status: "error";
+      source: WatchlistSelectedSource;
+      error: string;
+    };
+
+export interface WatchlistResultsResponse {
+  checkedAt: string | null;
+  previousLastCheckedAt: string | null;
+  sources: WatchlistSourceResult[];
+}
+
+export interface WatchlistImportDraftInput {
+  selectedSourceId: string;
+  jobRef: string;
+}
+
+export interface WatchlistImportDraftResponse {
+  draft: ManualJobDraft;
+  source: string | null;
+  sourceHost: string | null;
+  sourceType: WatchedSourceType;
+  catalogSourceId: string | null;
+  careersUrl: string;
+}
+
+export interface WatchlistJobDetailsInput {
+  selectedSourceId: string;
+  jobRef: string;
+}
+
+export interface WatchlistJobDetailsResponse {
+  jobRef: string;
+  jobUrl: string;
+  descriptionHtml: string;
+}
+
+export interface WatchlistSourceBrandingInput {
+  selectedSourceId?: string | null;
+  sourceType: WatchedSourceType;
+  careersUrl: string;
+}
+
+export interface WatchlistSourceBrandingResponse {
+  careersUrl: string;
+  logoUrl: string;
+  mimeType: string;
+  imageDataUrl: string;
 }
 
 export interface UpdateWatchlistSelectionsInput {

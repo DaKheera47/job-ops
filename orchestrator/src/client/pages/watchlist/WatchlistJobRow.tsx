@@ -1,6 +1,9 @@
-import type { NormalizedWorkdayJob } from "@client/api/workday";
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
-import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
+import type {
+  WatchlistJobResult,
+  WatchlistSelectedSource,
+  WatchlistWorkspaceJobReference,
+} from "@shared/types.js";
 import {
   ExternalLinkIcon,
   Eye,
@@ -28,42 +31,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type {
-  JobDetailsState,
-  RankedWorkdayJob,
-  WatchlistCheckState,
-  WatchlistRowState,
-} from "./types";
-import { getWorkdayImportKey } from "./utils";
-import { formatCustomSourceLabel } from "./WatchlistSourcesCard";
-
-interface RankedWatchlistJobRow extends RankedWorkdayJob {
-  importedJob: JobListItem | undefined;
-  rowState: WatchlistRowState;
-}
+import type { JobDetailsState, RankedWatchlistJob } from "./types";
 
 interface WatchlistJobRowProps {
-  rankedJob: RankedWatchlistJobRow;
+  rankedJob: RankedWatchlistJob;
   source: WatchlistSelectedSource;
-  getWorkdayStateInput: (
-    workdayJob: NormalizedWorkdayJob,
-    cxsJobsUrl: string,
-  ) => { source: string; sourceJobId: string };
   details?: JobDetailsState;
-  movingJobUrl: string | null;
+  movingJobRef: string | null;
   ignorePending: boolean;
   ignoreVariables?: { source: string; sourceJobId: string };
   unignorePending: boolean;
   unignoreVariables?: { source: string; sourceJobId: string };
-  watchlistCheckState: WatchlistCheckState;
   onIgnore: (input: { source: string; sourceJobId: string }) => void;
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
-    job: NormalizedWorkdayJob,
+    job: WatchlistJobResult,
     source: WatchlistSelectedSource,
   ) => void;
-  onOpenWorkspaceJob: (job: JobListItem) => void;
-  onLoadJobDetails: (jobUrl: string) => void;
+  onOpenWorkspaceJob: (job: WatchlistWorkspaceJobReference) => void;
+  onLoadJobDetails: (
+    job: WatchlistJobResult,
+    source: WatchlistSelectedSource,
+  ) => void;
 }
 
 type WatchlistSignal = {
@@ -71,7 +60,7 @@ type WatchlistSignal = {
   dotClassName: string;
 };
 
-function formatPostedDate(value: string | undefined): string {
+function formatPostedDate(value: string | null): string {
   if (!value) return "—";
 
   try {
@@ -86,14 +75,12 @@ function formatPostedDate(value: string | undefined): string {
 export default function WatchlistJobRow({
   rankedJob,
   source,
-  getWorkdayStateInput,
   details,
-  movingJobUrl,
+  movingJobRef,
   ignorePending,
   ignoreVariables,
   unignorePending,
   unignoreVariables,
-  watchlistCheckState,
   onIgnore,
   onUnignore,
   onMoveToWorkspace,
@@ -101,10 +88,11 @@ export default function WatchlistJobRow({
   onLoadJobDetails,
 }: WatchlistJobRowProps) {
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
-  const stateInput = getWorkdayStateInput(
-    rankedJob.workdayJob,
-    source.cxsJobsUrl ?? source.careersUrl,
-  );
+  const watchlistJob = rankedJob.watchlistJob;
+  const stateInput = {
+    source: watchlistJob.source,
+    sourceJobId: watchlistJob.sourceJobId,
+  };
   const isIgnoring =
     ignorePending &&
     ignoreVariables?.source === stateInput.source &&
@@ -113,21 +101,16 @@ export default function WatchlistJobRow({
     unignorePending &&
     unignoreVariables?.source === stateInput.source &&
     unignoreVariables?.sourceJobId === stateInput.sourceJobId;
-  const isNewSinceLastCheck =
-    rankedJob.rowState === "new" &&
-    watchlistCheckState.newJobKeys.has(
-      getWorkdayImportKey(stateInput.source, stateInput.sourceJobId),
-    );
   const signals: WatchlistSignal[] = [];
 
-  if (rankedJob.importedJob) {
+  if (watchlistJob.workspaceJob) {
     signals.push({
       label: "Already in workspace",
       dotClassName: "bg-emerald-400",
     });
   }
 
-  if (rankedJob.rowState === "ignored" && !rankedJob.importedJob) {
+  if (rankedJob.rowState === "ignored" && !watchlistJob.workspaceJob) {
     signals.push({
       label: "Ignored",
       dotClassName: "bg-muted-foreground/70",
@@ -148,7 +131,7 @@ export default function WatchlistJobRow({
     });
   }
 
-  if (isNewSinceLastCheck) {
+  if (watchlistJob.isNewSinceLastCheck) {
     signals.push({
       label: "New since last check",
       dotClassName: "bg-sky-400",
@@ -158,7 +141,7 @@ export default function WatchlistJobRow({
   const handleDescriptionOpenChange = (open: boolean) => {
     setIsDescriptionOpen(open);
     if (open) {
-      onLoadJobDetails(rankedJob.workdayJob.jobUrl);
+      onLoadJobDetails(watchlistJob, source);
     }
   };
 
@@ -206,29 +189,25 @@ export default function WatchlistJobRow({
             </div>
           </div>
         </TableCell>
-        {/* company */}
         <TableCell className="py-2.5">
           <div className="text-sm text-muted-foreground">
-            {formatCustomSourceLabel(rankedJob.job.jobUrl)}
-          </div>
-        </TableCell>
-        {/* location */}
-        <TableCell className="py-2.5">
-          <div className="text-sm text-muted-foreground">
-            {rankedJob.job.location ||
-              rankedJob.workdayJob.locationText ||
-              "Unknown"}
+            {watchlistJob.employer}
           </div>
         </TableCell>
         <TableCell className="py-2.5">
           <div className="text-sm text-muted-foreground">
-            {formatPostedDate(rankedJob.workdayJob.postedOn)}
+            {watchlistJob.location || "Unknown"}
+          </div>
+        </TableCell>
+        <TableCell className="py-2.5">
+          <div className="text-sm text-muted-foreground">
+            {formatPostedDate(watchlistJob.postedAt)}
           </div>
         </TableCell>
 
         <TableCell className="px-3 py-2.5">
           <div className="flex items-center justify-end">
-            {rankedJob.importedJob ? (
+            {watchlistJob.workspaceJob ? (
               <>
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
@@ -239,8 +218,8 @@ export default function WatchlistJobRow({
                         size="icon"
                         className="shrink-0"
                         onClick={() => {
-                          if (rankedJob.importedJob) {
-                            onOpenWorkspaceJob(rankedJob.importedJob);
+                          if (watchlistJob.workspaceJob) {
+                            onOpenWorkspaceJob(watchlistJob.workspaceJob);
                           }
                         }}
                       >
@@ -316,12 +295,10 @@ export default function WatchlistJobRow({
                         variant="ghost"
                         size="sm"
                         className="shrink-0 gap-2"
-                        disabled={movingJobUrl === rankedJob.workdayJob.jobUrl}
-                        onClick={() =>
-                          onMoveToWorkspace(rankedJob.workdayJob, source)
-                        }
+                        disabled={movingJobRef === watchlistJob.jobRef}
+                        onClick={() => onMoveToWorkspace(watchlistJob, source)}
                       >
-                        {movingJobUrl === rankedJob.workdayJob.jobUrl ? (
+                        {movingJobRef === watchlistJob.jobRef ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <FolderInput className="h-4 w-4" />
@@ -352,7 +329,7 @@ export default function WatchlistJobRow({
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <a
-                        href={rankedJob.workdayJob.jobUrl}
+                        href={watchlistJob.jobUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center w-full"
@@ -390,10 +367,10 @@ export default function WatchlistJobRow({
           <JobDescriptionPanel
             description={
               details?.status === "success"
-                ? details.details.jobDescriptionHtml
+                ? details.details.descriptionHtml
                 : null
             }
-            jobUrl={rankedJob.workdayJob.jobUrl}
+            jobUrl={watchlistJob.jobUrl}
             collapsible={false}
             isLoading={details?.status === "loading"}
             error={details?.status === "error" ? details.error : null}

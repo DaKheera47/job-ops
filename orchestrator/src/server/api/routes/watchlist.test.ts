@@ -81,6 +81,14 @@ describe.sequential("Watchlist API routes", () => {
         ]),
       );
       expect(body.data.selectedSources).toEqual([]);
+      expect(body.data.availableSourceTypes).toEqual([
+        expect.objectContaining({
+          sourceType: "workday",
+          label: "Workday",
+          supportsCustomSource: true,
+          supportsBranding: true,
+        }),
+      ]);
     });
 
     it("stores only the user's selected watchlist sources", async () => {

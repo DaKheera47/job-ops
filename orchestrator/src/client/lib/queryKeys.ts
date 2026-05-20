@@ -61,6 +61,7 @@ export const queryKeys = {
   watchlist: {
     all: ["watchlist"] as const,
     sources: () => [...queryKeys.watchlist.all, "sources"] as const,
+    results: () => [...queryKeys.watchlist.all, "results"] as const,
     states: () => [...queryKeys.watchlist.all, "states"] as const,
   },
   visaSponsors: {

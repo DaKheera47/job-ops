@@ -1,6 +1,4 @@
-import type { NormalizedWorkdayJob } from "@client/api/workday";
-import { fetchWorkdayCxsJobs } from "@client/api/workday";
-import type { JobListItem } from "@shared/types";
+import type { JobListItem, WatchlistJobResult } from "@shared/types";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,12 +8,6 @@ import { WatchlistPage } from "./WatchlistPage";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
-
-vi.mock("@client/api/workday", () => ({
-  fetchWorkdayCxsJobs: vi.fn(),
-  fetchWorkdayCxsJobDetails: vi.fn(),
-  fetchWorkdayLogo: vi.fn(),
-}));
 
 vi.mock("@client/hooks/useSettings", () => ({
   useSettings: () => ({
@@ -43,6 +35,10 @@ vi.mock("../api", () => ({
   getWatchlistJobStates: vi.fn(),
   getWatchlistSources: vi.fn(),
   recordWatchlistCheck: vi.fn(),
+  fetchWatchlistResults: vi.fn(),
+  fetchWatchlistJobDetails: vi.fn(),
+  prepareWatchlistImportDraft: vi.fn(),
+  fetchWatchlistSourceBranding: vi.fn(),
   updateWatchlistSources: vi.fn(),
   ignoreWatchlistJob: vi.fn(),
   unignoreWatchlistJob: vi.fn(),
@@ -51,66 +47,55 @@ vi.mock("../api", () => ({
 const autodeskCxsJobsUrl =
   "https://autodesk.wd1.myworkdayjobs.com/wday/cxs/autodesk/Ext/jobs";
 
-const backendJob: NormalizedWorkdayJob = {
-  source: "workday",
-  externalId: "26WD97952",
-  title: "Backend Engineer",
-  company: "Autodesk",
-  locationText: "London, United Kingdom",
-  postedOn: "2026-05-01",
-  jobUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/backend",
-  externalPath: "/Ext/job/backend",
-  raw: {},
+const workdaySourceType = {
+  sourceType: "workday" as const,
+  label: "Workday",
+  catalogLabel: "Workday company",
+  customSourceOptionLabel: "Choose your own Workday URL",
+  customSourceSearchText: "custom workday url",
+  customSourceInputLabel: "Custom Workday URL",
+  customSourcePlaceholder: "https://company.wd1.myworkdayjobs.com/...",
+  customSourceHelpText: "Use the public Workday careers URL.",
+  emptyCatalogText: "No Workday companies found.",
+  fetchingLabel: "Fetching from Workday...",
+  invalidUrlMessage: "Invalid Workday URL",
+  supportsCustomSource: true,
+  supportsBranding: true,
 };
 
-const salesJob: NormalizedWorkdayJob = {
-  source: "workday",
-  externalId: "IGNORED1",
+const backendJob: WatchlistJobResult = {
+  jobRef: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/backend",
+  source: "workday:autodesk",
+  sourceJobId: "26WD97952",
+  sourceType: "workday",
+  title: "Backend Engineer",
+  employer: "Autodesk",
+  location: "London, United Kingdom",
+  postedAt: "2026-05-01",
+  jobUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/backend",
+  applicationLink: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/backend",
+  rowState: "new",
+  isNewSinceLastCheck: false,
+  workspaceJob: null,
+};
+
+const salesJob: WatchlistJobResult = {
+  jobRef: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/sales",
+  source: "workday:autodesk",
+  sourceJobId: "IGNORED1",
+  sourceType: "workday",
   title: "Sales Manager",
-  company: "Autodesk",
-  locationText: "Remote",
-  postedOn: "2026-05-02",
+  employer: "Autodesk",
+  location: "Remote",
+  postedAt: "2026-05-02",
   jobUrl: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/sales",
-  externalPath: "/Ext/job/sales",
-  raw: {},
+  applicationLink: "https://autodesk.wd1.myworkdayjobs.com/Ext/job/sales",
+  rowState: "new",
+  isNewSinceLastCheck: false,
+  workspaceJob: null,
 };
 
 let watchlistSourcesState: Awaited<ReturnType<typeof api.getWatchlistSources>>;
-
-function makeWorkspaceJob(overrides: Partial<JobListItem>): JobListItem {
-  const now = new Date().toISOString();
-  return {
-    id: "job-1",
-    source: "manual",
-    sourceJobId: null,
-    title: "Workspace Job",
-    employer: "Autodesk",
-    jobUrl: "https://example.com/job",
-    applicationLink: "https://example.com/job",
-    datePosted: null,
-    deadline: null,
-    salary: null,
-    location: null,
-    status: "ready",
-    outcome: null,
-    closedAt: null,
-    suitabilityScore: null,
-    sponsorMatchScore: null,
-    appliedDuplicateMatch: null,
-    jobType: null,
-    jobFunction: null,
-    pdfRegenerating: false,
-    pdfFreshness: "missing",
-    salaryMinAmount: null,
-    salaryMaxAmount: null,
-    salaryCurrency: null,
-    discoveredAt: now,
-    readyAt: now,
-    appliedAt: null,
-    updatedAt: now,
-    ...overrides,
-  };
-}
 
 function makeJobsResponse(jobs: JobListItem[]) {
   return {
@@ -135,6 +120,25 @@ function renderPage() {
       <WatchlistPage />
     </MemoryRouter>,
   );
+}
+
+function makeWatchlistResults(
+  jobs: WatchlistJobResult[] = [backendJob, salesJob],
+) {
+  return {
+    checkedAt: "2026-05-17T00:05:00.000Z",
+    previousLastCheckedAt: null,
+    sources: watchlistSourcesState.selectedSources.map((source, index) => {
+      const sourceJobs = index === 0 ? jobs : [];
+      return {
+        status: "success" as const,
+        source,
+        jobs: sourceJobs,
+        total: sourceJobs.length,
+        fetched: sourceJobs.length,
+      };
+    }),
+  };
 }
 
 async function openSourceResults(companyLabel: string) {
@@ -197,17 +201,24 @@ beforeEach(() => {
         updatedAt: "2026-05-17T00:00:00.000Z",
       },
     ],
+    availableSourceTypes: [workdaySourceType],
   };
   vi.mocked(api.getWatchlistSources).mockImplementation(
     async () => watchlistSourcesState,
+  );
+  vi.mocked(api.fetchWatchlistResults).mockImplementation(async () =>
+    makeWatchlistResults(),
+  );
+  vi.mocked(api.fetchWatchlistSourceBranding).mockRejectedValue(
+    new Error("No logo in test"),
   );
   vi.mocked(api.updateWatchlistSources).mockImplementation(async (input) => {
     watchlistSourcesState = {
       ...watchlistSourcesState,
       selectedSources: input.selections.map((selection, index) => ({
         id: `selected-${index}`,
-        catalogSourceId: selection.catalogSourceId,
-        label: selection.label,
+        catalogSourceId: selection.catalogSourceId ?? null,
+        label: selection.label ?? selection.careersUrl,
         sourceType: selection.sourceType,
         careersUrl: selection.careersUrl,
         cxsJobsUrl:
@@ -223,33 +234,8 @@ beforeEach(() => {
       })),
     };
 
-    return undefined as never;
+    return watchlistSourcesState;
   });
-  vi.mocked(fetchWorkdayCxsJobs).mockImplementation(
-    async (careersUrl: string) => {
-      if (careersUrl.includes("autodesk")) {
-        return {
-          careersUrl,
-          cxsJobsUrl: autodeskCxsJobsUrl,
-          response: {
-            total: 2,
-            fetched: 2,
-            jobs: [backendJob, salesJob],
-          },
-        };
-      }
-
-      return {
-        careersUrl,
-        cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
-        response: {
-          total: 0,
-          fetched: 0,
-          jobs: [],
-        },
-      };
-    },
-  );
 });
 
 describe("WatchlistPage", () => {
@@ -286,17 +272,12 @@ describe("WatchlistPage", () => {
   });
 
   it("hides ignored rows by default and reveals them with unignore", async () => {
-    vi.mocked(api.getWatchlistJobStates).mockResolvedValue({
-      states: [
-        {
-          source: "workday:autodesk",
-          sourceJobId: "IGNORED1",
-          state: "ignored",
-          createdAt: "2026-05-17T00:00:00.000Z",
-          updatedAt: "2026-05-17T00:00:00.000Z",
-        },
-      ],
-    });
+    vi.mocked(api.fetchWatchlistResults).mockImplementation(async () =>
+      makeWatchlistResults([
+        { ...backendJob },
+        { ...salesJob, rowState: "ignored" },
+      ]),
+    );
 
     renderPage();
     await openSourceResults("Autodesk");
@@ -318,23 +299,23 @@ describe("WatchlistPage", () => {
   });
 
   it("marks jobs that are new since the previous check", async () => {
-    vi.mocked(api.recordWatchlistCheck).mockResolvedValue({
+    vi.mocked(api.fetchWatchlistResults).mockResolvedValue({
       previousLastCheckedAt: "2026-05-16T12:00:00.000Z",
       checkedAt: "2026-05-17T00:05:00.000Z",
-      jobs: [
+      sources: [
         {
-          source: "workday:autodesk",
-          sourceJobId: "26WD97952",
-          isNewSinceLastCheck: true,
-          firstSeenAt: "2026-05-17T00:05:00.000Z",
-          lastSeenAt: "2026-05-17T00:05:00.000Z",
+          status: "success",
+          source: watchlistSourcesState.selectedSources[0],
+          jobs: [{ ...backendJob, isNewSinceLastCheck: true }, salesJob],
+          total: 2,
+          fetched: 2,
         },
         {
-          source: "workday:autodesk",
-          sourceJobId: "IGNORED1",
-          isNewSinceLastCheck: false,
-          firstSeenAt: "2026-05-16T11:00:00.000Z",
-          lastSeenAt: "2026-05-17T00:05:00.000Z",
+          status: "success",
+          source: watchlistSourcesState.selectedSources[1],
+          jobs: [],
+          total: 0,
+          fetched: 0,
         },
       ],
     });
@@ -350,23 +331,24 @@ describe("WatchlistPage", () => {
   });
 
   it("shows a friendly inline alert for source fetch failures", async () => {
-    vi.mocked(fetchWorkdayCxsJobs).mockImplementation(
-      async (careersUrl: string) => {
-        if (careersUrl.includes("autodesk")) {
-          throw new Error("fetch failed");
-        }
-
-        return {
-          careersUrl,
-          cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
-          response: {
-            total: 0,
-            fetched: 0,
-            jobs: [],
-          },
-        };
-      },
-    );
+    vi.mocked(api.fetchWatchlistResults).mockResolvedValue({
+      checkedAt: "2026-05-17T00:05:00.000Z",
+      previousLastCheckedAt: null,
+      sources: [
+        {
+          status: "error",
+          source: watchlistSourcesState.selectedSources[0],
+          error: "fetch failed",
+        },
+        {
+          status: "success",
+          source: watchlistSourcesState.selectedSources[1],
+          jobs: [],
+          total: 0,
+          fetched: 0,
+        },
+      ],
+    });
 
     renderPage();
     await openSourceResults("Autodesk");
@@ -391,29 +373,16 @@ describe("WatchlistPage", () => {
   });
 
   it("shows moved rows as already in workspace even when ignored", async () => {
-    vi.mocked(api.getJobs).mockResolvedValue(
-      makeJobsResponse([
-        makeWorkspaceJob({
-          id: "job-ignored",
-          source: "workday:autodesk",
-          sourceJobId: "IGNORED1",
-          title: "Sales Manager",
-          jobUrl: salesJob.jobUrl,
-          applicationLink: salesJob.jobUrl,
-        }),
-      ]) as never,
-    );
-    vi.mocked(api.getWatchlistJobStates).mockResolvedValue({
-      states: [
+    vi.mocked(api.fetchWatchlistResults).mockImplementation(async () =>
+      makeWatchlistResults([
+        backendJob,
         {
-          source: "workday:autodesk",
-          sourceJobId: "IGNORED1",
-          state: "ignored",
-          createdAt: "2026-05-17T00:00:00.000Z",
-          updatedAt: "2026-05-17T00:00:00.000Z",
+          ...salesJob,
+          rowState: "moved_to_workspace",
+          workspaceJob: { id: "job-ignored", status: "ready" },
         },
-      ],
-    });
+      ]),
+    );
 
     renderPage();
     await openSourceResults("Autodesk");

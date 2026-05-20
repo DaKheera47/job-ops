@@ -1,13 +1,9 @@
-import type {
-  NormalizedWorkdayJob,
-  NormalizedWorkdayJobDetails,
-} from "@client/api/workday";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
-import type { JobListItem, ManualJobDraft } from "@shared/types.js";
+import type { JobListItem, WatchlistJobResult } from "@shared/types.js";
 import { computeJobMatchScore } from "../orchestrator/JobCommandBar.utils";
-import type { RankedWorkdayJob, SourceSelectionDraft } from "./types";
+import type { RankedWatchlistJob, SourceSelectionDraft } from "./types";
 
 export const CUSTOM_SOURCE_VALUE = "__custom__";
 export const WATCHLIST_SOURCE_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
@@ -21,6 +17,7 @@ export function createSourceDraft(
   return {
     id: `draft-${sourceDraftSequence}`,
     isCustom: false,
+    sourceType: "workday",
     catalogSourceId: null,
     customUrl: "",
     ...overrides,
@@ -33,28 +30,25 @@ export function getEmployerFromCareersUrl(careersUrl: string): string {
     const [tenant] = host.split(".");
     return tenant || host;
   } catch {
-    return "Workday";
+    return "Careers";
   }
 }
 
-export function toJobListItem(
-  job: NormalizedWorkdayJob,
-  careersUrl: string,
-): JobListItem {
+export function toJobListItem(job: WatchlistJobResult): JobListItem {
   const now = new Date().toISOString();
 
   return {
-    id: `workday:${careersUrl}:${job.externalId}`,
+    id: `${job.source}:${job.sourceJobId}`,
     source: "manual",
     sourceJobId: null,
     title: job.title,
-    employer: job.company ?? getEmployerFromCareersUrl(careersUrl),
+    employer: job.employer,
     jobUrl: job.jobUrl,
-    applicationLink: job.jobUrl,
-    datePosted: job.postedOn ?? null,
+    applicationLink: job.applicationLink,
+    datePosted: job.postedAt,
     deadline: null,
     salary: null,
-    location: job.locationText ?? null,
+    location: job.location,
     status: "discovered",
     outcome: null,
     closedAt: null,
@@ -100,33 +94,7 @@ export function normalizeUiCountryKey(value: string): string {
   return normalized;
 }
 
-export function toSourceSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export function getWorkdayTenantFromUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    const [tenant] = url.hostname.split(".");
-    return tenant || null;
-  } catch {
-    return null;
-  }
-}
-
-export function toWorkdaySource(value: string): string {
-  const slug = toSourceSlug(getWorkdayTenantFromUrl(value) ?? value);
-  return `workday:${slug || "unknown"}`;
-}
-
-export function getWorkdayImportKey(
-  source: string,
-  externalId: string,
-): string {
+export function getWatchlistJobKey(source: string, externalId: string): string {
   return `${source}:${externalId}`;
 }
 
@@ -145,7 +113,10 @@ export function formatWatchlistCheckTimestamp(
   }
 }
 
-export function getWorkspaceJobPath(job: JobListItem): string {
+export function getWorkspaceJobPath(job: {
+  id: string;
+  status: string;
+}): string {
   const tab =
     job.status === "discovered"
       ? "discovered"
@@ -155,47 +126,16 @@ export function getWorkspaceJobPath(job: JobListItem): string {
   return `/jobs/${tab}/${job.id}`;
 }
 
-export function getSourceHost(value: string): string | null {
-  try {
-    return new URL(value).hostname || null;
-  } catch {
-    return null;
-  }
-}
-
-export function buildManualDraftFromWorkdayJob(
-  job: NormalizedWorkdayJob,
-  details: NormalizedWorkdayJobDetails,
-  careersUrl: string,
-  cxsJobsUrl: string,
-): ManualJobDraft {
-  const employer =
-    details.company ?? job.company ?? getEmployerFromCareersUrl(careersUrl);
-
-  return {
-    source: toWorkdaySource(cxsJobsUrl || careersUrl || employer),
-    sourceJobId: job.externalId,
-    title: details.title || job.title,
-    employer,
-    jobUrl: details.jobUrl || job.jobUrl,
-    applicationLink: details.jobUrl || job.jobUrl,
-    location: details.locationText ?? job.locationText,
-    jobDescription: details.jobDescriptionText,
-    jobType: details.timeType,
-  };
-}
-
-export function rankWorkdayJobs(
-  jobs: NormalizedWorkdayJob[],
-  careersUrl: string,
+export function rankWatchlistJobs(
+  jobs: WatchlistJobResult[],
   searchTerms: string[],
   locationIntent: LocationIntent,
-): RankedWorkdayJob[] {
+): RankedWatchlistJob[] {
   const hasSelectedLocation = Boolean(locationIntent.selectedCountry);
 
   return jobs
-    .map((workdayJob, index) => {
-      const job = toJobListItem(workdayJob, careersUrl);
+    .map((watchlistJob, index) => {
+      const job = toJobListItem(watchlistJob);
       const match = getPipelineSearchMatch(job, searchTerms);
       const locationMatch = hasSelectedLocation
         ? matchJobLocationIntent(
@@ -209,12 +149,13 @@ export function rankWorkdayJobs(
         : { matched: false, priority: 0 as const };
 
       return {
-        workdayJob,
+        watchlistJob,
         job,
         matchScore: match.score,
         matchedSearchTerm: match.term,
         locationPriority: locationMatch.priority,
         locationMatched: locationMatch.matched,
+        rowState: watchlistJob.rowState,
         index,
       };
     })

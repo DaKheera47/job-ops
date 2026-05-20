@@ -1,13 +1,14 @@
 import type {
-  NormalizedWorkdayJob,
-  NormalizedWorkdayJobDetails,
-  WorkdayCxsJobsResult,
-} from "@client/api/workday";
-import type {
   JobListItem,
   ManualJobDraft,
+  WatchedSourceType,
+  WatchlistJobDetailsResponse,
+  WatchlistJobResult,
+  WatchlistRowState,
   WatchlistSelectedSource,
   WatchlistSource,
+  WatchlistSourceResult,
+  WatchlistSourceTypeDescriptor,
 } from "@shared/types.js";
 
 export type WatchlistFetchState =
@@ -15,20 +16,12 @@ export type WatchlistFetchState =
       status: "loading";
       source: WatchlistSelectedSource;
     }
-  | {
-      status: "success";
-      source: WatchlistSelectedSource;
-      response: WorkdayCxsJobsResult;
-    }
-  | {
-      status: "error";
-      source: WatchlistSelectedSource;
-      error: string;
-    };
+  | WatchlistSourceResult;
 
 export interface SourceSelectionDraft {
   id: string;
   isCustom: boolean;
+  sourceType: WatchedSourceType;
   catalogSourceId: string | null;
   customUrl: string;
 }
@@ -39,33 +32,32 @@ export type JobDetailsState =
     }
   | {
       status: "success";
-      details: NormalizedWorkdayJobDetails;
+      details: WatchlistJobDetailsResponse;
     }
   | {
       status: "error";
       error: string;
     };
 
-export interface RankedWorkdayJob {
-  workdayJob: NormalizedWorkdayJob;
+export interface RankedWatchlistJob {
+  watchlistJob: WatchlistJobResult;
   job: JobListItem;
   matchScore: number;
   matchedSearchTerm: string | null;
   locationPriority: 0 | 1;
   locationMatched: boolean;
+  rowState: WatchlistRowState;
 }
 
-export interface WorkdayImportState {
+export interface WatchlistImportState {
   open: boolean;
   draft: ManualJobDraft | null;
   source: string | null;
   sourceHost: string | null;
-  workdaySource: string | null;
   sourceType: string | null;
   catalogSourceId: string | null;
+  careersUrl: string | null;
 }
-
-export type WatchlistRowState = "new" | "ignored" | "moved_to_workspace";
 
 export interface WatchlistCheckState {
   checkedAt: string | null;
@@ -77,6 +69,7 @@ export interface WatchlistSourceDraftCardProps {
   sourceDrafts: SourceSelectionDraft[];
   sourceStatusByDraftId: Record<string, "watching" | "unsaved">;
   catalogSources: WatchlistSource[];
+  sourceTypes: WatchlistSourceTypeDescriptor[];
   formattedLastCheckedAt: string | null;
   formattedPreviousLastCheckedAt: string | null;
   newJobsCount: number;
@@ -91,7 +84,8 @@ export interface WatchlistSourceDraftCardProps {
   onSourceMethodSelected: (input: {
     method: "catalog" | "custom_url";
     catalogSourceId?: string;
-    workdaySource?: string;
+    sourceType?: string;
+    careersUrl?: string;
   }) => void;
   onSourceSearchNoResults: (input: { searchText: string }) => void;
   onSave: () => void;

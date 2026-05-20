@@ -1,6 +1,9 @@
-import { fetchWorkdayLogo } from "@client/api/workday";
+import * as api from "@client/api";
 import { StatusIndicator } from "@client/components/StatusIndicator";
-import type { WatchlistSource } from "@shared/types.js";
+import type {
+  WatchlistSource,
+  WatchlistSourceTypeDescriptor,
+} from "@shared/types.js";
 import { Loader2, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -32,25 +35,33 @@ function getSourceDraftDetails(
   return catalogSources.find((source) => source.id === draftCatalogSourceId);
 }
 
-function getSourceDropdownOptions(catalogSources: WatchlistSource[]) {
+function getCustomSourceValue(sourceType: string): string {
+  return `${CUSTOM_SOURCE_VALUE}:${sourceType}`;
+}
+
+function getSourceDropdownOptions(
+  catalogSources: WatchlistSource[],
+  sourceTypes: WatchlistSourceTypeDescriptor[],
+) {
   return [
     ...catalogSources.map((source) => ({
       value: source.id,
       label: source.label,
       searchText: `${source.label} ${source.careersUrl}`.trim(),
     })),
-    {
-      value: CUSTOM_SOURCE_VALUE,
-      label: "Choose your own Workday URL",
-      searchText: "custom workday url",
-    },
+    ...sourceTypes
+      .filter((sourceType) => sourceType.supportsCustomSource)
+      .map((sourceType) => ({
+        value: getCustomSourceValue(sourceType.sourceType),
+        label: sourceType.customSourceOptionLabel,
+        searchText: sourceType.customSourceSearchText,
+      })),
   ];
 }
 
 export function formatCustomSourceLabel(careersUrl: string): string {
   const employer = getEmployerFromCareersUrl(careersUrl).trim();
-  if (!employer) return "Custom Workday URL";
-  // else capitalise
+  if (!employer) return "Custom source";
   return employer.length <= 3
     ? employer.toUpperCase()
     : employer.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -82,6 +93,7 @@ export function WatchlistSourcesCard({
   sourceDrafts,
   sourceStatusByDraftId,
   catalogSources,
+  sourceTypes,
   formattedLastCheckedAt,
   formattedPreviousLastCheckedAt,
   newJobsCount,
@@ -98,11 +110,19 @@ export function WatchlistSourcesCard({
     Record<string, string | null>
   >({});
   const sourceDropdownOptions = useMemo(
-    () => getSourceDropdownOptions(catalogSources),
-    [catalogSources],
+    () => getSourceDropdownOptions(catalogSources, sourceTypes),
+    [catalogSources, sourceTypes],
   );
+  const sourceTypeById = useMemo(
+    () =>
+      new Map(
+        sourceTypes.map((sourceType) => [sourceType.sourceType, sourceType]),
+      ),
+    [sourceTypes],
+  );
+  const defaultSourceType = sourceTypes[0]?.sourceType ?? "workday";
   const logoCareersUrls = useMemo(() => {
-    const urls = new Set<string>();
+    const urls = new Map<string, { sourceType: string; careersUrl: string }>();
 
     for (const draft of sourceDrafts) {
       const selectedSource = getSourceDraftDetails(
@@ -114,27 +134,35 @@ export function WatchlistSourcesCard({
         : (selectedSource?.careersUrl ?? "").trim();
 
       if (!careersUrl) continue;
-      urls.add(careersUrl);
+      urls.set(careersUrl, {
+        sourceType: draft.isCustom
+          ? draft.sourceType
+          : (selectedSource?.sourceType ?? defaultSourceType),
+        careersUrl,
+      });
     }
 
-    return [...urls];
-  }, [catalogSources, sourceDrafts]);
+    return [...urls.values()];
+  }, [catalogSources, defaultSourceType, sourceDrafts]);
 
   useEffect(() => {
     const pendingUrls = logoCareersUrls.filter(
-      (careersUrl) => logoDataUrls[careersUrl] === undefined,
+      (item) => logoDataUrls[item.careersUrl] === undefined,
     );
     if (pendingUrls.length === 0) return;
 
     let cancelled = false;
 
     void Promise.all(
-      pendingUrls.map(async (careersUrl) => {
+      pendingUrls.map(async (item) => {
         try {
-          const response = await fetchWorkdayLogo(careersUrl);
-          return [careersUrl, response.imageDataUrl] as const;
+          const response = await api.fetchWatchlistSourceBranding({
+            sourceType: item.sourceType,
+            careersUrl: item.careersUrl,
+          });
+          return [item.careersUrl, response.imageDataUrl] as const;
         } catch {
-          return [careersUrl, null] as const;
+          return [item.careersUrl, null] as const;
         }
       }),
     ).then((entries) => {
@@ -173,7 +201,7 @@ export function WatchlistSourcesCard({
               </div>
               <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground/70">
                 Pick the company boards you want to monitor manually or add your
-                own Workday URL.
+                own supported careers URL.
               </p>
               {formattedLastCheckedAt ? (
                 <p className="mt-2 text-xs text-muted-foreground/70">
@@ -231,28 +259,34 @@ export function WatchlistSourcesCard({
                   sourceStatusByDraftId[draft.id] ?? "unsaved";
                 const statusCopy = getWatchlistStatusCopy(sourceStatus);
                 const dropdownInputId = `watchlist-source-${draft.id}`;
+                const descriptor =
+                  sourceTypeById.get(draft.sourceType) ??
+                  sourceTypes[0] ??
+                  null;
                 const label = draft.isCustom
                   ? draft.customUrl.trim()
                     ? formatCustomSourceLabel(draft.customUrl.trim())
-                    : "Custom Workday URL"
+                    : (descriptor?.customSourceInputLabel ?? "Custom source")
                   : (selectedSource?.label ?? `New Source`);
                 const careersUrl = draft.isCustom
                   ? draft.customUrl
                   : (selectedSource?.careersUrl ?? "");
                 const isEmpty = !careersUrl.trim();
+                const showEditor =
+                  isEmpty || (draft.isCustom && sourceStatus === "unsaved");
                 const companyLogoUrl = logoDataUrls[careersUrl.trim()] ?? null;
 
                 return (
                   <article
                     key={draft.id}
                     className={cn(
-                      "group min-w-0 rounded-2xl border border-border/70 bg-card p-4 flex items-center w-full relative gap-x-4 size=full",
+                      "group min-w-0 rounded-2xl border border-border/70 bg-card p-4 flex items-center w-full relative gap-x-4 h-full",
                     )}
                   >
                     <div
                       className={cn(
                         "flex items-center gap-2",
-                        isEmpty ? "flex-1" : "",
+                        showEditor ? "flex-1" : "",
                       )}
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -268,9 +302,18 @@ export function WatchlistSourcesCard({
 
                         <div className="min-w-0">
                           {isEmpty ? null : (
+                            <h3 className="truncate text-sm font-medium text-foreground">
+                              {label}
+                            </h3>
+                          )}
+
+                          {isEmpty ? null : (
                             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                               <span>
-                                {draft.isCustom ? "Custom" : "Workday"}
+                                {draft.isCustom
+                                  ? "Custom"
+                                  : (descriptor?.label ??
+                                    selectedSource?.sourceType)}
                               </span>
                               <StatusIndicator
                                 label={statusCopy.label}
@@ -309,24 +352,29 @@ export function WatchlistSourcesCard({
                       </Button>
                     </div>
 
-                    {isEmpty && (
+                    {showEditor && (
                       <div className="w-full space-y-2">
                         <SearchableDropdown
                           inputId={dropdownInputId}
                           value={
                             draft.isCustom
-                              ? CUSTOM_SOURCE_VALUE
+                              ? getCustomSourceValue(draft.sourceType)
                               : (draft.catalogSourceId ?? "")
                           }
                           options={sourceDropdownOptions}
                           onValueChange={(value) => {
-                            if (value === CUSTOM_SOURCE_VALUE) {
+                            if (value.startsWith(`${CUSTOM_SOURCE_VALUE}:`)) {
+                              const sourceType =
+                                value.slice(CUSTOM_SOURCE_VALUE.length + 1) ||
+                                defaultSourceType;
                               onSourceMethodSelected({
                                 method: "custom_url",
+                                sourceType,
                               });
                               onUpdateDraft(index, (current) => ({
                                 ...current,
                                 isCustom: true,
+                                sourceType,
                                 catalogSourceId: null,
                               }));
                               return;
@@ -338,18 +386,25 @@ export function WatchlistSourcesCard({
                             onSourceMethodSelected({
                               method: "catalog",
                               catalogSourceId: value,
-                              workdaySource:
+                              sourceType: selectedCatalogSource?.sourceType,
+                              careersUrl:
                                 selectedCatalogSource?.careersUrl ?? undefined,
                             });
                             onUpdateDraft(index, (current) => ({
                               ...current,
                               isCustom: false,
+                              sourceType:
+                                selectedCatalogSource?.sourceType ??
+                                current.sourceType,
                               catalogSourceId: value,
                             }));
                           }}
                           placeholder="Choose company"
                           searchPlaceholder="Search companies..."
-                          emptyText="No companies found."
+                          emptyText={
+                            descriptor?.emptyCatalogText ??
+                            "No companies found."
+                          }
                           ariaLabel={`Watchlist source ${index + 1}`}
                           allowCustomValue={false}
                           onEmptyResults={(searchText) =>
@@ -367,8 +422,11 @@ export function WatchlistSourcesCard({
                                 customUrl: event.target.value,
                               }))
                             }
-                            placeholder="https://company.wd1.myworkdayjobs.com/..."
-                            aria-label={`Custom Workday URL ${index + 1}`}
+                            placeholder={
+                              descriptor?.customSourcePlaceholder ??
+                              "https://..."
+                            }
+                            aria-label={`${descriptor?.customSourceInputLabel ?? "Custom source URL"} ${index + 1}`}
                             className="rounded-xl"
                           />
                         ) : null}

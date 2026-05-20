@@ -1,6 +1,10 @@
-import type { NormalizedWorkdayJob } from "@client/api/workday";
 import type { LocationIntent } from "@shared/location-intelligence.js";
-import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
+import type {
+  WatchlistJobResult,
+  WatchlistSelectedSource,
+  WatchlistSourceTypeDescriptor,
+  WatchlistWorkspaceJobReference,
+} from "@shared/types.js";
 import { CircleAlert, Loader2 } from "lucide-react";
 import { formatUserFacingError } from "@/client/lib/error-format";
 import {
@@ -19,48 +23,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type {
-  JobDetailsState,
-  WatchlistCheckState,
-  WatchlistFetchState,
-  WatchlistRowState,
-} from "./types";
-import { rankWorkdayJobs } from "./utils";
+import type { JobDetailsState, WatchlistFetchState } from "./types";
+import { rankWatchlistJobs } from "./utils";
 import WatchlistJobRow from "./WatchlistJobRow";
 
 interface WatchlistSourceResultsCardProps {
   item: WatchlistFetchState;
+  sourceTypes: WatchlistSourceTypeDescriptor[];
   pipelineSearchTerms: string[];
   locationIntent: LocationIntent;
   showIgnored: boolean;
   setShowIgnored: (next: boolean) => void;
-  getImportedWorkdayJob: (
-    workdayJob: NormalizedWorkdayJob,
-    cxsJobsUrl: string,
-  ) => JobListItem | undefined;
-  getWorkdayRowState: (
-    workdayJob: NormalizedWorkdayJob,
-    cxsJobsUrl: string,
-  ) => WatchlistRowState;
-  getWorkdayStateInput: (
-    workdayJob: NormalizedWorkdayJob,
-    cxsJobsUrl: string,
-  ) => { source: string; sourceJobId: string };
   jobDetails: Record<string, JobDetailsState>;
-  movingJobUrl: string | null;
+  movingJobRef: string | null;
   ignorePending: boolean;
   ignoreVariables?: { source: string; sourceJobId: string };
   unignorePending: boolean;
   unignoreVariables?: { source: string; sourceJobId: string };
-  watchlistCheckState: WatchlistCheckState;
   onIgnore: (input: { source: string; sourceJobId: string }) => void;
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
-    job: NormalizedWorkdayJob,
+    job: WatchlistJobResult,
     source: WatchlistSelectedSource,
   ) => void;
-  onOpenWorkspaceJob: (job: JobListItem) => void;
-  onLoadJobDetails: (jobUrl: string) => void;
+  onOpenWorkspaceJob: (job: WatchlistWorkspaceJobReference) => void;
+  onLoadJobDetails: (
+    job: WatchlistJobResult,
+    source: WatchlistSelectedSource,
+  ) => void;
 }
 
 function getStatusBadge(item: WatchlistFetchState) {
@@ -94,26 +84,27 @@ function formatWatchlistErrorDiagnostics(error: unknown): string {
 
 export function WatchlistSourceResultsCard({
   item,
+  sourceTypes,
   pipelineSearchTerms,
   locationIntent,
   showIgnored,
   setShowIgnored,
-  getImportedWorkdayJob,
-  getWorkdayRowState,
-  getWorkdayStateInput,
   jobDetails,
-  movingJobUrl,
+  movingJobRef,
   ignorePending,
   ignoreVariables,
   unignorePending,
   unignoreVariables,
-  watchlistCheckState,
   onIgnore,
   onUnignore,
   onMoveToWorkspace,
   onOpenWorkspaceJob,
   onLoadJobDetails,
 }: WatchlistSourceResultsCardProps) {
+  const sourceDescriptor = sourceTypes.find(
+    (sourceType) => sourceType.sourceType === item.source.sourceType,
+  );
+
   return (
     <AccordionItem value={item.source.id} className="border-0">
       <AccordionTrigger className="flex items-center justify-between gap-4 border-b px-4 py-3">
@@ -144,7 +135,7 @@ export function WatchlistSourceResultsCard({
         {item.status === "loading" ? (
           <div className="flex items-center gap-2 bg-muted/30 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Fetching from Workday...
+            {sourceDescriptor?.fetchingLabel ?? "Fetching jobs..."}
           </div>
         ) : item.status === "error" ? (
           <div className="p-4">
@@ -172,7 +163,6 @@ export function WatchlistSourceResultsCard({
                         label: item.source.label,
                         sourceType: item.source.sourceType,
                         careersUrl: item.source.careersUrl,
-                        cxsJobsUrl: item.source.cxsJobsUrl,
                         error: formatWatchlistErrorDiagnostics(item.error),
                       },
                       null,
@@ -190,16 +180,12 @@ export function WatchlistSourceResultsCard({
             locationIntent={locationIntent}
             showIgnored={showIgnored}
             setShowIgnored={setShowIgnored}
-            getImportedWorkdayJob={getImportedWorkdayJob}
-            getWorkdayRowState={getWorkdayRowState}
-            getWorkdayStateInput={getWorkdayStateInput}
             jobDetails={jobDetails}
-            movingJobUrl={movingJobUrl}
+            movingJobRef={movingJobRef}
             ignorePending={ignorePending}
             ignoreVariables={ignoreVariables}
             unignorePending={unignorePending}
             unignoreVariables={unignoreVariables}
-            watchlistCheckState={watchlistCheckState}
             onIgnore={onIgnore}
             onUnignore={onUnignore}
             onMoveToWorkspace={onMoveToWorkspace}
@@ -213,7 +199,7 @@ export function WatchlistSourceResultsCard({
 }
 
 interface WatchlistSourceJobsProps
-  extends Omit<WatchlistSourceResultsCardProps, "dismiss"> {
+  extends Omit<WatchlistSourceResultsCardProps, "item" | "sourceTypes"> {
   item: Extract<WatchlistFetchState, { status: "success" }>;
 }
 
@@ -223,38 +209,23 @@ function WatchlistSourceJobs({
   locationIntent,
   showIgnored,
   setShowIgnored,
-  getImportedWorkdayJob,
-  getWorkdayRowState,
-  getWorkdayStateInput,
   jobDetails,
-  movingJobUrl,
+  movingJobRef,
   ignorePending,
   ignoreVariables,
   unignorePending,
   unignoreVariables,
-  watchlistCheckState,
   onIgnore,
   onUnignore,
   onMoveToWorkspace,
   onOpenWorkspaceJob,
   onLoadJobDetails,
 }: WatchlistSourceJobsProps) {
-  const rankedJobs = rankWorkdayJobs(
-    item.response.jobs,
-    item.source.careersUrl,
+  const rankedJobs = rankWatchlistJobs(
+    item.jobs,
     pipelineSearchTerms,
     locationIntent,
-  ).map((rankedJob) => ({
-    ...rankedJob,
-    importedJob: getImportedWorkdayJob(
-      rankedJob.workdayJob,
-      item.source.cxsJobsUrl ?? item.source.careersUrl,
-    ),
-    rowState: getWorkdayRowState(
-      rankedJob.workdayJob,
-      item.source.cxsJobsUrl ?? item.source.careersUrl,
-    ),
-  }));
+  );
   const hiddenIgnoredCount = rankedJobs.filter(
     (rankedJob) => rankedJob.rowState === "ignored",
   ).length;
@@ -296,17 +267,15 @@ function WatchlistSourceJobs({
         <TableBody>
           {visibleRankedJobs.map((rankedJob) => (
             <WatchlistJobRow
-              key={rankedJob.job.id}
+              key={rankedJob.watchlistJob.jobRef}
               rankedJob={rankedJob}
               source={item.source}
-              getWorkdayStateInput={getWorkdayStateInput}
-              details={jobDetails[rankedJob.workdayJob.jobUrl]}
-              movingJobUrl={movingJobUrl}
+              details={jobDetails[rankedJob.watchlistJob.jobRef]}
+              movingJobRef={movingJobRef}
               ignorePending={ignorePending}
               ignoreVariables={ignoreVariables}
               unignorePending={unignorePending}
               unignoreVariables={unignoreVariables}
-              watchlistCheckState={watchlistCheckState}
               onIgnore={onIgnore}
               onUnignore={onUnignore}
               onMoveToWorkspace={onMoveToWorkspace}

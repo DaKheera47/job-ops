@@ -215,7 +215,8 @@ type ProductEventMap = {
   watchlist_source_add_method_selected: {
     method: "catalog" | "custom_url";
     catalog_source_id?: string;
-    workday_source?: string;
+    source_type?: string;
+    source_url?: string;
   };
   watchlist_check_completed: {
     source_count: number;
@@ -229,12 +230,12 @@ type ProductEventMap = {
   watchlist_job_moved_to_workspace: {
     source_type: string;
     catalog_source_id?: string;
-    workday_source: string;
+    source_url: string;
   };
   watchlist_job_ignored: {
     source_type: string;
     catalog_source_id?: string;
-    workday_source: string;
+    source_url: string;
   };
   watchlist_source_search_no_results: {
     search_text: string;
@@ -242,22 +243,22 @@ type ProductEventMap = {
   };
   watchlist_url_validation_failed: {
     source_type: string;
-    workday_source: string;
+    source_url: string;
     error_message: string;
   };
   watchlist_source_removed: {
     source_type: string;
     catalog_source_id?: string;
-    workday_source: string;
+    source_url: string;
   };
   watchlist_no_jobs_returned: {
     source_count: number;
   };
   watchlist_custom_url_saved: {
-    workday_source: string;
-    normalized_workday_key: string;
+    source_type: string;
+    source_url: string;
+    normalized_source_key: string;
     host: string;
-    tenant_slug?: string;
   };
 };
 
