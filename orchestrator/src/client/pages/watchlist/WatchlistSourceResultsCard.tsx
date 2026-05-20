@@ -1,12 +1,14 @@
 import type { NormalizedWorkdayJob } from "@client/api/workday";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import type { JobListItem, WatchlistSelectedSource } from "@shared/types.js";
-import { Loader2 } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
+import { formatUserFacingError } from "@/client/lib/error-format";
 import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -80,6 +82,16 @@ function getStatusBadge(item: WatchlistFetchState) {
   );
 }
 
+function formatWatchlistErrorDiagnostics(error: unknown): string {
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error, null, 2);
+  } catch {
+    return String(error);
+  }
+}
+
 export function WatchlistSourceResultsCard({
   item,
   pipelineSearchTerms,
@@ -135,19 +147,42 @@ export function WatchlistSourceResultsCard({
             Fetching from Workday...
           </div>
         ) : item.status === "error" ? (
-          <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-            {JSON.stringify(
-              {
-                label: item.source.label,
-                sourceType: item.source.sourceType,
-                careersUrl: item.source.careersUrl,
-                cxsJobsUrl: item.source.cxsJobsUrl,
-                error: item.error,
-              },
-              null,
-              2,
-            )}
-          </pre>
+          <div className="p-4">
+            <Alert variant="destructive">
+              <CircleAlert className="h-4 w-4" />
+              <AlertTitle>Couldn&apos;t load jobs</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>
+                  {formatUserFacingError(
+                    item.error,
+                    "Couldn’t fetch jobs from this careers page.",
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This source failed to load, but the rest of your watchlist can
+                  still be checked.
+                </p>
+                <details className="rounded-md border border-destructive/20 bg-background/60 p-3 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer font-medium text-foreground">
+                    Technical details
+                  </summary>
+                  <pre className="mt-3 max-h-[220px] overflow-auto whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {JSON.stringify(
+                      {
+                        label: item.source.label,
+                        sourceType: item.source.sourceType,
+                        careersUrl: item.source.careersUrl,
+                        cxsJobsUrl: item.source.cxsJobsUrl,
+                        error: formatWatchlistErrorDiagnostics(item.error),
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </details>
+              </AlertDescription>
+            </Alert>
+          </div>
         ) : (
           <WatchlistSourceJobs
             item={item}

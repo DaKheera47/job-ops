@@ -1,7 +1,7 @@
 import type { NormalizedWorkdayJob } from "@client/api/workday";
 import { fetchWorkdayCxsJobs } from "@client/api/workday";
 import type { JobListItem } from "@shared/types";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
@@ -318,6 +318,47 @@ describe("WatchlistPage", () => {
     expect(
       screen.getByLabelText(/view signals for backend engineer/i),
     ).toBeInTheDocument();
+  });
+
+  it("shows a friendly inline alert for source fetch failures", async () => {
+    vi.mocked(fetchWorkdayCxsJobs).mockImplementation(
+      async (careersUrl: string) => {
+        if (careersUrl.includes("autodesk")) {
+          throw new Error("fetch failed");
+        }
+
+        return {
+          careersUrl,
+          cxsJobsUrl: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+          response: {
+            total: 0,
+            fetched: 0,
+            jobs: [],
+          },
+        };
+      },
+    );
+
+    renderPage();
+    await openSourceResults("Autodesk");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load jobs");
+    expect(alert).toHaveTextContent("fetch failed");
+    expect(alert).toHaveTextContent(
+      "This source failed to load, but the rest of your watchlist can still be checked.",
+    );
+
+    const details = within(alert).getByText("Technical details");
+    const diagnostics = within(alert).getByText(/"label": "Autodesk"/i);
+
+    expect(details).toBeInTheDocument();
+    expect(diagnostics).not.toBeVisible();
+
+    fireEvent.click(details);
+
+    expect(diagnostics).toBeVisible();
+    expect(within(alert).getByText(/"error": "fetch failed"/i)).toBeVisible();
   });
 
   it("shows moved rows as already in workspace even when ignored", async () => {
