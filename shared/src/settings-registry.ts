@@ -51,11 +51,22 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
   const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
+  if (
+    normalized === "zhipu" ||
+    normalized === "zhipu_ai" ||
+    normalized === "zhipuai" ||
+    normalized === "bigmodel" ||
+    normalized === "zai" ||
+    normalized === "z_ai"
+  ) {
+    return "glm";
+  }
   return normalized ? normalized : null;
 }
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+export const DEFAULT_GLM_MODEL = "glm-5.1";
 export const DEFAULT_CODEX_MODEL = "";
 
 export function getDefaultModelForProvider(
@@ -75,6 +86,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "glm") {
+    return DEFAULT_GLM_MODEL;
   }
 
   if (normalizedProvider === "codex") {

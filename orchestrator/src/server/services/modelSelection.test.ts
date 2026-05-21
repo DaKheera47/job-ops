@@ -325,6 +325,51 @@ describe("Model Selection Logic", () => {
       });
     });
 
+    it("uses GLM defaults for a purpose-specific provider override", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "sk-global",
+        llmPurposeApiKeys: JSON.stringify({ scoring: "sk-glm" }),
+      });
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "llama3.2",
+          default: "llama3.2",
+          override: "llama3.2",
+        },
+        modelScorer: { value: "glm-5.1", override: null },
+        modelTailoring: { value: "llama3.2", override: null },
+        modelProjectSelection: { value: "llama3.2", override: null },
+        llmProvider: {
+          value: "ollama",
+          default: "ollama",
+          override: "ollama",
+        },
+        llmBaseUrl: {
+          value: "http://localhost:11434",
+          default: "http://localhost:11434",
+          override: null,
+        },
+        llmPurposeOverrides: {
+          value: {
+            scoring: { provider: "glm" },
+          },
+          default: {},
+          override: {
+            scoring: { provider: "glm" },
+          },
+        },
+      } as any);
+
+      await expect(resolveLlmRuntimeSettings("scoring")).resolves.toMatchObject(
+        {
+          provider: "glm",
+          model: "glm-5.1",
+          baseUrl: "https://api.z.ai/api/paas/v4",
+          apiKey: "sk-glm",
+        },
+      );
+    });
+
     it("should not inherit the global model when tailoring uses Codex with no model override", async () => {
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
       vi.mocked(getEffectiveSettings).mockResolvedValue({

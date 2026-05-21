@@ -223,6 +223,7 @@ export class LlmService {
 
     if (
       this.provider !== "openai" &&
+      this.provider !== "glm" &&
       this.provider !== "gemini" &&
       this.provider !== "ollama"
     ) {
@@ -235,6 +236,9 @@ export class LlmService {
       }
       if (this.provider === "gemini") {
         return this.listGeminiModels();
+      }
+      if (this.provider === "glm") {
+        return this.listGlmModels();
       }
       return this.listOllamaModels();
     })();
@@ -489,6 +493,29 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listGlmModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `GLM returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(isGlmTextGenerationModel)
+      .filter(Boolean);
+  }
+
   private async listOllamaModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/api/tags"), {
       method: "GET",
@@ -516,7 +543,7 @@ function normalizeProvider(
   raw: string | null,
   baseUrl: string | null,
 ): LlmProvider {
-  const normalized = raw?.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = normalizeProviderName(raw);
   if (normalized === "openai_compatible") {
     if (
       baseUrl?.includes("localhost:1234") ||
@@ -527,6 +554,7 @@ function normalizeProvider(
     return "openai_compatible";
   }
   if (normalized === "openai") return "openai";
+  if (normalized === "glm") return "glm";
   if (normalized === "gemini") return "gemini";
   if (normalized === "gemini_cli") return "gemini_cli";
   if (normalized === "lmstudio") return "lmstudio";
@@ -538,6 +566,21 @@ function normalizeProvider(
     });
   }
   return "openrouter";
+}
+
+function normalizeProviderName(raw: string | null): string | undefined {
+  const normalized = raw?.trim().toLowerCase().replace(/-/g, "_");
+  if (
+    normalized === "zhipu" ||
+    normalized === "zhipu_ai" ||
+    normalized === "zhipuai" ||
+    normalized === "bigmodel" ||
+    normalized === "zai" ||
+    normalized === "z_ai"
+  ) {
+    return "glm";
+  }
+  return normalized;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -561,6 +604,7 @@ function normalizeGeminiModelName(value: string): string {
 
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "openai") return "gpt-5.4-mini";
+  if (provider === "glm") return "glm-5.1";
   if (provider === "gemini" || provider === "gemini_cli") {
     return "google/gemini-3-flash-preview";
   }
@@ -604,6 +648,26 @@ function isGeminiTextGenerationModel(model: string): boolean {
 
   const blockedPatterns = ["embedding", "aqa", "vision", "image", "tts"];
   return !blockedPatterns.some((pattern) => normalized.includes(pattern));
+}
+
+function isGlmTextGenerationModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const blockedPatterns = [
+    "embedding",
+    "image",
+    "tts",
+    "asr",
+    "speech",
+    "audio",
+    "tokenizer",
+  ];
+  if (blockedPatterns.some((pattern) => normalized.includes(pattern))) {
+    return false;
+  }
+
+  return normalized.startsWith("glm") || normalized.startsWith("charglm");
 }
 
 function sortModels(models: string[], preferredModel: string | null): string[] {

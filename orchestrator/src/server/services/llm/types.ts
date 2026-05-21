@@ -4,6 +4,7 @@ export type LlmProvider =
   | "ollama"
   | "openai"
   | "openai_compatible"
+  | "glm"
   | "gemini"
   | "gemini_cli"
   | "codex";

@@ -722,6 +722,57 @@ describe("importDesignResumeFromFile", () => {
     );
   });
 
+  it("imports PDFs through extracted text for GLM using its v4 chat completions endpoint", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "glm",
+      model: "glm-5.1",
+      baseUrl: "https://api.z.ai/api/paas/v4",
+      apiKey: "glm-test",
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(pdfParse).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.z.ai/api/paas/v4/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer glm-test",
+        }),
+        body: expect.stringContaining(
+          "The resume file was uploaded as PDF and converted locally to plain text before extraction.",
+        ),
+      }),
+    );
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    const body =
+      fetchCall?.[1] && "body" in fetchCall[1] ? fetchCall[1].body : "";
+    expect(String(body)).toContain("Taylor Quinn");
+    expect(String(fetchCall?.[0])).not.toContain("/v1/chat/completions");
+  });
+
   it("imports DOCX through extracted text for OpenAI-compatible endpoints", async () => {
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
       provider: "openai_compatible",

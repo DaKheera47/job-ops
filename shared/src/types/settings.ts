@@ -29,6 +29,7 @@ export const LLM_PROVIDER_VALUES = [
   "ollama",
   "openai",
   "openai_compatible",
+  "glm",
   "gemini",
   "gemini_cli",
   "codex",

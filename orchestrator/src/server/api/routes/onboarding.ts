@@ -29,6 +29,7 @@ function getDefaultValidationBaseUrl(
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "openai_compatible") return "https://api.openai.com";
+  if (provider === "glm") return "https://open.bigmodel.cn/api/paas/v4";
   return undefined;
 }
 
@@ -49,6 +50,7 @@ async function validateLlm(options: {
   const shouldUseBaseUrl =
     normalizedProvider === "lmstudio" ||
     normalizedProvider === "ollama" ||
+    normalizedProvider === "glm" ||
     normalizedProvider === "openai_compatible";
   const hasExplicitBaseUrlOverride =
     options.baseUrl !== undefined && options.baseUrl !== null;
@@ -86,7 +88,18 @@ function normalizeLlmProviderValue(
   provider: string | undefined,
 ): string | undefined {
   if (!provider) return undefined;
-  return provider.toLowerCase().replace(/-/g, "_");
+  const normalized = provider.toLowerCase().replace(/-/g, "_");
+  if (
+    normalized === "zhipu" ||
+    normalized === "zhipu_ai" ||
+    normalized === "zhipuai" ||
+    normalized === "bigmodel" ||
+    normalized === "zai" ||
+    normalized === "z_ai"
+  ) {
+    return "glm";
+  }
+  return normalized;
 }
 
 /**

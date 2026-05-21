@@ -56,6 +56,19 @@ describe("LlmService provider normalization", () => {
     expect(llm.getBaseUrl()).toBe("");
   });
 
+  it("supports GLM provider normalization and aliases", () => {
+    const glm = new LlmService({
+      provider: "glm",
+    });
+    const zhipu = new LlmService({
+      provider: "zhipu-ai",
+    });
+
+    expect(glm.getProvider()).toBe("glm");
+    expect(glm.getBaseUrl()).toBe("https://api.z.ai/api/paas/v4");
+    expect(zhipu.getProvider()).toBe("glm");
+  });
+
   it("retries codex JSON parsing failures and succeeds on a later attempt", async () => {
     const codexCallSpy = vi
       .spyOn(CodexClient.prototype, "callJson")

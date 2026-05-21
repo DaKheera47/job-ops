@@ -174,6 +174,7 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
           "llm",
           "provider",
           "openai",
+          "glm",
           "gemini",
           "gemini_cli",
           "ollama",
