@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { FitAssessmentContent } from "./FitAssessmentContent";
 
 const getSuitabilityScoreTokens = (
@@ -119,8 +120,10 @@ export const ScoreRing: React.FC<{
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
+                  ) : score === null ? (
                     tokens.value
+                  ) : (
+                    <AnimatedNumber>{Math.round(score)}</AnimatedNumber>
                   )}
                 </div>
                 {size === "lg" && (
@@ -171,8 +174,10 @@ export const ScoreRing: React.FC<{
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                    ) : score === null ? (
                       tokens.value
+                    ) : (
+                      <AnimatedNumber>{Math.round(score)}</AnimatedNumber>
                     )}
                   </div>
                   {size === "lg" && (

@@ -1,4 +1,4 @@
-import { Glasses, Sparkles } from "lucide-react";
+import { Glasses } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
