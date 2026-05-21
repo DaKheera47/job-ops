@@ -240,6 +240,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             size="sm"
             isAwaitingAi={isAwaitingAiScore(job)}
             suitabilityReason={job.suitabilityReason}
+            jobId={job.id}
           />
           {jobCTA && <>{jobCTA}</>}
         </div>

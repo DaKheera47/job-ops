@@ -524,6 +524,8 @@ export const AnimatedNumber = React.forwardRef<
   return (
     <MotionConfig transition={activeTransition}>
       <motion.span
+        role="img"
+        aria-label={formatted}
         {...props}
         ref={ref}
         style={{
@@ -535,8 +537,22 @@ export const AnimatedNumber = React.forwardRef<
         }}
       >
         <span
-          role="img"
-          aria-label={formatted}
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            padding: "0",
+            margin: "-1px",
+            overflow: "hidden",
+            clip: "rect(0, 0, 0, 0)",
+            whiteSpace: "nowrap",
+            border: "0",
+          }}
+        >
+          {formatted}
+        </span>
+        <span
+          aria-hidden="true"
           style={{
             display: "inline-flex",
             direction: "ltr",

@@ -1,4 +1,5 @@
 import type { Job } from "@shared/types.js";
+import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -73,7 +74,14 @@ export const ScoreRing: React.FC<{
   size?: "sm" | "lg";
   isAwaitingAi?: boolean;
   suitabilityReason?: string | null;
-}> = ({ score, size = "lg", isAwaitingAi = false, suitabilityReason }) => {
+  jobId?: string;
+}> = ({
+  score,
+  size = "lg",
+  isAwaitingAi = false,
+  suitabilityReason,
+  jobId,
+}) => {
   const tokens = getSuitabilityScoreTokens(score, isAwaitingAi);
   const isLoading = score === null && isAwaitingAi;
   const hasReason = !!suitabilityReason;
@@ -105,13 +113,24 @@ export const ScoreRing: React.FC<{
               role="img"
               aria-label={tokens.label}
               className={cn(
+                "relative overflow-visible",
                 size === "sm"
                   ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
                   : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
                 tokens.shell,
               )}
             >
-              <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <motion.span
+                key={`${jobId}-${score}`}
+                className={cn(
+                  "absolute inset-0 rounded-full border-2 pointer-events-none",
+                  tokens.shell,
+                )}
+                initial={{ scale: 1, opacity: 0.8 }}
+                animate={{ scale: 1.4, opacity: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+              <div className="relative z-10 flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <div
                   className={cn(
                     size === "sm" ? "text-lg" : "text-2xl",
@@ -152,6 +171,7 @@ export const ScoreRing: React.FC<{
                 type="button"
                 aria-label="View fit assessment"
                 className={cn(
+                  "relative overflow-visible",
                   size === "sm"
                     ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
                     : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
@@ -165,7 +185,17 @@ export const ScoreRing: React.FC<{
                         : "hover:shadow-[0_0_15px_rgba(148,163,184,0.45)] hover:border-slate-400/80"),
                 )}
               >
-                <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <motion.span
+                  key={`${jobId}-${score}`}
+                  className={cn(
+                    "absolute inset-0 rounded-full border-2 pointer-events-none",
+                    tokens.shell,
+                  )}
+                  initial={{ scale: 1, opacity: 0.8 }}
+                  animate={{ scale: 1.4, opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                />
+                <div className="relative z-10 flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div
                     className={cn(
                       size === "sm" ? "text-lg" : "text-2xl",

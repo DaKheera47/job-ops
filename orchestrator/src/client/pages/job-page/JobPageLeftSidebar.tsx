@@ -90,6 +90,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
             score={job.suitabilityScore}
             isAwaitingAi={isAwaitingAiScore(job)}
             suitabilityReason={job.suitabilityReason}
+            jobId={job.id}
           />
         </div>
       </div>
