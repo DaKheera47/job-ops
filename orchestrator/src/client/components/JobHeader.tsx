@@ -1,3 +1,4 @@
+import { isAwaitingAiScore, ScoreRing } from "@client/components";
 import type { AppliedDuplicateMatch, Job } from "@shared/types.js";
 import { Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
 import type React from "react";
@@ -12,10 +13,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, formatDate, formatJobSourceLabel, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
-import {
-  isAwaitingAiScore,
-  ScoreRing,
-} from "../pages/job-page/JobPageLeftSidebar";
 import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
 import {
   getJobStatusIndicator,
