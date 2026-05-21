@@ -26,7 +26,7 @@ describe("JobPageLeftSidebar score ring", () => {
     [59, "border-slate-500/55"],
     [null, "border-destructive/40"],
   ])("uses the expected band for score %s", (score, expectedClass) => {
-    renderSidebar({ suitabilityScore: score });
+    renderSidebar({ suitabilityScore: score, suitabilityReason: null });
 
     const ring = screen.getByRole("img", {
       name:
@@ -39,6 +39,19 @@ describe("JobPageLeftSidebar score ring", () => {
     expect(
       within(ring).getByText(score === null ? "!" : String(score)),
     ).toBeInTheDocument();
+  });
+
+  it("renders an interactive button when suitabilityReason is present", () => {
+    renderSidebar({
+      suitabilityScore: 85,
+      suitabilityReason: "Strong match because of TypeScript skills",
+    });
+
+    const button = screen.getByRole("button", {
+      name: "View fit assessment",
+    });
+    expect(button).toBeInTheDocument();
+    expect(within(button).getByText("85")).toBeInTheDocument();
   });
 });
 

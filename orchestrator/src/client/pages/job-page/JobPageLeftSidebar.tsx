@@ -9,8 +9,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -124,50 +130,158 @@ export const ScoreRing: React.FC<{
   score: number | null;
   size?: "sm" | "lg";
   isAwaitingAi?: boolean;
-}> = ({ score, size = "lg", isAwaitingAi = false }) => {
+  suitabilityReason?: string | null;
+}> = ({ score, size = "lg", isAwaitingAi = false, suitabilityReason }) => {
   const tokens = getSuitabilityScoreTokens(score, isAwaitingAi);
   const isLoading = score === null && isAwaitingAi;
+  const hasReason = !!suitabilityReason;
 
-  return (
-    <TooltipProvider delayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            role="img"
-            aria-label={tokens.label}
-            className={cn(
-              size === "sm"
-                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
-                : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
-              tokens.shell,
-            )}
-          >
-            <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <div
-                className={cn(
-                  size === "sm" ? "text-lg" : "text-2xl",
-                  "font-semibold leading-none tabular-nums",
-                )}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  tokens.value
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  const handleTooltipOpenChange = (open: boolean) => {
+    if (popoverOpen) {
+      setTooltipOpen(false);
+    } else {
+      setTooltipOpen(open);
+    }
+  };
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    setPopoverOpen(open);
+    if (open) {
+      setTooltipOpen(false);
+    }
+  };
+
+  if (!hasReason) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              role="img"
+              aria-label={tokens.label}
+              className={cn(
+                size === "sm"
+                  ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
+                  : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
+                tokens.shell,
+              )}
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <div
+                  className={cn(
+                    size === "sm" ? "text-lg" : "text-2xl",
+                    "font-semibold leading-none tabular-nums",
+                  )}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    tokens.value
+                  )}
+                </div>
+                {size === "lg" && (
+                  <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
+                    score
+                  </div>
                 )}
               </div>
-              {size === "lg" && (
-                <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
-                  score
-                </div>
-              )}
             </div>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-60 text-xs">
+            {tokens.label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
+      <TooltipProvider delayDuration={0}>
+        <Tooltip open={tooltipOpen} onOpenChange={handleTooltipOpenChange}>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="View fit assessment"
+                className={cn(
+                  size === "sm"
+                    ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
+                    : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
+                  tokens.shell,
+                  "transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  score !== null &&
+                    (score >= 70
+                      ? "hover:shadow-[0_0_15px_rgba(16,185,129,0.45)] hover:border-emerald-400/80"
+                      : score >= 60
+                        ? "hover:shadow-[0_0_15px_rgba(245,158,11,0.45)] hover:border-amber-400/80"
+                        : "hover:shadow-[0_0_15px_rgba(148,163,184,0.45)] hover:border-slate-400/80"),
+                )}
+              >
+                <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div
+                    className={cn(
+                      size === "sm" ? "text-lg" : "text-2xl",
+                      "font-semibold leading-none tabular-nums",
+                    )}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      tokens.value
+                    )}
+                  </div>
+                  {size === "lg" && (
+                    <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
+                      score
+                    </div>
+                  )}
+                </div>
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Find out why
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        className="w-96 rounded-xl border border-border/80 bg-card/95 p-4 shadow-2xl backdrop-blur-md z-[100]"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b border-border/50 pb-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-emerald-400 animate-pulse" />
+              <span className="font-semibold text-sm text-foreground">
+                Fit Assessment
+              </span>
+            </div>
+            {score !== null && (
+              <span
+                className={cn(
+                  "text-xs font-semibold px-2 py-0.5 rounded-full border",
+                  score >= 70
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : score >= 60
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      : "bg-slate-500/10 text-slate-400 border-slate-500/20",
+                )}
+              >
+                {score}/100
+              </span>
+            )}
           </div>
-        </TooltipTrigger>
-        <TooltipContent side="left" className="max-w-60 text-xs">
-          {tokens.label}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            {suitabilityReason}
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -195,6 +309,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
           <ScoreRing
             score={job.suitabilityScore}
             isAwaitingAi={isAwaitingAiScore(job)}
+            suitabilityReason={job.suitabilityReason}
           />
         </div>
       </div>

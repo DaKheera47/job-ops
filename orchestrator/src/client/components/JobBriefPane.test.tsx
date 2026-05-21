@@ -25,7 +25,7 @@ describe("JobBriefPane", () => {
     expect(
       screen.getByText("Good fit because the stack matches."),
     ).toBeVisible();
-    expect(screen.getByText("Fit Assessment (82/100)")).toBeVisible();
+    expect(screen.getByText(/AI Reasoning for.*82\/100/i)).toBeVisible();
     expect(screen.getByText("TypeScript")).toBeVisible();
     expect(screen.getByText("React")).toBeVisible();
     expect(screen.getByText("Node.js")).toBeVisible();

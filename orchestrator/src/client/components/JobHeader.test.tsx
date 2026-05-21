@@ -146,6 +146,7 @@ describe("JobHeader", () => {
       ...mockJob,
       tracerLinksEnabled: false,
       suitabilityScore: 45,
+      suitabilityReason: null,
     };
 
     renderWithRouter(<JobHeader job={jobWithTooltips} />);
@@ -160,6 +161,13 @@ describe("JobHeader", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Suitability score 45" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows interactive suitability button when suitabilityReason is present", () => {
+    renderWithRouter(<JobHeader job={mockJob} />);
+    expect(
+      screen.getByRole("button", { name: "View fit assessment" }),
     ).toBeInTheDocument();
   });
 
