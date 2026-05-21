@@ -19,6 +19,7 @@ export interface ReactiveResumeV5Role extends ReactiveResumeV5LooseObject {
 export interface ReactiveResumeV5CustomField
   extends ReactiveResumeV5LooseObject {
   id: string;
+  title?: string;
   icon: string;
   text: string;
   link: string;
@@ -44,6 +45,7 @@ export interface ReactiveResumeV5Basics extends ReactiveResumeV5LooseObject {
   phone: string;
   location: string;
   website: ReactiveResumeV5Url;
+  customFieldsTitle?: string;
   customFields: ReactiveResumeV5CustomField[];
 }
 

@@ -26,9 +26,11 @@ describe("normalizeResumeJsonToLatexDocument", () => {
           label: "Portfolio",
           url: "https://jane.dev",
         },
+        customFieldsTitle: "Highlights",
         customFields: [
           {
             id: "custom-1",
+            title: "Eligibility",
             icon: "",
             text: "Eligible to work in the UK",
             link: "",
@@ -217,6 +219,12 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.location).toBe("London, UK");
     expect(document.profileItems).toHaveLength(1);
     expect(document.customFieldItems).toHaveLength(1);
+    expect(document.customFieldItems[0]).toEqual({
+      title: "Eligibility",
+      text: "Eligible to work in the UK",
+      url: null,
+    });
+    expect(document.sectionTitles?.customFields).toBe("Highlights");
     expect(document.summary).toBe("Builds resilient platform systems.");
     expect(document.experience).toHaveLength(1);
     expect(document.education).toHaveLength(1);

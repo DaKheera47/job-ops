@@ -249,9 +249,27 @@
   text-of(section-titles.at("customFields", default: "Custom Fields")),
   custom-field-items.map(item =>
     line-entry(
-      text-of-item(item, "text"),
+      if text-of-item(item, "title") != "" and text-of-item(item, "title") != text-of-item(item, "text") {
+        strong(text-of-item(item, "title"))
+      } else if text-of-item(item, "title") != "" {
+        text-of-item(item, "title")
+      } else {
+        text-of-item(item, "text")
+      },
       if text-of-item(item, "url") != "" {
-        link(text-of-item(item, "url"))[#text-of-item(item, "url")]
+        if text-of-item(item, "title") != "" and text-of-item(item, "title") != text-of-item(item, "text") {
+          [
+            #link-or-text(text-of-item(item, "text"), text-of-item(item, "url"))
+          ]
+        } else {
+          [
+            #link(text-of-item(item, "url"))[#text-of-item(item, "url")]
+          ]
+        }
+      } else if text-of-item(item, "title") != "" and text-of-item(item, "title") != text-of-item(item, "text") {
+        [
+          #text-of-item(item, "text")
+        ]
       } else {
         []
       },

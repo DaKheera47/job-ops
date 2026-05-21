@@ -222,7 +222,13 @@ describe("typst resume renderer", () => {
             url: "https://linkedin.com/in/janedoe",
           },
         ],
-        customFieldItems: [{ text: "Open to relocation", url: null }],
+        customFieldItems: [
+          {
+            title: "Availability",
+            text: "Open to relocation",
+            url: null,
+          },
+        ],
         languages: [{ language: "English", fluency: "Native", level: 5 }],
         interests: [{ name: "Climbing", keywords: ["Bouldering"] }],
         awards: [
@@ -273,6 +279,7 @@ describe("typst resume renderer", () => {
     expect(typst).toContain("London, UK");
     expect(typst).toContain("= Profiles");
     expect(typst).toContain("= Custom Fields");
+    expect(typst).toContain("*Availability:* Open to relocation");
     expect(typst).toContain("= Languages");
     expect(typst).toContain("= Interests");
     expect(typst).toContain("= Awards");

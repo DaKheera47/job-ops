@@ -155,8 +155,9 @@ function buildContacts(resumeJson: RecordLike): DesignResumeJakeContactItem[] {
     (item) => asRecord(item) ?? {},
   ) as RecordLike[];
   for (const field of customFields) {
-    const text =
-      toText(field.text) || toText(field.name) || toText(field.value);
+    const title = toText(field.title) || toText(field.name);
+    const value = toText(field.text) || toText(field.value);
+    const text = [title, value].filter(Boolean).join(": ") || title || value;
     const link = toText(field.link);
     if (text) contacts.push({ text, url: link || undefined });
   }

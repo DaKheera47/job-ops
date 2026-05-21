@@ -176,7 +176,13 @@ describe("latex resume renderer", () => {
             url: "https://linkedin.com/in/janedoe",
           },
         ],
-        customFieldItems: [{ text: "Eligible to work in the UK", url: null }],
+        customFieldItems: [
+          {
+            title: "Eligibility",
+            text: "Eligible to work in the UK",
+            url: null,
+          },
+        ],
         languages: [{ language: "English", fluency: "Native", level: 5 }],
         interests: [{ name: "Climbing", keywords: ["Bouldering"] }],
         awards: [
@@ -226,6 +232,9 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("London, UK");
     expect(latex).toContain("\\section{Profiles}");
     expect(latex).toContain("\\section{Custom Fields}");
+    expect(latex).toContain(
+      "\\textbf{Eligibility}{: Eligible to work in the UK}",
+    );
     expect(latex).toContain("\\section{Languages}");
     expect(latex).toContain("\\section{Interests}");
     expect(latex).toContain("\\section{Awards}");

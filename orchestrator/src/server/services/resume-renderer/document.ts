@@ -199,6 +199,14 @@ function getSectionTitle(
   return toText(section.title).trim() || titles[key];
 }
 
+function getCustomFieldsTitle(
+  resumeJson: RecordLike,
+  titles: LatexResumeSectionTitles,
+): string {
+  const basics = (asRecord(resumeJson.basics) ?? {}) as RecordLike;
+  return toText(basics.customFieldsTitle).trim() || titles.customFields;
+}
+
 function buildPicture(resumeJson: RecordLike): LatexResumePicture | null {
   const picture = (asRecord(resumeJson.picture) ?? {}) as RecordLike;
   const url = toText(picture.url).trim();
@@ -267,14 +275,18 @@ function buildCustomFieldItems(
   const basics = (asRecord(resumeJson.basics) ?? {}) as RecordLike;
   return asArray(basics.customFields)
     .map((item) => asRecord(item) ?? {})
-    .map((item) => ({
-      text:
-        toText(item.text).trim() ||
-        toText(item.name).trim() ||
-        toText(item.value).trim(),
-      url: toText(item.link).trim() || null,
-    }))
-    .filter((item) => item.text);
+    .map((item) => {
+      const title =
+        toText(item.title).trim() || toText(item.name).trim() || null;
+      const text =
+        toText(item.text).trim() || toText(item.value).trim() || title || "";
+      return {
+        title,
+        text,
+        url: toText(item.link).trim() || null,
+      };
+    })
+    .filter((item) => item.title || item.text);
 }
 
 function buildExperienceEntries(resumeJson: RecordLike): LatexResumeEntry[] {
@@ -445,7 +457,7 @@ export function normalizeResumeJsonToLatexDocument(
     sectionTitles: {
       profiles: getSectionTitle(record, "profiles", titles),
       summary: getSectionTitle(record, "summary", titles),
-      customFields: titles.customFields,
+      customFields: getCustomFieldsTitle(record, titles),
       experience: getSectionTitle(record, "experience", titles),
       education: getSectionTitle(record, "education", titles),
       projects: getSectionTitle(record, "projects", titles),

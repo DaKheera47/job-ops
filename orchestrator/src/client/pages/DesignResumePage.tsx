@@ -254,6 +254,30 @@ const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
   },
 ];
 
+function getSectionWorkspaceCopy(
+  activeSection: DesignResumeSectionId | null,
+  draft: DesignResumeDocument | null,
+) {
+  const activeSectionMeta = activeSection
+    ? allDesignResumeSections.find((item) => item.id === activeSection)
+    : null;
+  if (!activeSectionMeta) return null;
+
+  if (activeSection !== "basics-custom-fields" || !draft) {
+    return activeSectionMeta;
+  }
+
+  const resumeJson = draft.resumeJson as Record<string, unknown>;
+  const basics = asRecord(resumeJson.basics) ?? {};
+  const customFieldsTitle =
+    toText(basics.customFieldsTitle).trim() || activeSectionMeta.label;
+
+  return {
+    ...activeSectionMeta,
+    label: customFieldsTitle,
+  };
+}
+
 const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
@@ -980,9 +1004,7 @@ export const DesignResumePage: React.FC = () => {
     }
   };
 
-  const activeSectionMeta = activeSection
-    ? allDesignResumeSections.find((item) => item.id === activeSection)
-    : null;
+  const activeSectionMeta = getSectionWorkspaceCopy(activeSection, draft);
   const activeGroup = activeSection
     ? DESIGN_RESUME_NAV_GROUPS.find((group) =>
         group.items.some((item) => item.id === activeSection),

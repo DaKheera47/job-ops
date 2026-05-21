@@ -29,6 +29,7 @@ export interface LatexResumeProfileItem {
 }
 
 export interface LatexResumeCustomFieldItem {
+  title?: string | null;
   text: string;
   url?: string | null;
 }

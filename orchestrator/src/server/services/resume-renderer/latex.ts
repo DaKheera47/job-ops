@@ -223,8 +223,16 @@ function renderCustomFieldsSection(document: LatexResumeDocument): string {
   if (document.customFieldItems.length === 0) return "";
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const lines = document.customFieldItems.map(
-    (item: LatexResumeCustomFieldItem) =>
-      item.url ? renderLink(item.text, item.url) : escapeForCommand(item.text),
+    (item: LatexResumeCustomFieldItem) => {
+      const value = item.url
+        ? renderLink(item.text, item.url)
+        : escapeForCommand(item.text);
+      if (!item.title) return value;
+      if (item.title === item.text) {
+        return `\\textbf{${escapeForCommand(item.title)}}`;
+      }
+      return `\\textbf{${escapeForCommand(item.title)}}{: ${value}}`;
+    },
   );
   return renderLineSection(titles.customFields, lines);
 }
