@@ -494,7 +494,8 @@ export class LlmService {
   }
 
   private async listGlmModels(): Promise<string[]> {
-    const response = await fetch(joinUrl(this.baseUrl, "/models"), {
+    const normalizedBaseUrl = this.baseUrl.replace(/\/chat\/completions$/, "");
+    const response = await fetch(joinUrl(normalizedBaseUrl, "/models"), {
       method: "GET",
       headers: buildHeaders({
         apiKey: this.apiKey,
@@ -569,7 +570,7 @@ function normalizeProvider(
 }
 
 function normalizeProviderName(raw: string | null): string | undefined {
-  const normalized = raw?.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = raw?.trim().toLowerCase().replace(/[-.]/g, "_");
   if (
     normalized === "zhipu" ||
     normalized === "zhipu_ai" ||

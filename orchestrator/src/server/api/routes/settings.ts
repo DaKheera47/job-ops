@@ -104,7 +104,7 @@ function normalizeLlmProviderValue(
   provider: string | null | undefined,
 ): string | undefined {
   if (!provider) return undefined;
-  const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = provider.trim().toLowerCase().replace(/[-.]/g, "_");
   if (
     normalized === "zhipu" ||
     normalized === "zhipu_ai" ||
@@ -124,7 +124,7 @@ function getDefaultValidationBaseUrl(
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "openai_compatible") return "https://api.openai.com";
-  if (provider === "glm") return "https://open.bigmodel.cn/api/paas/v4";
+  if (provider === "glm") return "https://api.z.ai/api/paas/v4";
   return undefined;
 }
 

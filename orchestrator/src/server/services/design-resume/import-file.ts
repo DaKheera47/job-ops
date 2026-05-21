@@ -128,7 +128,7 @@ function trimText(value: unknown): string {
 function normalizeRuntimeProvider(
   provider: string | null,
 ): SupportedRuntimeProvider | null {
-  const normalized = provider?.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = provider?.trim().toLowerCase().replace(/[-.]/g, "_");
   if (normalized === "openai") return "openai";
   if (normalized === "openrouter" || normalized === "open_router") {
     return "openrouter";
@@ -1262,7 +1262,7 @@ function getDefaultChatCompletionsBaseUrl(
 ): string {
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "lmstudio") return "http://localhost:1234";
-  if (provider === "glm") return "https://open.bigmodel.cn/api/paas/v4";
+  if (provider === "glm") return "https://api.z.ai/api/paas/v4";
   return "https://api.openai.com";
 }
 

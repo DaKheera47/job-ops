@@ -42,7 +42,7 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
     return "https://api.openai.com";
   }
   if (normalized === "glm") {
-    return "https://open.bigmodel.cn/api/paas/v4";
+    return "https://api.z.ai/api/paas/v4";
   }
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";

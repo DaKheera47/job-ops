@@ -45,7 +45,7 @@ orchestrator/
 
    Use `LLM_API_KEY` / `llmApiKey` to configure providers that require an API key.
    To use the native OpenAI integration, set `LLM_PROVIDER=openai`.
-   To use GLM through Zhipu AI/BigModel, set `LLM_PROVIDER=glm`; the default base URL is `https://open.bigmodel.cn/api/paas/v4`.
+   To use GLM through Z.AI, set `LLM_PROVIDER=glm`; the default base URL is `https://api.z.ai/api/paas/v4`.
    For third-party services that expose an OpenAI-style API but are not OpenAI itself, use `LLM_PROVIDER=openai-compatible`.
 
 3. **Initialize database:**

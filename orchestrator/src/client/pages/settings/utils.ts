@@ -134,7 +134,7 @@ export function normalizeLlmProvider(
 ): LlmProviderId {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return "openrouter";
-  const normalizedId = normalized.replace(/-/g, "_");
+  const normalizedId = normalized.replace(/[-.]/g, "_");
   if (normalizedId === "openai_compatible") return "openai_compatible";
   if (
     normalizedId === "zhipu" ||

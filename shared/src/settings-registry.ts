@@ -50,7 +50,7 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
 
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
-  const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = raw.trim().toLowerCase().replace(/[-.]/g, "_");
   if (
     normalized === "zhipu" ||
     normalized === "zhipu_ai" ||

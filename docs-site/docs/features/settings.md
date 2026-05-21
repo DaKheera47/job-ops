@@ -61,7 +61,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - `gemini_cli`: a curated list of Gemini model ids the CLI typically supports (install [Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli), run `gemini` and complete Google sign-in, or set `GEMINI_API_KEY` for the CLI; JobOps spawns headless `gemini -p ...` with `--approval-mode plan` and no JobOps API key field). **Resume import** uses the CLI with extracted text: DOCX is parsed locally; PDF uses local text extraction then JSON extraction via the CLI (scanned PDFs without a text layer may not import well).
   - `ollama`: locally installed Ollama models
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
-- For GLM, JobOps uses `https://open.bigmodel.cn/api/paas/v4` by default. Override the base URL only when using another BigModel-compatible endpoint such as a coding-plan endpoint.
+- For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save
 
