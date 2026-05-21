@@ -41,6 +41,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "openai_compatible") {
     return "https://api.openai.com";
   }
+  if (normalized === "glm") {
+    return "https://api.z.ai/api/paas/v4";
+  }
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }
@@ -83,7 +86,23 @@ function normalizeModelForProviderCompatibility(
     }
   }
 
+  if (normalizedProvider === "glm") {
+    const isGlmModel =
+      normalizedModel.startsWith("glm") ||
+      normalizedModel.startsWith("charglm");
+    if (!isGlmModel) {
+      return null;
+    }
+  }
+
   return trimmedModel;
+}
+
+function isBaseResumeNotConfiguredError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("Base resume not configured")
+  );
 }
 
 function readPurposeOverrides(
@@ -182,6 +201,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   if (Object.keys(profile).length === 0) {
     profile = await getProfile().catch((error) => {
+      if (isBaseResumeNotConfiguredError(error)) {
+        return {};
+      }
       logger.warn("Failed to load base resume profile for settings", { error });
       return {};
     });

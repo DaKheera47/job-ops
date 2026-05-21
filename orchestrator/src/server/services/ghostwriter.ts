@@ -275,7 +275,11 @@ async function imageInputCapabilityReason(
       : `The selected Gemini model (${input.model}) is not recognized as image-capable.`;
   }
 
-  if (provider === "openrouter" || provider === "openai_compatible") {
+  if (
+    provider === "openrouter" ||
+    provider === "openai_compatible" ||
+    provider === "glm"
+  ) {
     if (provider === "openrouter") {
       const metadataReason = await getOpenRouterImageCapabilityReason(input);
       if (metadataReason !== undefined) return metadataReason;
@@ -290,6 +294,10 @@ async function imageInputCapabilityReason(
       "llava",
       "pixtral",
       "gemini",
+      "glm-4v",
+      "glm-4.6v",
+      "glm-4.7v",
+      "glm-5v",
       "gpt-4o",
       "gpt-4.1",
       "gpt-4.5",

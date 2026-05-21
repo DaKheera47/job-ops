@@ -48,14 +48,33 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   return null;
 }
 
+const GLM_PROVIDER_ALIASES = new Set([
+  "zhipu",
+  "zhipu_ai",
+  "zhipuai",
+  "bigmodel",
+  "zai",
+  "z_ai",
+]);
+
+/**
+ * Map known GLM provider aliases to "glm".
+ * `normalized` should already be lowercased with separators (-, .) replaced by underscores.
+ */
+export function mapGlmProviderAlias(normalized: string): string {
+  return GLM_PROVIDER_ALIASES.has(normalized) ? "glm" : normalized;
+}
+
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
-  const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
-  return normalized ? normalized : null;
+  const normalized = raw.trim().toLowerCase().replace(/[-.]/g, "_");
+  const mapped = mapGlmProviderAlias(normalized);
+  return mapped || null;
 }
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+export const DEFAULT_GLM_MODEL = "glm-5.1";
 export const DEFAULT_CODEX_MODEL = "";
 
 export function getDefaultModelForProvider(
@@ -75,6 +94,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "glm") {
+    return DEFAULT_GLM_MODEL;
   }
 
   if (normalizedProvider === "codex") {

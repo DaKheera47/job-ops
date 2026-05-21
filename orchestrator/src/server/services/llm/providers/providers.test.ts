@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { geminiStrategy } from "./gemini";
+import { glmStrategy } from "./glm";
 import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
@@ -81,6 +82,30 @@ describe("provider adapters", () => {
         expectedResponseFormat: "json_object",
       },
       {
+        name: "glm-json_object",
+        strategy: glmStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://api.z.ai/api/paas/v4",
+          apiKey: "x",
+          model: "glm-5.1",
+        },
+        expectedUrl: "https://api.z.ai/api/paas/v4/chat/completions",
+        expectedResponseFormat: "json_object",
+      },
+      {
+        name: "glm-json_object-full-endpoint",
+        strategy: glmStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://api.z.ai/api/paas/v4/chat/completions",
+          apiKey: "x",
+          model: "glm-5.1",
+        },
+        expectedUrl: "https://api.z.ai/api/paas/v4/chat/completions",
+        expectedResponseFormat: "json_object",
+      },
+      {
         name: "gemini-json_schema",
         strategy: geminiStrategy,
         args: {
@@ -147,8 +172,24 @@ describe("provider adapters", () => {
       choices: [{ message: { content: "ok" } }],
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
+    expect(glmStrategy.extractText(response)).toBe("ok");
     expect(lmStudioStrategy.extractText(response)).toBe("ok");
     expect(ollamaStrategy.extractText(response)).toBe("ok");
+  });
+
+  it("builds validation URLs for GLM base URLs and endpoints", () => {
+    expect(
+      glmStrategy.getValidationUrls({
+        baseUrl: "https://api.z.ai/api/paas/v4",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://api.z.ai/api/paas/v4/models"]);
+    expect(
+      glmStrategy.getValidationUrls({
+        baseUrl: "https://api.z.ai/api/paas/v4/chat/completions",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://api.z.ai/api/paas/v4/models"]);
   });
 
   it("builds validation URLs for OpenAI-compatible base URLs and endpoints", () => {

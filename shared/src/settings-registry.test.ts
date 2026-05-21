@@ -341,8 +341,15 @@ describe("settingsRegistry helpers", () => {
       );
     });
 
+    it("accepts GLM provider aliases", () => {
+      expect(settingsRegistry.llmProvider.parse("glm")).toBe("glm");
+      expect(settingsRegistry.llmProvider.parse("zhipu-ai")).toBe("glm");
+      expect(settingsRegistry.llmProvider.parse("bigmodel")).toBe("glm");
+    });
+
     it("uses provider-specific default models", () => {
       expect(getDefaultModelForProvider("openai")).toBe("gpt-5.4-mini");
+      expect(getDefaultModelForProvider("glm")).toBe("glm-5.1");
       expect(getDefaultModelForProvider("gemini")).toBe(
         "google/gemini-3-flash-preview",
       );

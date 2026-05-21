@@ -2,6 +2,7 @@
  * Settings page helpers.
  */
 
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import type { ResumeProjectsSettings } from "@shared/types";
 import { arraysEqual } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export const LLM_PROVIDERS = [
   "ollama",
   "openai",
   "openai_compatible",
+  "glm",
   "gemini",
   "gemini_cli",
   "codex",
@@ -33,6 +35,7 @@ export const LLM_PROVIDERS = [
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "openai",
+  "glm",
   "gemini",
   "gemini_cli",
   "ollama",
@@ -44,6 +47,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   ollama: "Ollama",
   openai: "OpenAI",
   openai_compatible: "OpenAI-compatible",
+  glm: "GLM",
   gemini: "Gemini",
   gemini_cli: "Gemini (CLI)",
   codex: "Codex",
@@ -53,6 +57,7 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "openrouter",
   "openai",
   "openai_compatible",
+  "glm",
   "gemini",
 ]);
 
@@ -60,6 +65,7 @@ const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
   "lmstudio",
   "ollama",
   "openai_compatible",
+  "glm",
 ]);
 
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
@@ -70,6 +76,7 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openai: "OpenAI uses the Responses API with structured outputs.",
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
+  glm: "GLM uses the Z.AI chat completions API (OpenAI-compatible) with your API key.",
   gemini: "Gemini uses the native AI Studio API and requires a key.",
   gemini_cli:
     "Gemini (CLI) runs the official Google Gemini CLI on this host using your OAuth session or CLI API key — no JobOps LLM key.",
@@ -94,6 +101,10 @@ const PROVIDER_KEY_HELPERS: Record<
   openai_compatible: {
     text: "Use the bearer token issued by your compatible provider",
   },
+  glm: {
+    text: "Create a key at z.ai",
+    href: "https://z.ai/manage-apikey/apikey-list",
+  },
   gemini: {
     text: "Create a key at aistudio.google.com/api-keys",
     href: "https://aistudio.google.com/app/apikey",
@@ -104,13 +115,19 @@ const PROVIDER_KEY_HELPERS: Record<
   codex: { text: "No API key required when Codex is authenticated locally" },
 };
 
-const BASE_URL_PROVIDERS = ["lmstudio", "ollama", "openai_compatible"] as const;
+const BASE_URL_PROVIDERS = [
+  "lmstudio",
+  "ollama",
+  "openai_compatible",
+  "glm",
+] as const;
 type BaseUrlProviderId = (typeof BASE_URL_PROVIDERS)[number];
 
 const PROVIDER_BASE_URLS: Record<BaseUrlProviderId, string> = {
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
   openai_compatible: "https://api.example.com/v1/chat/completions",
+  glm: "https://api.z.ai/api/paas/v4",
 };
 
 export function normalizeLlmProvider(
@@ -118,9 +135,11 @@ export function normalizeLlmProvider(
 ): LlmProviderId {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return "openrouter";
-  if (normalized === "openai-compatible") return "openai_compatible";
-  return (LLM_PROVIDERS as readonly string[]).includes(normalized)
-    ? (normalized as LlmProviderId)
+  const normalizedId = normalized.replace(/[-.]/g, "_");
+  if (normalizedId === "openai_compatible") return "openai_compatible";
+  const mapped = mapGlmProviderAlias(normalizedId);
+  return (LLM_PROVIDERS as readonly string[]).includes(mapped)
+    ? (mapped as LlmProviderId)
     : "openrouter";
 }
 

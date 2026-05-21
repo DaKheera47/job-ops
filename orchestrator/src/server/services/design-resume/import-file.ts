@@ -22,6 +22,7 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
 import { DOCX_MIME } from "@shared/job-document-classification.js";
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { jsonrepair } from "jsonrepair";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
@@ -36,6 +37,7 @@ type SupportedImportMediaType =
 type SupportedRuntimeProvider =
   | "openai"
   | "openrouter"
+  | "glm"
   | "gemini"
   | "gemini_cli"
   | "openai_compatible"
@@ -78,6 +80,7 @@ const OPENROUTER_DEFAULT_TIMEOUT_MS = 90_000;
 const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
 const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = 120_000;
 const CHAT_COMPLETIONS_SUFFIX = "/v1/chat/completions";
+const GLM_CHAT_COMPLETIONS_SUFFIX = "/chat/completions";
 const API_VERSION_SUFFIX = "/v1";
 
 const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
@@ -126,16 +129,18 @@ function trimText(value: unknown): string {
 function normalizeRuntimeProvider(
   provider: string | null,
 ): SupportedRuntimeProvider | null {
-  const normalized = provider?.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = provider?.trim().toLowerCase().replace(/[-.]/g, "_");
   if (normalized === "openai") return "openai";
   if (normalized === "openrouter" || normalized === "open_router") {
     return "openrouter";
   }
-  if (normalized === "gemini") return "gemini";
-  if (normalized === "gemini_cli") return "gemini_cli";
-  if (normalized === "openai_compatible") return "openai_compatible";
-  if (normalized === "ollama") return "ollama";
-  if (normalized === "lmstudio") return "lmstudio";
+  const mapped = mapGlmProviderAlias(normalized ?? "");
+  if (mapped === "glm") return "glm";
+  if (mapped === "gemini") return "gemini";
+  if (mapped === "gemini_cli") return "gemini_cli";
+  if (mapped === "openai_compatible") return "openai_compatible";
+  if (mapped === "ollama") return "ollama";
+  if (mapped === "lmstudio") return "lmstudio";
   return null;
 }
 
@@ -253,13 +258,19 @@ function appendVersionedPath(baseUrl: string, path: string): string {
   return joinUrl(baseUrl, path);
 }
 
-function resolveChatCompletionsUrl(baseUrlOrEndpoint: string): string {
+function resolveChatCompletionsUrl(
+  baseUrlOrEndpoint: string,
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
+): string {
   const normalized = normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint);
   if (
     normalized.endsWith(CHAT_COMPLETIONS_SUFFIX) ||
-    normalized.endsWith("/chat/completions")
+    normalized.endsWith(GLM_CHAT_COMPLETIONS_SUFFIX)
   ) {
     return normalized;
+  }
+  if (provider === "glm") {
+    return joinUrl(normalized, GLM_CHAT_COMPLETIONS_SUFFIX);
   }
   return appendVersionedPath(normalized, CHAT_COMPLETIONS_SUFFIX);
 }
@@ -906,6 +917,7 @@ function shouldRetryOpenRouterPdfWithAlternateEngine(input: {
 function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
   return (
     provider === "openai_compatible" ||
+    provider === "glm" ||
     provider === "ollama" ||
     provider === "lmstudio"
   );
@@ -913,7 +925,10 @@ function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
 
 function providerRequiresApiKey(provider: SupportedRuntimeProvider): boolean {
   return (
-    provider === "openai" || provider === "openrouter" || provider === "gemini"
+    provider === "openai" ||
+    provider === "openrouter" ||
+    provider === "gemini" ||
+    provider === "glm"
   );
 }
 
@@ -1235,15 +1250,16 @@ async function extractWithGemini(args: {
 }
 
 function getDefaultChatCompletionsBaseUrl(
-  provider: "openai_compatible" | "ollama" | "lmstudio",
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
 ): string {
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "lmstudio") return "http://localhost:1234";
+  if (provider === "glm") return "https://api.z.ai/api/paas/v4";
   return "https://api.openai.com";
 }
 
 async function extractWithTextChatCompletions(args: {
-  provider: "openai_compatible" | "ollama" | "lmstudio";
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio";
   apiKey: string | null;
   baseUrl: string | null;
   model: string;
@@ -1254,6 +1270,7 @@ async function extractWithTextChatCompletions(args: {
 }): Promise<string> {
   const url = resolveChatCompletionsUrl(
     args.baseUrl || getDefaultChatCompletionsBaseUrl(args.provider),
+    args.provider,
   );
   const response = await fetch(url, {
     method: "POST",
@@ -1387,6 +1404,7 @@ async function extractResumeFromProvider(args: {
   }
   if (
     args.provider === "openai_compatible" ||
+    args.provider === "glm" ||
     args.provider === "ollama" ||
     args.provider === "lmstudio"
   ) {

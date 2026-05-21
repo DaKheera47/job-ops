@@ -404,6 +404,7 @@ export function useOnboardingFlow() {
         description: modelValue
           ? `Default model: ${modelValue}.`
           : normalizedProvider === "openai" ||
+              normalizedProvider === "glm" ||
               normalizedProvider === "gemini" ||
               normalizedProvider === "gemini_cli"
             ? `Default for ${providerConfig.label}: ${defaultModel}.`

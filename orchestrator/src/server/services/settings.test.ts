@@ -4,6 +4,12 @@ vi.mock("@server/repositories/settings", () => ({
   getAllSettings: vi.fn(),
 }));
 
+vi.mock("@infra/logger", () => ({
+  logger: {
+    warn: vi.fn(),
+  },
+}));
+
 vi.mock("./design-resume", () => ({
   getCurrentDesignResumeOrNullOnLegacy: vi.fn(),
   designResumeToProfile: vi.fn(),
@@ -29,6 +35,7 @@ vi.mock("./rxresume", () => ({
   RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {},
 }));
 
+import { logger } from "@infra/logger";
 import { getAllSettings } from "@server/repositories/settings";
 import {
   designResumeToProfile,
@@ -98,6 +105,21 @@ describe("getEffectiveSettings", () => {
 
     await expect(getEffectiveSettings()).resolves.toBeTruthy();
     expect(designResumeToProfile).not.toHaveBeenCalled();
+  });
+
+  it("does not warn when settings have no local or Reactive Resume base profile yet", async () => {
+    vi.mocked(getCurrentDesignResumeOrNullOnLegacy).mockResolvedValue(null);
+    vi.mocked(getProfile).mockRejectedValue(
+      new Error(
+        "Base resume not configured. Please select a base resume from your RxResume account in Settings.",
+      ),
+    );
+
+    await expect(getEffectiveSettings()).resolves.toBeTruthy();
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      "Failed to load base resume profile for settings",
+      expect.any(Object),
+    );
   });
 
   it("exposes purpose overrides and redacted purpose API key hints", async () => {

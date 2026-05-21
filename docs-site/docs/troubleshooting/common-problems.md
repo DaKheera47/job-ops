@@ -51,6 +51,7 @@ npm --workspace docs-site run build
 - Open **Settings -> Model** and check both the provider and the current model preview.
 - If you recently switched providers, leave the model fields blank to use the provider default, or select a provider-compatible model and save again.
 - For `openai`, JobOps defaults to `gpt-5.4-mini` when the model field is blank.
+- For `glm`, JobOps defaults to `glm-5.1` and `https://api.z.ai/api/paas/v4` when the model/base URL fields are blank.
 - For `gemini`, JobOps defaults to `google/gemini-3-flash-preview` when the model field is blank.
 
 ## PDF generation fails

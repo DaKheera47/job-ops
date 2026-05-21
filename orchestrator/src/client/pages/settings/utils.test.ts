@@ -24,6 +24,9 @@ describe("settings utils", () => {
     expect(getLlmProviderConfig("openai").keyHelperHref).toBe(
       "https://platform.openai.com/api-keys",
     );
+    expect(getLlmProviderConfig("glm").keyHelperHref).toBe(
+      "https://z.ai/manage-apikey/apikey-list",
+    );
     expect(getLlmProviderConfig("gemini").keyHelperHref).toBe(
       "https://aistudio.google.com/app/apikey",
     );
@@ -48,12 +51,23 @@ describe("settings utils", () => {
     expect(normalizeLlmProvider("openai-compatible")).toBe("openai_compatible");
   });
 
+  it("treats GLM as a hosted API-key provider with a configurable base URL", () => {
+    const config = getLlmProviderConfig("zhipu-ai");
+
+    expect(config.normalizedProvider).toBe("glm");
+    expect(config.label).toBe("GLM");
+    expect(config.showApiKey).toBe(true);
+    expect(config.showBaseUrl).toBe(true);
+    expect(config.baseUrlPlaceholder).toBe("https://api.z.ai/api/paas/v4");
+  });
+
   it("defaults unknown providers to openrouter", () => {
     expect(normalizeLlmProvider("unknown-provider")).toBe("openrouter");
   });
 
   it("only enables model suggestions for supported providers", () => {
     expect(supportsLlmModelSuggestions("openai")).toBe(true);
+    expect(supportsLlmModelSuggestions("glm")).toBe(true);
     expect(supportsLlmModelSuggestions("gemini")).toBe(true);
     expect(supportsLlmModelSuggestions("gemini_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("ollama")).toBe(true);

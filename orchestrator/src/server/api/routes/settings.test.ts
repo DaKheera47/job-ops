@@ -172,6 +172,31 @@ describe.sequential("Settings API routes", () => {
     }
   });
 
+  it("uses GLM env defaults and base URL", async () => {
+    const glmDefaults = await startServer({
+      env: {
+        MODEL: undefined,
+        LLM_API_KEY: "secret-key",
+        LLM_PROVIDER: "glm",
+        RXRESUME_API_KEY: "resume-api-key",
+      },
+    });
+
+    try {
+      const res = await fetch(`${glmDefaults.baseUrl}/api/settings`);
+      const body = await res.json();
+
+      expect(body.ok).toBe(true);
+      expect(body.data.llmProvider.default).toBe("glm");
+      expect(body.data.llmProvider.value).toBe("glm");
+      expect(body.data.llmBaseUrl.default).toBe("https://api.z.ai/api/paas/v4");
+      expect(body.data.model.default).toBe("glm-5.1");
+      expect(body.data.model.value).toBe("glm-5.1");
+    } finally {
+      await stopServer(glmDefaults);
+    }
+  });
+
   it("uses the provider default model when MODEL is unset", async () => {
     const openAiDefaults = await startServer({
       env: {
