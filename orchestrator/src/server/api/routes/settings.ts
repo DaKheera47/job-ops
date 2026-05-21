@@ -33,7 +33,10 @@ import {
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
-import { settingsRegistry } from "@shared/settings-registry";
+import {
+  mapGlmProviderAlias,
+  settingsRegistry,
+} from "@shared/settings-registry";
 import {
   type UpdateSettingsInput,
   updateSettingsSchema,
@@ -105,17 +108,7 @@ function normalizeLlmProviderValue(
 ): string | undefined {
   if (!provider) return undefined;
   const normalized = provider.trim().toLowerCase().replace(/[-.]/g, "_");
-  if (
-    normalized === "zhipu" ||
-    normalized === "zhipu_ai" ||
-    normalized === "zhipuai" ||
-    normalized === "bigmodel" ||
-    normalized === "zai" ||
-    normalized === "z_ai"
-  ) {
-    return "glm";
-  }
-  return normalized;
+  return mapGlmProviderAlias(normalized);
 }
 
 function getDefaultValidationBaseUrl(

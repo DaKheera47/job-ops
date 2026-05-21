@@ -22,6 +22,7 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
 import { DOCX_MIME } from "@shared/job-document-classification.js";
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { jsonrepair } from "jsonrepair";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
@@ -133,22 +134,13 @@ function normalizeRuntimeProvider(
   if (normalized === "openrouter" || normalized === "open_router") {
     return "openrouter";
   }
-  if (
-    normalized === "glm" ||
-    normalized === "zhipu" ||
-    normalized === "zhipu_ai" ||
-    normalized === "zhipuai" ||
-    normalized === "bigmodel" ||
-    normalized === "zai" ||
-    normalized === "z_ai"
-  ) {
-    return "glm";
-  }
-  if (normalized === "gemini") return "gemini";
-  if (normalized === "gemini_cli") return "gemini_cli";
-  if (normalized === "openai_compatible") return "openai_compatible";
-  if (normalized === "ollama") return "ollama";
-  if (normalized === "lmstudio") return "lmstudio";
+  const mapped = mapGlmProviderAlias(normalized ?? "");
+  if (mapped === "glm") return "glm";
+  if (mapped === "gemini") return "gemini";
+  if (mapped === "gemini_cli") return "gemini_cli";
+  if (mapped === "openai_compatible") return "openai_compatible";
+  if (mapped === "ollama") return "ollama";
+  if (mapped === "lmstudio") return "lmstudio";
   return null;
 }
 

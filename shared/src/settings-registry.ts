@@ -48,20 +48,28 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   return null;
 }
 
+const GLM_PROVIDER_ALIASES = new Set([
+  "zhipu",
+  "zhipu_ai",
+  "zhipuai",
+  "bigmodel",
+  "zai",
+  "z_ai",
+]);
+
+/**
+ * Map known GLM provider aliases to "glm".
+ * `normalized` should already be lowercased with separators (-, .) replaced by underscores.
+ */
+export function mapGlmProviderAlias(normalized: string): string {
+  return GLM_PROVIDER_ALIASES.has(normalized) ? "glm" : normalized;
+}
+
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
   const normalized = raw.trim().toLowerCase().replace(/[-.]/g, "_");
-  if (
-    normalized === "zhipu" ||
-    normalized === "zhipu_ai" ||
-    normalized === "zhipuai" ||
-    normalized === "bigmodel" ||
-    normalized === "zai" ||
-    normalized === "z_ai"
-  ) {
-    return "glm";
-  }
-  return normalized ? normalized : null;
+  const mapped = mapGlmProviderAlias(normalized);
+  return mapped || null;
 }
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";

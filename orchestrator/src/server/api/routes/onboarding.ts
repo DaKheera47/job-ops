@@ -13,6 +13,7 @@ import {
   validateCredentials as validateRxResumeCredentials,
 } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import { type Request, type Response, Router } from "express";
 
 export const onboardingRouter = Router();
@@ -89,17 +90,7 @@ function normalizeLlmProviderValue(
 ): string | undefined {
   if (!provider) return undefined;
   const normalized = provider.toLowerCase().replace(/[-.]/g, "_");
-  if (
-    normalized === "zhipu" ||
-    normalized === "zhipu_ai" ||
-    normalized === "zhipuai" ||
-    normalized === "bigmodel" ||
-    normalized === "zai" ||
-    normalized === "z_ai"
-  ) {
-    return "glm";
-  }
-  return normalized;
+  return mapGlmProviderAlias(normalized);
 }
 
 /**

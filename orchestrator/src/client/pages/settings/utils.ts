@@ -2,6 +2,7 @@
  * Settings page helpers.
  */
 
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import type { ResumeProjectsSettings } from "@shared/types";
 import { arraysEqual } from "@/lib/utils";
 
@@ -136,18 +137,9 @@ export function normalizeLlmProvider(
   if (!normalized) return "openrouter";
   const normalizedId = normalized.replace(/[-.]/g, "_");
   if (normalizedId === "openai_compatible") return "openai_compatible";
-  if (
-    normalizedId === "zhipu" ||
-    normalizedId === "zhipu_ai" ||
-    normalizedId === "zhipuai" ||
-    normalizedId === "bigmodel" ||
-    normalizedId === "zai" ||
-    normalizedId === "z_ai"
-  ) {
-    return "glm";
-  }
-  return (LLM_PROVIDERS as readonly string[]).includes(normalizedId)
-    ? (normalizedId as LlmProviderId)
+  const mapped = mapGlmProviderAlias(normalizedId);
+  return (LLM_PROVIDERS as readonly string[]).includes(mapped)
+    ? (mapped as LlmProviderId)
     : "openrouter";
 }
 

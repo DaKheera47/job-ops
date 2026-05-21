@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { mapGlmProviderAlias } from "@shared/settings-registry";
 import { toStringOrNull } from "@shared/utils/type-conversion";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
@@ -494,8 +495,12 @@ export class LlmService {
   }
 
   private async listGlmModels(): Promise<string[]> {
-    const normalizedBaseUrl = this.baseUrl.replace(/\/chat\/completions$/, "");
-    const response = await fetch(joinUrl(normalizedBaseUrl, "/models"), {
+    const base = this.baseUrl.replace(/\/+$/, "");
+    const suffix = "/chat/completions";
+    const modelsBase = base.endsWith(suffix)
+      ? base.slice(0, -suffix.length)
+      : base;
+    const response = await fetch(joinUrl(modelsBase, "/models"), {
       method: "GET",
       headers: buildHeaders({
         apiKey: this.apiKey,
@@ -571,17 +576,8 @@ function normalizeProvider(
 
 function normalizeProviderName(raw: string | null): string | undefined {
   const normalized = raw?.trim().toLowerCase().replace(/[-.]/g, "_");
-  if (
-    normalized === "zhipu" ||
-    normalized === "zhipu_ai" ||
-    normalized === "zhipuai" ||
-    normalized === "bigmodel" ||
-    normalized === "zai" ||
-    normalized === "z_ai"
-  ) {
-    return "glm";
-  }
-  return normalized;
+  if (!normalized) return normalized;
+  return mapGlmProviderAlias(normalized);
 }
 
 function sleep(ms: number): Promise<void> {
