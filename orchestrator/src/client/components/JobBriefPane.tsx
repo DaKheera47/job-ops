@@ -2,7 +2,6 @@ import type { Job, JobBrief } from "@shared/types.js";
 import { Sparkles } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
-import { FitAssessment } from "./FitAssessment";
 
 type JobBriefPaneProps = {
   job: Job;
@@ -36,8 +35,6 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
       <p className="text-lg font-bold leading-7 text-foreground border-border p-4 rounded-lg bg-muted/50 flex items-center gap-2">
         {brief.role_summary}
       </p>
-
-      <FitAssessment job={job} />
 
       <div className="grid gap-y-6 gap-x-2 lg:grid-cols-2">
         <BulletSection title="Company offers" items={brief.company_offers} />

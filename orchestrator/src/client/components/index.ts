@@ -1,4 +1,3 @@
-export { FitAssessment } from "./FitAssessment";
 export { JobBriefPane } from "./JobBriefPane";
 export { JobDescriptionPanel } from "./JobDescriptionPanel";
 export { JobHeader } from "./JobHeader";
