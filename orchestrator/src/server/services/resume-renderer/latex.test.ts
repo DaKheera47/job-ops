@@ -10,9 +10,9 @@ import {
   readLatexTemplate,
   renderLatexPdf,
 } from "./latex";
-import type { LatexResumeDocument } from "./types";
+import type { ResumeRenderDocument } from "./types";
 
-const baseDocument: LatexResumeDocument = {
+const baseDocument: ResumeRenderDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
   contactItems: [
@@ -20,22 +20,45 @@ const baseDocument: LatexResumeDocument = {
     { text: "Portfolio", url: "https://jane.dev" },
   ],
   summary: "Builds resilient platform systems.",
-  experience: [
+  body: [
     {
-      title: "Acme",
-      subtitle: "Platform Engineer | Remote",
-      date: "2023 -- Present",
-      bullets: ["Improved API reliability", "Reduced operator toil"],
-      url: "https://acme.example.com",
-      linkLabel: "Acme",
+      key: "experience",
+      title: "Experience",
+      kind: "entry",
+      entries: [
+        {
+          title: "Acme",
+          subtitle: "Platform Engineer | Remote",
+          date: "2023 -- Present",
+          bullets: ["Improved API reliability", "Reduced operator toil"],
+          url: "https://acme.example.com",
+          linkLabel: "Acme",
+        },
+      ],
     },
-  ],
-  education: [],
-  projects: [],
-  skillGroups: [
     {
-      name: "Backend",
-      keywords: ["TypeScript", "Node.js", "PostgreSQL"],
+      key: "education",
+      title: "Education",
+      kind: "entry",
+      entries: [],
+    },
+    {
+      key: "projects",
+      title: "Projects",
+      kind: "project",
+      entries: [],
+    },
+    {
+      key: "skills",
+      title: "Technical Skills",
+      kind: "skills",
+      entries: [],
+      skillGroups: [
+        {
+          name: "Backend",
+          keywords: ["TypeScript", "Node.js", "PostgreSQL"],
+        },
+      ],
     },
   ],
 };
@@ -97,20 +120,45 @@ describe("latex resume renderer", () => {
     const latex = buildLatexDocument(
       {
         ...baseDocument,
-        education: [
+        body: [
           {
-            title: "University",
-            subtitle: "MSc",
-            date: "2020",
-            bullets: ["Studied distributed systems"],
+            key: "experience",
+            title: "Experiencia",
+            kind: "entry",
+            entries: baseDocument.body[0].entries,
           },
-        ],
-        projects: [
           {
-            title: "Platform",
-            subtitle: "TypeScript",
-            date: "2024",
-            bullets: ["Built deployment tooling"],
+            key: "education",
+            title: "Educación",
+            kind: "entry",
+            entries: [
+              {
+                title: "University",
+                subtitle: "MSc",
+                date: "2020",
+                bullets: ["Studied distributed systems"],
+              },
+            ],
+          },
+          {
+            key: "projects",
+            title: "Proyectos",
+            kind: "project",
+            entries: [
+              {
+                title: "Platform",
+                subtitle: "TypeScript",
+                date: "2024",
+                bullets: ["Built deployment tooling"],
+              },
+            ],
+          },
+          {
+            key: "skills",
+            title: "Habilidades técnicas",
+            kind: "skills",
+            entries: [],
+            skillGroups: baseDocument.body[3].skillGroups,
           },
         ],
         sectionTitles: {

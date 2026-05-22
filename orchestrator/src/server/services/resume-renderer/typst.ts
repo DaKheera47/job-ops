@@ -7,11 +7,12 @@ import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
-import { getLatexResumeSectionTitles } from "./document";
+import { getResumeSectionTitles } from "./document";
 import type {
-  LatexResumeContactItem,
-  LatexResumeDocument,
-  LatexResumeEntry,
+  ResumeRenderBodySection,
+  ResumeRenderContactItem,
+  ResumeRenderDocument,
+  ResumeRenderEntry,
   ResumeRenderer,
 } from "./types";
 
@@ -198,7 +199,7 @@ function renderLink(label: string, url?: string | null): string {
   return `#link(${escapeTypstUrl(url)})[${renderedLabel}]`;
 }
 
-function renderContactItems(items: LatexResumeContactItem[]): string {
+function renderContactItems(items: ResumeRenderContactItem[]): string {
   return items
     .map((item) => renderLink(item.text, item.url))
     .join(" #h(4pt) | #h(4pt) ");
@@ -209,7 +210,7 @@ function renderBullets(items: string[]): string {
   return items.map((item) => `- ${escapeTypstText(item)}`).join("\n");
 }
 
-function renderEntryHeader(entry: LatexResumeEntry, metaSize: string): string {
+function renderEntryHeader(entry: ResumeRenderEntry, metaSize: string): string {
   const title = renderLink(entry.title, entry.url);
   const date = entry.date
     ? `#text(size: ${metaSize})[${escapeTypstText(entry.date)}]`
@@ -218,7 +219,7 @@ function renderEntryHeader(entry: LatexResumeEntry, metaSize: string): string {
 }
 
 function renderSubheadingEntry(
-  entry: LatexResumeEntry,
+  entry: ResumeRenderEntry,
   metaSize: string,
 ): string {
   const subtitle = entry.subtitle ? escapeTypstText(entry.subtitle) : "";
@@ -242,7 +243,10 @@ function renderSubheadingEntry(
     .join("\n");
 }
 
-function renderProjectEntry(entry: LatexResumeEntry, metaSize: string): string {
+function renderProjectEntry(
+  entry: ResumeRenderEntry,
+  metaSize: string,
+): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle
     ? ` #emph[${escapeTypstText(entry.subtitle)}]`
@@ -259,9 +263,9 @@ function renderProjectEntry(entry: LatexResumeEntry, metaSize: string): string {
     .join("\n");
 }
 
-function renderSummarySection(document: LatexResumeDocument): string {
+function renderSummarySection(document: ResumeRenderDocument): string {
   if (!document.summary) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const titles = document.sectionTitles ?? getResumeSectionTitles();
   return [
     `= ${escapeTypstText(titles.summary)}`,
     escapeTypstText(document.summary),
@@ -270,7 +274,7 @@ function renderSummarySection(document: LatexResumeDocument): string {
 
 function renderEntrySection(args: {
   title: string;
-  entries: LatexResumeEntry[];
+  entries: ResumeRenderEntry[];
   kind: "subheading" | "project";
   metaSize: string;
 }): string {
@@ -285,10 +289,9 @@ function renderEntrySection(args: {
   return [`= ${escapeTypstText(args.title)}`, body].join("\n\n");
 }
 
-function renderSkillsSection(document: LatexResumeDocument): string {
-  if (document.skillGroups.length === 0) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
-  const items = document.skillGroups
+function renderSkillsSection(section: ResumeRenderBodySection): string {
+  if (!section.skillGroups || section.skillGroups.length === 0) return "";
+  const items = section.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
         escapeTypstText(keyword),
@@ -296,7 +299,7 @@ function renderSkillsSection(document: LatexResumeDocument): string {
       return `*${escapeTypstText(group.name)}:* ${keywords.join(", ")}`;
     })
     .join(" \\\n");
-  return [`= ${escapeTypstText(titles.skills)}`, items].join("\n\n");
+  return [`= ${escapeTypstText(section.title)}`, items].join("\n\n");
 }
 
 export async function readTypstThemeManifest(
@@ -338,11 +341,10 @@ function buildAdaptedTypstDocument(template: string): string {
 }
 
 export function buildTypstDocument(
-  document: LatexResumeDocument,
+  document: ResumeRenderDocument,
   template: string,
   tokens: TypstThemeTokens,
 ): string {
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `  #text(size: ${tokens.headlineSize})[${escapeTypstText(document.headline)}] \\\n`
     : "";
@@ -352,25 +354,28 @@ export function buildTypstDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    renderEntrySection({
-      title: titles.experience,
-      entries: document.experience,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
+    ...document.body.map((section) => {
+      switch (section.kind) {
+        case "skills":
+          return renderSkillsSection(section);
+        case "project":
+          return renderEntrySection({
+            title: section.title,
+            entries: section.entries,
+            kind: "project",
+            metaSize: tokens.entryMetaSize,
+          });
+        case "entry":
+          return renderEntrySection({
+            title: section.title,
+            entries: section.entries,
+            kind: "subheading",
+            metaSize: tokens.entryMetaSize,
+          });
+        default:
+          return "";
+      }
     }),
-    renderEntrySection({
-      title: titles.education,
-      entries: document.education,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.projects,
-      entries: document.projects,
-      kind: "project",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderSkillsSection(document),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -517,10 +522,12 @@ export const typstResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
-          experienceCount: document.experience.length,
-          educationCount: document.education.length,
-          projectCount: document.projects.length,
-          skillGroupCount: document.skillGroups.length,
+          bodySections: document.body.map((s) => ({
+            key: s.key,
+            kind: s.kind,
+            entryCount: s.entries.length,
+            skillGroupCount: s.skillGroups?.length ?? 0,
+          })),
         }),
       });
       throw error;
@@ -539,7 +546,7 @@ export const typstResumeRenderer: ResumeRenderer = {
 };
 
 export async function renderTypstPdf(args: {
-  document: LatexResumeDocument;
+  document: ResumeRenderDocument;
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;

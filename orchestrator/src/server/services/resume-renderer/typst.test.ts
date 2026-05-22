@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
 import { afterEach, describe, expect, it } from "vitest";
-import type { LatexResumeDocument } from "./types";
+import type { ResumeRenderDocument } from "./types";
 import {
   buildTypstDocument,
   getTypstBinary,
@@ -18,7 +18,7 @@ import {
 
 const nativeThemes = new Set(["classic", "compact"]);
 
-const baseDocument: LatexResumeDocument = {
+const baseDocument: ResumeRenderDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
   contactItems: [
@@ -26,22 +26,45 @@ const baseDocument: LatexResumeDocument = {
     { text: "Portfolio", url: "https://jane.dev" },
   ],
   summary: "Builds resilient platform systems.",
-  experience: [
+  body: [
     {
-      title: "Acme",
-      subtitle: "Platform Engineer | Remote",
-      date: "2023 -- Present",
-      bullets: ["Improved API reliability", "Reduced operator toil"],
-      url: "https://acme.example.com",
-      linkLabel: "Acme",
+      key: "experience",
+      title: "Experience",
+      kind: "entry",
+      entries: [
+        {
+          title: "Acme",
+          subtitle: "Platform Engineer | Remote",
+          date: "2023 -- Present",
+          bullets: ["Improved API reliability", "Reduced operator toil"],
+          url: "https://acme.example.com",
+          linkLabel: "Acme",
+        },
+      ],
     },
-  ],
-  education: [],
-  projects: [],
-  skillGroups: [
     {
-      name: "Backend",
-      keywords: ["TypeScript", "Node.js", "PostgreSQL"],
+      key: "education",
+      title: "Education",
+      kind: "entry",
+      entries: [],
+    },
+    {
+      key: "projects",
+      title: "Projects",
+      kind: "project",
+      entries: [],
+    },
+    {
+      key: "skills",
+      title: "Technical Skills",
+      kind: "skills",
+      entries: [],
+      skillGroups: [
+        {
+          name: "Backend",
+          keywords: ["TypeScript", "Node.js", "PostgreSQL"],
+        },
+      ],
     },
   ],
 };
@@ -136,6 +159,12 @@ describe("typst resume renderer", () => {
     const typst = buildTypstDocument(
       {
         ...baseDocument,
+        body: [
+          { ...baseDocument.body[0], title: "Experiencia" },
+          { ...baseDocument.body[1], title: "Educación" },
+          { ...baseDocument.body[2], title: "Proyectos" },
+          { ...baseDocument.body[3], title: "Habilidades técnicas" },
+        ],
         sectionTitles: {
           summary: "Resumen",
           experience: "Experiencia",

@@ -6,11 +6,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
-import { getLatexResumeSectionTitles } from "./document";
+import { getResumeSectionTitles } from "./document";
 import type {
-  LatexResumeContactItem,
-  LatexResumeDocument,
-  LatexResumeEntry,
+  ResumeRenderBodySection,
+  ResumeRenderContactItem,
+  ResumeRenderDocument,
+  ResumeRenderEntry,
   ResumeRenderer,
 } from "./types";
 
@@ -83,7 +84,7 @@ function renderLink(label: string, url?: string | null): string {
   return `\\href{${escapeLatexUrl(url)}}{\\underline{${escapeForCommand(label)}}}`;
 }
 
-function renderContactItems(items: LatexResumeContactItem[]): string {
+function renderContactItems(items: ResumeRenderContactItem[]): string {
   return items.map((item) => renderLink(item.text, item.url)).join(" $|$ ");
 }
 
@@ -96,7 +97,7 @@ function renderBullets(items: string[]): string {
   ].join("\n");
 }
 
-function renderSubheadingEntry(entry: LatexResumeEntry): string {
+function renderSubheadingEntry(entry: ResumeRenderEntry): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle ? escapeForCommand(entry.subtitle) : "";
   const secondaryTitle = entry.secondaryTitle
@@ -118,7 +119,7 @@ function renderSubheadingEntry(entry: LatexResumeEntry): string {
   return lines.join("\n");
 }
 
-function renderProjectEntry(entry: LatexResumeEntry): string {
+function renderProjectEntry(entry: ResumeRenderEntry): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle
     ? ` $|$ \\emph{${escapeForCommand(entry.subtitle)}}`
@@ -133,9 +134,9 @@ function renderProjectEntry(entry: LatexResumeEntry): string {
   return lines.join("\n");
 }
 
-function renderSummarySection(document: LatexResumeDocument): string {
+function renderSummarySection(document: ResumeRenderDocument): string {
   if (!document.summary) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const titles = document.sectionTitles ?? getResumeSectionTitles();
   return [
     `\\section{${escapeForCommand(titles.summary)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
@@ -147,7 +148,7 @@ function renderSummarySection(document: LatexResumeDocument): string {
 
 function renderEntrySection(args: {
   title: string;
-  entries: LatexResumeEntry[];
+  entries: ResumeRenderEntry[];
   kind: "subheading" | "project";
 }): string {
   if (args.entries.length === 0) return "";
@@ -167,10 +168,9 @@ function renderEntrySection(args: {
   ].join("\n");
 }
 
-function renderSkillsSection(document: LatexResumeDocument): string {
-  if (document.skillGroups.length === 0) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
-  const items = document.skillGroups
+function renderSkillsSection(section: ResumeRenderBodySection): string {
+  if (!section.skillGroups || section.skillGroups.length === 0) return "";
+  const items = section.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
         escapeForCommand(keyword),
@@ -180,7 +180,7 @@ function renderSkillsSection(document: LatexResumeDocument): string {
     })
     .join("\n");
   return [
-    `\\section{${escapeForCommand(titles.skills)}}`,
+    `\\section{${escapeForCommand(section.title)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
     "    \\small{\\item{",
     items,
@@ -195,10 +195,9 @@ async function loadTemplate(): Promise<string> {
 }
 
 export function buildLatexDocument(
-  document: LatexResumeDocument,
+  document: ResumeRenderDocument,
   template: string,
 ): string {
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
@@ -208,22 +207,26 @@ export function buildLatexDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    renderEntrySection({
-      title: titles.experience,
-      entries: document.experience,
-      kind: "subheading",
+    ...document.body.map((section) => {
+      switch (section.kind) {
+        case "skills":
+          return renderSkillsSection(section);
+        case "project":
+          return renderEntrySection({
+            title: section.title,
+            entries: section.entries,
+            kind: "project",
+          });
+        case "entry":
+          return renderEntrySection({
+            title: section.title,
+            entries: section.entries,
+            kind: "subheading",
+          });
+        default:
+          return "";
+      }
     }),
-    renderEntrySection({
-      title: titles.education,
-      entries: document.education,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.projects,
-      entries: document.projects,
-      kind: "project",
-    }),
-    renderSkillsSection(document),
   ]
     .filter(Boolean)
     .join("\n");
@@ -343,10 +346,7 @@ export const latexResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
-          experienceCount: document.experience.length,
-          educationCount: document.education.length,
-          projectCount: document.projects.length,
-          skillGroupCount: document.skillGroups.length,
+          bodyLength: document.body.length,
         }),
       });
       throw error;
@@ -365,7 +365,7 @@ export const latexResumeRenderer: ResumeRenderer = {
 };
 
 export async function renderLatexPdf(args: {
-  document: LatexResumeDocument;
+  document: ResumeRenderDocument;
   outputPath: string;
   jobId: string;
 }): Promise<void> {

@@ -1,11 +1,11 @@
 import type { ChatStyleManualLanguage, TypstTheme } from "@shared/types";
 
-export interface LatexResumeContactItem {
+export interface ResumeRenderContactItem {
   text: string;
   url?: string | null;
 }
 
-export interface LatexResumeEntry {
+export interface ResumeRenderEntry {
   title: string;
   subtitle?: string | null;
   secondaryTitle?: string | null;
@@ -16,12 +16,12 @@ export interface LatexResumeEntry {
   linkLabel?: string | null;
 }
 
-export interface LatexResumeSkillGroup {
+export interface ResumeRenderSkillGroup {
   name: string;
   keywords: string[];
 }
 
-export interface LatexResumeSectionTitles {
+export interface ResumeRenderSectionTitles {
   summary: string;
   experience: string;
   education: string;
@@ -29,20 +29,27 @@ export interface LatexResumeSectionTitles {
   skills: string;
 }
 
-export interface LatexResumeDocument {
+export type ResumeRenderSectionKind = "entry" | "project" | "skills";
+
+export interface ResumeRenderBodySection {
+  key: string;
+  title: string;
+  kind: ResumeRenderSectionKind;
+  entries: ResumeRenderEntry[];
+  skillGroups?: ResumeRenderSkillGroup[];
+}
+
+export interface ResumeRenderDocument {
   name: string;
   headline?: string | null;
-  contactItems: LatexResumeContactItem[];
+  contactItems: ResumeRenderContactItem[];
   summary?: string | null;
-  experience: LatexResumeEntry[];
-  education: LatexResumeEntry[];
-  projects: LatexResumeEntry[];
-  skillGroups: LatexResumeSkillGroup[];
-  sectionTitles?: LatexResumeSectionTitles;
+  body: ResumeRenderBodySection[];
+  sectionTitles?: ResumeRenderSectionTitles;
 }
 
 export interface RenderResumePdfArgs {
-  document: LatexResumeDocument;
+  document: ResumeRenderDocument;
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
@@ -52,6 +59,6 @@ export interface ResumeRenderer {
   render(args: RenderResumePdfArgs): Promise<void>;
 }
 
-export interface NormalizeResumeJsonToLatexDocumentOptions {
+export interface NormalizeResumeJsonOptions {
   language?: ChatStyleManualLanguage;
 }
