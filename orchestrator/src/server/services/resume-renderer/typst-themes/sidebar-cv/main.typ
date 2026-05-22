@@ -85,15 +85,6 @@
 #let profile-items = list-of(source.at("profileItems", default: ()))
 #let custom-field-items = list-of(source.at("customFieldItems", default: ()))
 
-#let is-email(item) = {
-  let t = text-of-item(item, "text")
-  let u = text-of-item(item, "url")
-  t.contains("@") or u.starts-with("mailto:")
-}
-#let is-phone(item) = {
-  text-of-item(item, "url") == "" and not is-email(item)
-}
-
 // ---------------------------------------------------------------------------
 // Sidebar section helper
 // ---------------------------------------------------------------------------
