@@ -485,7 +485,7 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS post_application_integrations (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
-    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
     account_key TEXT NOT NULL DEFAULT 'default',
     display_name TEXT,
     status TEXT NOT NULL DEFAULT 'disconnected' CHECK(status IN ('disconnected', 'connected', 'error')),
@@ -502,7 +502,7 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS post_application_sync_runs (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
-    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
@@ -526,7 +526,7 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS post_application_messages (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
-    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
     sync_run_id TEXT,
@@ -1050,6 +1050,130 @@ const migrations = [
        ORDER BY se.occurred_at DESC, se.id DESC
        LIMIT 1
      ), 'applied') = 'closed'`,
+
+  // --- O365 provider CHECK constraint migration for existing databases ---
+  // SQLite cannot ALTER CHECK constraints, so rebuild the three post-application
+  // tables to allow provider IN ('gmail', 'imap', 'o365').
+  `PRAGMA foreign_keys = OFF`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_integrations_new (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
+    account_key TEXT NOT NULL DEFAULT 'default',
+    display_name TEXT,
+    status TEXT NOT NULL DEFAULT 'disconnected' CHECK(status IN ('disconnected', 'connected', 'error')),
+    credentials TEXT,
+    last_connected_at INTEGER,
+    last_synced_at INTEGER,
+    last_error TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tenant_id, provider, account_key),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+  )`,
+  `INSERT OR REPLACE INTO post_application_integrations_new
+   (id, tenant_id, provider, account_key, display_name, status, credentials,
+    last_connected_at, last_synced_at, last_error, created_at, updated_at)
+   SELECT id, tenant_id, provider, account_key, display_name, status, credentials,
+    last_connected_at, last_synced_at, last_error, created_at, updated_at
+   FROM post_application_integrations`,
+  `DROP TABLE IF EXISTS post_application_integrations`,
+  `ALTER TABLE post_application_integrations_new RENAME TO post_application_integrations`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_sync_runs_new (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
+    account_key TEXT NOT NULL DEFAULT 'default',
+    integration_id TEXT,
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
+    started_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    messages_discovered INTEGER NOT NULL DEFAULT 0,
+    messages_relevant INTEGER NOT NULL DEFAULT 0,
+    messages_classified INTEGER NOT NULL DEFAULT 0,
+    messages_matched INTEGER NOT NULL DEFAULT 0,
+    messages_approved INTEGER NOT NULL DEFAULT 0,
+    messages_denied INTEGER NOT NULL DEFAULT 0,
+    messages_errored INTEGER NOT NULL DEFAULT 0,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL
+  )`,
+  `INSERT OR REPLACE INTO post_application_sync_runs_new
+   (id, tenant_id, provider, account_key, integration_id, status, started_at, completed_at,
+    messages_discovered, messages_relevant, messages_classified, messages_matched,
+    messages_approved, messages_denied, messages_errored, error_code, error_message,
+    created_at, updated_at)
+   SELECT id, tenant_id, provider, account_key, integration_id, status, started_at, completed_at,
+    messages_discovered, messages_relevant, messages_classified, messages_matched,
+    messages_approved, messages_denied, messages_errored, error_code, error_message,
+    created_at, updated_at
+   FROM post_application_sync_runs`,
+  `DROP TABLE IF EXISTS post_application_sync_runs`,
+  `ALTER TABLE post_application_sync_runs_new RENAME TO post_application_sync_runs`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_messages_new (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
+    account_key TEXT NOT NULL DEFAULT 'default',
+    integration_id TEXT,
+    sync_run_id TEXT,
+    external_message_id TEXT NOT NULL,
+    external_thread_id TEXT,
+    from_address TEXT NOT NULL DEFAULT '',
+    from_domain TEXT,
+    sender_name TEXT,
+    subject TEXT NOT NULL DEFAULT '',
+    received_at INTEGER NOT NULL,
+    snippet TEXT NOT NULL DEFAULT '',
+    classification_label TEXT,
+    classification_confidence REAL,
+    classification_payload TEXT,
+    relevance_llm_score REAL,
+    relevance_decision TEXT NOT NULL DEFAULT 'needs_llm' CHECK(relevance_decision IN ('relevant', 'not_relevant', 'needs_llm')),
+    match_confidence INTEGER,
+    message_type TEXT NOT NULL DEFAULT 'other' CHECK(message_type IN ('interview', 'rejection', 'offer', 'update', 'other')),
+    stage_event_payload TEXT,
+    processing_status TEXT NOT NULL DEFAULT 'pending_user' CHECK(processing_status IN ('auto_linked', 'pending_user', 'manual_linked', 'ignored')),
+    matched_job_id TEXT,
+    decided_at INTEGER,
+    decided_by TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL,
+    FOREIGN KEY (sync_run_id) REFERENCES post_application_sync_runs(id) ON DELETE SET NULL,
+    FOREIGN KEY (matched_job_id) REFERENCES jobs(id) ON DELETE SET NULL,
+    UNIQUE(tenant_id, provider, account_key, external_message_id)
+  )`,
+  `INSERT OR REPLACE INTO post_application_messages_new
+   (id, tenant_id, provider, account_key, integration_id, sync_run_id,
+    external_message_id, external_thread_id, from_address, from_domain, sender_name,
+    subject, received_at, snippet, classification_label, classification_confidence,
+    classification_payload, relevance_llm_score, relevance_decision,
+    match_confidence, message_type, stage_event_payload, processing_status,
+    matched_job_id, decided_at, decided_by, error_code, error_message,
+    created_at, updated_at)
+   SELECT id, tenant_id, provider, account_key, integration_id, sync_run_id,
+    external_message_id, external_thread_id, from_address, from_domain, sender_name,
+    subject, received_at, snippet, classification_label, classification_confidence,
+    classification_payload, relevance_llm_score, relevance_decision,
+    match_confidence, message_type, stage_event_payload, processing_status,
+    matched_job_id, decided_at, decided_by, error_code, error_message,
+    created_at, updated_at
+   FROM post_application_messages`,
+  `DROP TABLE IF EXISTS post_application_messages`,
+  `ALTER TABLE post_application_messages_new RENAME TO post_application_messages`,
+
+  `PRAGMA foreign_keys = ON`,
 ];
 
 console.log("🔧 Running database migrations...");
