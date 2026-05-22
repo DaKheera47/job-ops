@@ -1,6 +1,9 @@
 #import "@preview/clean-print-cv:0.1.0": *
 
 #let source = json(__RESUME_DATA_PATH__)
+#set page(fill: __BACKGROUND_COLOR__)
+#set text(font: __BODY_FONT__, fill: __TEXT_COLOR__)
+#show link: set text(fill: __PRIMARY_COLOR__)
 
 #let with-default(value, fallback) = {
   if value == none {

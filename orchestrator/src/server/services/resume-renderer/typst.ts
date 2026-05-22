@@ -422,8 +422,34 @@ function replaceSharedTypstPlaceholders(template: string): string {
   );
 }
 
-function buildAdaptedTypstDocument(template: string): string {
-  return replaceSharedTypstPlaceholders(template);
+function replaceStylePlaceholders(
+  template: string,
+  document: LatexResumeDocument,
+): string {
+  const style = document.style;
+  const bodyFont = style?.typography.bodyFontFamily || "IBM Plex Serif";
+  const headingFont = style?.typography.headingFontFamily || bodyFont;
+  const primaryHex = style?.colors.primaryHex || "#202020";
+  const textHex = style?.colors.textHex || "#000000";
+  const backgroundHex = style?.colors.backgroundHex || "#ffffff";
+
+  return template
+    .replaceAll("__BODY_FONT__", JSON.stringify(bodyFont))
+    .replaceAll("__HEADING_FONT__", JSON.stringify(headingFont))
+    .replaceAll("__PRIMARY_COLOR__", `rgb("${primaryHex}")`)
+    .replaceAll("__TEXT_COLOR__", `rgb("${textHex}")`)
+    .replaceAll("__BACKGROUND_COLOR__", `rgb("${backgroundHex}")`)
+    .replaceAll("__SIDEBAR_BG_COLOR__", `rgb("${backgroundHex}")`);
+}
+
+function buildAdaptedTypstDocument(
+  document: LatexResumeDocument,
+  template: string,
+): string {
+  return replaceStylePlaceholders(
+    replaceSharedTypstPlaceholders(template),
+    document,
+  );
 }
 
 export function normalizeTypstDocumentPicturePath(
@@ -465,7 +491,7 @@ export function buildTypstDocument(
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const pictureBlock = renderPictureBlock(document);
   const headlineBlock = document.headline
-    ? `  #text(size: ${tokens.headlineSize})[${escapeTypstText(document.headline)}] \\\n`
+    ? `  #text(font: __HEADING_FONT__, size: ${tokens.headlineSize}, fill: __TEXT_COLOR__)[${escapeTypstText(document.headline)}] \\\n`
     : "";
   const locationBlock = renderLocationBlock(document);
   const contactBlock =
@@ -531,7 +557,10 @@ export function buildTypstDocument(
     .filter(Boolean)
     .join("\n\n");
 
-  return replaceSharedTypstPlaceholders(template)
+  return replaceStylePlaceholders(
+    replaceSharedTypstPlaceholders(template),
+    document,
+  )
     .replace("__PAGE_MARGIN__", tokens.pageMargin)
     .replace("__BODY_SIZE__", tokens.bodySize)
     .replace("__PAR_LEADING__", tokens.parLeading)
@@ -656,7 +685,7 @@ export const typstResumeRenderer: ResumeRenderer = {
         }
         typst = buildTypstDocument(typstDocument, template, tokens);
       } else {
-        typst = buildAdaptedTypstDocument(template);
+        typst = buildAdaptedTypstDocument(typstDocument, template);
       }
 
       await writeFile(resumeDataPath, JSON.stringify(typstDocument), "utf8");

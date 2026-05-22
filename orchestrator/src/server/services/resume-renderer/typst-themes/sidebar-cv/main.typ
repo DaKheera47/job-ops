@@ -35,8 +35,8 @@
 // Colours & metrics
 // ---------------------------------------------------------------------------
 
-#let accent = rgb("#4a7c8f")
-#let sidebar-bg = rgb("#e8ecee")
+#let accent = __PRIMARY_COLOR__
+#let sidebar-bg = __SIDEBAR_BG_COLOR__
 #let sidebar-width = 30%
 #let main-width = 70%
 
@@ -47,8 +47,9 @@
 #set page(
   paper: "a4",
   margin: (top: 0pt, bottom: 0pt, left: 0pt, right: 0pt),
+  fill: __BACKGROUND_COLOR__,
 )
-#set text(font: "Libertinus Serif", size: 10pt, lang: "en")
+#set text(font: __BODY_FONT__, size: 10pt, lang: "en", fill: __TEXT_COLOR__)
 #set par(leading: 0.55em)
 #show link: set text(fill: accent)
 
@@ -105,10 +106,10 @@
     let name-parts = name.split(" ")
     let first-name = name-parts.at(0, default: "")
     let last-name = name-parts.slice(1).join(" ")
-    text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(first-name)]
+    text(font: __HEADING_FONT__, size: 26pt, weight: "regular", tracking: 8pt, fill: accent)[#upper(first-name)]
     if last-name != "" {
       v(4pt)
-      text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(last-name)]
+      text(font: __HEADING_FONT__, size: 26pt, weight: "regular", tracking: 8pt, fill: accent)[#upper(last-name)]
     }
   }
   v(16pt)

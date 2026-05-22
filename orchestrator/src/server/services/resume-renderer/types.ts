@@ -77,6 +77,18 @@ export interface LatexResumeSectionTitles {
   references: string;
 }
 
+export interface LatexResumeStyle {
+  colors: {
+    primaryHex: string;
+    textHex: string;
+    backgroundHex: string;
+  };
+  typography: {
+    bodyFontFamily: string;
+    headingFontFamily: string;
+  };
+}
+
 export interface LatexResumeDocument {
   name: string;
   headline?: string | null;
@@ -98,6 +110,7 @@ export interface LatexResumeDocument {
   volunteer: LatexResumeEntry[];
   references: LatexResumeEntry[];
   sectionTitles?: LatexResumeSectionTitles;
+  style?: LatexResumeStyle;
 }
 
 export interface RenderResumePdfArgs {

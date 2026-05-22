@@ -187,6 +187,34 @@ describe("typst resume renderer", () => {
     expect(typst).toContain('#let resume = json("resume-data.json")');
   });
 
+  it("applies document style colors and fonts in native templates", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        style: {
+          colors: {
+            primaryHex: "#4a7c8f",
+            textHex: "#1f2937",
+            backgroundHex: "#f5f7fa",
+          },
+          typography: {
+            bodyFontFamily: "Inter",
+            headingFontFamily: "Playfair Display",
+          },
+        },
+      },
+      "__BODY_FONT__\n__HEADING_FONT__\n__PRIMARY_COLOR__\n__TEXT_COLOR__\n__BACKGROUND_COLOR__",
+      tokens,
+    );
+
+    expect(typst).toContain('"Inter"');
+    expect(typst).toContain('"Playfair Display"');
+    expect(typst).toContain('rgb("#4a7c8f")');
+    expect(typst).toContain('rgb("#1f2937")');
+    expect(typst).toContain('rgb("#f5f7fa")');
+  });
+
   it("keeps links in the clean-print-cv adapter", async () => {
     const template = await readTypstTemplate("clean-print-cv");
 

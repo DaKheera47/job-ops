@@ -213,6 +213,23 @@ describe("normalizeResumeJsonToLatexDocument", () => {
           ],
         },
       },
+      metadata: {
+        design: {
+          colors: {
+            primary: "rgba(74, 124, 143, 1)",
+            text: "#1f2937",
+            background: "rgb(245, 247, 250)",
+          },
+        },
+        typography: {
+          body: {
+            fontFamily: "Inter",
+          },
+          heading: {
+            fontFamily: "Playfair Display",
+          },
+        },
+      },
     });
 
     expect(document.picture?.assetId).toBe("asset-1");
@@ -239,6 +256,17 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.references).toHaveLength(1);
     expect(document.sectionTitles?.profiles).toBe("Links");
     expect(document.sectionTitles?.summary).toBe("About");
+    expect(document.style).toEqual({
+      colors: {
+        primaryHex: "#4a7c8f",
+        textHex: "#1f2937",
+        backgroundHex: "#f5f7fa",
+      },
+      typography: {
+        bodyFontFamily: "Inter",
+        headingFontFamily: "Playfair Display",
+      },
+    });
   });
 
   it("respects hidden sections and items", () => {
