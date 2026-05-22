@@ -78,10 +78,18 @@ export interface LatexResumeSectionTitles {
 }
 
 export type LatexResumeOrderedSectionKey =
+  | "profiles"
   | "experience"
   | "education"
   | "projects"
-  | "skills";
+  | "skills"
+  | "languages"
+  | "interests"
+  | "awards"
+  | "certifications"
+  | "publications"
+  | "volunteer"
+  | "references";
 
 export interface LatexResumeDocument {
   name: string;

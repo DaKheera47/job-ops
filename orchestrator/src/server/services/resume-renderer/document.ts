@@ -90,13 +90,19 @@ const LATEX_RESUME_SECTION_TITLES: Record<
 };
 
 const ORDERABLE_SECTION_KEYS = [
+  "profiles",
   "experience",
   "education",
   "projects",
   "skills",
+  "languages",
+  "interests",
+  "awards",
+  "certifications",
+  "publications",
+  "volunteer",
+  "references",
 ] as const satisfies readonly LatexResumeOrderedSectionKey[];
-
-const DEFAULT_SECTION_ORDER = [...ORDERABLE_SECTION_KEYS];
 
 function asRecord(value: unknown): RecordLike | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -225,14 +231,27 @@ function getOrderedSectionKeys(
   const pages = asArray(layout?.pages);
   const firstPage = asRecord(pages[0]);
   const mainSections = asArray(firstPage?.main);
-  const allowed = new Set<LatexResumeOrderedSectionKey>(ORDERABLE_SECTION_KEYS);
-  const filtered = mainSections.filter(
-    (key): key is LatexResumeOrderedSectionKey =>
-      typeof key === "string" &&
-      allowed.has(key as LatexResumeOrderedSectionKey),
-  );
 
-  return filtered.length > 0 ? filtered : DEFAULT_SECTION_ORDER;
+  const order: LatexResumeOrderedSectionKey[] = [];
+  const allowed = new Set<LatexResumeOrderedSectionKey>(ORDERABLE_SECTION_KEYS);
+
+  for (const key of mainSections) {
+    if (
+      typeof key === "string" &&
+      allowed.has(key as LatexResumeOrderedSectionKey) &&
+      !order.includes(key as LatexResumeOrderedSectionKey)
+    ) {
+      order.push(key as LatexResumeOrderedSectionKey);
+    }
+  }
+
+  for (const key of ORDERABLE_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      order.push(key);
+    }
+  }
+
+  return order;
 }
 
 function buildPicture(resumeJson: RecordLike): LatexResumePicture | null {

@@ -297,12 +297,21 @@ function renderOrderedCoreSections(
   titles: ReturnType<typeof getLatexResumeSectionTitles>,
 ): string[] {
   const sectionOrder = document.sectionOrder ?? [
+    "profiles",
     "experience",
     "education",
     "projects",
     "skills",
+    "languages",
+    "interests",
+    "awards",
+    "certifications",
+    "publications",
+    "volunteer",
+    "references",
   ];
   const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    profiles: () => renderProfilesSection(document),
     experience: () =>
       renderEntrySection({
         title: titles.experience,
@@ -322,6 +331,38 @@ function renderOrderedCoreSections(
         kind: "project",
       }),
     skills: () => renderSkillsSection(document),
+    languages: () => renderLanguagesSection(document),
+    interests: () => renderInterestsSection(document),
+    awards: () =>
+      renderEntrySection({
+        title: titles.awards,
+        entries: document.awards,
+        kind: "subheading",
+      }),
+    certifications: () =>
+      renderEntrySection({
+        title: titles.certifications,
+        entries: document.certifications,
+        kind: "subheading",
+      }),
+    publications: () =>
+      renderEntrySection({
+        title: titles.publications,
+        entries: document.publications,
+        kind: "subheading",
+      }),
+    volunteer: () =>
+      renderEntrySection({
+        title: titles.volunteer,
+        entries: document.volunteer,
+        kind: "subheading",
+      }),
+    references: () =>
+      renderEntrySection({
+        title: titles.references,
+        entries: document.references,
+        kind: "subheading",
+      }),
   };
 
   return sectionOrder.map((key) => builders[key]());
@@ -345,36 +386,8 @@ export function buildLatexDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    renderProfilesSection(document),
     renderCustomFieldsSection(document),
     ...renderOrderedCoreSections(document, titles),
-    renderLanguagesSection(document),
-    renderInterestsSection(document),
-    renderEntrySection({
-      title: titles.awards,
-      entries: document.awards,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.certifications,
-      entries: document.certifications,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.publications,
-      entries: document.publications,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.volunteer,
-      entries: document.volunteer,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.references,
-      entries: document.references,
-      kind: "subheading",
-    }),
   ]
     .filter(Boolean)
     .join("\n");

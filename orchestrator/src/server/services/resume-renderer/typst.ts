@@ -395,12 +395,21 @@ function renderOrderedCoreSections(
   metaSize: string,
 ): string[] {
   const sectionOrder = document.sectionOrder ?? [
+    "profiles",
     "experience",
     "education",
     "projects",
     "skills",
+    "languages",
+    "interests",
+    "awards",
+    "certifications",
+    "publications",
+    "volunteer",
+    "references",
   ];
   const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    profiles: () => renderProfilesSection(document),
     experience: () =>
       renderEntrySection({
         title: titles.experience,
@@ -423,6 +432,43 @@ function renderOrderedCoreSections(
         metaSize,
       }),
     skills: () => renderSkillsSection(document),
+    languages: () => renderLanguagesSection(document),
+    interests: () => renderInterestsSection(document),
+    awards: () =>
+      renderEntrySection({
+        title: titles.awards,
+        entries: document.awards,
+        kind: "subheading",
+        metaSize,
+      }),
+    certifications: () =>
+      renderEntrySection({
+        title: titles.certifications,
+        entries: document.certifications,
+        kind: "subheading",
+        metaSize,
+      }),
+    publications: () =>
+      renderEntrySection({
+        title: titles.publications,
+        entries: document.publications,
+        kind: "subheading",
+        metaSize,
+      }),
+    volunteer: () =>
+      renderEntrySection({
+        title: titles.volunteer,
+        entries: document.volunteer,
+        kind: "subheading",
+        metaSize,
+      }),
+    references: () =>
+      renderEntrySection({
+        title: titles.references,
+        entries: document.references,
+        kind: "subheading",
+        metaSize,
+      }),
   };
 
   return sectionOrder.map((key) => builders[key]());
@@ -483,41 +529,8 @@ export function buildTypstDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    renderProfilesSection(document),
     renderCustomFieldsSection(document),
     ...renderOrderedCoreSections(document, titles, tokens.entryMetaSize),
-    renderLanguagesSection(document),
-    renderInterestsSection(document),
-    renderEntrySection({
-      title: titles.awards,
-      entries: document.awards,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.certifications,
-      entries: document.certifications,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.publications,
-      entries: document.publications,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.volunteer,
-      entries: document.volunteer,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.references,
-      entries: document.references,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
   ]
     .filter(Boolean)
     .join("\n\n");

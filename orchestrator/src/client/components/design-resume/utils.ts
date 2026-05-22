@@ -102,10 +102,18 @@ export function getDesignResumeDialogItem(
 }
 
 export const REORDERABLE_SECTION_KEYS = [
+  "profiles",
   "experience",
   "education",
   "projects",
   "skills",
+  "languages",
+  "interests",
+  "awards",
+  "certifications",
+  "publications",
+  "volunteer",
+  "references",
 ];
 
 export function getSectionOrder(resumeJson: Record<string, unknown>): string[] {
@@ -114,16 +122,27 @@ export function getSectionOrder(resumeJson: Record<string, unknown>): string[] {
   const pages = layout?.pages as unknown[] | undefined;
   const firstPage = pages?.[0] as Record<string, unknown> | undefined;
   const mainSections = firstPage?.main;
+
+  const order: string[] = [];
   if (Array.isArray(mainSections)) {
-    const filtered = mainSections.filter(
-      (key): key is string =>
-        typeof key === "string" && REORDERABLE_SECTION_KEYS.includes(key),
-    );
-    if (filtered.length > 0) {
-      return filtered;
+    for (const key of mainSections) {
+      if (
+        typeof key === "string" &&
+        REORDERABLE_SECTION_KEYS.includes(key) &&
+        !order.includes(key)
+      ) {
+        order.push(key);
+      }
     }
   }
-  return [...REORDERABLE_SECTION_KEYS];
+
+  for (const key of REORDERABLE_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      order.push(key);
+    }
+  }
+
+  return order;
 }
 
 export function getOrderedDefinitions(
