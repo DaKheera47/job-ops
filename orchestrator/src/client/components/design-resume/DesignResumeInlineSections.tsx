@@ -280,12 +280,16 @@ export function BasicsSection({
 }
 
 type BasicsCustomFieldsSectionProps = {
+  title: string;
   customFields: Record<string, unknown>[];
+  onUpdateTitle: (title: string) => void;
   onChange: (nextFields: Record<string, unknown>[]) => void;
 };
 
 export function BasicsCustomFieldsSection({
+  title,
   customFields,
+  onUpdateTitle,
   onChange,
 }: BasicsCustomFieldsSectionProps) {
   const moveField = (index: number, direction: -1 | 1) => {
@@ -299,6 +303,20 @@ export function BasicsCustomFieldsSection({
 
   return (
     <div className="space-y-3">
+      <div className="grid gap-2">
+        <label
+          className={labelClassName}
+          htmlFor={fieldId("custom-fields", "title")}
+        >
+          Section title
+        </label>
+        <Input
+          id={fieldId("custom-fields", "title")}
+          value={title}
+          onChange={(event) => onUpdateTitle(event.currentTarget.value)}
+          className={fieldClassName}
+        />
+      </div>
       {customFields.map((field, index) => (
         <div
           key={toText(field.id, `field-${index}`)}
@@ -306,8 +324,9 @@ export function BasicsCustomFieldsSection({
         >
           <div className="grid gap-3">
             {[
+              ["title", "Title"],
               ["icon", "Icon"],
-              ["text", "Text"],
+              ["text", "Value"],
               ["link", "Link"],
             ].map(([key, label]) => (
               <div key={key} className="grid gap-2">
@@ -374,6 +393,7 @@ export function BasicsCustomFieldsSection({
             ...customFields,
             {
               id: crypto.randomUUID(),
+              title: "",
               icon: "",
               text: "",
               link: "",

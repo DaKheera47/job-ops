@@ -7,12 +7,16 @@ import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
-import { getResumeSectionTitles } from "./document";
+import { getLatexResumeSectionTitles } from "./document";
+import { materializeResumePicture } from "./picture";
 import type {
-  ResumeRenderBodySection,
-  ResumeRenderContactItem,
-  ResumeRenderDocument,
-  ResumeRenderEntry,
+  LatexResumeContactItem,
+  LatexResumeCustomFieldItem,
+  LatexResumeDocument,
+  LatexResumeEntry,
+  LatexResumeInterestItem,
+  LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
   ResumeRenderer,
 } from "./types";
 
@@ -199,7 +203,7 @@ function renderLink(label: string, url?: string | null): string {
   return `#link(${escapeTypstUrl(url)})[${renderedLabel}]`;
 }
 
-function renderContactItems(items: ResumeRenderContactItem[]): string {
+function renderContactItems(items: LatexResumeContactItem[]): string {
   return items
     .map((item) => renderLink(item.text, item.url))
     .join(" #h(4pt) | #h(4pt) ");
@@ -210,7 +214,7 @@ function renderBullets(items: string[]): string {
   return items.map((item) => `- ${escapeTypstText(item)}`).join("\n");
 }
 
-function renderEntryHeader(entry: ResumeRenderEntry, metaSize: string): string {
+function renderEntryHeader(entry: LatexResumeEntry, metaSize: string): string {
   const title = renderLink(entry.title, entry.url);
   const date = entry.date
     ? `#text(size: ${metaSize})[${escapeTypstText(entry.date)}]`
@@ -219,7 +223,7 @@ function renderEntryHeader(entry: ResumeRenderEntry, metaSize: string): string {
 }
 
 function renderSubheadingEntry(
-  entry: ResumeRenderEntry,
+  entry: LatexResumeEntry,
   metaSize: string,
 ): string {
   const subtitle = entry.subtitle ? escapeTypstText(entry.subtitle) : "";
@@ -243,10 +247,7 @@ function renderSubheadingEntry(
     .join("\n");
 }
 
-function renderProjectEntry(
-  entry: ResumeRenderEntry,
-  metaSize: string,
-): string {
+function renderProjectEntry(entry: LatexResumeEntry, metaSize: string): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle
     ? ` #emph[${escapeTypstText(entry.subtitle)}]`
@@ -263,9 +264,9 @@ function renderProjectEntry(
     .join("\n");
 }
 
-function renderSummarySection(document: ResumeRenderDocument): string {
+function renderSummarySection(document: LatexResumeDocument): string {
   if (!document.summary) return "";
-  const titles = document.sectionTitles ?? getResumeSectionTitles();
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   return [
     `= ${escapeTypstText(titles.summary)}`,
     escapeTypstText(document.summary),
@@ -274,7 +275,7 @@ function renderSummarySection(document: ResumeRenderDocument): string {
 
 function renderEntrySection(args: {
   title: string;
-  entries: ResumeRenderEntry[];
+  entries: LatexResumeEntry[];
   kind: "subheading" | "project";
   metaSize: string;
 }): string {
@@ -289,9 +290,10 @@ function renderEntrySection(args: {
   return [`= ${escapeTypstText(args.title)}`, body].join("\n\n");
 }
 
-function renderSkillsSection(section: ResumeRenderBodySection): string {
-  if (!section.skillGroups || section.skillGroups.length === 0) return "";
-  const items = section.skillGroups
+function renderSkillsSection(document: LatexResumeDocument): string {
+  if (document.skillGroups.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const items = document.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
         escapeTypstText(keyword),
@@ -299,7 +301,131 @@ function renderSkillsSection(section: ResumeRenderBodySection): string {
       return `*${escapeTypstText(group.name)}:* ${keywords.join(", ")}`;
     })
     .join(" \\\n");
-  return [`= ${escapeTypstText(section.title)}`, items].join("\n\n");
+  return [`= ${escapeTypstText(titles.skills)}`, items].join("\n\n");
+}
+
+function renderLineSection(title: string, lines: string[]): string {
+  if (lines.length === 0) return "";
+  return [
+    `= ${escapeTypstText(title)}`,
+    ...lines.map((line) => `- ${line}`),
+  ].join("\n");
+}
+
+function renderProfilesSection(document: LatexResumeDocument): string {
+  if (document.profileItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.profileItems.map((item) => {
+    const label = escapeTypstText(item.network);
+    const value = renderLink(
+      item.username || item.url || item.network,
+      item.url,
+    );
+    return `*${label}:* ${value}`;
+  });
+  return renderLineSection(titles.profiles, lines);
+}
+
+function renderCustomFieldsSection(document: LatexResumeDocument): string {
+  if (document.customFieldItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.customFieldItems.map(
+    (item: LatexResumeCustomFieldItem) => {
+      const value = item.url
+        ? renderLink(item.text, item.url)
+        : escapeTypstText(item.text);
+      if (!item.title) return value;
+      if (item.title === item.text) {
+        return `*${escapeTypstText(item.title)}*`;
+      }
+      return `*${escapeTypstText(item.title)}:* ${value}`;
+    },
+  );
+  return renderLineSection(titles.customFields, lines);
+}
+
+function renderLanguagesSection(document: LatexResumeDocument): string {
+  if (document.languages.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.languages.map((item: LatexResumeLanguageItem) => {
+    const detail = [item.fluency, item.level ? `Level ${item.level}` : ""]
+      .filter(Boolean)
+      .map((part) => escapeTypstText(String(part)))
+      .join(" | ");
+    return detail
+      ? `*${escapeTypstText(item.language)}:* ${detail}`
+      : `*${escapeTypstText(item.language)}*`;
+  });
+  return renderLineSection(titles.languages, lines);
+}
+
+function renderInterestsSection(document: LatexResumeDocument): string {
+  if (document.interests.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.interests.map((item: LatexResumeInterestItem) => {
+    const keywords = item.keywords.map((keyword) => escapeTypstText(keyword));
+    return keywords.length > 0
+      ? `*${escapeTypstText(item.name)}:* ${keywords.join(", ")}`
+      : `*${escapeTypstText(item.name)}*`;
+  });
+  return renderLineSection(titles.interests, lines);
+}
+
+function renderPictureBlock(document: LatexResumeDocument): string {
+  const picture = document.picture;
+  if (!picture?.renderPath || picture.hidden) return "";
+
+  const width = Math.max(48, Math.min(picture.size, 144));
+  const image = `#image(${escapeTypstUrl(picture.renderPath)}, width: ${width}pt)`;
+  const renderedImage = picture.rotation
+    ? `#rotate(angle: ${Math.round(picture.rotation)}deg, reflow: true)[${image}]`
+    : image;
+
+  return `${renderedImage} \\\n  #v(4pt)\n`;
+}
+
+function renderLocationBlock(document: LatexResumeDocument): string {
+  if (!document.location) return "";
+  return `  #text(size: 9pt)[${escapeTypstText(document.location)}] \\\n`;
+}
+
+function renderOrderedCoreSections(
+  document: LatexResumeDocument,
+  titles: ReturnType<typeof getLatexResumeSectionTitles>,
+  metaSize: string,
+): string[] {
+  const sectionOrder = document.sectionOrder ?? [
+    "experience",
+    "education",
+    "projects",
+    "skills",
+  ];
+  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    experience: () =>
+      renderEntrySection({
+        title: titles.experience,
+        entries: document.experience,
+        kind: "subheading",
+        metaSize,
+      }),
+    education: () =>
+      renderEntrySection({
+        title: titles.education,
+        entries: document.education,
+        kind: "subheading",
+        metaSize,
+      }),
+    projects: () =>
+      renderEntrySection({
+        title: titles.projects,
+        entries: document.projects,
+        kind: "project",
+        metaSize,
+      }),
+    skills: () => renderSkillsSection(document),
+  };
+
+  return sectionOrder.map((key) => builders[key]());
 }
 
 export async function readTypstThemeManifest(
@@ -341,40 +467,56 @@ function buildAdaptedTypstDocument(template: string): string {
 }
 
 export function buildTypstDocument(
-  document: ResumeRenderDocument,
+  document: LatexResumeDocument,
   template: string,
   tokens: TypstThemeTokens,
 ): string {
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const pictureBlock = renderPictureBlock(document);
   const headlineBlock = document.headline
     ? `  #text(size: ${tokens.headlineSize})[${escapeTypstText(document.headline)}] \\\n`
     : "";
+  const locationBlock = renderLocationBlock(document);
   const contactBlock =
     document.contactItems.length > 0
       ? `  #text(size: ${tokens.contactSize})[${renderContactItems(document.contactItems)}]\n`
       : "";
   const body = [
     renderSummarySection(document),
-    ...document.body.map((section) => {
-      switch (section.kind) {
-        case "skills":
-          return renderSkillsSection(section);
-        case "project":
-          return renderEntrySection({
-            title: section.title,
-            entries: section.entries,
-            kind: "project",
-            metaSize: tokens.entryMetaSize,
-          });
-        case "entry":
-          return renderEntrySection({
-            title: section.title,
-            entries: section.entries,
-            kind: "subheading",
-            metaSize: tokens.entryMetaSize,
-          });
-        default:
-          return "";
-      }
+    renderProfilesSection(document),
+    renderCustomFieldsSection(document),
+    ...renderOrderedCoreSections(document, titles, tokens.entryMetaSize),
+    renderLanguagesSection(document),
+    renderInterestsSection(document),
+    renderEntrySection({
+      title: titles.awards,
+      entries: document.awards,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.certifications,
+      entries: document.certifications,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.publications,
+      entries: document.publications,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.volunteer,
+      entries: document.volunteer,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
+    }),
+    renderEntrySection({
+      title: titles.references,
+      entries: document.references,
+      kind: "subheading",
+      metaSize: tokens.entryMetaSize,
     }),
   ]
     .filter(Boolean)
@@ -390,8 +532,10 @@ export function buildTypstDocument(
     .replace("__LINE_WIDTH__", tokens.lineWidth)
     .replace("__SECTION_BOTTOM__", tokens.sectionBottom)
     .replace("__NAME_SIZE__", tokens.nameSize)
+    .replace("__PICTURE_BLOCK__", pictureBlock)
     .replace("__NAME__", escapeTypstText(document.name))
     .replace("__HEADLINE_BLOCK__", headlineBlock)
+    .replace("__LOCATION_BLOCK__", locationBlock)
     .replace("__CONTACT_BLOCK__", contactBlock)
     .replace("__BODY__", body);
 }
@@ -486,6 +630,10 @@ export const typstResumeRenderer: ResumeRenderer = {
 
     try {
       const { manifest, template, tokens } = await loadTemplate(typstTheme);
+      const renderableDocument = await materializeResumePicture(
+        document,
+        tempDir,
+      );
       let typst: string;
       if (manifest.kind === "native") {
         if (!tokens) {
@@ -493,12 +641,16 @@ export const typstResumeRenderer: ResumeRenderer = {
             `Typst theme ${typstTheme} is missing native tokens.`,
           );
         }
-        typst = buildTypstDocument(document, template, tokens);
+        typst = buildTypstDocument(renderableDocument, template, tokens);
       } else {
         typst = buildAdaptedTypstDocument(template);
       }
 
-      await writeFile(resumeDataPath, JSON.stringify(document), "utf8");
+      await writeFile(
+        resumeDataPath,
+        JSON.stringify(renderableDocument),
+        "utf8",
+      );
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,
@@ -522,12 +674,18 @@ export const typstResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
-          bodySections: document.body.map((s) => ({
-            key: s.key,
-            kind: s.kind,
-            entryCount: s.entries.length,
-            skillGroupCount: s.skillGroups?.length ?? 0,
-          })),
+          location: document.location,
+          experienceCount: document.experience.length,
+          educationCount: document.education.length,
+          projectCount: document.projects.length,
+          skillGroupCount: document.skillGroups.length,
+          languageCount: document.languages.length,
+          interestCount: document.interests.length,
+          awardCount: document.awards.length,
+          certificationCount: document.certifications.length,
+          publicationCount: document.publications.length,
+          volunteerCount: document.volunteer.length,
+          referenceCount: document.references.length,
         }),
       });
       throw error;
@@ -546,7 +704,7 @@ export const typstResumeRenderer: ResumeRenderer = {
 };
 
 export async function renderTypstPdf(args: {
-  document: ResumeRenderDocument;
+  document: LatexResumeDocument;
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;

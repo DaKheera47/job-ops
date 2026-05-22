@@ -284,6 +284,8 @@ export function DesignResumeRail({
     string,
     unknown
   >[];
+  const customFieldsTitle =
+    toText(basics.customFieldsTitle).trim() || "Custom Fields";
 
   const updateBasics = (path: string, value: unknown) => {
     onUpdateResumeJson((current) => {
@@ -341,6 +343,21 @@ export function DesignResumeRail({
       next.basics = {
         ...currentBasics,
         customFields: nextFields,
+      } as DesignResumeJson["basics"];
+      return next;
+    });
+  };
+
+  const updateCustomFieldsTitle = (title: string) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentBasics = (asRecord(next.basics) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.basics = {
+        ...currentBasics,
+        customFieldsTitle: title,
       } as DesignResumeJson["basics"];
       return next;
     });
@@ -448,7 +465,9 @@ export function DesignResumeRail({
       case "basics-custom-fields":
         return (
           <BasicsCustomFieldsSection
+            title={customFieldsTitle}
             customFields={customFields}
+            onUpdateTitle={updateCustomFieldsTitle}
             onChange={updateCustomFields}
           />
         );
@@ -509,12 +528,14 @@ export function DesignResumeRail({
 
       <DesignResumeSection
         value="basics-custom-fields"
-        title="Basics Custom Fields"
+        title={customFieldsTitle}
         subtitle="Add extra links or short details near your contact info."
         badge={customFields.length === 0 ? "Empty" : `${customFields.length}`}
       >
         <BasicsCustomFieldsSection
+          title={customFieldsTitle}
           customFields={customFields}
+          onUpdateTitle={updateCustomFieldsTitle}
           onChange={updateCustomFields}
         />
       </DesignResumeSection>

@@ -1,0 +1,14 @@
+- generic [ref=e2]:
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e8]:
+        - button "Open navigation menu" [ref=e9] [cursor=pointer]:
+          - img
+          - generic [ref=e10]: Open navigation menu
+        - img [ref=e12]
+        - generic [ref=e15]:
+          - generic [ref=e16]: Resume Studio
+          - generic [ref=e17]: Loading your resume
+    - main [ref=e18]:
+      - generic [ref=e19]: Loading Resume Studio...
+  - region "Notifications alt+T"

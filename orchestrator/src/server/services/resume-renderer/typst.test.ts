@@ -21,52 +21,40 @@ const nativeThemes = new Set(["classic", "compact"]);
 const baseDocument: ResumeRenderDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
+  location: "London, UK",
+  picture: null,
   contactItems: [
     { text: "jane@example.com", url: "mailto:jane@example.com" },
     { text: "Portfolio", url: "https://jane.dev" },
   ],
+  profileItems: [],
+  customFieldItems: [],
   summary: "Builds resilient platform systems.",
-  body: [
+  experience: [
     {
-      key: "experience",
-      title: "Experience",
-      kind: "entry",
-      entries: [
-        {
-          title: "Acme",
-          subtitle: "Platform Engineer | Remote",
-          date: "2023 -- Present",
-          bullets: ["Improved API reliability", "Reduced operator toil"],
-          url: "https://acme.example.com",
-          linkLabel: "Acme",
-        },
-      ],
-    },
-    {
-      key: "education",
-      title: "Education",
-      kind: "entry",
-      entries: [],
-    },
-    {
-      key: "projects",
-      title: "Projects",
-      kind: "project",
-      entries: [],
-    },
-    {
-      key: "skills",
-      title: "Technical Skills",
-      kind: "skills",
-      entries: [],
-      skillGroups: [
-        {
-          name: "Backend",
-          keywords: ["TypeScript", "Node.js", "PostgreSQL"],
-        },
-      ],
+      title: "Acme",
+      subtitle: "Platform Engineer | Remote",
+      date: "2023 -- Present",
+      bullets: ["Improved API reliability", "Reduced operator toil"],
+      url: "https://acme.example.com",
+      linkLabel: "Acme",
     },
   ],
+  education: [],
+  projects: [],
+  skillGroups: [
+    {
+      name: "Backend",
+      keywords: ["TypeScript", "Node.js", "PostgreSQL"],
+    },
+  ],
+  languages: [],
+  interests: [],
+  awards: [],
+  certifications: [],
+  publications: [],
+  volunteer: [],
+  references: [],
 };
 
 async function createTempDir(): Promise<string> {
@@ -159,18 +147,37 @@ describe("typst resume renderer", () => {
     const typst = buildTypstDocument(
       {
         ...baseDocument,
-        body: [
-          { ...baseDocument.body[0], title: "Experiencia" },
-          { ...baseDocument.body[1], title: "Educación" },
-          { ...baseDocument.body[2], title: "Proyectos" },
-          { ...baseDocument.body[3], title: "Habilidades técnicas" },
+        education: [
+          {
+            title: "University",
+            subtitle: "MSc",
+            date: "2020",
+            bullets: ["Studied distributed systems"],
+          },
+        ],
+        projects: [
+          {
+            title: "Platform",
+            subtitle: "TypeScript",
+            date: "2024",
+            bullets: ["Built deployment tooling"],
+          },
         ],
         sectionTitles: {
+          profiles: "Perfiles",
           summary: "Resumen",
+          customFields: "Campos personalizados",
           experience: "Experiencia",
           education: "Educación",
           projects: "Proyectos",
           skills: "Habilidades técnicas",
+          languages: "Idiomas",
+          interests: "Intereses",
+          awards: "Premios",
+          certifications: "Certificaciones",
+          publications: "Publicaciones",
+          volunteer: "Voluntariado",
+          references: "Referencias",
         },
       },
       "__PAGE_MARGIN__\n__BODY_SIZE__\n__NAME__\n__BODY__",
@@ -182,6 +189,41 @@ describe("typst resume renderer", () => {
     expect(typst).toContain("= Resumen");
     expect(typst).toContain("= Experiencia");
     expect(typst).toContain("= Habilidades técnicas");
+  });
+
+  it("respects custom core section ordering", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        education: [
+          {
+            title: "University",
+            subtitle: "MSc",
+            date: "2020",
+            bullets: ["Studied distributed systems"],
+          },
+        ],
+        projects: [
+          {
+            title: "Platform",
+            subtitle: "TypeScript",
+            date: "2024",
+            bullets: ["Built deployment tooling"],
+          },
+        ],
+        sectionOrder: ["skills", "projects", "experience", "education"],
+      },
+      "__BODY__",
+      tokens,
+    );
+
+    expect(typst.indexOf("= Technical Skills")).toBeLessThan(
+      typst.indexOf("= Projects"),
+    );
+    expect(typst.indexOf("= Projects")).toBeLessThan(
+      typst.indexOf("= Experience"),
+    );
   });
 
   it("exposes a stable resume data path for package-backed themes", async () => {
@@ -199,10 +241,111 @@ describe("typst resume renderer", () => {
     const template = await readTypstTemplate("clean-print-cv");
 
     expect(template).toContain("link-or-text");
-    expect(template).toContain("contact-label-matching(is-linkedin)");
-    expect(template).toContain("contact-label-matching(is-github)");
+    expect(template).toContain("profile-label-matching(is-linkedin-profile)");
+    expect(template).toContain("profile-label-matching(is-github-profile)");
     expect(template).toContain("linked-entry-label(entry");
-    expect(template).toContain("linked-url-label(entry)");
+    expect(template).toContain('link(text-of-item(entry, "url"))');
+  });
+
+  it("renders award-style sections as Typst bullet lists in clean-print-cv", async () => {
+    const template = await readTypstTemplate("clean-print-cv");
+
+    expect(template).toContain("#let bullet-trailing(entry)");
+    expect(template).toContain('text-of(section-titles.at("awards"');
+    expect(template).toContain("trailing: bullet-trailing(entry)");
+  });
+
+  it("renders the newly supported native sections and picture block", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: "/tmp/resume-picture.png",
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+        profileItems: [
+          {
+            network: "LinkedIn",
+            username: "janedoe",
+            url: "https://linkedin.com/in/janedoe",
+          },
+        ],
+        customFieldItems: [
+          {
+            title: "Availability",
+            text: "Open to relocation",
+            url: null,
+          },
+        ],
+        languages: [{ language: "English", fluency: "Native", level: 5 }],
+        interests: [{ name: "Climbing", keywords: ["Bouldering"] }],
+        awards: [
+          {
+            title: "Engineer of the Year",
+            subtitle: "Acme",
+            date: "2024",
+            bullets: ["Recognized for platform leadership"],
+          },
+        ],
+        certifications: [
+          {
+            title: "AWS Solutions Architect",
+            subtitle: "Amazon",
+            date: "2023",
+            bullets: ["Professional level"],
+          },
+        ],
+        publications: [
+          {
+            title: "Scaling JobOps",
+            subtitle: "InfoQ",
+            date: "2022",
+            bullets: ["Published architecture write-up"],
+          },
+        ],
+        volunteer: [
+          {
+            title: "STEM Mentor",
+            subtitle: "Code Club",
+            date: "2021 -- Present",
+            bullets: ["Mentor students weekly"],
+          },
+        ],
+        references: [
+          {
+            title: "Alex Manager",
+            subtitle: "Director | +44 1234 567890",
+            bullets: ["Reference available on request"],
+          },
+        ],
+      },
+      "__PICTURE_BLOCK__\n__NAME__\n__HEADLINE_BLOCK__\n__LOCATION_BLOCK__\n__CONTACT_BLOCK__\n__BODY__",
+      tokens,
+    );
+
+    expect(typst).toContain('#image("/tmp/resume-picture.png"');
+    expect(typst).toContain("London, UK");
+    expect(typst).toContain("= Profiles");
+    expect(typst).toContain("= Custom Fields");
+    expect(typst).toContain("*Availability:* Open to relocation");
+    expect(typst).toContain("= Languages");
+    expect(typst).toContain("= Interests");
+    expect(typst).toContain("= Awards");
+    expect(typst).toContain("= Certifications");
+    expect(typst).toContain("= Publications");
+    expect(typst).toContain("= Volunteer");
+    expect(typst).toContain("= References");
   });
 
   it("escapes Typst markup characters in resume content", async () => {
@@ -255,6 +398,45 @@ describe("typst resume renderer", () => {
         outputPath,
         jobId: "job-render-success",
         typstTheme: "compact",
+      });
+
+      const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {
+        stdio: "ignore",
+      });
+      expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
+    "renders the clean-print-cv theme when typst is installed",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+      const outputPath = join(tempDir, "clean-print-cv.pdf");
+
+      await renderTypstPdf({
+        document: {
+          ...baseDocument,
+          profileItems: [
+            {
+              network: "LinkedIn",
+              username: "janedoe",
+              url: "https://linkedin.com/in/janedoe",
+            },
+          ],
+          languages: [{ language: "English", fluency: "Native", level: 5 }],
+          certifications: [
+            {
+              title: "AWS Solutions Architect",
+              subtitle: "Amazon",
+              date: "2023",
+              bullets: ["Professional level"],
+            },
+          ],
+        },
+        outputPath,
+        jobId: "job-render-clean-print-cv",
+        typstTheme: "clean-print-cv",
       });
 
       const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {

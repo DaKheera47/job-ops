@@ -47,6 +47,7 @@ export const pictureSchema = z.object({
 
 export const customFieldSchema = z.object({
   id: z.string(),
+  title: z.string().optional(),
   icon: iconSchema,
   text: z.string(),
   link: z.string().catch(""),
@@ -59,6 +60,7 @@ export const basicsSchema = z.object({
   phone: z.string(),
   location: z.string(),
   website: urlSchema,
+  customFieldsTitle: z.string().optional(),
   customFields: z.array(customFieldSchema),
 });
 

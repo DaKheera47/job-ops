@@ -100,7 +100,6 @@ import {
   fileToDataUrl,
   getByPath,
   getDesignResumeDialogItem,
-  getOrderedDefinitions,
   makeDownload,
   toText,
 } from "../components/design-resume/utils";
@@ -255,6 +254,33 @@ const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
   },
 ];
 
+function getSectionWorkspaceCopy(
+  activeSection: DesignResumeSectionId | null,
+  draft: DesignResumeDocument | null,
+) {
+  const activeSectionMeta = activeSection
+    ? allDesignResumeSections.find((item) => item.id === activeSection)
+    : null;
+  if (!activeSectionMeta) return null;
+
+  if (activeSection !== "basics-custom-fields" || !draft) {
+    return activeSectionMeta;
+  }
+
+  const resumeJson = draft.resumeJson as Record<string, unknown>;
+  const basics = asRecord(resumeJson.basics) ?? {};
+  const customFieldsTitle =
+    toText(basics.customFieldsTitle).trim() || activeSectionMeta.label;
+
+  return {
+    ...activeSectionMeta,
+    label: customFieldsTitle,
+  };
+}
+
+const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
+  (group) => group.items,
+);
 const DESIGN_RESUME_ICON_ITEM_BY_SECTION_ID = new Map(
   DESIGN_RESUME_ICON_GROUPS.flatMap((group) =>
     group.items.map((item) => [
@@ -410,14 +436,12 @@ type DesignResumeIconRailProps = {
   activeSectionId: DesignResumeSectionId | null;
   onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
   className?: string;
-  groups: DesignResumeNavGroup[];
 };
 
 function DesignResumeDock({
   activeSectionId,
   onSectionSelect,
   className,
-  groups,
 }: DesignResumeIconRailProps) {
   const railRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -432,7 +456,7 @@ function DesignResumeDock({
   const [railHeight, setRailHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
 
-  const items = groups.flatMap((group) =>
+  const items = DESIGN_RESUME_ICON_GROUPS.flatMap((group) =>
     group.items.map((item) => {
       const Icon = item.icon;
       const sectionId = item.sectionId === undefined ? item.id : item.sectionId;
@@ -560,54 +584,6 @@ export const DesignResumePage: React.FC = () => {
   const readyPdfRefreshToastShownRef = useRef(false);
   draftRef.current = draft;
 
-  const resumeJson = draft?.resumeJson as Record<string, unknown> | null;
-
-  const dynamicIconGroups = useMemo(() => {
-    if (!resumeJson) return DESIGN_RESUME_ICON_GROUPS;
-    const ordered = getOrderedDefinitions(resumeJson, ITEM_DEFINITIONS);
-    return DESIGN_RESUME_ICON_GROUPS.map((group) => {
-      if (group.id === "sections") {
-        return {
-          ...group,
-          items: ordered.map((definition) => ({
-            id: definition.key,
-            label: definition.title,
-            description: definition.description,
-            icon: SECTION_ICON_BY_ID[definition.key] ?? BookOpen,
-          })),
-        };
-      }
-      return group;
-    });
-  }, [resumeJson]);
-
-  const dynamicNavGroups = useMemo(() => {
-    if (!resumeJson) return DESIGN_RESUME_NAV_GROUPS;
-    const ordered = getOrderedDefinitions(resumeJson, ITEM_DEFINITIONS);
-    return DESIGN_RESUME_NAV_GROUPS.map((group) => {
-      if (group.id === "sections") {
-        return {
-          ...group,
-          items: ordered.map((definition) => ({
-            id: definition.key,
-            label: definition.title,
-            description: definition.description,
-            searchTerms: [
-              definition.singularTitle,
-              definition.primaryField,
-              definition.secondaryField ?? "",
-            ].filter(Boolean),
-          })),
-        };
-      }
-      return group;
-    });
-  }, [resumeJson]);
-
-  const dynamicAllDesignResumeSections = useMemo(() => {
-    return dynamicNavGroups.flatMap((group) => group.items);
-  }, [dynamicNavGroups]);
-
   const notifyReadyPdfRefresh = useCallback(() => {
     if (readyPdfRefreshToastShownRef.current) return;
     readyPdfRefreshToastShownRef.current = true;
@@ -624,7 +600,7 @@ export const DesignResumePage: React.FC = () => {
   const activeSection = sectionParam ?? null;
   const activeSectionIsValid =
     activeSection == null ||
-    dynamicAllDesignResumeSections.some((item) => item.id === activeSection);
+    allDesignResumeSections.some((item) => item.id === activeSection);
 
   useEffect(() => {
     setMobileWorkspaceView(sectionParam ? "edit" : "preview");
@@ -1028,11 +1004,9 @@ export const DesignResumePage: React.FC = () => {
     }
   };
 
-  const activeSectionMeta = activeSection
-    ? dynamicAllDesignResumeSections.find((item) => item.id === activeSection)
-    : null;
+  const activeSectionMeta = getSectionWorkspaceCopy(activeSection, draft);
   const activeGroup = activeSection
-    ? dynamicNavGroups.find((group) =>
+    ? DESIGN_RESUME_NAV_GROUPS.find((group) =>
         group.items.some((item) => item.id === activeSection),
       )
     : null;
@@ -1329,7 +1303,13 @@ export const DesignResumePage: React.FC = () => {
                 Preview
               </button>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none">
+            <div
+              className={
+                activeSection
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
+                  : "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-cols-[70px_minmax(0,1fr)]"
+              }
+            >
               {activeSection && activeGroup && activeSectionMeta ? (
                 <div
                   className={cn(
@@ -1343,7 +1323,6 @@ export const DesignResumePage: React.FC = () => {
                   <DesignResumeDock
                     activeSectionId={activeSection}
                     className="hidden h-full self-start sm:flex"
-                    groups={dynamicIconGroups}
                     onSectionSelect={(sectionId) =>
                       navigate(
                         sectionId
@@ -1412,42 +1391,17 @@ export const DesignResumePage: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-
-                  <div
-                    className={cn(
-                      "min-h-0 min-w-0 hidden",
-                      "sm:grid sm:grid-cols-[70px_minmax(0,1fr)] sm:gap-3",
-                    )}
-                  >
-                    <DesignResumeDock
-                      activeSectionId={null}
-                      className="hidden h-full self-start sm:flex"
-                      groups={dynamicIconGroups}
-                      onSectionSelect={(sectionId) =>
-                        navigate(
-                          sectionId
-                            ? `/design-resume/${sectionId}`
-                            : "/design-resume",
-                        )
-                      }
-                    />
-
-                    <SectionWorkspacePanel
-                      groupLabel="Editor"
-                      sectionLabel="Resume Sections"
-                      sectionDescription="Drag and drop sections to reorder, or expand a section to edit its content."
-                      secondaryBadge={
-                        dirty
-                          ? { label: "Autosaving", variant: "secondary" }
-                          : saveState === "saved"
-                            ? { label: "Autosaved", variant: "outline" }
-                            : null
-                      }
-                      scrollable
-                    >
-                      {rail}
-                    </SectionWorkspacePanel>
-                  </div>
+                  <DesignResumeDock
+                    activeSectionId={null}
+                    className="hidden h-full self-start sm:flex"
+                    onSectionSelect={(sectionId) =>
+                      navigate(
+                        sectionId
+                          ? `/design-resume/${sectionId}`
+                          : "/design-resume",
+                      )
+                    }
+                  />
                 </>
               )}
 
@@ -1487,7 +1441,7 @@ export const DesignResumePage: React.FC = () => {
             </SheetHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
               <div className="space-y-4">
-                {dynamicNavGroups.map((group) => (
+                {DESIGN_RESUME_NAV_GROUPS.map((group) => (
                   <section key={group.id} className="space-y-2">
                     <div className="px-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                       {group.label}

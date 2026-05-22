@@ -45,6 +45,9 @@ services:
         - path: ./visa-sponsor-providers
           target: /app/visa-sponsor-providers
           action: sync+restart
+        - path: ./career-boards/bamboohr/src
+          target: /app/career-boards/bamboohr/src
+          action: sync+restart
         - path: ./career-boards/workday/src
           target: /app/career-boards/workday/src
           action: sync+restart

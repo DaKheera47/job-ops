@@ -6,12 +6,16 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
-import { getResumeSectionTitles } from "./document";
+import { getLatexResumeSectionTitles } from "./document";
+import { materializeResumePicture } from "./picture";
 import type {
-  ResumeRenderBodySection,
-  ResumeRenderContactItem,
-  ResumeRenderDocument,
-  ResumeRenderEntry,
+  LatexResumeContactItem,
+  LatexResumeCustomFieldItem,
+  LatexResumeDocument,
+  LatexResumeEntry,
+  LatexResumeInterestItem,
+  LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
   ResumeRenderer,
 } from "./types";
 
@@ -84,7 +88,7 @@ function renderLink(label: string, url?: string | null): string {
   return `\\href{${escapeLatexUrl(url)}}{\\underline{${escapeForCommand(label)}}}`;
 }
 
-function renderContactItems(items: ResumeRenderContactItem[]): string {
+function renderContactItems(items: LatexResumeContactItem[]): string {
   return items.map((item) => renderLink(item.text, item.url)).join(" $|$ ");
 }
 
@@ -97,7 +101,7 @@ function renderBullets(items: string[]): string {
   ].join("\n");
 }
 
-function renderSubheadingEntry(entry: ResumeRenderEntry): string {
+function renderSubheadingEntry(entry: LatexResumeEntry): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle ? escapeForCommand(entry.subtitle) : "";
   const secondaryTitle = entry.secondaryTitle
@@ -119,7 +123,7 @@ function renderSubheadingEntry(entry: ResumeRenderEntry): string {
   return lines.join("\n");
 }
 
-function renderProjectEntry(entry: ResumeRenderEntry): string {
+function renderProjectEntry(entry: LatexResumeEntry): string {
   const title = renderLink(entry.title, entry.url);
   const subtitle = entry.subtitle
     ? ` $|$ \\emph{${escapeForCommand(entry.subtitle)}}`
@@ -134,9 +138,9 @@ function renderProjectEntry(entry: ResumeRenderEntry): string {
   return lines.join("\n");
 }
 
-function renderSummarySection(document: ResumeRenderDocument): string {
+function renderSummarySection(document: LatexResumeDocument): string {
   if (!document.summary) return "";
-  const titles = document.sectionTitles ?? getResumeSectionTitles();
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   return [
     `\\section{${escapeForCommand(titles.summary)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
@@ -148,7 +152,7 @@ function renderSummarySection(document: ResumeRenderDocument): string {
 
 function renderEntrySection(args: {
   title: string;
-  entries: ResumeRenderEntry[];
+  entries: LatexResumeEntry[];
   kind: "subheading" | "project";
 }): string {
   if (args.entries.length === 0) return "";
@@ -168,9 +172,10 @@ function renderEntrySection(args: {
   ].join("\n");
 }
 
-function renderSkillsSection(section: ResumeRenderBodySection): string {
-  if (!section.skillGroups || section.skillGroups.length === 0) return "";
-  const items = section.skillGroups
+function renderSkillsSection(document: LatexResumeDocument): string {
+  if (document.skillGroups.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const items = document.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
         escapeForCommand(keyword),
@@ -180,7 +185,7 @@ function renderSkillsSection(section: ResumeRenderBodySection): string {
     })
     .join("\n");
   return [
-    `\\section{${escapeForCommand(section.title)}}`,
+    `\\section{${escapeForCommand(titles.skills)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
     "    \\small{\\item{",
     items,
@@ -190,14 +195,147 @@ function renderSkillsSection(section: ResumeRenderBodySection): string {
   ].join("\n");
 }
 
+function renderLineSection(title: string, lines: string[]): string {
+  if (lines.length === 0) return "";
+  return [
+    `\\section{${escapeForCommand(title)}}`,
+    " \\begin{itemize}[leftmargin=0.15in, label={}]",
+    ...lines.map((line) => `    \\small{\\item{${line}}}`),
+    " \\end{itemize}",
+    "",
+  ].join("\n");
+}
+
+function renderProfilesSection(document: LatexResumeDocument): string {
+  if (document.profileItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.profileItems.map((item) => {
+    const label = escapeForCommand(item.network);
+    const value = renderLink(
+      item.username || item.url || item.network,
+      item.url,
+    );
+    return `\\textbf{${label}}{: ${value}}`;
+  });
+  return renderLineSection(titles.profiles, lines);
+}
+
+function renderCustomFieldsSection(document: LatexResumeDocument): string {
+  if (document.customFieldItems.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.customFieldItems.map(
+    (item: LatexResumeCustomFieldItem) => {
+      const value = item.url
+        ? renderLink(item.text, item.url)
+        : escapeForCommand(item.text);
+      if (!item.title) return value;
+      if (item.title === item.text) {
+        return `\\textbf{${escapeForCommand(item.title)}}`;
+      }
+      return `\\textbf{${escapeForCommand(item.title)}}{: ${value}}`;
+    },
+  );
+  return renderLineSection(titles.customFields, lines);
+}
+
+function renderLanguagesSection(document: LatexResumeDocument): string {
+  if (document.languages.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.languages.map((item: LatexResumeLanguageItem) => {
+    const detailParts = [
+      item.fluency ? escapeForCommand(item.fluency) : "",
+      item.level !== null && item.level !== undefined
+        ? `Level ${escapeForCommand(String(item.level))}`
+        : "",
+    ].filter(Boolean);
+    const detail = detailParts.join(" | ");
+    return detail
+      ? `\\textbf{${escapeForCommand(item.language)}}{: ${detail}}`
+      : `\\textbf{${escapeForCommand(item.language)}}`;
+  });
+  return renderLineSection(titles.languages, lines);
+}
+
+function renderInterestsSection(document: LatexResumeDocument): string {
+  if (document.interests.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
+  const lines = document.interests.map((item: LatexResumeInterestItem) => {
+    const keywords = item.keywords.map((keyword) => escapeForCommand(keyword));
+    return keywords.length > 0
+      ? `\\textbf{${escapeForCommand(item.name)}}{: ${keywords.join(", ")}}`
+      : `\\textbf{${escapeForCommand(item.name)}}`;
+  });
+  return renderLineSection(titles.interests, lines);
+}
+
+function renderPictureBlock(document: LatexResumeDocument): string {
+  const picture = document.picture;
+  if (!picture?.renderPath || picture.hidden) return "";
+
+  const width = Math.max(48, Math.min(picture.size, 144));
+  const height = Math.max(
+    48,
+    Math.round(width / Math.max(picture.aspectRatio, 0.5)),
+  );
+  const angle = picture.rotation
+    ? `,angle=${Math.round(picture.rotation)}`
+    : "";
+
+  return [
+    `    \\includegraphics[width=${width}pt,height=${height}pt,keepaspectratio${angle}]{\\detokenize{${picture.renderPath}}} \\\\`,
+    "    \\vspace{4pt}",
+  ].join("\n");
+}
+
+function renderLocationBlock(document: LatexResumeDocument): string {
+  if (!document.location) return "";
+  return `\\begin{center}\\small ${escapeForCommand(document.location)}\\end{center}\n`;
+}
+
+function renderOrderedCoreSections(
+  document: LatexResumeDocument,
+  titles: ReturnType<typeof getLatexResumeSectionTitles>,
+): string[] {
+  const sectionOrder = document.sectionOrder ?? [
+    "experience",
+    "education",
+    "projects",
+    "skills",
+  ];
+  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    experience: () =>
+      renderEntrySection({
+        title: titles.experience,
+        entries: document.experience,
+        kind: "subheading",
+      }),
+    education: () =>
+      renderEntrySection({
+        title: titles.education,
+        entries: document.education,
+        kind: "subheading",
+      }),
+    projects: () =>
+      renderEntrySection({
+        title: titles.projects,
+        entries: document.projects,
+        kind: "project",
+      }),
+    skills: () => renderSkillsSection(document),
+  };
+
+  return sectionOrder.map((key) => builders[key]());
+}
+
 async function loadTemplate(): Promise<string> {
   return await readFile(TEMPLATE_PATH, "utf8");
 }
 
 export function buildLatexDocument(
-  document: ResumeRenderDocument,
+  document: LatexResumeDocument,
   template: string,
 ): string {
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
@@ -207,34 +345,46 @@ export function buildLatexDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    ...document.body.map((section) => {
-      switch (section.kind) {
-        case "skills":
-          return renderSkillsSection(section);
-        case "project":
-          return renderEntrySection({
-            title: section.title,
-            entries: section.entries,
-            kind: "project",
-          });
-        case "entry":
-          return renderEntrySection({
-            title: section.title,
-            entries: section.entries,
-            kind: "subheading",
-          });
-        default:
-          return "";
-      }
+    renderProfilesSection(document),
+    renderCustomFieldsSection(document),
+    ...renderOrderedCoreSections(document, titles),
+    renderLanguagesSection(document),
+    renderInterestsSection(document),
+    renderEntrySection({
+      title: titles.awards,
+      entries: document.awards,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.certifications,
+      entries: document.certifications,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.publications,
+      entries: document.publications,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.volunteer,
+      entries: document.volunteer,
+      kind: "subheading",
+    }),
+    renderEntrySection({
+      title: titles.references,
+      entries: document.references,
+      kind: "subheading",
     }),
   ]
     .filter(Boolean)
     .join("\n");
 
   return template
+    .replace("__PICTURE_BLOCK__", renderPictureBlock(document))
     .replace("__NAME__", escapeForCommand(document.name))
     .replace("__HEADLINE_BLOCK__", headlineBlock)
     .replace("__CONTACT_BLOCK__", contactBlock)
+    .replace("__LOCATION_BLOCK__", renderLocationBlock(document))
     .replace("__BODY__", body);
 }
 
@@ -285,7 +435,7 @@ async function runTectonic(args: {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         reject(
           new Error(
-            `Tectonic binary not found. Install tectonic or set TECTONIC_BIN to the executable path.`,
+            "Tectonic binary not found. Install tectonic or set TECTONIC_BIN to the executable path.",
           ),
         );
         return;
@@ -328,7 +478,11 @@ export const latexResumeRenderer: ResumeRenderer = {
 
     try {
       const template = await loadTemplate();
-      const latex = buildLatexDocument(document, template);
+      const renderableDocument = await materializeResumePicture(
+        document,
+        tempDir,
+      );
+      const latex = buildLatexDocument(renderableDocument, template);
 
       await writeFile(texPath, latex, "utf8");
       await runTectonic({ cwd: tempDir, texPath, jobId });
@@ -346,7 +500,18 @@ export const latexResumeRenderer: ResumeRenderer = {
         document: sanitizeUnknown({
           name: document.name,
           headline: document.headline,
-          bodyLength: document.body.length,
+          location: document.location,
+          experienceCount: document.experience.length,
+          educationCount: document.education.length,
+          projectCount: document.projects.length,
+          skillGroupCount: document.skillGroups.length,
+          languageCount: document.languages.length,
+          interestCount: document.interests.length,
+          awardCount: document.awards.length,
+          certificationCount: document.certifications.length,
+          publicationCount: document.publications.length,
+          volunteerCount: document.volunteer.length,
+          referenceCount: document.references.length,
         }),
       });
       throw error;
@@ -365,7 +530,7 @@ export const latexResumeRenderer: ResumeRenderer = {
 };
 
 export async function renderLatexPdf(args: {
-  document: ResumeRenderDocument;
+  document: LatexResumeDocument;
   outputPath: string;
   jobId: string;
 }): Promise<void> {
