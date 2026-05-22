@@ -60,7 +60,7 @@ import { EmailViewerList } from "./tracking-inbox/EmailViewerList";
 const PROVIDER_OPTIONS: PostApplicationProvider[] = [
   ...POST_APPLICATION_PROVIDERS,
 ];
-const OAUTH_RESULT_TYPES: Record<string, string> = {
+const OAUTH_RESULT_TYPES: Partial<Record<PostApplicationProvider, string>> = {
   gmail: "gmail-oauth-result",
   o365: "o365-oauth-result",
 };
