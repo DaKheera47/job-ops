@@ -1,11 +1,15 @@
 import * as api from "@client/api";
-import { createDesignResumePdfObjectUrl } from "@client/lib/private-pdf";
 import type {
   DesignResumeDocument,
   PdfRenderer,
   TypstTheme,
 } from "@shared/types";
 import { FileText, Loader2 } from "lucide-react";
+import {
+  GlobalWorkerOptions,
+  getDocument,
+  type PDFDocumentProxy,
+} from "pdfjs-dist";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -19,6 +23,37 @@ type DesignResumePdfPreviewProps = {
 };
 
 type PreviewState = "idle" | "waiting-for-save" | "loading" | "ready" | "error";
+
+type PreviewScrollSnapshot = {
+  topRatio: number;
+};
+
+const PDF_PAGE_HORIZONTAL_PADDING = 24;
+const PDF_MAX_RENDER_WIDTH = 900;
+
+GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url,
+).toString();
+
+function captureScrollSnapshot(
+  element: HTMLDivElement | null,
+): PreviewScrollSnapshot | null {
+  if (!element) return null;
+  const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  return {
+    topRatio: maxScrollTop > 0 ? element.scrollTop / maxScrollTop : 0,
+  };
+}
+
+function restoreScrollSnapshot(
+  element: HTMLDivElement | null,
+  snapshot: PreviewScrollSnapshot | null,
+): void {
+  if (!element || !snapshot) return;
+  const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  element.scrollTop = Math.round(snapshot.topRatio * maxScrollTop);
+}
 
 function bucketLatencyMs(latencyMs: number): string {
   if (!Number.isFinite(latencyMs) || latencyMs < 0) return "unknown";
@@ -37,13 +72,18 @@ export function DesignResumePdfPreview({
   isDirty,
   saveState,
 }: DesignResumePdfPreviewProps) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [isFrameLoading, setIsFrameLoading] = useState(false);
+  const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
+  const [pageCount, setPageCount] = useState(0);
+  const [renderWidth, setRenderWidth] = useState(0);
+  const [isRenderingPages, setIsRenderingPages] = useState(false);
   const requestSequence = useRef(0);
   const lastLoadedKey = useRef<string | null>(null);
-  const pdfObjectUrlRef = useRef<string | null>(null);
+  const viewerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRefs = useRef(new Map<number, HTMLCanvasElement>());
+  const pendingScrollRestoreRef = useRef<PreviewScrollSnapshot | null>(null);
+  const latestPdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
 
   const revisionKey = useMemo(
     () => `${draft.id}:${draft.revision}:${pdfRenderer}:${typstTheme}`,
@@ -51,8 +91,33 @@ export function DesignResumePdfPreview({
   );
 
   useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || typeof ResizeObserver === "undefined") return;
+
+    const updateWidth = () => {
+      const nextWidth = Math.max(
+        320,
+        Math.min(
+          PDF_MAX_RENDER_WIDTH,
+          Math.floor(viewer.clientWidth - PDF_PAGE_HORIZONTAL_PADDING * 2),
+        ),
+      );
+      setRenderWidth((current) =>
+        current === nextWidth ? current : nextWidth,
+      );
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(() => {
+      updateWidth();
+    });
+    observer.observe(viewer);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (saveState === "error") {
-      setIsFrameLoading(false);
+      setIsRenderingPages(false);
       setPreviewState((current) =>
         current === "waiting-for-save" ? "error" : current,
       );
@@ -62,7 +127,7 @@ export function DesignResumePdfPreview({
 
     if (isUpdatingRenderer || isDirty || saveState === "saving") {
       setPreviewState("waiting-for-save");
-      setIsFrameLoading(false);
+      setIsRenderingPages(false);
       return;
     }
 
@@ -72,27 +137,37 @@ export function DesignResumePdfPreview({
 
     const requestId = ++requestSequence.current;
     const startedAt = Date.now();
+    pendingScrollRestoreRef.current = captureScrollSnapshot(viewerRef.current);
     lastLoadedKey.current = revisionKey;
     setPreviewState("loading");
     setPreviewError(null);
-    setIsFrameLoading(true);
+    setIsRenderingPages(true);
 
     void api
       .generateDesignResumePdf()
-      .then(async (generated) =>
-        createDesignResumePdfObjectUrl(generated.pdfUrl),
-      )
-      .then((objectUrl) => {
+      .then(async (generated) => {
+        const blob = await api.getDesignResumePdfBlob(generated.pdfUrl);
+        return blob.arrayBuffer();
+      })
+      .then((pdfData) => {
         if (requestSequence.current !== requestId) {
-          URL.revokeObjectURL(objectUrl);
+          return null;
+        }
+        return getDocument({ data: pdfData }).promise;
+      })
+      .then((nextDocument) => {
+        if (!nextDocument) return;
+        if (requestSequence.current !== requestId) {
+          void nextDocument.destroy();
           return;
         }
-        if (pdfObjectUrlRef.current) {
-          URL.revokeObjectURL(pdfObjectUrlRef.current);
-        }
-        pdfObjectUrlRef.current = objectUrl;
-        setPdfUrl(`${objectUrl}#toolbar=0&navpanes=0&view=FitH`);
-        setPreviewState("ready");
+
+        const previousDocument = latestPdfDocumentRef.current;
+        latestPdfDocumentRef.current = nextDocument;
+        setPdfDocument(nextDocument);
+        setPageCount(nextDocument.numPages);
+        void previousDocument?.destroy();
+
         trackProductEvent("resume_studio_pdf_preview_completed", {
           renderer: pdfRenderer,
           theme: typstTheme,
@@ -103,13 +178,15 @@ export function DesignResumePdfPreview({
       .catch((error: unknown) => {
         if (requestSequence.current !== requestId) return;
         lastLoadedKey.current = null;
+        setPdfDocument(null);
+        setPageCount(0);
         setPreviewError(
           error instanceof Error
             ? error.message
             : "Could not render the PDF preview.",
         );
         setPreviewState("error");
-        setIsFrameLoading(false);
+        setIsRenderingPages(false);
         trackProductEvent("resume_studio_pdf_preview_completed", {
           renderer: pdfRenderer,
           theme: typstTheme,
@@ -128,35 +205,109 @@ export function DesignResumePdfPreview({
 
   useEffect(() => {
     return () => {
-      if (pdfObjectUrlRef.current) {
-        URL.revokeObjectURL(pdfObjectUrlRef.current);
-      }
+      void latestPdfDocumentRef.current?.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    if (!pdfDocument || renderWidth <= 0 || pageCount <= 0) return;
+
+    let cancelled = false;
+    setIsRenderingPages(true);
+
+    void (async () => {
+      const outputScale = Math.max(1, window.devicePixelRatio || 1);
+
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        if (cancelled) return;
+
+        const canvas = canvasRefs.current.get(pageNumber);
+        if (!canvas) continue;
+
+        const page = await pdfDocument.getPage(pageNumber);
+        if (cancelled) return;
+
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = renderWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const context = canvas.getContext("2d");
+        if (!context) continue;
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+
+        const renderTask = page.render({
+          canvas,
+          canvasContext: context,
+          viewport,
+        });
+        await renderTask.promise;
+      }
+
+      if (cancelled) return;
+
+      restoreScrollSnapshot(viewerRef.current, pendingScrollRestoreRef.current);
+      pendingScrollRestoreRef.current = null;
+      setIsRenderingPages(false);
+      setPreviewState("ready");
+    })().catch((error: unknown) => {
+      if (cancelled) return;
+      setPreviewError(
+        error instanceof Error
+          ? error.message
+          : "Could not render the PDF preview.",
+      );
+      setPreviewState("error");
+      setIsRenderingPages(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pageCount, pdfDocument, renderWidth]);
 
   const showLoader =
     previewState === "loading" ||
     previewState === "waiting-for-save" ||
-    isFrameLoading;
+    isRenderingPages;
 
   return (
     <div className="relative flex h-full min-h-0 items-center justify-center overflow-hidden bg-card">
       <div className="relative h-full min-h-0 w-full overflow-hidden border border-border/70 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-        {pdfUrl ? (
-          <iframe
-            key={pdfUrl}
-            src={pdfUrl}
-            title="Resume Studio PDF preview"
-            className="h-full w-full"
-            onLoad={() => {
-              setIsFrameLoading(false);
-              setPreviewState("ready");
-            }}
-          />
-        ) : null}
+        <div
+          ref={viewerRef}
+          data-testid="design-resume-pdf-scroll-container"
+          className="h-full overflow-auto bg-[#d9d9d9] px-6 py-8"
+        >
+          <div className="mx-auto flex w-full max-w-[900px] flex-col items-center gap-6">
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map(
+              (pageNumber) => (
+                <div
+                  key={pageNumber}
+                  className="w-fit rounded-sm bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)]"
+                >
+                  <canvas
+                    ref={(canvas) => {
+                      if (canvas) {
+                        canvasRefs.current.set(pageNumber, canvas);
+                      } else {
+                        canvasRefs.current.delete(pageNumber);
+                      }
+                    }}
+                    aria-label={`Resume Studio PDF page ${pageNumber}`}
+                    className="block max-w-full"
+                  />
+                </div>
+              ),
+            )}
+          </div>
+        </div>
 
         {showLoader ? (
-          <div className="absolute inset-0 grid place-items-center bg-card backdrop-blur-[2px]">
+          <div className="absolute inset-0 grid place-items-center bg-card/70 backdrop-blur-[2px]">
             <div className="flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-card px-6 py-5 text-center shadow-lg">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <div className="text-sm font-medium text-foreground">
