@@ -1329,13 +1329,7 @@ export const DesignResumePage: React.FC = () => {
                 Preview
               </button>
             </div>
-            <div
-              className={
-                activeSection
-                  ? "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
-                  : "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-cols-[70px_minmax(0,1fr)]"
-              }
-            >
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none">
               {activeSection && activeGroup && activeSectionMeta ? (
                 <div
                   className={cn(
@@ -1418,18 +1412,42 @@ export const DesignResumePage: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  <DesignResumeDock
-                    activeSectionId={null}
-                    className="hidden h-full self-start sm:flex"
-                    groups={dynamicIconGroups}
-                    onSectionSelect={(sectionId) =>
-                      navigate(
-                        sectionId
-                          ? `/design-resume/${sectionId}`
-                          : "/design-resume",
-                      )
-                    }
-                  />
+
+                  <div
+                    className={cn(
+                      "min-h-0 min-w-0 hidden",
+                      "sm:grid sm:grid-cols-[70px_minmax(0,1fr)] sm:gap-3",
+                    )}
+                  >
+                    <DesignResumeDock
+                      activeSectionId={null}
+                      className="hidden h-full self-start sm:flex"
+                      groups={dynamicIconGroups}
+                      onSectionSelect={(sectionId) =>
+                        navigate(
+                          sectionId
+                            ? `/design-resume/${sectionId}`
+                            : "/design-resume",
+                        )
+                      }
+                    />
+
+                    <SectionWorkspacePanel
+                      groupLabel="Editor"
+                      sectionLabel="Resume Sections"
+                      sectionDescription="Drag and drop sections to reorder, or expand a section to edit its content."
+                      secondaryBadge={
+                        dirty
+                          ? { label: "Autosaving", variant: "secondary" }
+                          : saveState === "saved"
+                            ? { label: "Autosaved", variant: "outline" }
+                            : null
+                      }
+                      scrollable
+                    >
+                      {rail}
+                    </SectionWorkspacePanel>
+                  </div>
                 </>
               )}
 
