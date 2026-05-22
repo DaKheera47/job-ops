@@ -9,6 +9,7 @@ import {
   buildTypstDocument,
   getTypstBinary,
   getTypstTemplatePath,
+  normalizeTypstDocumentPicturePath,
   readTypstTemplate,
   readTypstTheme,
   readTypstThemeManifest,
@@ -311,6 +312,32 @@ describe("typst resume renderer", () => {
 
     expect(typst).toContain("Jane \\#1 \\[Platform\\]");
     expect(typst).toContain("\\#hashes, \\*stars\\*, and \\[brackets\\]");
+  });
+
+  it("normalizes absolute picture paths under compile cwd for Typst", () => {
+    const compileCwd = join(tmpdir(), "job-ops-resume-render-path-test");
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: join(compileCwd, "resume-picture.png"),
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      compileCwd,
+    );
+
+    expect(normalizedDocument.picture?.renderPath).toBe("resume-picture.png");
   });
 
   it("fails with a helpful error when typst is unavailable", async () => {

@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, normalize } from "node:path";
+import { isAbsolute, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
@@ -426,6 +426,37 @@ function buildAdaptedTypstDocument(template: string): string {
   return replaceSharedTypstPlaceholders(template);
 }
 
+export function normalizeTypstDocumentPicturePath(
+  document: LatexResumeDocument,
+  compileCwd: string,
+): LatexResumeDocument {
+  const picture = document.picture;
+  if (!picture?.renderPath) return document;
+
+  const normalizedPath = normalize(picture.renderPath);
+  if (!isAbsolute(normalizedPath)) return document;
+
+  const relativePath = relative(compileCwd, normalizedPath);
+  if (
+    !relativePath ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath)
+  ) {
+    return document;
+  }
+
+  const typstPath = relativePath.replaceAll("\\", "/");
+  if (typstPath === picture.renderPath) return document;
+
+  return {
+    ...document,
+    picture: {
+      ...picture,
+      renderPath: typstPath,
+    },
+  };
+}
+
 export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
@@ -612,6 +643,10 @@ export const typstResumeRenderer: ResumeRenderer = {
         document,
         tempDir,
       );
+      const typstDocument = normalizeTypstDocumentPicturePath(
+        renderableDocument,
+        tempDir,
+      );
       let typst: string;
       if (manifest.kind === "native") {
         if (!tokens) {
@@ -619,14 +654,14 @@ export const typstResumeRenderer: ResumeRenderer = {
             `Typst theme ${typstTheme} is missing native tokens.`,
           );
         }
-        typst = buildTypstDocument(renderableDocument, template, tokens);
+        typst = buildTypstDocument(typstDocument, template, tokens);
       } else {
         typst = buildAdaptedTypstDocument(template);
       }
 
       await writeFile(
         resumeDataPath,
-        JSON.stringify(renderableDocument),
+        JSON.stringify(typstDocument),
         "utf8",
       );
       await writeFile(typPath, typst, "utf8");
