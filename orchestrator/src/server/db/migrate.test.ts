@@ -221,4 +221,79 @@ describe.sequential("database migrations", () => {
       },
     );
   });
+
+  it("rebuilds post-application tables to accept o365 provider", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const sqlite = new Database(dbPath);
+
+      // Seed an older schema with CHECK(provider IN ('gmail', 'imap'))
+      sqlite.exec(\`
+        CREATE TABLE tenants (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO tenants(id, name, slug) VALUES ('tenant_default', 'JobOps', 'default');
+
+        CREATE TABLE post_application_integrations (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+          provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
+          account_key TEXT NOT NULL DEFAULT 'default',
+          display_name TEXT,
+          status TEXT NOT NULL DEFAULT 'disconnected',
+          credentials TEXT,
+          last_connected_at INTEGER,
+          last_synced_at INTEGER,
+          last_error TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(tenant_id, provider, account_key),
+          FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+        );
+        INSERT INTO post_application_integrations(id, provider, status)
+          VALUES ('int-1', 'gmail', 'connected');
+      \`);
+      sqlite.close();
+
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath);
+
+      // Existing gmail row must survive
+      const gmail = migratedDb.prepare(
+        "SELECT provider, status FROM post_application_integrations WHERE id = ?"
+      ).get("int-1");
+      if (!gmail || gmail.provider !== "gmail" || gmail.status !== "connected") {
+        throw new Error("Existing gmail integration lost after migration");
+      }
+
+      // Inserting o365 must now succeed
+      migratedDb.prepare(
+        "INSERT INTO post_application_integrations(id, provider, status) VALUES (?, ?, ?)"
+      ).run("int-2", "o365", "connected");
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
 });
