@@ -1172,6 +1172,10 @@ const migrations = [
    FROM post_application_messages`,
   `DROP TABLE IF EXISTS post_application_messages`,
   `ALTER TABLE post_application_messages_new RENAME TO post_application_messages`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at
+   ON post_application_sync_runs(provider, account_key, started_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_messages_provider_account_processing_status
+   ON post_application_messages(provider, account_key, processing_status)`,
 
   `PRAGMA foreign_keys = ON`,
 ];
