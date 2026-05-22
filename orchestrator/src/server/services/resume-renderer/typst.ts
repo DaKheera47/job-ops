@@ -659,11 +659,7 @@ export const typstResumeRenderer: ResumeRenderer = {
         typst = buildAdaptedTypstDocument(template);
       }
 
-      await writeFile(
-        resumeDataPath,
-        JSON.stringify(typstDocument),
-        "utf8",
-      );
+      await writeFile(resumeDataPath, JSON.stringify(typstDocument), "utf8");
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,
