@@ -105,77 +105,74 @@ function DesignResumeDockButton({
   );
 
   return (
-    <motion.button
+    <motion.div
       layout
       transition={{
         type: "spring",
         stiffness: 400,
         damping: 30,
       }}
-      onClick={onClick}
       draggable={isReorderable}
       // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragStart type conflicts with native HTML5 drag events
       onDragStart={onDragStart as any}
       // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragEnd type conflicts with native HTML5 drag events
       onDragEnd={onDragEnd as any}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragOver type conflicts with native HTML5 drag events
+      onDragOver={onDragOver as any}
+      // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDrop type conflicts with native HTML5 drag events
+      onDrop={onDrop as any}
       className="group relative flex shrink-0 items-center justify-center cursor-grab"
     >
+      {isReorderable && (
+        <GripVertical
+          className="absolute -left-2 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
+          aria-hidden="true"
+        />
+      )}
+
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <motion.button
             type="button"
             ref={ref}
-            className="flex items-center justify-center ml-4 -translate-x-2"
-          >
-            {isReorderable && (
-              <GripVertical
-                className="absolute -left-4 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
-                aria-hidden="true"
-              />
-            )}
-
-            <motion.button
-              type="button"
-              style={{ width: size, height: size }}
-              animate={{
-                scale: isDragging
-                  ? 0.9
-                  : isDragTarget
-                    ? 1.1
-                    : isCandidate
-                      ? 0.96
-                      : 1,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 25,
-              }}
-              className={cn(
-                "relative inline-flex cursor-grab shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                isDragTarget
-                  ? "border-primary shadow-primary/30 border-solid"
+            onClick={onClick}
+            style={{ width: size, height: size }}
+            animate={{
+              scale: isDragging
+                ? 0.9
+                : isDragTarget
+                  ? 1.1
                   : isCandidate
-                    ? "border-dashed border-primary/45 bg-primary/5 text-primary/80 shadow-sm shadow-primary/5"
-                    : active
-                      ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
-                      : "border-border/70 hover:border-border hover:bg-accent/70",
-              )}
-              aria-current={active ? "page" : undefined}
-              aria-label={label}
-            >
-              <span className="[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150">
-                {icon}
+                    ? 0.96
+                    : 1,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 25,
+            }}
+            className={cn(
+              "relative inline-flex cursor-grab shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ml-4 -translate-x-2",
+              isDragTarget
+                ? "border-primary shadow-primary/30 border-solid"
+                : isCandidate
+                  ? "border-dashed border-primary/45 bg-primary/5 text-primary/80 shadow-sm shadow-primary/5"
+                  : active
+                    ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
+                    : "border-border/70 hover:border-border hover:bg-accent/70",
+            )}
+            aria-current={active ? "page" : undefined}
+            aria-label={label}
+          >
+            <span className="[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150">
+              {icon}
+            </span>
+            {badgeCount !== undefined && badgeCount > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+                {badgeCount > 99 ? "99+" : badgeCount}
               </span>
-              {badgeCount !== undefined && badgeCount > 0 ? (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
-                  {badgeCount > 99 ? "99+" : badgeCount}
-                </span>
-              ) : null}
-            </motion.button>
-          </button>
+            ) : null}
+          </motion.button>
         </TooltipTrigger>
 
         <TooltipContent
@@ -186,7 +183,7 @@ function DesignResumeDockButton({
           {label}
         </TooltipContent>
       </Tooltip>
-    </motion.button>
+    </motion.div>
   );
 }
 

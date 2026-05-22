@@ -93,10 +93,9 @@ export function useDesignResumeStudio() {
   }, [sectionParam]);
 
   useEffect(() => {
-    if (!document) return;
+    if (!document || dirty) return;
     setDraft(document);
-    setDirty(false);
-  }, [document]);
+  }, [document, dirty]);
 
   useEffect(() => {
     if (
