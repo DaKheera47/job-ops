@@ -113,9 +113,7 @@ export function DesignResumePdfPreview({
           Math.floor(viewer.clientWidth - PDF_PAGE_HORIZONTAL_PADDING * 2),
         ),
       );
-      setFitWidth((current) =>
-        current === nextWidth ? current : nextWidth,
-      );
+      setFitWidth((current) => (current === nextWidth ? current : nextWidth));
     };
 
     updateWidth();
@@ -133,19 +131,13 @@ export function DesignResumePdfPreview({
 
   const handleZoomOut = () => {
     updateZoomLevel(
-      Math.max(
-        PDF_ZOOM_MIN,
-        Number((zoomLevel - PDF_ZOOM_STEP).toFixed(2)),
-      ),
+      Math.max(PDF_ZOOM_MIN, Number((zoomLevel - PDF_ZOOM_STEP).toFixed(2))),
     );
   };
 
   const handleZoomIn = () => {
     updateZoomLevel(
-      Math.min(
-        PDF_ZOOM_MAX,
-        Number((zoomLevel + PDF_ZOOM_STEP).toFixed(2)),
-      ),
+      Math.min(PDF_ZOOM_MAX, Number((zoomLevel + PDF_ZOOM_STEP).toFixed(2))),
     );
   };
 
