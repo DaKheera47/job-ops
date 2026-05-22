@@ -279,7 +279,9 @@ export const TrackingInboxPage: React.FC = () => {
 
         const closedCheckId = window.setInterval(() => {
           if (!popup.closed) return;
-          finishReject(`${providerKey} OAuth window was closed before completion.`);
+          finishReject(
+            `${providerKey} OAuth window was closed before completion.`,
+          );
         }, 250);
 
         window.addEventListener("message", onMessage);
@@ -306,9 +308,7 @@ export const TrackingInboxPage: React.FC = () => {
               provider,
               result: "error",
             });
-            toast.error(
-              `${provider} connect is not implemented yet.`,
-            );
+            toast.error(`${provider} connect is not implemented yet.`);
             return;
           }
 

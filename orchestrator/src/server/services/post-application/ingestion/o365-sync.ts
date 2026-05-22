@@ -195,8 +195,7 @@ export async function runO365IngestionSync(args: {
   let errored = 0;
 
   try {
-    const resolvedCredentials =
-      await resolveO365AccessToken(parsedCredentials);
+    const resolvedCredentials = await resolveO365AccessToken(parsedCredentials);
     if (!resolvedCredentials.accessToken) {
       throw new Error("O365 sync failed to resolve access token.");
     }

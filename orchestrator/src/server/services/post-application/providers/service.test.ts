@@ -75,7 +75,7 @@ afterEach(() => {
 
 describe("post-application provider registry", () => {
   it("lists registered providers", () => {
-    expect(listPostApplicationProviders()).toEqual(["gmail", "imap"]);
+    expect(listPostApplicationProviders()).toEqual(["gmail", "imap", "o365"]);
   });
 
   it("resolves a known provider", () => {

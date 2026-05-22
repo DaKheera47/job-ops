@@ -207,10 +207,10 @@ export async function listMessageIds(
     `${GRAPH_API_BASE}/me/messages?$filter=${filter}&$select=id,conversationId&$top=${top}&$orderby=receivedDateTime desc`;
 
   while (url && messages.length < maxMessages) {
-    const page = await graphApi<{
+    const page: {
       value?: Array<{ id?: string; conversationId?: string }>;
       "@odata.nextLink"?: string;
-    }>(token, url);
+    } = await graphApi(token, url);
 
     for (const message of page.value ?? []) {
       if (!message.id) continue;

@@ -6,7 +6,7 @@ import {
 } from "@server/repositories/post-application-integrations";
 import { runO365IngestionSync } from "@server/services/post-application/ingestion/o365-sync";
 import type { PostApplicationIntegration } from "@shared/types";
-import { providerInvalidRequest, providerUpstreamError } from "./errors";
+import { providerInvalidRequest } from "./errors";
 import type {
   PostApplicationProviderActionResult,
   PostApplicationProviderAdapter,
