@@ -41,37 +41,6 @@
 #let sidebar-col-width = 63mm
 
 // ---------------------------------------------------------------------------
-// Page setup — sidebar drawn via background so main content flows across pages
-// ---------------------------------------------------------------------------
-
-#set page(
-  paper: "a4",
-  // Left margin reserves space for the sidebar column; right margin gives breathing room.
-  margin: (top: 0pt, bottom: 0pt, left: sidebar-col-width, right: 1.5cm),
-  fill: __BACKGROUND_COLOR__,
-  background: context {
-    // Tinted sidebar background appears on every page.
-    place(left + top,
-      rect(width: sidebar-col-width, height: 100%, fill: sidebar-bg, stroke: none)
-    )
-    // Sidebar content (name, photo, summary, contact…) only on the first page.
-    if here().page() == 1 {
-      place(left + top,
-        box(width: sidebar-col-width, inset: (x: 16pt, y: 0pt))[
-          #set text(font: __BODY_FONT__, size: 9pt, lang: "en", fill: __TEXT_COLOR__)
-          #set par(leading: 0.55em)
-          #show link: set text(fill: accent)
-          #sidebar-content
-        ]
-      )
-    }
-  },
-)
-#set text(font: __BODY_FONT__, size: 10pt, lang: "en", fill: __TEXT_COLOR__)
-#set par(leading: 0.55em)
-#show link: set text(fill: accent)
-
-// ---------------------------------------------------------------------------
 // Data extraction
 // ---------------------------------------------------------------------------
 
@@ -286,6 +255,38 @@
     )
   }
 }
+
+// ---------------------------------------------------------------------------
+// Page setup — sidebar drawn via background so main content flows across pages
+// (defined after sidebar-content so the binding is in scope in the background closure)
+// ---------------------------------------------------------------------------
+
+#set page(
+  paper: "a4",
+  // Left margin reserves space for the sidebar column; right margin gives breathing room.
+  margin: (top: 0pt, bottom: 0pt, left: sidebar-col-width, right: 1.5cm),
+  fill: __BACKGROUND_COLOR__,
+  background: context {
+    // Tinted sidebar background appears on every page.
+    place(left + top,
+      rect(width: sidebar-col-width, height: 100%, fill: sidebar-bg, stroke: none)
+    )
+    // Sidebar content (name, photo, summary, contact…) only on the first page.
+    if here().page() == 1 {
+      place(left + top,
+        box(width: sidebar-col-width, inset: (x: 16pt, y: 0pt))[
+          #set text(font: __BODY_FONT__, size: 9pt, lang: "en", fill: __TEXT_COLOR__)
+          #set par(leading: 0.55em)
+          #show link: set text(fill: accent)
+          #sidebar-content
+        ]
+      )
+    }
+  },
+)
+#set text(font: __BODY_FONT__, size: 10pt, lang: "en", fill: __TEXT_COLOR__)
+#set par(leading: 0.55em)
+#show link: set text(fill: accent)
 
 // ---------------------------------------------------------------------------
 // Main-area section heading
