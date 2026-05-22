@@ -57,6 +57,7 @@ COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -86,6 +87,7 @@ FROM node-deps AS build-sources
 COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
+COPY career-boards/bamboohr ./career-boards/bamboohr
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
@@ -131,6 +133,7 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -213,6 +216,7 @@ COPY --from=client-build /app/orchestrator/dist ./orchestrator/dist
 COPY --from=docs-build /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
+COPY career-boards/bamboohr ./career-boards/bamboohr
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
