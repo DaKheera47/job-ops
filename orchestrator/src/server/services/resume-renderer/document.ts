@@ -501,3 +501,10 @@ export function normalizeResumeJsonToLatexDocument(
     },
   };
 }
+
+export function buildResumeRenderDocument(
+  resumeJson: Record<string, unknown>,
+  options: NormalizeResumeJsonToLatexDocumentOptions = {},
+): LatexResumeDocument {
+  return normalizeResumeJsonToLatexDocument(resumeJson, options);
+}
