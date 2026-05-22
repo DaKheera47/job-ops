@@ -370,6 +370,7 @@ type DesignResumeDockItem = {
   isReorderable?: boolean;
   isDragging?: boolean;
   isDragTarget?: boolean;
+  isCandidate?: boolean;
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
   onDragEnd?: () => void;
   onDragOver?: (event: React.DragEvent<HTMLButtonElement>) => void;
@@ -398,6 +399,7 @@ function DesignResumeDockButton({
   isReorderable,
   isDragging,
   isDragTarget,
+  isCandidate,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -414,61 +416,60 @@ function DesignResumeDockButton({
   );
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.button
-          ref={ref}
-          type="button"
-          style={{ width: size, height: size }}
-          onClick={onClick}
-          draggable={isReorderable}
-          // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragStart type conflicts with native HTML5 drag events
-          onDragStart={onDragStart as any}
-          // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragEnd type conflicts with native HTML5 drag events
-          onDragEnd={onDragEnd as any}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          className={cn(
-            "group relative inline-flex cursor-pointer shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-all hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            active
-              ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
-              : "border-border/70 hover:border-border hover:bg-accent/70",
-            isDragging && "opacity-40 scale-95",
-            isDragTarget &&
-              "border-primary/50 bg-primary/20 scale-105 shadow-primary/30",
-          )}
-          aria-current={active ? "page" : undefined}
-          aria-label={label}
-        >
-          {isReorderable && (
-            <GripVertical
-              className="absolute left-1 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
-              aria-hidden="true"
-            />
-          )}
-          <span
+    <div className="group relative flex shrink-0 items-center justify-center">
+      {isReorderable && (
+        <GripVertical
+          className="absolute -left-3.5 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
+          aria-hidden="true"
+        />
+      )}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            ref={ref}
+            type="button"
+            style={{ width: size, height: size }}
+            onClick={onClick}
+            draggable={isReorderable}
+            // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragStart type conflicts with native HTML5 drag events
+            onDragStart={onDragStart as any}
+            // biome-ignore lint/suspicious/noExplicitAny: Framer Motion onDragEnd type conflicts with native HTML5 drag events
+            onDragEnd={onDragEnd as any}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
             className={cn(
-              "[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150",
-              isReorderable && "group-hover:pl-3",
+              "relative inline-flex cursor-pointer shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-all hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              isDragTarget
+                ? "border-primary bg-primary/20 scale-105 shadow-primary/30 border-solid"
+                : isCandidate
+                  ? "border-dashed border-primary/45 bg-primary/5 text-primary/80 shadow-sm shadow-primary/5"
+                  : active
+                    ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
+                    : "border-border/70 hover:border-border hover:bg-accent/70",
+              isDragging && "opacity-40 scale-95",
             )}
+            aria-current={active ? "page" : undefined}
+            aria-label={label}
           >
-            {icon}
-          </span>
-          {badgeCount !== undefined && badgeCount > 0 ? (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
-              {badgeCount > 99 ? "99+" : badgeCount}
+            <span className="[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150">
+              {icon}
             </span>
-          ) : null}
-        </motion.button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="left"
-        sideOffset={12}
-        className="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
-      >
-        {label}
-      </TooltipContent>
-    </Tooltip>
+            {badgeCount !== undefined && badgeCount > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            ) : null}
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="left"
+          sideOffset={12}
+          className="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
+        >
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -493,7 +494,7 @@ function DesignResumeDock({
   const contentRef = useRef<HTMLDivElement>(null);
   const mouseY = useMotionValue(Number.POSITIVE_INFINITY);
   const spring = { mass: 0.1, stiffness: 150, damping: 12 };
-  const panelWidth = 70;
+  const panelWidth = 76;
   const magnification = 70;
   const baseItemSize = 46;
   const distance = 200;
@@ -631,6 +632,8 @@ function DesignResumeDock({
         const sectionId =
           item.sectionId === undefined ? item.id : item.sectionId;
         const isReorderable = REORDERABLE_SECTION_KEYS.includes(item.id);
+        const isCandidate =
+          draggingKey !== null && isReorderable && draggingKey !== item.id;
         return {
           id: item.id,
           icon: <Icon aria-hidden="true" />,
@@ -640,6 +643,7 @@ function DesignResumeDock({
           isReorderable,
           isDragging: draggingKey === item.id,
           isDragTarget: dragOverKey === item.id && draggingKey !== item.id,
+          isCandidate,
           onDragStart: isReorderable
             ? (e: React.DragEvent<HTMLButtonElement>) =>
                 handleDragStart(e, item.id)
@@ -722,7 +726,7 @@ function DesignResumeDock({
           }}
           onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
           onWheel={handleWheel}
-          className="pointer-events-auto relative h-full min-h-0 w-[70px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          className="pointer-events-auto relative h-full min-h-0 w-[76px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Resume Studio sections"
         >
@@ -1504,7 +1508,7 @@ export const DesignResumePage: React.FC = () => {
               className={
                 activeSection
                   ? "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
-                  : "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-cols-[70px_minmax(0,1fr)]"
+                  : "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-cols-[76px_minmax(0,1fr)]"
               }
             >
               {activeSection && activeGroup && activeSectionMeta ? (
@@ -1514,7 +1518,7 @@ export const DesignResumePage: React.FC = () => {
                     mobileWorkspaceView === "edit"
                       ? "flex flex-1 flex-col"
                       : "hidden",
-                    "sm:grid sm:grid-cols-[70px_minmax(0,1fr)] sm:gap-3",
+                    "sm:grid sm:grid-cols-[76px_minmax(0,1fr)] sm:gap-3",
                   )}
                 >
                   <DesignResumeDock
