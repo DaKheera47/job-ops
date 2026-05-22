@@ -80,13 +80,13 @@
 // ---------------------------------------------------------------------------
 
 #let sidebar-section(title, body) = {
-  v(10pt)
+  v(14pt)
   align(center)[
-    #text(weight: "bold", size: 11pt, tracking: 1.5pt)[#upper(title)]
+    #text(weight: "bold", size: 12pt, tracking: 2pt)[#upper(title)]
   ]
-  v(4pt)
-  line(length: 60%, stroke: 0.4pt + accent)
-  v(4pt)
+  v(3pt)
+  align(center)[#line(length: 50%, stroke: 0.5pt + luma(140))]
+  v(6pt)
   body
 }
 
@@ -98,16 +98,22 @@
   set text(size: 9pt)
   set align(center)
 
-  // Name
-  v(22pt)
-  text(size: 22pt, weight: "bold", tracking: 3pt)[
-    #upper(text-of(source.at("name", default: "")))
-  ]
-  v(10pt)
+  // Name — split first/last on separate lines with wide tracking
+  v(20pt)
+  {
+    let name = text-of(source.at("name", default: ""))
+    let name-parts = name.split(" ")
+    let first-name = name-parts.at(0, default: "")
+    let last-name = name-parts.slice(1).join(" ")
+    text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(first-name)]
+    v(4pt)
+    text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(last-name)]
+  }
+  v(16pt)
 
-  // Photo
+  // Photo (circular crop) — only shown when a picture is available
   if picture-path != "" and picture-hidden == false {
-    let img-size = calc.max(48, calc.min(picture-size, 140)) * 1pt
+    let img-size = calc.max(80, calc.min(picture-size, 160)) * 1pt
     box(
       clip: true,
       radius: 50%,
@@ -115,98 +121,112 @@
       height: img-size,
       image(picture-path, width: img-size),
     )
-    v(8pt)
+    v(14pt)
   }
 
   // Headline / tagline
-  let headline = text-of(source.at("headline", default: ""))
-  if headline != "" {
-    text(style: "italic", size: 10pt)[#headline]
-    v(2pt)
+  {
+    let headline = text-of(source.at("headline", default: ""))
+    if headline != "" {
+      v(6pt)
+      text(style: "italic", size: 12pt, weight: "bold")[#headline]
+      v(4pt)
+    }
   }
 
   // Education — show degree(s) as a brief tagline under the headline
-  let education = list-of(source.at("education", default: ()))
-  for entry in education {
-    let degree = text-of-item(entry, "subtitle")
-    if degree != "" {
-      text(style: "italic", size: 9pt)[#degree]
-      v(2pt)
+  {
+    let education = list-of(source.at("education", default: ()))
+    for entry in education {
+      let degree = text-of-item(entry, "subtitle")
+      if degree != "" {
+        text(style: "italic", size: 10pt)[#degree]
+        v(2pt)
+      }
     }
   }
 
   // Profile / Summary
-  let summary-text = text-of(source.at("summary", default: ""))
-  if summary-text != "" {
-    sidebar-section(
-      text-of(section-titles.at("summary", default: "Profile")),
-      {
-        set align(center)
-        set text(size: 8.5pt)
-        text(style: "italic")[#summary-text]
-      },
-    )
+  {
+    let summary-text = text-of(source.at("summary", default: ""))
+    if summary-text != "" {
+      sidebar-section(
+        text-of(section-titles.at("summary", default: "Profile")),
+        {
+          set align(center)
+          set text(size: 8.5pt)
+          set par(leading: 0.6em)
+          text(style: "italic")[#summary-text]
+        },
+      )
+    }
   }
 
   // Skills
-  let skill-groups = list-of(source.at("skillGroups", default: ()))
-  if skill-groups.len() > 0 {
-    sidebar-section(
-      text-of(section-titles.at("skills", default: "Skills")),
-      {
-        set align(left)
-        set text(size: 8.5pt)
-        for group in skill-groups {
-          text(weight: "bold")[#text-of-item(group, "name")]
-          linebreak()
-          let kws = list-of(group.at("keywords", default: ()))
-          text[#kws.join(", ")]
-          v(4pt)
-        }
-      },
-    )
+  {
+    let skill-groups = list-of(source.at("skillGroups", default: ()))
+    if skill-groups.len() > 0 {
+      sidebar-section(
+        text-of(section-titles.at("skills", default: "Skills")),
+        {
+          set align(left)
+          set text(size: 8.5pt)
+          for group in skill-groups {
+            text(weight: "bold")[#text-of-item(group, "name")]
+            linebreak()
+            let kws = list-of(group.at("keywords", default: ()))
+            text[#kws.join(", ")]
+            v(4pt)
+          }
+        },
+      )
+    }
   }
 
   // Languages
-  let languages = list-of(source.at("languages", default: ()))
-  if languages.len() > 0 {
-    sidebar-section(
-      text-of(section-titles.at("languages", default: "Languages")),
-      {
-        set align(left)
-        set text(size: 8.5pt)
-        for item in languages {
-          let fluency = text-of-item(item, "fluency")
-          if fluency != "" {
-            [*#text-of-item(item, "language"):* #fluency]
-          } else {
-            [*#text-of-item(item, "language")*]
+  {
+    let languages = list-of(source.at("languages", default: ()))
+    if languages.len() > 0 {
+      sidebar-section(
+        text-of(section-titles.at("languages", default: "Languages")),
+        {
+          set align(left)
+          set text(size: 8.5pt)
+          for item in languages {
+            let fluency = text-of-item(item, "fluency")
+            if fluency != "" {
+              [*#text-of-item(item, "language"):* #fluency]
+            } else {
+              [*#text-of-item(item, "language")*]
+            }
+            linebreak()
           }
-          linebreak()
-        }
-      },
-    )
+        },
+      )
+    }
   }
 
   // Interests
-  let interests = list-of(source.at("interests", default: ()))
-  if interests.len() > 0 {
-    sidebar-section(
-      text-of(section-titles.at("interests", default: "Interests")),
-      {
-        set align(left)
-        set text(size: 8.5pt)
-        for item in interests {
-          let kws = list-of(item.at("keywords", default: ()))
-          if kws.len() > 0 {
-            [*#text-of-item(item, "name"):* #kws.join(", ")]
-          } else {
-            [*#text-of-item(item, "name")*]
+  {
+    let interests = list-of(source.at("interests", default: ()))
+    if interests.len() > 0 {
+      sidebar-section(
+        text-of(section-titles.at("interests", default: "Interests")),
+        {
+          set align(left)
+          set text(size: 8.5pt)
+          for item in interests {
+            let kws = list-of(item.at("keywords", default: ()))
+            if kws.len() > 0 {
+              [*#text-of-item(item, "name"):* #kws.join(", ")]
+            } else {
+              [*#text-of-item(item, "name")*]
+            }
+            linebreak()
           }
-          linebreak()
-        }
-      },
-    )
+        },
+      )
+    }
   }
 
   // Contact
@@ -217,9 +237,15 @@
       set text(size: 8.5pt)
       let location = text-of(source.at("location", default: ""))
       if location != "" {
+        // Show full name at top of contact block
+        let name-val = text-of(source.at("name", default: ""))
+        if name-val != "" {
+          text(weight: "bold")[#name-val]
+          linebreak()
+        }
         text[#location]
         linebreak()
-        v(2pt)
+        v(4pt)
       }
       for item in contact-items {
         link-or-text(text-of-item(item, "text"), text-of-item(item, "url"))
@@ -254,11 +280,11 @@
 // ---------------------------------------------------------------------------
 
 #let main-section(title) = {
-  v(8pt)
-  text(size: 14pt, weight: "bold", fill: accent, tracking: 0.5pt)[#upper(title)]
-  v(-1pt)
-  line(length: 100%, stroke: 0.5pt + accent)
-  v(4pt)
+  v(6pt)
+  text(size: 16pt, weight: "bold", fill: accent, tracking: 2pt)[#upper(title)]
+  v(-2pt)
+  line(length: 100%, stroke: 0.6pt + accent)
+  v(6pt)
 }
 
 // ---------------------------------------------------------------------------
@@ -266,24 +292,21 @@
 // ---------------------------------------------------------------------------
 
 #let main-entry(title, subtitle: "", date: "", location: "", body-content: []) = {
-  text(size: 12pt, weight: "bold")[#upper(title)]
+  text(size: 11pt, weight: "bold")[#upper(title)]
   if subtitle != "" {
-    [ | ]
-    text(size: 12pt, weight: "bold")[#upper(subtitle)]
+    text(size: 11pt, weight: "bold")[ | ]
+    text(size: 11pt, weight: "bold")[#upper(subtitle)]
   }
   linebreak()
   if date != "" or location != "" {
-    text(size: 9pt, tracking: 0.5pt)[
-      #upper(
-        (date, location).filter(x => x != "").join(", "),
-      )
-    ]
+    set text(size: 8.5pt)
+    smallcaps(upper((date, location).filter(x => x != "").join(", ")))
     linebreak()
   }
-  v(2pt)
+  v(3pt)
   set text(size: 9.5pt)
   body-content
-  v(6pt)
+  v(8pt)
 }
 
 // ---------------------------------------------------------------------------
@@ -294,156 +317,168 @@
   set text(size: 10pt)
 
   // Professional Experience
-  let experience = list-of(source.at("experience", default: ()))
-  if experience.len() > 0 {
-    main-section(text-of(section-titles.at("experience", default: "Professional Experience")))
-    for entry in experience {
-      let title-text = linked-entry-label(entry, text-of-item(entry, "title"))
-      let sub = text-of-item(entry, "subtitle")
-      let date = text-of-item(entry, "date")
-      let loc = text-of-item(entry, "secondarySubtitle")
-      let entry-bullets = bullets-of(entry)
-      main-entry(
-        title-text,
-        subtitle: sub,
-        date: date,
-        location: loc,
-        body-content: {
-          for b in entry-bullets {
-            set par(leading: 0.5em, first-line-indent: 12pt)
-            text[#b]
-            linebreak()
-            v(2pt)
-          }
-        },
-      )
+  {
+    let experience = list-of(source.at("experience", default: ()))
+    if experience.len() > 0 {
+      main-section(text-of(section-titles.at("experience", default: "Professional Experience")))
+      for entry in experience {
+        let title-text = linked-entry-label(entry, text-of-item(entry, "title"))
+        let sub = text-of-item(entry, "subtitle")
+        let date = text-of-item(entry, "date")
+        let loc = text-of-item(entry, "secondarySubtitle")
+        let entry-bullets = bullets-of(entry)
+        main-entry(
+          title-text,
+          subtitle: sub,
+          date: date,
+          location: loc,
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in entry-bullets {
+              par[#b]
+            }
+          },
+        )
+      }
     }
   }
 
   // Education (full entries in main area)
-  let education = list-of(source.at("education", default: ()))
-  if education.len() > 0 {
-    main-section(text-of(section-titles.at("education", default: "Education")))
-    for entry in education {
-      let title-text = linked-entry-label(entry, text-of-item(entry, "title"))
-      let sub = text-of-item(entry, "subtitle")
-      let date = text-of-item(entry, "date")
-      let loc = text-of-item(entry, "secondarySubtitle")
-      let entry-bullets = bullets-of(entry)
-      main-entry(
-        title-text,
-        subtitle: sub,
-        date: date,
-        location: loc,
-        body-content: {
-          for b in entry-bullets {
-            text[#b]
-            linebreak()
-          }
-        },
-      )
+  {
+    let education = list-of(source.at("education", default: ()))
+    if education.len() > 0 {
+      main-section(text-of(section-titles.at("education", default: "Education")))
+      for entry in education {
+        let title-text = linked-entry-label(entry, text-of-item(entry, "title"))
+        let sub = text-of-item(entry, "subtitle")
+        let date = text-of-item(entry, "date")
+        let loc = text-of-item(entry, "secondarySubtitle")
+        main-entry(
+          title-text,
+          subtitle: sub,
+          date: date,
+          location: loc,
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) {
+              par[#b]
+            }
+          },
+        )
+      }
     }
   }
 
   // Projects
-  let projects = list-of(source.at("projects", default: ()))
-  if projects.len() > 0 {
-    main-section(text-of(section-titles.at("projects", default: "Projects")))
-    for entry in projects {
-      let title-text = linked-entry-label(entry, text-of-item(entry, "title"))
-      let sub = text-of-item(entry, "subtitle")
-      let date = text-of-item(entry, "date")
-      let entry-bullets = bullets-of(entry)
-      main-entry(
-        title-text,
-        subtitle: sub,
-        date: date,
-        body-content: {
-          for b in entry-bullets {
-            text[#b]
-            linebreak()
-          }
-        },
-      )
+  {
+    let projects = list-of(source.at("projects", default: ()))
+    if projects.len() > 0 {
+      main-section(text-of(section-titles.at("projects", default: "Projects")))
+      for entry in projects {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          date: text-of-item(entry, "date"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
   // Awards
-  let awards = list-of(source.at("awards", default: ()))
-  if awards.len() > 0 {
-    main-section(text-of(section-titles.at("awards", default: "Awards")))
-    for entry in awards {
-      main-entry(
-        linked-entry-label(entry, text-of-item(entry, "title")),
-        subtitle: text-of-item(entry, "subtitle"),
-        date: text-of-item(entry, "date"),
-        body-content: {
-          for b in bullets-of(entry) { text[#b]; linebreak() }
-        },
-      )
+  {
+    let awards = list-of(source.at("awards", default: ()))
+    if awards.len() > 0 {
+      main-section(text-of(section-titles.at("awards", default: "Awards")))
+      for entry in awards {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          date: text-of-item(entry, "date"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
   // Certifications
-  let certifications = list-of(source.at("certifications", default: ()))
-  if certifications.len() > 0 {
-    main-section(text-of(section-titles.at("certifications", default: "Certifications")))
-    for entry in certifications {
-      main-entry(
-        linked-entry-label(entry, text-of-item(entry, "title")),
-        subtitle: text-of-item(entry, "subtitle"),
-        date: text-of-item(entry, "date"),
-        body-content: {
-          for b in bullets-of(entry) { text[#b]; linebreak() }
-        },
-      )
+  {
+    let certifications = list-of(source.at("certifications", default: ()))
+    if certifications.len() > 0 {
+      main-section(text-of(section-titles.at("certifications", default: "Certifications")))
+      for entry in certifications {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          date: text-of-item(entry, "date"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
   // Publications
-  let publications = list-of(source.at("publications", default: ()))
-  if publications.len() > 0 {
-    main-section(text-of(section-titles.at("publications", default: "Publications")))
-    for entry in publications {
-      main-entry(
-        linked-entry-label(entry, text-of-item(entry, "title")),
-        subtitle: text-of-item(entry, "subtitle"),
-        date: text-of-item(entry, "date"),
-        body-content: {
-          for b in bullets-of(entry) { text[#b]; linebreak() }
-        },
-      )
+  {
+    let publications = list-of(source.at("publications", default: ()))
+    if publications.len() > 0 {
+      main-section(text-of(section-titles.at("publications", default: "Publications")))
+      for entry in publications {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          date: text-of-item(entry, "date"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
   // Volunteer
-  let volunteer = list-of(source.at("volunteer", default: ()))
-  if volunteer.len() > 0 {
-    main-section(text-of(section-titles.at("volunteer", default: "Volunteer")))
-    for entry in volunteer {
-      main-entry(
-        linked-entry-label(entry, text-of-item(entry, "title")),
-        subtitle: text-of-item(entry, "subtitle"),
-        date: text-of-item(entry, "date"),
-        body-content: {
-          for b in bullets-of(entry) { text[#b]; linebreak() }
-        },
-      )
+  {
+    let volunteer = list-of(source.at("volunteer", default: ()))
+    if volunteer.len() > 0 {
+      main-section(text-of(section-titles.at("volunteer", default: "Volunteer")))
+      for entry in volunteer {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          date: text-of-item(entry, "date"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
   // References
-  let references = list-of(source.at("references", default: ()))
-  if references.len() > 0 {
-    main-section(text-of(section-titles.at("references", default: "References")))
-    for entry in references {
-      main-entry(
-        linked-entry-label(entry, text-of-item(entry, "title")),
-        subtitle: text-of-item(entry, "subtitle"),
-        body-content: {
-          for b in bullets-of(entry) { text[#b]; linebreak() }
-        },
-      )
+  {
+    let references = list-of(source.at("references", default: ()))
+    if references.len() > 0 {
+      main-section(text-of(section-titles.at("references", default: "References")))
+      for entry in references {
+        main-entry(
+          linked-entry-label(entry, text-of-item(entry, "title")),
+          subtitle: text-of-item(entry, "subtitle"),
+          body-content: {
+            set par(leading: 0.55em, first-line-indent: 14pt, spacing: 0.7em)
+            for b in bullets-of(entry) { par[#b] }
+          },
+        )
+      }
     }
   }
 
@@ -476,7 +511,7 @@
     width: 100%,
     height: 100%,
     fill: sidebar-bg,
-    inset: (x: 14pt, y: 0pt),
+    inset: (x: 16pt, y: 0pt),
     stroke: none,
   )[
     #sidebar-content
@@ -485,7 +520,7 @@
   rect(
     width: 100%,
     height: 100%,
-    inset: (x: 22pt, y: 18pt),
+    inset: (x: 24pt, y: 20pt),
     stroke: none,
   )[
     #main-content
