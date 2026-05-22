@@ -215,6 +215,20 @@ describe("typst resume renderer", () => {
     expect(typst).toContain('rgb("#f5f7fa")');
   });
 
+  it("falls back to default style placeholders when style metadata is missing", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      baseDocument,
+      "__BODY_FONT__\n__HEADING_FONT__\n__PRIMARY_COLOR__\n__TEXT_COLOR__\n__BACKGROUND_COLOR__",
+      tokens,
+    );
+
+    expect(typst).toContain('"IBM Plex Serif"');
+    expect(typst).toContain('rgb("#202020")');
+    expect(typst).toContain('rgb("#000000")');
+    expect(typst).toContain('rgb("#ffffff")');
+  });
+
   it("keeps links in the clean-print-cv adapter", async () => {
     const template = await readTypstTemplate("clean-print-cv");
 
@@ -367,6 +381,64 @@ describe("typst resume renderer", () => {
     );
 
     expect(normalizedDocument.picture?.renderPath).toBe("resume-picture.png");
+  });
+
+  it("keeps document unchanged when picture is missing", () => {
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      { ...baseDocument, picture: null },
+      join(tmpdir(), "job-ops-resume-render-path-test"),
+    );
+    expect(normalizedDocument).toEqual({ ...baseDocument, picture: null });
+  });
+
+  it("keeps relative picture paths unchanged", () => {
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: "resume-picture.png",
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      join(tmpdir(), "job-ops-resume-render-path-test"),
+    );
+    expect(normalizedDocument.picture?.renderPath).toBe("resume-picture.png");
+  });
+
+  it("does not rewrite absolute picture paths outside compile cwd", () => {
+    const compileCwd = join(tmpdir(), "job-ops-resume-render-path-test");
+    const outsidePath = join(tmpdir(), "somewhere-else", "resume-picture.png");
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: outsidePath,
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      compileCwd,
+    );
+    expect(normalizedDocument.picture?.renderPath).toBe(outsidePath);
   });
 
   it("fails with a helpful error when typst is unavailable", async () => {

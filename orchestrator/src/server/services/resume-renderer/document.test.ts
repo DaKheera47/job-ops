@@ -293,4 +293,46 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.awards).toHaveLength(1);
     expect(document.awards[0]?.title).toBe("Visible award");
   });
+
+  it("normalizes design colors to hex with safe fallbacks", () => {
+    const shortHex = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: { design: { colors: { primary: "#abc" } } },
+    });
+    expect(shortHex.style?.colors.primaryHex).toBe("#aabbcc");
+
+    const rgb = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: {
+        design: {
+          colors: {
+            primary: "rgba(74, 124, 143, 1)",
+            text: "rgb(-20, 260, 12.7)",
+            background: "#f5f7fa",
+          },
+        },
+      },
+    });
+    expect(rgb.style?.colors.primaryHex).toBe("#4a7c8f");
+    expect(rgb.style?.colors.textHex).toBe("#00ff0d");
+    expect(rgb.style?.colors.backgroundHex).toBe("#f5f7fa");
+
+    const fallback = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: {
+        design: {
+          colors: {
+            primary: "not-a-color",
+            text: "",
+            background: "wat",
+          },
+        },
+      },
+    });
+    expect(fallback.style?.colors).toEqual({
+      primaryHex: "#dc2626",
+      textHex: "#000000",
+      backgroundHex: "#ffffff",
+    });
+  });
 });

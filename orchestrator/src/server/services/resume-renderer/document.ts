@@ -231,7 +231,7 @@ function normalizeColorToHex(value: unknown, fallbackHex: string): string {
   }
 
   const rgbMatch = color.match(
-    /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i,
+    /^rgba?\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i,
   );
   if (rgbMatch) {
     const r = Number(rgbMatch[1]);
