@@ -7,6 +7,7 @@ import { getActiveTenantId } from "@server/tenancy/context";
 import {
   POST_APPLICATION_PROVIDER_ACTIONS,
   POST_APPLICATION_PROVIDERS,
+  type PostApplicationProvider,
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -46,9 +47,9 @@ const O365_OAUTH_SCOPE = "offline_access Mail.Read User.Read";
 const oauthStateStore = new Map<
   string,
   {
-    provider: string;
+    provider: PostApplicationProvider;
     accountKey: string;
-    tenantId: string;
+    workspaceTenantId: string;
     redirectUri: string;
     createdAt: number;
   }
@@ -102,9 +103,9 @@ function enforceOauthStateStoreLimit(): void {
 function setOauthState(
   state: string,
   entry: {
-    provider: string;
+    provider: PostApplicationProvider;
     accountKey: string;
-    tenantId: string;
+    workspaceTenantId: string;
     redirectUri: string;
     createdAt: number;
   },
@@ -243,7 +244,7 @@ postApplicationProvidersRouter.get(
       setOauthState(state, {
         provider: "gmail",
         accountKey,
-        tenantId: getActiveTenantId(),
+        workspaceTenantId: getActiveTenantId(),
         redirectUri: oauth.redirectUri,
         createdAt: Date.now(),
       });
@@ -289,11 +290,15 @@ postApplicationProvidersRouter.post(
       }
       oauthStateStore.delete(body.state);
 
+      if (oauthState.provider !== "gmail") {
+        fail(res, badRequest("OAuth state/provider mismatch."));
+        return;
+      }
       if (oauthState.accountKey !== accountKey) {
         fail(res, badRequest("OAuth state/account mismatch."));
         return;
       }
-      if (oauthState.tenantId !== getActiveTenantId()) {
+      if (oauthState.workspaceTenantId !== getActiveTenantId()) {
         fail(res, badRequest("OAuth state/workspace mismatch."));
         return;
       }
@@ -339,7 +344,7 @@ function resolveO365OauthConfig(req: Request): {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  tenantId: string;
+  azureTenantId: string;
 } {
   const clientId = asNonEmptyString(process.env.O365_OAUTH_CLIENT_ID);
   const clientSecret = asNonEmptyString(process.env.O365_OAUTH_CLIENT_SECRET);
@@ -354,14 +359,14 @@ function resolveO365OauthConfig(req: Request): {
   );
   const origin = `${req.protocol}://${req.get("host")}`;
   const redirectUri = configuredRedirectUri ?? `${origin}/oauth/o365/callback`;
-  const tenantId =
+  const azureTenantId =
     asNonEmptyString(process.env.O365_OAUTH_TENANT_ID) ?? "common";
 
   return {
     clientId,
     clientSecret,
     redirectUri,
-    tenantId,
+    azureTenantId,
   };
 }
 
@@ -370,7 +375,7 @@ async function exchangeO365AuthorizationCode(args: {
   redirectUri: string;
   clientId: string;
   clientSecret: string;
-  tenantId: string;
+  azureTenantId: string;
 }): Promise<{
   refreshToken: string;
   accessToken?: string;
@@ -387,7 +392,7 @@ async function exchangeO365AuthorizationCode(args: {
   });
 
   const response = await fetch(
-    `https://login.microsoftonline.com/${args.tenantId}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${args.azureTenantId}/oauth2/v2.0/token`,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -463,13 +468,13 @@ postApplicationProvidersRouter.get(
       setOauthState(state, {
         provider: "o365",
         accountKey,
-        tenantId: getActiveTenantId(),
+        workspaceTenantId: getActiveTenantId(),
         redirectUri: oauth.redirectUri,
         createdAt: Date.now(),
       });
 
       const authUrl = new URL(
-        `https://login.microsoftonline.com/${oauth.tenantId}/oauth2/v2.0/authorize`,
+        `https://login.microsoftonline.com/${oauth.azureTenantId}/oauth2/v2.0/authorize`,
       );
       authUrl.searchParams.set("client_id", oauth.clientId);
       authUrl.searchParams.set("redirect_uri", oauth.redirectUri);
@@ -518,7 +523,7 @@ postApplicationProvidersRouter.post(
         fail(res, badRequest("OAuth state/account mismatch."));
         return;
       }
-      if (oauthState.tenantId !== getActiveTenantId()) {
+      if (oauthState.workspaceTenantId !== getActiveTenantId()) {
         fail(res, badRequest("OAuth state/workspace mismatch."));
         return;
       }
@@ -529,7 +534,7 @@ postApplicationProvidersRouter.post(
         redirectUri: oauthState.redirectUri,
         clientId: oauth.clientId,
         clientSecret: oauth.clientSecret,
-        tenantId: oauth.tenantId,
+        azureTenantId: oauth.azureTenantId,
       });
       const profile = tokenPayload.accessToken
         ? await fetchO365UserProfile(tokenPayload.accessToken)

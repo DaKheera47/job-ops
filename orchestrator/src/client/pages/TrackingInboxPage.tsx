@@ -74,6 +74,7 @@ type OauthResultMessage = {
   code?: string;
   error?: string;
 };
+type OauthCapableProvider = "gmail" | "o365";
 
 function formatEpochMs(value?: number | null): string {
   if (!value) return "n/a";
@@ -229,11 +230,16 @@ export const TrackingInboxPage: React.FC = () => {
 
   const waitForOauthResult = useCallback(
     (
-      providerKey: string,
+      providerKey: PostApplicationProvider,
       expectedState: string,
       popup: Window,
     ): Promise<{ code?: string; error?: string }> => {
       const resultType = OAUTH_RESULT_TYPES[providerKey];
+      if (!resultType) {
+        return Promise.reject(
+          new Error(`${providerKey} OAuth flow is not supported.`),
+        );
+      }
       return new Promise((resolve, reject) => {
         let settled = false;
 
@@ -333,7 +339,7 @@ export const TrackingInboxPage: React.FC = () => {
           }
 
           const oauthResult = await waitForOauthResult(
-            provider,
+            provider as OauthCapableProvider,
             oauthStart.state,
             popup,
           );

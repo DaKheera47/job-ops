@@ -72,6 +72,10 @@ function asString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function resolveO365OauthTenantId(): string {
+  return asString(process.env.O365_OAUTH_TENANT_ID) ?? "common";
+}
+
 export async function resolveO365AccessToken(
   credentials: O365Credentials,
 ): Promise<O365Credentials> {
@@ -100,7 +104,7 @@ export async function resolveO365AccessToken(
   });
 
   const response = await fetchWithTimeout(
-    "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    `https://login.microsoftonline.com/${resolveO365OauthTenantId()}/oauth2/v2.0/token`,
     {
       timeoutMs: O365_HTTP_TIMEOUT_MS,
       init: {
