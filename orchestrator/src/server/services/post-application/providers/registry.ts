@@ -3,6 +3,7 @@ import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import { providerInvalidRequest } from "./errors";
 import { gmailProvider } from "./gmail";
 import { imapProvider } from "./imap";
+import { o365Provider } from "./o365";
 import type { PostApplicationProviderAdapter } from "./types";
 
 const providerRegistry: Record<
@@ -11,6 +12,7 @@ const providerRegistry: Record<
 > = {
   gmail: gmailProvider,
   imap: imapProvider,
+  o365: o365Provider,
 };
 
 function isPostApplicationProvider(

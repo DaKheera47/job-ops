@@ -60,12 +60,15 @@ import { EmailViewerList } from "./tracking-inbox/EmailViewerList";
 const PROVIDER_OPTIONS: PostApplicationProvider[] = [
   ...POST_APPLICATION_PROVIDERS,
 ];
-const GMAIL_OAUTH_RESULT_TYPE = "gmail-oauth-result";
-const GMAIL_OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
+const OAUTH_RESULT_TYPES: Record<string, string> = {
+  gmail: "gmail-oauth-result",
+  o365: "o365-oauth-result",
+};
+const OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
 const EMPTY_INBOX_ITEMS: PostApplicationInboxItem[] = [];
 const EMPTY_SYNC_RUNS: PostApplicationSyncRun[] = [];
 
-type GmailOauthResultMessage = {
+type OauthResultMessage = {
   type: string;
   state?: string;
   code?: string;
@@ -224,11 +227,13 @@ export const TrackingInboxPage: React.FC = () => {
     });
   }, [appliedJobs, inbox, selectedRunItems]);
 
-  const waitForGmailOauthResult = useCallback(
+  const waitForOauthResult = useCallback(
     (
+      providerKey: string,
       expectedState: string,
       popup: Window,
     ): Promise<{ code?: string; error?: string }> => {
+      const resultType = OAUTH_RESULT_TYPES[providerKey];
       return new Promise((resolve, reject) => {
         let settled = false;
 
@@ -259,8 +264,8 @@ export const TrackingInboxPage: React.FC = () => {
 
         const onMessage = (event: MessageEvent<unknown>) => {
           if (event.origin !== window.location.origin) return;
-          const data = event.data as GmailOauthResultMessage | undefined;
-          if (!data || data.type !== GMAIL_OAUTH_RESULT_TYPE) return;
+          const data = event.data as OauthResultMessage | undefined;
+          if (!data || data.type !== resultType) return;
           if (data.state !== expectedState) return;
           finishResolve({
             ...(data.code ? { code: data.code } : {}),
@@ -269,12 +274,12 @@ export const TrackingInboxPage: React.FC = () => {
         };
 
         const timeoutId = window.setTimeout(() => {
-          finishReject("Timed out waiting for Gmail OAuth response.");
-        }, GMAIL_OAUTH_TIMEOUT_MS);
+          finishReject(`Timed out waiting for ${providerKey} OAuth response.`);
+        }, OAUTH_TIMEOUT_MS);
 
         const closedCheckId = window.setInterval(() => {
           if (!popup.closed) return;
-          finishReject("Gmail OAuth window was closed before completion.");
+          finishReject(`${providerKey} OAuth window was closed before completion.`);
         }, 250);
 
         window.addEventListener("message", onMessage);
@@ -294,23 +299,26 @@ export const TrackingInboxPage: React.FC = () => {
             provider,
             account_key_is_default: isDefaultAccountKey,
           });
-          if (provider !== "gmail") {
+
+          const isOauthProvider = provider === "gmail" || provider === "o365";
+          if (!isOauthProvider) {
             trackProductEvent("tracking_inbox_connect_completed", {
               provider,
               result: "error",
             });
             toast.error(
-              `${provider} connect is not implemented yet. Use Gmail for now.`,
+              `${provider} connect is not implemented yet.`,
             );
             return;
           }
 
-          const oauthStart = await api.postApplicationGmailOauthStart({
-            accountKey,
-          });
+          const oauthStart =
+            provider === "o365"
+              ? await api.postApplicationO365OauthStart({ accountKey })
+              : await api.postApplicationGmailOauthStart({ accountKey });
           const popup = window.open(
             oauthStart.authorizationUrl,
-            "gmail-oauth-connect",
+            `${provider}-oauth-connect`,
             "popup,width=520,height=720",
           );
           if (!popup) {
@@ -319,29 +327,38 @@ export const TrackingInboxPage: React.FC = () => {
               result: "error",
             });
             toast.error(
-              "Browser blocked the Gmail OAuth popup. Allow popups and retry.",
+              `Browser blocked the ${provider} OAuth popup. Allow popups and retry.`,
             );
             return;
           }
 
-          const oauthResult = await waitForGmailOauthResult(
+          const oauthResult = await waitForOauthResult(
+            provider,
             oauthStart.state,
             popup,
           );
           if (oauthResult.error) {
-            throw new Error(`Gmail OAuth failed: ${oauthResult.error}`);
+            throw new Error(`${provider} OAuth failed: ${oauthResult.error}`);
           }
           if (!oauthResult.code) {
             throw new Error(
-              "Gmail OAuth did not return an authorization code.",
+              `${provider} OAuth did not return an authorization code.`,
             );
           }
 
-          await api.postApplicationGmailOauthExchange({
-            accountKey,
-            state: oauthStart.state,
-            code: oauthResult.code,
-          });
+          if (provider === "o365") {
+            await api.postApplicationO365OauthExchange({
+              accountKey,
+              state: oauthStart.state,
+              code: oauthResult.code,
+            });
+          } else {
+            await api.postApplicationGmailOauthExchange({
+              accountKey,
+              state: oauthStart.state,
+              code: oauthResult.code,
+            });
+          }
           trackProductEvent("tracking_inbox_connect_completed", {
             provider,
             result: "success",
@@ -431,7 +448,7 @@ export const TrackingInboxPage: React.FC = () => {
       provider,
       refresh,
       searchDays,
-      waitForGmailOauthResult,
+      waitForOauthResult,
     ],
   );
 
@@ -695,8 +712,8 @@ export const TrackingInboxPage: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Gmail connect uses Google OAuth popup and stores credentials
-              server-side. No manual refresh token paste is needed.
+              Gmail and O365 connect via OAuth popup. IMAP is not yet
+              implemented.
             </p>
 
             <div className="grid gap-3 md:grid-cols-4">

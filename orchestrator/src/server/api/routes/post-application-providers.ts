@@ -42,9 +42,11 @@ const oauthExchangeBodySchema = z.object({
 export const postApplicationProvidersRouter = Router();
 
 const GMAIL_OAUTH_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const O365_OAUTH_SCOPE = "offline_access Mail.Read User.Read";
 const oauthStateStore = new Map<
   string,
   {
+    provider: string;
     accountKey: string;
     tenantId: string;
     redirectUri: string;
@@ -100,6 +102,7 @@ function enforceOauthStateStoreLimit(): void {
 function setOauthState(
   state: string,
   entry: {
+    provider: string;
     accountKey: string;
     tenantId: string;
     redirectUri: string;
@@ -238,6 +241,7 @@ postApplicationProvidersRouter.get(
       const state = randomUUID();
 
       setOauthState(state, {
+        provider: "gmail",
         accountKey,
         tenantId: getActiveTenantId(),
         redirectUri: oauth.redirectUri,
@@ -307,6 +311,232 @@ postApplicationProvidersRouter.post(
 
       const response = await executePostApplicationProviderAction({
         provider: "gmail",
+        action: "connect",
+        accountKey,
+        connectPayload: {
+          accountKey,
+          payload: {
+            ...tokenPayload,
+            ...profile,
+          },
+        },
+        syncPayload: undefined,
+        initiatedBy: null,
+      });
+
+      ok(res, response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        fail(res, badRequest(error.message, error.flatten()));
+        return;
+      }
+      throw error;
+    }
+  }),
+);
+
+function resolveO365OauthConfig(req: Request): {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  tenantId: string;
+} {
+  const clientId = asNonEmptyString(process.env.O365_OAUTH_CLIENT_ID);
+  const clientSecret = asNonEmptyString(process.env.O365_OAUTH_CLIENT_SECRET);
+  if (!clientId || !clientSecret) {
+    throw serviceUnavailable(
+      "O365 OAuth is not configured. Missing O365_OAUTH_CLIENT_ID or O365_OAUTH_CLIENT_SECRET.",
+    );
+  }
+
+  const configuredRedirectUri = asNonEmptyString(
+    process.env.O365_OAUTH_REDIRECT_URI,
+  );
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const redirectUri = configuredRedirectUri ?? `${origin}/oauth/o365/callback`;
+  const tenantId =
+    asNonEmptyString(process.env.O365_OAUTH_TENANT_ID) ?? "common";
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    tenantId,
+  };
+}
+
+async function exchangeO365AuthorizationCode(args: {
+  code: string;
+  redirectUri: string;
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+}): Promise<{
+  refreshToken: string;
+  accessToken?: string;
+  expiryDate?: number;
+  scope?: string;
+  tokenType?: string;
+}> {
+  const body = new URLSearchParams({
+    code: args.code,
+    client_id: args.clientId,
+    client_secret: args.clientSecret,
+    redirect_uri: args.redirectUri,
+    grant_type: "authorization_code",
+  });
+
+  const response = await fetch(
+    `https://login.microsoftonline.com/${args.tenantId}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    },
+  );
+  const data = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+  if (!response.ok) {
+    throw upstreamError("Microsoft OAuth token exchange failed.");
+  }
+
+  const refreshToken = asNonEmptyString(data.refresh_token);
+  if (!refreshToken) {
+    throw upstreamError(
+      "Microsoft OAuth exchange did not return a refresh token. Re-consent is required.",
+    );
+  }
+
+  const accessToken = asNonEmptyString(data.access_token) ?? undefined;
+  const expiryIn = Number(data.expires_in);
+  return {
+    refreshToken,
+    ...(accessToken ? { accessToken } : {}),
+    ...(Number.isFinite(expiryIn)
+      ? { expiryDate: Date.now() + expiryIn * 1000 }
+      : {}),
+    ...(asNonEmptyString(data.scope) ? { scope: String(data.scope) } : {}),
+    ...(asNonEmptyString(data.token_type)
+      ? { tokenType: String(data.token_type) }
+      : {}),
+  };
+}
+
+async function fetchO365UserProfile(accessToken: string): Promise<{
+  email?: string;
+  displayName?: string;
+}> {
+  const response = await fetch("https://graph.microsoft.com/v1.0/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) return {};
+  const data = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+  const email =
+    asNonEmptyString(data.mail) ??
+    asNonEmptyString(data.userPrincipalName) ??
+    undefined;
+  const displayName = asNonEmptyString(data.displayName) ?? undefined;
+  return {
+    ...(email ? { email } : {}),
+    ...(displayName ? { displayName } : {}),
+  };
+}
+
+postApplicationProvidersRouter.get(
+  "/providers/o365/oauth/start",
+  asyncRoute(async (req: Request, res: Response) => {
+    try {
+      cleanupOauthState();
+      const parsed = oauthStartQuerySchema.parse(req.query);
+      const accountKey = parsed.accountKey ?? "default";
+      const oauth = resolveO365OauthConfig(req);
+      const state = randomUUID();
+
+      setOauthState(state, {
+        provider: "o365",
+        accountKey,
+        tenantId: getActiveTenantId(),
+        redirectUri: oauth.redirectUri,
+        createdAt: Date.now(),
+      });
+
+      const authUrl = new URL(
+        `https://login.microsoftonline.com/${oauth.tenantId}/oauth2/v2.0/authorize`,
+      );
+      authUrl.searchParams.set("client_id", oauth.clientId);
+      authUrl.searchParams.set("redirect_uri", oauth.redirectUri);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", O365_OAUTH_SCOPE);
+      authUrl.searchParams.set("response_mode", "query");
+      authUrl.searchParams.set("prompt", "consent");
+      authUrl.searchParams.set("state", state);
+
+      ok(res, {
+        provider: "o365",
+        accountKey,
+        authorizationUrl: authUrl.toString(),
+        state,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        fail(res, badRequest(error.message, error.flatten()));
+        return;
+      }
+      throw error;
+    }
+  }),
+);
+
+postApplicationProvidersRouter.post(
+  "/providers/o365/oauth/exchange",
+  asyncRoute(async (req: Request, res: Response) => {
+    try {
+      cleanupOauthState();
+      const body = oauthExchangeBodySchema.parse(req.body ?? {});
+      const accountKey = body.accountKey ?? "default";
+      const oauthState = oauthStateStore.get(body.state);
+
+      if (!oauthState) {
+        fail(res, badRequest("OAuth state is invalid or expired."));
+        return;
+      }
+      oauthStateStore.delete(body.state);
+
+      if (oauthState.provider !== "o365") {
+        fail(res, badRequest("OAuth state/provider mismatch."));
+        return;
+      }
+      if (oauthState.accountKey !== accountKey) {
+        fail(res, badRequest("OAuth state/account mismatch."));
+        return;
+      }
+      if (oauthState.tenantId !== getActiveTenantId()) {
+        fail(res, badRequest("OAuth state/workspace mismatch."));
+        return;
+      }
+
+      const oauth = resolveO365OauthConfig(req);
+      const tokenPayload = await exchangeO365AuthorizationCode({
+        code: body.code,
+        redirectUri: oauthState.redirectUri,
+        clientId: oauth.clientId,
+        clientSecret: oauth.clientSecret,
+        tenantId: oauth.tenantId,
+      });
+      const profile = tokenPayload.accessToken
+        ? await fetchO365UserProfile(tokenPayload.accessToken)
+        : {};
+
+      const response = await executePostApplicationProviderAction({
+        provider: "o365",
         action: "connect",
         accountKey,
         connectPayload: {

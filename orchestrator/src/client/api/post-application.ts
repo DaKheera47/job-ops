@@ -66,6 +66,44 @@ export async function postApplicationGmailOauthExchange(input: {
   );
 }
 
+export async function postApplicationO365OauthStart(input?: {
+  accountKey?: string;
+}): Promise<{
+  provider: "o365";
+  accountKey: string;
+  authorizationUrl: string;
+  state: string;
+}> {
+  return fetchApi<{
+    provider: "o365";
+    accountKey: string;
+    authorizationUrl: string;
+    state: string;
+  }>(
+    withQuery("/post-application/providers/o365/oauth/start", {
+      accountKey: input?.accountKey,
+    }),
+  );
+}
+
+export async function postApplicationO365OauthExchange(input: {
+  accountKey?: string;
+  state: string;
+  code: string;
+}): Promise<PostApplicationProviderActionResponse> {
+  return fetchApi<PostApplicationProviderActionResponse>(
+    "/post-application/providers/o365/oauth/exchange",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input.accountKey ? { accountKey: input.accountKey } : {}),
+        state: input.state,
+        code: input.code,
+      }),
+    },
+  );
+}
+
 export async function postApplicationProviderStatus(input?: {
   provider?: PostApplicationProvider;
   accountKey?: string;
