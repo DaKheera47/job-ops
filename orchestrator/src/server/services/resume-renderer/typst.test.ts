@@ -357,6 +357,45 @@ describe("typst resume renderer", () => {
   );
 
   it.skipIf(!typstAvailable())(
+    "renders the sidebar-cv theme when typst is installed",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+      const outputPath = join(tempDir, "sidebar-cv.pdf");
+
+      await renderTypstPdf({
+        document: {
+          ...baseDocument,
+          profileItems: [
+            {
+              network: "LinkedIn",
+              username: "janedoe",
+              url: "https://linkedin.com/in/janedoe",
+            },
+          ],
+          languages: [{ language: "English", fluency: "Native", level: 5 }],
+          certifications: [
+            {
+              title: "AWS Solutions Architect",
+              subtitle: "Amazon",
+              date: "2023",
+              bullets: ["Professional level"],
+            },
+          ],
+        },
+        outputPath,
+        jobId: "job-render-sidebar-cv",
+        typstTheme: "sidebar-cv",
+      });
+
+      const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {
+        stdio: "ignore",
+      });
+      expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
     "renders the clean-print-cv theme when typst is installed",
     async () => {
       const tempDir = await createTempDir();

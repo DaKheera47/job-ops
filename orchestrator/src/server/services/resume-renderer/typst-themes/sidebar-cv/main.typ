@@ -22,7 +22,7 @@
 }
 
 #let linked-entry-label(entry, label) = {
-  link-or-text(label, text-of-item(entry, "url"))
+  link-or-text(upper(label), text-of-item(entry, "url"))
 }
 
 #let bullets-of(entry) = {
@@ -106,8 +106,10 @@
     let first-name = name-parts.at(0, default: "")
     let last-name = name-parts.slice(1).join(" ")
     text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(first-name)]
-    v(4pt)
-    text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(last-name)]
+    if last-name != "" {
+      v(4pt)
+      text(size: 26pt, weight: "regular", tracking: 8pt)[#upper(last-name)]
+    }
   }
   v(16pt)
 
@@ -292,7 +294,7 @@
 // ---------------------------------------------------------------------------
 
 #let main-entry(title, subtitle: "", date: "", location: "", body-content: []) = {
-  text(size: 11pt, weight: "bold")[#upper(title)]
+  text(size: 11pt, weight: "bold")[#title]
   if subtitle != "" {
     text(size: 11pt, weight: "bold")[ | ]
     text(size: 11pt, weight: "bold")[#upper(subtitle)]
