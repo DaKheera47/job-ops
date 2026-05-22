@@ -37,17 +37,35 @@
 
 #let accent = __PRIMARY_COLOR__
 #let sidebar-bg = __SIDEBAR_BG_COLOR__
-#let sidebar-width = 30%
-#let main-width = 70%
+// Fixed absolute width (≈ 30 % of A4 210 mm); page margins require absolute lengths.
+#let sidebar-col-width = 63mm
 
 // ---------------------------------------------------------------------------
-// Page setup
+// Page setup — sidebar drawn via background so main content flows across pages
 // ---------------------------------------------------------------------------
 
 #set page(
   paper: "a4",
-  margin: (top: 0pt, bottom: 0pt, left: 0pt, right: 0pt),
+  // Left margin reserves space for the sidebar column; right margin gives breathing room.
+  margin: (top: 0pt, bottom: 0pt, left: sidebar-col-width, right: 1.5cm),
   fill: __BACKGROUND_COLOR__,
+  background: context {
+    // Tinted sidebar background appears on every page.
+    place(left + top,
+      rect(width: sidebar-col-width, height: 100%, fill: sidebar-bg, stroke: none)
+    )
+    // Sidebar content (name, photo, summary, contact…) only on the first page.
+    if here().page() == 1 {
+      place(left + top,
+        box(width: sidebar-col-width, inset: (x: 16pt, y: 0pt))[
+          #set text(font: __BODY_FONT__, size: 9pt, lang: "en", fill: __TEXT_COLOR__)
+          #set par(leading: 0.55em)
+          #show link: set text(fill: accent)
+          #sidebar-content
+        ]
+      )
+    }
+  },
 )
 #set text(font: __BODY_FONT__, size: 10pt, lang: "en", fill: __TEXT_COLOR__)
 #set par(leading: 0.55em)
@@ -504,28 +522,10 @@
 }
 
 // ---------------------------------------------------------------------------
-// Page layout — sidebar + main in a two-column grid
+// Page layout — sidebar is drawn via page background; main content flows
+// naturally across as many pages as needed.
 // ---------------------------------------------------------------------------
 
-#grid(
-  columns: (sidebar-width, main-width),
-  // Sidebar column
-  rect(
-    width: 100%,
-    height: 100%,
-    fill: sidebar-bg,
-    inset: (x: 16pt, y: 0pt),
-    stroke: none,
-  )[
-    #sidebar-content
-  ],
-  // Main column
-  rect(
-    width: 100%,
-    height: 100%,
-    inset: (x: 24pt, y: 20pt),
-    stroke: none,
-  )[
-    #main-content
-  ],
-)
+#pad(x: 24pt, top: 20pt, bottom: 20pt)[
+  #main-content
+]
