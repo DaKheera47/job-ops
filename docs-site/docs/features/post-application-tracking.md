@@ -1,17 +1,17 @@
 ---
 id: post-application-tracking
 title: Post-Application Tracking
-description: Gmail-based tracking inbox, smart routing, and review workflow.
+description: Gmail and O365-based tracking inbox, smart routing, and review workflow.
 sidebar_position: 3
 ---
 
-The Tracking Inbox monitors Gmail for job-application responses and updates timelines.
+The Tracking Inbox monitors Gmail and O365 mailboxes for job-application responses and updates timelines.
 
 ![Tracking Inbox review queue](/img/features/tracking-inbox.png)
 
 ## Overview
 
-1. Scans Gmail for recruitment-related emails
+1. Scans Gmail/O365 for recruitment-related emails
 2. Matches emails to tracked jobs using AI
 3. Updates timeline/state when confidence is high
 4. Queues uncertain matches for manual review
@@ -35,12 +35,7 @@ flowchart TD
 
 ## Setup
 
-### Prerequisites
-
-1. Gmail account with application emails
-2. Google OAuth credentials
-
-### Configure OAuth
+### Gmail OAuth
 
 Set:
 
@@ -55,6 +50,23 @@ Then connect in UI via **Tracking Inbox → Connect Gmail**.
 Detailed setup guide:
 
 - [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
+
+### O365 OAuth
+
+Set:
+
+```bash
+O365_OAUTH_CLIENT_ID=your-entra-app-client-id
+O365_OAUTH_CLIENT_SECRET=your-entra-client-secret
+O365_OAUTH_REDIRECT_URI=https://your-domain.com/oauth/o365/callback
+O365_OAUTH_TENANT_ID=common
+```
+
+Then connect in UI via **Tracking Inbox → choose `o365` provider → Connect o365**.
+
+Detailed setup guide:
+
+- [O365 OAuth Setup (Entra ID / Azure)](/docs/next/getting-started/o365-oauth-setup)
 
 ## Using the inbox
 
@@ -81,8 +93,8 @@ Confidence interpretation:
 
 ## Privacy and security
 
-- Scope requested: `gmail.readonly`
-- Full scope: `https://www.googleapis.com/auth/gmail.readonly`
+- Gmail scope: `https://www.googleapis.com/auth/gmail.readonly`
+- O365 scope: `offline_access Mail.Read User.Read`
 - Minimal metadata sent for matching
 - Email data stays local in your instance
 
@@ -97,9 +109,12 @@ Confidence interpretation:
 | GET    | `/api/jobs/:id/emails?limit=100`          | List job-linked email metadata |
 | GET    | `/api/post-application/providers/gmail/oauth/start` | Start OAuth flow |
 | POST   | `/api/post-application/providers/gmail/oauth/exchange` | Exchange OAuth code |
+| GET    | `/api/post-application/providers/o365/oauth/start` | Start OAuth flow |
+| POST   | `/api/post-application/providers/o365/oauth/exchange` | Exchange OAuth code |
 
 ## Common issues
 
 - No refresh token: disconnect and reconnect Gmail.
+- O365 token/tenant errors: confirm Entra app permissions and `O365_OAUTH_TENANT_ID`.
 - Emails not appearing: check runs, OAuth config, and recruitment subjects.
 - Wrong matches: expected in lower-confidence buckets; use manual review.
