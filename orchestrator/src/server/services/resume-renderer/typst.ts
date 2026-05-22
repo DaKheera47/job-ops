@@ -445,7 +445,7 @@ export function normalizeTypstDocumentPicturePath(
     return document;
   }
 
-  const typstPath = relativePath.replaceAll("\\", "/");
+  const typstPath = relativePath.split(/[\\/]+/).join("/");
   if (typstPath === picture.renderPath) return document;
 
   return {
