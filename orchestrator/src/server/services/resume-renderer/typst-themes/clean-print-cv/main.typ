@@ -31,11 +31,27 @@
   link-or-text(label, text-of-item(entry, "url"))
 }
 
-#let joined-bullets(entry) = {
+#let bullets-of(entry) = {
   list-of(entry.at("bullets", default: ()))
     .map(item => text-of(item))
     .filter(item => item != "")
+}
+
+#let joined-bullets(entry) = {
+  bullets-of(entry)
     .join(" • ")
+}
+
+#let bullet-trailing(entry) = {
+  let bullets = bullets-of(entry)
+  if bullets.len() == 0 {
+    []
+  } else [
+    #set text(size: 9pt)
+    #for item in bullets [
+      - #item
+    ]
+  ]
 }
 
 #let contact-matching(predicate) = {
@@ -312,7 +328,7 @@
       linked-entry-label(entry, text-of-item(entry, "title")),
       subtitle: text-of-item(entry, "subtitle"),
       date: text-of-item(entry, "date"),
-      details: joined-bullets(entry),
+      trailing: bullet-trailing(entry),
     ),
   ),
 )
@@ -324,7 +340,7 @@
       linked-entry-label(entry, text-of-item(entry, "title")),
       subtitle: text-of-item(entry, "subtitle"),
       date: text-of-item(entry, "date"),
-      details: joined-bullets(entry),
+      trailing: bullet-trailing(entry),
     ),
   ),
 )
@@ -336,7 +352,7 @@
       linked-entry-label(entry, text-of-item(entry, "title")),
       subtitle: text-of-item(entry, "subtitle"),
       date: text-of-item(entry, "date"),
-      details: joined-bullets(entry),
+      trailing: bullet-trailing(entry),
     ),
   ),
 )
@@ -348,7 +364,7 @@
       linked-entry-label(entry, text-of-item(entry, "title")),
       subtitle: text-of-item(entry, "subtitle"),
       date: text-of-item(entry, "date"),
-      details: joined-bullets(entry),
+      trailing: bullet-trailing(entry),
     ),
   ),
 )
@@ -359,7 +375,7 @@
     timeline-entry(
       linked-entry-label(entry, text-of-item(entry, "title")),
       subtitle: text-of-item(entry, "subtitle"),
-      details: joined-bullets(entry),
+      trailing: bullet-trailing(entry),
     ),
   ),
 )

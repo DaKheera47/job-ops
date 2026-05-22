@@ -196,6 +196,14 @@ describe("typst resume renderer", () => {
     expect(template).toContain('link(text-of-item(entry, "url"))');
   });
 
+  it("renders award-style sections as Typst bullet lists in clean-print-cv", async () => {
+    const template = await readTypstTemplate("clean-print-cv");
+
+    expect(template).toContain("#let bullet-trailing(entry)");
+    expect(template).toContain('text-of(section-titles.at("awards"');
+    expect(template).toContain("trailing: bullet-trailing(entry)");
+  });
+
   it("renders the newly supported native sections and picture block", async () => {
     const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(
