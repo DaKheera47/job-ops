@@ -419,7 +419,7 @@ function DesignResumeDockButton({
     <div className="group relative flex shrink-0 items-center justify-center">
       {isReorderable && (
         <GripVertical
-          className="absolute -left-3.5 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
+          className="absolute -left-4 h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
           aria-hidden="true"
         />
       )}
@@ -495,7 +495,7 @@ function DesignResumeDock({
   const mouseY = useMotionValue(Number.POSITIVE_INFINITY);
   const spring = { mass: 0.1, stiffness: 150, damping: 12 };
   const panelWidth = 76;
-  const magnification = 70;
+  const magnification = 64;
   const baseItemSize = 46;
   const distance = 200;
   const railPadding = 12;
@@ -726,7 +726,7 @@ function DesignResumeDock({
           }}
           onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
           onWheel={handleWheel}
-          className="pointer-events-auto relative h-full min-h-0 w-[76px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          className="pointer-events-auto relative h-full min-h-0 w-[64px] overflow-x-visible overflow-y-clip overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Resume Studio sections"
         >
