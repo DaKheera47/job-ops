@@ -42,12 +42,17 @@ const baseDraft = {
 function setScrollMetrics(
   element: HTMLDivElement,
   metrics: {
+    clientWidth?: number;
     clientHeight: number;
     scrollHeight: number;
     scrollTop: number;
   },
 ) {
   Object.defineProperties(element, {
+    clientWidth: {
+      configurable: true,
+      value: metrics.clientWidth ?? 1000,
+    },
     clientHeight: {
       configurable: true,
       value: metrics.clientHeight,
@@ -62,6 +67,30 @@ function setScrollMetrics(
       value: metrics.scrollTop,
     },
   });
+}
+
+function triggerResizeObservers(target: Element) {
+  for (const callback of resizeObserverCallbacks) {
+    callback(
+      [
+        {
+          target,
+          contentRect: {
+            width: 1000,
+            height: 1400,
+            x: 0,
+            y: 0,
+            top: 0,
+            left: 0,
+            bottom: 1400,
+            right: 1000,
+            toJSON: () => ({}),
+          },
+        } as ResizeObserverEntry,
+      ],
+      {} as ResizeObserver,
+    );
+  }
 }
 
 describe("DesignResumePdfPreview", () => {
@@ -168,10 +197,12 @@ describe("DesignResumePdfPreview", () => {
     const viewer = scrollContainer as HTMLDivElement;
 
     setScrollMetrics(viewer, {
+      clientWidth: 1000,
       clientHeight: 1000,
       scrollHeight: 3000,
       scrollTop: 0,
     });
+    triggerResizeObservers(viewer);
 
     await waitFor(() => {
       expect(
@@ -193,6 +224,7 @@ describe("DesignResumePdfPreview", () => {
     );
 
     setScrollMetrics(viewer, {
+      clientWidth: 1000,
       clientHeight: 1000,
       scrollHeight: 5000,
       scrollTop: 0,

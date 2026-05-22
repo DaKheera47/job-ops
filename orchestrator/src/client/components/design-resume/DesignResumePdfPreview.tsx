@@ -4,7 +4,7 @@ import type {
   PdfRenderer,
   TypstTheme,
 } from "@shared/types";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Minus, Plus } from "lucide-react";
 import {
   GlobalWorkerOptions,
   getDocument,
@@ -26,10 +26,14 @@ type PreviewState = "idle" | "waiting-for-save" | "loading" | "ready" | "error";
 
 type PreviewScrollSnapshot = {
   topRatio: number;
+  leftRatio: number;
 };
 
 const PDF_PAGE_HORIZONTAL_PADDING = 24;
 const PDF_MAX_RENDER_WIDTH = 900;
+const PDF_ZOOM_STEP = 0.1;
+const PDF_ZOOM_MIN = 0.5;
+const PDF_ZOOM_MAX = 2;
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
@@ -41,8 +45,10 @@ function captureScrollSnapshot(
 ): PreviewScrollSnapshot | null {
   if (!element) return null;
   const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  const maxScrollLeft = Math.max(0, element.scrollWidth - element.clientWidth);
   return {
     topRatio: maxScrollTop > 0 ? element.scrollTop / maxScrollTop : 0,
+    leftRatio: maxScrollLeft > 0 ? element.scrollLeft / maxScrollLeft : 0,
   };
 }
 
@@ -52,7 +58,9 @@ function restoreScrollSnapshot(
 ): void {
   if (!element || !snapshot) return;
   const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  const maxScrollLeft = Math.max(0, element.scrollWidth - element.clientWidth);
   element.scrollTop = Math.round(snapshot.topRatio * maxScrollTop);
+  element.scrollLeft = Math.round(snapshot.leftRatio * maxScrollLeft);
 }
 
 function bucketLatencyMs(latencyMs: number): string {
@@ -76,8 +84,9 @@ export function DesignResumePdfPreview({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
   const [pageCount, setPageCount] = useState(0);
-  const [renderWidth, setRenderWidth] = useState(0);
+  const [fitWidth, setFitWidth] = useState(0);
   const [isRenderingPages, setIsRenderingPages] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const requestSequence = useRef(0);
   const lastLoadedKey = useRef<string | null>(null);
   const viewerRef = useRef<HTMLDivElement | null>(null);
@@ -89,6 +98,8 @@ export function DesignResumePdfPreview({
     () => `${draft.id}:${draft.revision}:${pdfRenderer}:${typstTheme}`,
     [draft.id, draft.revision, pdfRenderer, typstTheme],
   );
+  const renderWidth = Math.max(0, Math.floor(fitWidth * zoomLevel));
+  const zoomPercentLabel = `${Math.round(zoomLevel * 100)}%`;
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -102,7 +113,7 @@ export function DesignResumePdfPreview({
           Math.floor(viewer.clientWidth - PDF_PAGE_HORIZONTAL_PADDING * 2),
         ),
       );
-      setRenderWidth((current) =>
+      setFitWidth((current) =>
         current === nextWidth ? current : nextWidth,
       );
     };
@@ -114,6 +125,33 @@ export function DesignResumePdfPreview({
     observer.observe(viewer);
     return () => observer.disconnect();
   }, []);
+
+  const updateZoomLevel = (nextZoomLevel: number) => {
+    pendingScrollRestoreRef.current = captureScrollSnapshot(viewerRef.current);
+    setZoomLevel(nextZoomLevel);
+  };
+
+  const handleZoomOut = () => {
+    updateZoomLevel(
+      Math.max(
+        PDF_ZOOM_MIN,
+        Number((zoomLevel - PDF_ZOOM_STEP).toFixed(2)),
+      ),
+    );
+  };
+
+  const handleZoomIn = () => {
+    updateZoomLevel(
+      Math.min(
+        PDF_ZOOM_MAX,
+        Number((zoomLevel + PDF_ZOOM_STEP).toFixed(2)),
+      ),
+    );
+  };
+
+  const handleZoomReset = () => {
+    updateZoomLevel(1);
+  };
 
   useEffect(() => {
     if (saveState === "error") {
@@ -282,7 +320,7 @@ export function DesignResumePdfPreview({
           data-testid="design-resume-pdf-scroll-container"
           className="h-full overflow-auto bg-[#d9d9d9] px-6 py-8"
         >
-          <div className="mx-auto flex w-full max-w-[900px] flex-col items-center gap-6">
+          <div className="mx-auto flex min-w-fit flex-col items-center gap-6">
             {Array.from({ length: pageCount }, (_, index) => index + 1).map(
               (pageNumber) => (
                 <div
@@ -298,12 +336,41 @@ export function DesignResumePdfPreview({
                       }
                     }}
                     aria-label={`Resume Studio PDF page ${pageNumber}`}
-                    className="block max-w-full"
+                    className="block"
                   />
                 </div>
               ),
             )}
           </div>
+        </div>
+
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-2 py-2 shadow-lg backdrop-blur">
+          <button
+            type="button"
+            aria-label="Zoom out PDF preview"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={handleZoomOut}
+            disabled={zoomLevel <= PDF_ZOOM_MIN || showLoader}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="rounded-full px-3 py-1 text-xs font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={handleZoomReset}
+            disabled={zoomLevel === 1 || showLoader}
+          >
+            {zoomPercentLabel}
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom in PDF preview"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={handleZoomIn}
+            disabled={zoomLevel >= PDF_ZOOM_MAX || showLoader}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
 
         {showLoader ? (
