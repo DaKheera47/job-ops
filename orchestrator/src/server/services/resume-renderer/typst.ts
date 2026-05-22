@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, normalize, relative } from "node:path";
+import { isAbsolute, join, normalize, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
@@ -445,7 +445,7 @@ export function normalizeTypstDocumentPicturePath(
     return document;
   }
 
-  const typstPath = relativePath.split(/[\\/]+/).join("/");
+  const typstPath = relativePath.split(sep).join("/");
   if (typstPath === picture.renderPath) return document;
 
   return {

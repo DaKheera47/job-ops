@@ -314,8 +314,9 @@ describe("typst resume renderer", () => {
     expect(typst).toContain("\\#hashes, \\*stars\\*, and \\[brackets\\]");
   });
 
-  it("normalizes absolute picture paths under compile cwd for Typst", () => {
-    const compileCwd = join(tmpdir(), "job-ops-resume-render-path-test");
+  it("normalizes absolute picture paths under compile cwd for Typst", async () => {
+    const compileCwd = await createTempDir();
+    tempDirs.push(compileCwd);
     const normalizedDocument = normalizeTypstDocumentPicturePath(
       {
         ...baseDocument,
