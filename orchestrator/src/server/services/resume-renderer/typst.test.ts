@@ -215,6 +215,33 @@ describe("typst resume renderer", () => {
     expect(typst).toContain('rgb("#f5f7fa")');
   });
 
+  it("resolves style placeholders inside the dynamically-generated headline block", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        style: {
+          colors: {
+            primaryHex: "#4a7c8f",
+            textHex: "#aabbcc",
+            backgroundHex: "#ffffff",
+          },
+          typography: {
+            bodyFontFamily: "Inter",
+            headingFontFamily: "Roboto",
+          },
+        },
+      },
+      "__HEADLINE_BLOCK__",
+      tokens,
+    );
+
+    expect(typst).not.toContain("__HEADING_FONT__");
+    expect(typst).not.toContain("__TEXT_COLOR__");
+    expect(typst).toContain('"Roboto"');
+    expect(typst).toContain('rgb("#aabbcc")');
+  });
+
   it("falls back to default style placeholders when style metadata is missing", async () => {
     const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(

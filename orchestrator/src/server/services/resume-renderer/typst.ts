@@ -558,24 +558,24 @@ export function buildTypstDocument(
     .join("\n\n");
 
   return replaceStylePlaceholders(
-    replaceSharedTypstPlaceholders(template),
+    replaceSharedTypstPlaceholders(template)
+      .replace("__PAGE_MARGIN__", tokens.pageMargin)
+      .replace("__BODY_SIZE__", tokens.bodySize)
+      .replace("__PAR_LEADING__", tokens.parLeading)
+      .replace("__SECTION_TOP__", tokens.sectionTop)
+      .replace("__SECTION_SIZE__", tokens.sectionSize)
+      .replace("__ACCENT__", tokens.accent)
+      .replace("__LINE_WIDTH__", tokens.lineWidth)
+      .replace("__SECTION_BOTTOM__", tokens.sectionBottom)
+      .replace("__NAME_SIZE__", tokens.nameSize)
+      .replace("__PICTURE_BLOCK__", pictureBlock)
+      .replace("__NAME__", escapeTypstText(document.name))
+      .replace("__HEADLINE_BLOCK__", headlineBlock)
+      .replace("__LOCATION_BLOCK__", locationBlock)
+      .replace("__CONTACT_BLOCK__", contactBlock)
+      .replace("__BODY__", body),
     document,
-  )
-    .replace("__PAGE_MARGIN__", tokens.pageMargin)
-    .replace("__BODY_SIZE__", tokens.bodySize)
-    .replace("__PAR_LEADING__", tokens.parLeading)
-    .replace("__SECTION_TOP__", tokens.sectionTop)
-    .replace("__SECTION_SIZE__", tokens.sectionSize)
-    .replace("__ACCENT__", tokens.accent)
-    .replace("__LINE_WIDTH__", tokens.lineWidth)
-    .replace("__SECTION_BOTTOM__", tokens.sectionBottom)
-    .replace("__NAME_SIZE__", tokens.nameSize)
-    .replace("__PICTURE_BLOCK__", pictureBlock)
-    .replace("__NAME__", escapeTypstText(document.name))
-    .replace("__HEADLINE_BLOCK__", headlineBlock)
-    .replace("__LOCATION_BLOCK__", locationBlock)
-    .replace("__CONTACT_BLOCK__", contactBlock)
-    .replace("__BODY__", body);
+  );
 }
 
 function truncateOutput(value: string): string {
