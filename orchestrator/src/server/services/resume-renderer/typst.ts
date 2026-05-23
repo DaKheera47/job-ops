@@ -189,8 +189,50 @@ function normalizeText(value: string): string {
     .trim();
 }
 
+function escapeRawTypst(value: string): string {
+  return value.replace(/([\\#*$@_[\]{}<>`])/g, "\\$1");
+}
+
 function escapeTypstText(value: string): string {
-  return normalizeText(value).replace(/([\\#*$@_[\]{}<>`])/g, "\\$1");
+  const normalized = normalizeText(value);
+  const parts = normalized.split(/(<\/?(?:strong|b|em|i)\b[^>]*>)/gi);
+  const result: string[] = [];
+  const tagStack: string[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (part.startsWith("<") && part.endsWith(">")) {
+      const lower = part.toLowerCase();
+      if (lower.startsWith("<strong") || lower.startsWith("<b")) {
+        result.push("#strong[");
+        tagStack.push("bold");
+      } else if (lower.startsWith("</strong") || lower.startsWith("</b>")) {
+        if (tagStack.pop() === "bold") {
+          result.push("]");
+        } else {
+          result.push("]");
+        }
+      } else if (lower.startsWith("<em") || lower.startsWith("<i")) {
+        result.push("#emph[");
+        tagStack.push("italic");
+      } else if (lower.startsWith("</em") || lower.startsWith("</i>")) {
+        if (tagStack.pop() === "italic") {
+          result.push("]");
+        } else {
+          result.push("]");
+        }
+      }
+    } else {
+      result.push(escapeRawTypst(part));
+    }
+  }
+
+  while (tagStack.pop()) {
+    result.push("]");
+  }
+
+  return result.join("");
 }
 
 function escapeTypstUrl(value: string): string {
@@ -634,6 +676,31 @@ async function runTypst(args: {
   });
 }
 
+export function convertDocFieldsToTypst(
+  doc: LatexResumeDocument,
+): LatexResumeDocument {
+  const convertBullets = (bullets: string[]) =>
+    bullets.map((bullet) => escapeTypstText(bullet));
+
+  const convertEntry = (entry: LatexResumeEntry): LatexResumeEntry => ({
+    ...entry,
+    bullets: convertBullets(entry.bullets),
+  });
+
+  return {
+    ...doc,
+    summary: doc.summary ? escapeTypstText(doc.summary) : null,
+    experience: doc.experience.map(convertEntry),
+    education: doc.education.map(convertEntry),
+    projects: doc.projects.map(convertEntry),
+    awards: doc.awards.map(convertEntry),
+    certifications: doc.certifications.map(convertEntry),
+    publications: doc.publications.map(convertEntry),
+    volunteer: doc.volunteer.map(convertEntry),
+    references: doc.references.map(convertEntry),
+  };
+}
+
 export const typstResumeRenderer: ResumeRenderer = {
   async render({ document, outputPath, jobId, typstTheme = "classic" }) {
     const tempDir = await mkdtemp(join(tmpdir(), "job-ops-resume-render-"));
@@ -648,6 +715,8 @@ export const typstResumeRenderer: ResumeRenderer = {
         tempDir,
       );
       let typst: string;
+      let resumeDataDoc: LatexResumeDocument;
+
       if (manifest.kind === "native") {
         if (!tokens) {
           throw new Error(
@@ -655,15 +724,13 @@ export const typstResumeRenderer: ResumeRenderer = {
           );
         }
         typst = buildTypstDocument(renderableDocument, template, tokens);
+        resumeDataDoc = renderableDocument;
       } else {
         typst = buildAdaptedTypstDocument(template);
+        resumeDataDoc = convertDocFieldsToTypst(renderableDocument);
       }
 
-      await writeFile(
-        resumeDataPath,
-        JSON.stringify(renderableDocument),
-        "utf8",
-      );
+      await writeFile(resumeDataPath, JSON.stringify(resumeDataDoc), "utf8");
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,

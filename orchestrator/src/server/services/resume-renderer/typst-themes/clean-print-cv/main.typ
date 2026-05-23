@@ -13,6 +13,14 @@
 #let text-of(value) = with-default(value, "")
 #let list-of(value) = with-default(value, ())
 
+#let markup-text(val) = {
+  if type(val) == str {
+    eval(val, mode: "markup")
+  } else {
+    val
+  }
+}
+
 #let contact-items = list-of(source.at("contactItems", default: ()))
 #let profile-items = list-of(source.at("profileItems", default: ()))
 #let custom-field-items = list-of(source.at("customFieldItems", default: ()))
@@ -35,6 +43,7 @@
   list-of(entry.at("bullets", default: ()))
     .map(item => text-of(item))
     .filter(item => item != "")
+    .map(item => markup-text(item))
 }
 
 #let joined-bullets(entry) = {
@@ -185,7 +194,7 @@
       contact-label-matching(is-website-contact)
     },
   ),
-  summary: text-of(source.at("summary", default: "")),
+  summary: markup-text(text-of(source.at("summary", default: ""))),
   skills: list-of(source.at("skillGroups", default: ())).map(group => (
     category: text-of-item(group, "name"),
     items: list-of(group.at("keywords", default: ())),
@@ -195,7 +204,7 @@
     company: linked-entry-label(entry, text-of-item(entry, "title")),
     location: text-of-item(entry, "secondarySubtitle"),
     period: text-of-item(entry, "date"),
-    highlights: list-of(entry.at("bullets", default: ())),
+    highlights: bullets-of(entry),
   )),
   projects: list-of(source.at("projects", default: ())).map(entry => (
     name: linked-entry-label(entry, text-of-item(entry, "title")),

@@ -62,12 +62,54 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-function escapeLatexText(value: string): string {
-  return normalizeText(value)
+function escapeRawLatex(value: string): string {
+  return value
     .replace(/\\/g, "\\textbackslash{}")
     .replace(/([#$%&_{}])/g, "\\$1")
     .replace(/~/g, "\\textasciitilde{}")
     .replace(/\^/g, "\\textasciicircum{}");
+}
+
+function escapeLatexText(value: string): string {
+  const normalized = normalizeText(value);
+  const parts = normalized.split(/(<\/?(?:strong|b|em|i)\b[^>]*>)/gi);
+  const result: string[] = [];
+  const tagStack: string[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (part.startsWith("<") && part.endsWith(">")) {
+      const lower = part.toLowerCase();
+      if (lower.startsWith("<strong") || lower.startsWith("<b")) {
+        result.push("\\textbf{");
+        tagStack.push("bold");
+      } else if (lower.startsWith("</strong") || lower.startsWith("</b>")) {
+        if (tagStack.pop() === "bold") {
+          result.push("}");
+        } else {
+          result.push("}");
+        }
+      } else if (lower.startsWith("<em") || lower.startsWith("<i")) {
+        result.push("\\textit{");
+        tagStack.push("italic");
+      } else if (lower.startsWith("</em") || lower.startsWith("</i>")) {
+        if (tagStack.pop() === "italic") {
+          result.push("}");
+        } else {
+          result.push("}");
+        }
+      }
+    } else {
+      result.push(escapeRawLatex(part));
+    }
+  }
+
+  while (tagStack.pop()) {
+    result.push("}");
+  }
+
+  return result.join("");
 }
 
 function escapeLatexUrl(value: string): string {

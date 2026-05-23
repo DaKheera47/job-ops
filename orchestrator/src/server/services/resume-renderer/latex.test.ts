@@ -277,6 +277,36 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("\\section{References}");
   });
 
+  it("compiles HTML formatting tags into LaTeX macros and escapes special characters", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        summary:
+          "<strong>Bold summary</strong> & <em>Italic summary</em> with # and % sign.",
+        experience: [
+          {
+            title: "Acme & Sons",
+            subtitle: "<b>Senior</b> Platform Engineer",
+            date: "2023",
+            bullets: [
+              "Managed <i>critical</i> systems.",
+              "Handled $50k budgets.",
+            ],
+          },
+        ],
+      },
+      "__BODY__",
+    );
+
+    expect(latex).toContain(
+      "\\textbf{Bold summary} \\& \\textit{Italic summary} with \\# and \\% sign.",
+    );
+    expect(latex).toContain("Acme \\& Sons");
+    expect(latex).toContain("\\textbf{Senior} Platform Engineer");
+    expect(latex).toContain("Managed \\textit{critical} systems.");
+    expect(latex).toContain("Handled \\$50k budgets.");
+  });
+
   it("fails with a helpful error when tectonic is unavailable", async () => {
     const previous = process.env.TECTONIC_BIN;
     process.env.TECTONIC_BIN = "/definitely/missing/tectonic";

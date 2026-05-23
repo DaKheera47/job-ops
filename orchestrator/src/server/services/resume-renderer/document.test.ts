@@ -265,4 +265,35 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.awards).toHaveLength(1);
     expect(document.awards[0]?.title).toBe("Visible award");
   });
+
+  it("preserves basic formatting tags and strips other HTML tags", () => {
+    const document = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      summary: {
+        hidden: false,
+        content:
+          '<p><strong>Bold statement</strong> and <em>italic explanation</em>. Also <span class="ignore">ignored tag</span>.</p>',
+      },
+      sections: {
+        experience: {
+          hidden: false,
+          items: [
+            {
+              id: "exp-1",
+              company: "Acme",
+              description:
+                '<ul><li>Worked with <b>bold text</b> and <i>italic text</i>. <div style="color: red;">Strip this div</div></li></ul>',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(document.summary).toBe(
+      "<strong>Bold statement</strong> and <em>italic explanation</em>. Also ignored tag .",
+    );
+    expect(document.experience[0]?.bullets).toEqual([
+      "Worked with <b>bold text</b> and <i>italic text</i>. Strip this div",
+    ]);
+  });
 });
