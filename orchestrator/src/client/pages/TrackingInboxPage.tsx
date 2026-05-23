@@ -90,6 +90,16 @@ export const TrackingInboxPage: React.FC = () => {
     "connect" | "sync" | "disconnect" | null
   >(null);
 
+  const [isImapDialogOpen, setIsImapDialogOpen] = useState(false);
+  const [imapForm, setImapForm] = useState({
+    host: "",
+    port: "993",
+    user: "",
+    password: "",
+    tls: true,
+    displayName: "",
+  });
+
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PostApplicationSyncRun | null>(
     null,
@@ -299,8 +309,15 @@ export const TrackingInboxPage: React.FC = () => {
               provider,
               result: "error",
             });
+
+            if (provider === "imap") {
+              // Open IMAP credentials dialog
+              setIsImapDialogOpen(true);
+              return;
+            }
+
             toast.error(
-              `${provider} connect is not implemented yet. Use Gmail for now.`,
+              `${provider} connect is not implemented yet. Use Gmail or IMAP for now.`,
             );
             return;
           }
@@ -434,6 +451,49 @@ export const TrackingInboxPage: React.FC = () => {
       waitForGmailOauthResult,
     ],
   );
+
+  const handleImapConnect = useCallback(async () => {
+    setIsActionLoading(true);
+    try {
+      await api.postApplicationProviderConnect({
+        provider: "imap",
+        accountKey,
+        payload: {
+          payload: {
+            host: imapForm.host,
+            port: Number.parseInt(imapForm.port, 10),
+            user: imapForm.user,
+            password: imapForm.password,
+            tls: imapForm.tls,
+            displayName: imapForm.displayName || undefined,
+          },
+        },
+      });
+      trackProductEvent("tracking_inbox_connect_completed", {
+        provider: "imap",
+        result: "success",
+      });
+      toast.success("IMAP provider connected");
+      setIsImapDialogOpen(false);
+      setImapForm({
+        host: "",
+        port: "993",
+        user: "",
+        password: "",
+        tls: true,
+        displayName: "",
+      });
+      await refresh();
+    } catch (error) {
+      trackProductEvent("tracking_inbox_connect_completed", {
+        provider: "imap",
+        result: "error",
+      });
+      showErrorToast(error, "Failed to connect IMAP provider");
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [accountKey, imapForm, refresh]);
 
   const handleDecision = useCallback(
     async (
@@ -951,6 +1011,135 @@ export const TrackingInboxPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isImapDialogOpen} onOpenChange={setIsImapDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect IMAP Email</DialogTitle>
+            <DialogDescription>
+              Enter your IMAP server credentials to connect your email account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="imap-host">IMAP Server Host</Label>
+              <Input
+                id="imap-host"
+                type="text"
+                placeholder="e.g., imap.gmail.com"
+                value={imapForm.host}
+                onChange={(e) =>
+                  setImapForm((prev) => ({ ...prev, host: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="imap-port">Port</Label>
+              <Input
+                id="imap-port"
+                type="number"
+                placeholder="993"
+                value={imapForm.port}
+                onChange={(e) =>
+                  setImapForm((prev) => ({ ...prev, port: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="imap-user">Email Address</Label>
+              <Input
+                id="imap-user"
+                type="email"
+                placeholder="you@example.com"
+                value={imapForm.user}
+                onChange={(e) =>
+                  setImapForm((prev) => ({ ...prev, user: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="imap-password">Password</Label>
+              <Input
+                id="imap-password"
+                type="password"
+                placeholder="Your email password or app password"
+                value={imapForm.password}
+                onChange={(e) =>
+                  setImapForm((prev) => ({ ...prev, password: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Use an app-specific password if you have 2FA enabled
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                id="imap-tls"
+                type="checkbox"
+                checked={imapForm.tls}
+                onChange={(e) =>
+                  setImapForm((prev) => ({ ...prev, tls: e.target.checked }))
+                }
+                className="h-4 w-4"
+              />
+              <Label htmlFor="imap-tls" className="cursor-pointer">
+                Use TLS/SSL (recommended)
+              </Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="imap-display-name">
+                Display Name (optional)
+              </Label>
+              <Input
+                id="imap-display-name"
+                type="text"
+                placeholder="e.g., Work Email"
+                value={imapForm.displayName}
+                onChange={(e) =>
+                  setImapForm((prev) => ({
+                    ...prev,
+                    displayName: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsImapDialogOpen(false)}
+                disabled={isActionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handleImapConnect()}
+                disabled={
+                  isActionLoading ||
+                  !imapForm.host ||
+                  !imapForm.user ||
+                  !imapForm.password
+                }
+              >
+                {isActionLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
