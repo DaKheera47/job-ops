@@ -15,6 +15,12 @@ export type ImapCredentials = {
   user: string;
   password: string;
   tls?: boolean;
+  /**
+   * When `true`, TLS certificate verification is skipped.
+   * Only enable this for self-hosted mail servers with self-signed certificates.
+   * Defaults to `false` (certificates are verified).
+   */
+  allowSelfSignedCerts?: boolean;
 };
 
 export type ImapMessage = {
@@ -45,7 +51,7 @@ export async function connectImap(config: ImapConnectionConfig): Promise<Imap> {
       host: credentials.host,
       port: credentials.port,
       tls: credentials.tls !== false,
-      tlsOptions: { rejectUnauthorized: false },
+      tlsOptions: { rejectUnauthorized: !credentials.allowSelfSignedCerts },
       connTimeout: timeoutMs,
       authTimeout: timeoutMs,
     });
@@ -154,7 +160,7 @@ export async function fetchMessages(
           const parsed = await simpleParser(buffer);
           const message = parseImapMessage(parsed, uid);
           messages.push(message);
-        } catch (error) {
+        } catch (_error) {
           // Use structured logging instead of console.error
           // Skip the message but continue processing others
         }

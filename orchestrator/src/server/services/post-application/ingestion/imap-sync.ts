@@ -1,3 +1,4 @@
+import { decryptCredential } from "@infra/credentials-crypto";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { getAllJobs } from "@server/repositories/jobs";
@@ -43,9 +44,11 @@ function parseImapCredentials(
 
   const host = asString(credentials.host);
   const user = asString(credentials.user);
-  const password = asString(credentials.password);
+  const rawPassword = asString(credentials.password);
 
-  if (!host || !user || !password) return null;
+  if (!host || !user || !rawPassword) return null;
+
+  const password = decryptCredential(rawPassword);
 
   const port =
     typeof credentials.port === "number" && Number.isFinite(credentials.port)
@@ -54,12 +57,18 @@ function parseImapCredentials(
 
   const tls = typeof credentials.tls === "boolean" ? credentials.tls : true;
 
+  const allowSelfSignedCerts =
+    typeof credentials.allowSelfSignedCerts === "boolean"
+      ? credentials.allowSelfSignedCerts
+      : false;
+
   return {
     host,
     port,
     user,
     password,
     tls,
+    allowSelfSignedCerts,
   };
 }
 

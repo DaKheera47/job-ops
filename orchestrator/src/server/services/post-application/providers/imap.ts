@@ -1,3 +1,4 @@
+import { encryptCredential } from "@infra/credentials-crypto";
 import { logger } from "@infra/logger";
 import {
   disconnectPostApplicationIntegration,
@@ -22,6 +23,7 @@ type ImapCredentialPayload = {
   user: string;
   password: string;
   tls?: boolean;
+  allowSelfSignedCerts?: boolean;
   displayName?: string;
 };
 
@@ -79,6 +81,9 @@ function parseImapCredentials(
     password,
     port: asNumber((raw as Record<string, unknown>).port),
     tls: asBoolean((raw as Record<string, unknown>).tls),
+    allowSelfSignedCerts: asBoolean(
+      (raw as Record<string, unknown>).allowSelfSignedCerts,
+    ),
     displayName: asString((raw as Record<string, unknown>).displayName),
   };
 }
@@ -99,6 +104,8 @@ function toPublicIntegration(
         typeof credentials.password === "string" &&
         credentials.password.length > 0,
       tls: asBoolean(credentials.tls) ?? true,
+      allowSelfSignedCerts:
+        asBoolean(credentials.allowSelfSignedCerts) ?? false,
     },
   };
 }
@@ -141,8 +148,9 @@ export const imapProvider: PostApplicationProviderAdapter = {
         host: credentials.host,
         port: credentials.port ?? 993,
         user: credentials.user,
-        password: credentials.password,
+        password: encryptCredential(credentials.password),
         tls: credentials.tls !== false,
+        allowSelfSignedCerts: credentials.allowSelfSignedCerts ?? false,
       },
     });
 

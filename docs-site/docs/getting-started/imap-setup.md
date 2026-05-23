@@ -91,15 +91,16 @@ After connecting:
 
 ### Password storage
 
-- IMAP credentials (including passwords) are stored encrypted in the JobOps database
+- IMAP passwords are encrypted at rest using AES-256-GCM before being stored in the database
 - Passwords are never logged or exposed in API responses
 - Use app-specific passwords when available (Gmail, Yahoo, iCloud)
+- Requires `IMAP_CREDENTIALS_ENCRYPTION_KEY` to be set in your environment
 
 ### Connection security
 
 - Always use TLS/SSL (port 993) when possible
-- JobOps accepts unverified certificates by default for maximum compatibility with self-hosted servers
-- For self-hosted mail servers with self-signed certificates, ensure your server has a valid certificate or be aware of the security implications
+- TLS certificate verification is enabled by default
+- For self-hosted mail servers with self-signed certificates, enable "Allow self-signed certificates" in the connection form
 
 ### Multi-account support
 
@@ -157,20 +158,19 @@ ProtonMail requires the ProtonMail Bridge application:
 
 ## Comparison with OAuth providers
 
-| Feature | IMAP | Gmail OAuth | O365 OAuth |
-|---------|------|-------------|------------|
-| Setup complexity | Low | Medium | Medium |
-| Requires cloud setup | No | Yes | Yes |
-| Password in database | Yes (encrypted) | No (uses tokens) | No (uses tokens) |
-| Works with any provider | Yes (if IMAP supported) | Gmail only | O365 only |
-| Token refresh | N/A | Automatic | Automatic |
-| Revocation | Manual disconnect | OAuth revoke | OAuth revoke |
+| Feature | IMAP | Gmail OAuth |
+|---------|------|-------------|
+| Setup complexity | Low | Medium |
+| Requires cloud setup | No | Yes |
+| Password in database | Yes (encrypted) | No (uses tokens) |
+| Works with any provider | Yes (if IMAP supported) | Gmail only |
+| Token refresh | N/A | Automatic |
+| Revocation | Manual disconnect | OAuth revoke |
 
 ## Related pages
 
 - [Self-Hosting (Docker Compose)](/docs/next/getting-started/self-hosting)
 - [Post-Application Tracking](/docs/next/features/post-application-tracking)
 - [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
-- [O365 OAuth Setup](/docs/next/getting-started/o365-oauth-setup)
 - [Post-Application Workflow](/docs/next/workflows/post-application-workflow)
 - [Common Problems](/docs/next/troubleshooting/common-problems)
