@@ -109,9 +109,7 @@ function buildStatus(
   message?: string,
 ): PostApplicationProviderActionResult {
   const publicIntegration = toPublicIntegration(integration);
-  const hasPassword = Boolean(
-    publicIntegration?.credentials?.hasPassword,
-  );
+  const hasPassword = Boolean(publicIntegration?.credentials?.hasPassword);
 
   return {
     status: {

@@ -1093,9 +1093,7 @@ export const TrackingInboxPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="imap-display-name">
-                Display Name (optional)
-              </Label>
+              <Label htmlFor="imap-display-name">Display Name (optional)</Label>
               <Input
                 id="imap-display-name"
                 type="text"

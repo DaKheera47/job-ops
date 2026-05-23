@@ -6,7 +6,6 @@ import Imap from "imap";
 import type { ParsedMail } from "mailparser";
 // @ts-expect-error - mailparser doesn't have complete types
 import { simpleParser } from "mailparser";
-import { inspect } from "node:util";
 
 export const IMAP_TIMEOUT_MS = 30_000;
 
@@ -36,9 +35,7 @@ export type ImapConnectionConfig = {
 /**
  * Establishes an IMAP connection with timeout handling
  */
-export async function connectImap(
-  config: ImapConnectionConfig,
-): Promise<Imap> {
+export async function connectImap(config: ImapConnectionConfig): Promise<Imap> {
   const { credentials, timeoutMs = IMAP_TIMEOUT_MS } = config;
 
   return new Promise((resolve, reject) => {
@@ -55,9 +52,7 @@ export async function connectImap(
 
     const timeout = setTimeout(() => {
       imap.end();
-      reject(
-        requestTimeout(`IMAP connection timed out after ${timeoutMs}ms.`),
-      );
+      reject(requestTimeout(`IMAP connection timed out after ${timeoutMs}ms.`));
     }, timeoutMs);
 
     imap.once("ready", () => {
@@ -103,7 +98,7 @@ export async function searchMessages(
 ): Promise<number[]> {
   return new Promise((resolve, reject) => {
     const since = new Date(Date.now() - searchDays * 24 * 60 * 60 * 1000);
-    
+
     // Search for messages since the date that might be recruitment-related
     // IMAP search is basic, so we use SINCE and OR with SUBJECT keywords
     const searchCriteria = [
@@ -245,7 +240,7 @@ export function buildEmailText(message: ImapMessage): string {
 export function disconnectImap(imap: Imap): void {
   try {
     imap.end();
-  } catch (error) {
+  } catch (_error) {
     // Ignore disconnect errors
   }
 }

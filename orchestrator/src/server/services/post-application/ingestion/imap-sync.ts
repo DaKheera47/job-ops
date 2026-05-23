@@ -18,11 +18,7 @@ import { resolveStageTransitionForTarget } from "@server/services/post-applicati
 import type { PostApplicationRouterStageTarget } from "@shared/types";
 import { classifyWithSmartRouter, minifyActiveJobs } from "./email-router";
 import type { ImapCredentials, ImapMessage } from "./imap-api";
-import {
-  buildEmailText,
-  getMessagesFull,
-  listMessageIds,
-} from "./imap-api";
+import { buildEmailText, getMessagesFull, listMessageIds } from "./imap-api";
 
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
@@ -56,8 +52,7 @@ function parseImapCredentials(
       ? credentials.port
       : 993;
 
-  const tls =
-    typeof credentials.tls === "boolean" ? credentials.tls : true;
+  const tls = typeof credentials.tls === "boolean" ? credentials.tls : true;
 
   return {
     host,
@@ -371,7 +366,9 @@ export async function runImapIngestionSync(args: {
       messagesErrored: errored,
     });
 
-    await updatePostApplicationIntegrationSyncState(integration.id, {
+    await updatePostApplicationIntegrationSyncState({
+      provider: "imap",
+      accountKey: args.accountKey,
       lastSyncedAt: Date.now(),
       lastError: null,
     });
@@ -403,7 +400,9 @@ export async function runImapIngestionSync(args: {
       errorMessage,
     });
 
-    await updatePostApplicationIntegrationSyncState(integration.id, {
+    await updatePostApplicationIntegrationSyncState({
+      provider: "imap",
+      accountKey: args.accountKey,
       lastError: errorMessage,
     });
 
