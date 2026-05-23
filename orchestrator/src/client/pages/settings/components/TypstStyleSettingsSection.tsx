@@ -81,9 +81,9 @@ const FontField: React.FC<FontFieldProps> = ({
   defaultValue,
 }) => {
   const { control } = useFormContext<UpdateSettingsInput>();
-  const previewValue = useWatch({ control, name: id });
+  const selectedFontValue = useWatch({ control, name: id });
   const previewFont =
-    (typeof previewValue === "string" ? previewValue : "").trim() ||
+    (typeof selectedFontValue === "string" ? selectedFontValue : "").trim() ||
     effective ||
     defaultValue;
 
