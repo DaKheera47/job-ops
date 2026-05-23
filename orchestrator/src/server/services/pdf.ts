@@ -107,6 +107,7 @@ async function resolveTypstStyleOverrides(): Promise<
       getSetting("typstBackgroundColor"),
     ]);
 
+  let hasValues = false;
   const typography: { bodyFontFamily?: string; headingFontFamily?: string } =
     {};
   const colors: {
@@ -118,34 +119,44 @@ async function resolveTypstStyleOverrides(): Promise<
   const parsedBodyFont = settingsRegistry.typstBodyFont.parse(
     bodyFont ?? undefined,
   );
-  if (parsedBodyFont) typography.bodyFontFamily = parsedBodyFont;
+  if (parsedBodyFont) {
+    typography.bodyFontFamily = parsedBodyFont;
+    hasValues = true;
+  }
 
   const parsedHeadingFont = settingsRegistry.typstHeadingFont.parse(
     headingFont ?? undefined,
   );
-  if (parsedHeadingFont) typography.headingFontFamily = parsedHeadingFont;
+  if (parsedHeadingFont) {
+    typography.headingFontFamily = parsedHeadingFont;
+    hasValues = true;
+  }
 
   const parsedPrimary = settingsRegistry.typstPrimaryColor.parse(
     primaryColor ?? undefined,
   );
-  if (parsedPrimary) colors.primaryHex = parsedPrimary;
+  if (parsedPrimary) {
+    colors.primaryHex = parsedPrimary;
+    hasValues = true;
+  }
 
   const parsedText = settingsRegistry.typstTextColor.parse(
     textColor ?? undefined,
   );
-  if (parsedText) colors.textHex = parsedText;
+  if (parsedText) {
+    colors.textHex = parsedText;
+    hasValues = true;
+  }
 
   const parsedBg = settingsRegistry.typstBackgroundColor.parse(
     backgroundColor ?? undefined,
   );
-  if (parsedBg) colors.backgroundHex = parsedBg;
-
-  if (
-    Object.keys(typography).length === 0 &&
-    Object.keys(colors).length === 0
-  ) {
-    return undefined;
+  if (parsedBg) {
+    colors.backgroundHex = parsedBg;
+    hasValues = true;
   }
+
+  if (!hasValues) return undefined;
 
   return {
     ...(Object.keys(typography).length > 0 ? { typography } : {}),

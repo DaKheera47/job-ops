@@ -1584,7 +1584,10 @@ export const SettingsPage: React.FC = () => {
         return { label: "Active", variant: "secondary" as const };
       case "typst-style":
         return typstStyle.bodyFont.effective ||
-          typstStyle.primaryColor.effective
+          typstStyle.headingFont.effective ||
+          typstStyle.primaryColor.effective ||
+          typstStyle.textColor.effective ||
+          typstStyle.backgroundColor.effective
           ? { label: "Customized", variant: "outline" as const }
           : { label: "Using defaults", variant: "secondary" as const };
       case "backup":

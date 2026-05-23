@@ -1,5 +1,6 @@
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { TypstStyleValues } from "@client/pages/settings/types";
+import { HEX_COLOR_REGEX } from "@shared/settings-registry.js";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useRef } from "react";
@@ -15,7 +16,7 @@ type TypstStyleSettingsSectionProps = {
 };
 
 function isValidHex(value: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(value);
+  return HEX_COLOR_REGEX.test(value);
 }
 
 type ColorFieldProps = {

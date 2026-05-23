@@ -25,6 +25,8 @@ function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
   return raw === undefined || raw === "" ? null : raw;
 }
 
+export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
 function parseIntOrNull(raw: string | undefined): number | null {
   if (!raw) return null;
   const parsed = parseInt(raw, 10);
