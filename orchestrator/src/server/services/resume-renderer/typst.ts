@@ -16,6 +16,7 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
+  LatexResumeStyle,
   ResumeRenderer,
 } from "./types";
 
@@ -435,13 +436,25 @@ function lightenHex(hex: string, whiteFactor: number): string {
 function replaceStylePlaceholders(
   template: string,
   document: LatexResumeDocument,
+  overrides?: Partial<LatexResumeStyle>,
 ): string {
   const style = document.style;
-  const bodyFont = style?.typography.bodyFontFamily || "IBM Plex Serif";
-  const headingFont = style?.typography.headingFontFamily || bodyFont;
-  const primaryHex = style?.colors.primaryHex || "#202020";
-  const textHex = style?.colors.textHex || "#000000";
-  const backgroundHex = style?.colors.backgroundHex || "#ffffff";
+  const bodyFont =
+    overrides?.typography?.bodyFontFamily ||
+    style?.typography.bodyFontFamily ||
+    "IBM Plex Serif";
+  const headingFont =
+    overrides?.typography?.headingFontFamily ||
+    style?.typography.headingFontFamily ||
+    bodyFont;
+  const primaryHex =
+    overrides?.colors?.primaryHex || style?.colors.primaryHex || "#202020";
+  const textHex =
+    overrides?.colors?.textHex || style?.colors.textHex || "#000000";
+  const backgroundHex =
+    overrides?.colors?.backgroundHex ||
+    style?.colors.backgroundHex ||
+    "#ffffff";
   const sidebarBgHex = lightenHex(primaryHex, 0.85);
 
   return template
@@ -456,10 +469,12 @@ function replaceStylePlaceholders(
 function buildAdaptedTypstDocument(
   document: LatexResumeDocument,
   template: string,
+  overrides?: Partial<LatexResumeStyle>,
 ): string {
   return replaceStylePlaceholders(
     replaceSharedTypstPlaceholders(template),
     document,
+    overrides,
   );
 }
 
@@ -498,6 +513,7 @@ export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
   tokens: TypstThemeTokens,
+  overrides?: Partial<LatexResumeStyle>,
 ): string {
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const pictureBlock = renderPictureBlock(document);
@@ -585,6 +601,7 @@ export function buildTypstDocument(
       .replace("__CONTACT_BLOCK__", contactBlock)
       .replace("__BODY__", body),
     document,
+    overrides,
   );
 }
 
@@ -670,7 +687,13 @@ async function runTypst(args: {
 }
 
 export const typstResumeRenderer: ResumeRenderer = {
-  async render({ document, outputPath, jobId, typstTheme = "classic" }) {
+  async render({
+    document,
+    outputPath,
+    jobId,
+    typstTheme = "classic",
+    typstStyleOverrides,
+  }) {
     const tempDir = await mkdtemp(join(tmpdir(), "job-ops-resume-render-"));
     const typPath = join(tempDir, "resume.typ");
     const resumeDataPath = join(tempDir, RESUME_DATA_FILENAME);
@@ -693,9 +716,18 @@ export const typstResumeRenderer: ResumeRenderer = {
             `Typst theme ${typstTheme} is missing native tokens.`,
           );
         }
-        typst = buildTypstDocument(typstDocument, template, tokens);
+        typst = buildTypstDocument(
+          typstDocument,
+          template,
+          tokens,
+          typstStyleOverrides,
+        );
       } else {
-        typst = buildAdaptedTypstDocument(typstDocument, template);
+        typst = buildAdaptedTypstDocument(
+          typstDocument,
+          template,
+          typstStyleOverrides,
+        );
       }
 
       await writeFile(resumeDataPath, JSON.stringify(typstDocument), "utf8");
@@ -756,6 +788,7 @@ export async function renderTypstPdf(args: {
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
+  typstStyleOverrides?: Partial<LatexResumeStyle>;
 }): Promise<void> {
   await typstResumeRenderer.render(args);
 }

@@ -118,6 +118,7 @@ export interface RenderResumePdfArgs {
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
+  typstStyleOverrides?: Partial<LatexResumeStyle>;
 }
 
 export interface ResumeRenderer {

@@ -28,6 +28,7 @@ import { PromptTemplatesSection } from "@client/pages/settings/components/Prompt
 import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection";
 import { ScoringSettingsSection } from "@client/pages/settings/components/ScoringSettingsSection";
 import { TracerLinksSettingsSection } from "@client/pages/settings/components/TracerLinksSettingsSection";
+import { TypstStyleSettingsSection } from "@client/pages/settings/components/TypstStyleSettingsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
 import {
   type LlmProviderId,
@@ -80,6 +81,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   resumeProjects: null,
   pdfRenderer: "rxresume",
   typstTheme: "classic",
+  typstBodyFont: "",
+  typstHeadingFont: "",
+  typstPrimaryColor: "",
+  typstTextColor: "",
+  typstBackgroundColor: "",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -136,6 +142,7 @@ type SettingsSectionId =
   | "tracer-links"
   | "environment"
   | "display"
+  | "typst-style"
   | "backup"
   | "danger-zone";
 
@@ -255,6 +262,23 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
         description: "Sponsor badges and markdown rendering behavior.",
         searchTerms: ["markdown", "sponsor", "rendering", "appearance"],
       },
+      {
+        id: "typst-style",
+        label: "Typst Theme Style",
+        description:
+          "Override fonts and colors for Typst-rendered PDF resumes.",
+        searchTerms: [
+          "typst",
+          "font",
+          "color",
+          "typography",
+          "primary",
+          "text",
+          "background",
+          "heading",
+          "body",
+        ],
+      },
     ],
   },
   {
@@ -335,6 +359,13 @@ const SECTION_FIELD_MAP: Record<
     "adzunaAppKey",
   ],
   display: ["showSponsorInfo", "renderMarkdownInJobDescriptions"],
+  "typst-style": [
+    "typstBodyFont",
+    "typstHeadingFont",
+    "typstPrimaryColor",
+    "typstTextColor",
+    "typstBackgroundColor",
+  ],
   backup: ["backupEnabled", "backupHour", "backupMaxCount"],
   "danger-zone": [],
 };
@@ -405,6 +436,11 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   resumeProjects: null,
   pdfRenderer: null,
   typstTheme: null,
+  typstBodyFont: null,
+  typstHeadingFont: null,
+  typstPrimaryColor: null,
+  typstTextColor: null,
+  typstBackgroundColor: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -455,6 +491,11 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   resumeProjects: data.resumeProjects.override,
   pdfRenderer: data.pdfRenderer.override ?? data.pdfRenderer.value,
   typstTheme: data.typstTheme.override ?? data.typstTheme.value,
+  typstBodyFont: data.typstBodyFont.override ?? "",
+  typstHeadingFont: data.typstHeadingFont.override ?? "",
+  typstPrimaryColor: data.typstPrimaryColor.override ?? "",
+  typstTextColor: data.typstTextColor.override ?? "",
+  typstBackgroundColor: data.typstBackgroundColor.override ?? "",
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
   renderMarkdownInJobDescriptions:
@@ -620,6 +661,28 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       typstTheme: {
         effective: settings?.typstTheme?.value ?? "classic",
         default: settings?.typstTheme?.default ?? "classic",
+      },
+    },
+    typstStyle: {
+      bodyFont: {
+        effective: settings?.typstBodyFont?.value ?? "",
+        default: settings?.typstBodyFont?.default ?? "",
+      },
+      headingFont: {
+        effective: settings?.typstHeadingFont?.value ?? "",
+        default: settings?.typstHeadingFont?.default ?? "",
+      },
+      primaryColor: {
+        effective: settings?.typstPrimaryColor?.value ?? "",
+        default: settings?.typstPrimaryColor?.default ?? "",
+      },
+      textColor: {
+        effective: settings?.typstTextColor?.value ?? "",
+        default: settings?.typstTextColor?.default ?? "",
+      },
+      backgroundColor: {
+        effective: settings?.typstBackgroundColor?.value ?? "",
+        default: settings?.typstBackgroundColor?.default ?? "",
       },
     },
     display: {
@@ -908,6 +971,7 @@ export const SettingsPage: React.FC = () => {
     jobCompleteWebhook,
     reactiveResume,
     display,
+    typstStyle,
     chat,
     envSettings,
     defaultResumeProjects,
@@ -1166,6 +1230,26 @@ export const SettingsPage: React.FC = () => {
         typstTheme: nullIfSame(
           data.typstTheme,
           reactiveResume.typstTheme.default,
+        ),
+        typstBodyFont: nullIfSame(
+          normalizeString(data.typstBodyFont),
+          typstStyle.bodyFont.default || null,
+        ),
+        typstHeadingFont: nullIfSame(
+          normalizeString(data.typstHeadingFont),
+          typstStyle.headingFont.default || null,
+        ),
+        typstPrimaryColor: nullIfSame(
+          normalizeString(data.typstPrimaryColor),
+          typstStyle.primaryColor.default || null,
+        ),
+        typstTextColor: nullIfSame(
+          normalizeString(data.typstTextColor),
+          typstStyle.textColor.default || null,
+        ),
+        typstBackgroundColor: nullIfSame(
+          normalizeString(data.typstBackgroundColor),
+          typstStyle.backgroundColor.default || null,
         ),
         ...(dirtyFields.rxresumeBaseResumeId
           ? { rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId) }
@@ -1498,6 +1582,11 @@ export const SettingsPage: React.FC = () => {
           : null;
       case "display":
         return { label: "Active", variant: "secondary" as const };
+      case "typst-style":
+        return typstStyle.bodyFont.effective ||
+          typstStyle.primaryColor.effective
+          ? { label: "Customized", variant: "outline" as const }
+          : { label: "Using defaults", variant: "secondary" as const };
       case "backup":
         return backup.backupEnabled.effective
           ? { label: "Scheduled", variant: "outline" as const }
@@ -1614,6 +1703,16 @@ export const SettingsPage: React.FC = () => {
       activeSectionContent = (
         <DisplaySettingsSection
           values={display}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "typst-style":
+      activeSectionContent = (
+        <TypstStyleSettingsSection
+          values={typstStyle}
           isLoading={isLoading}
           isSaving={isSaving}
           layoutMode="panel"

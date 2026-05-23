@@ -415,6 +415,55 @@ export const settingsRegistry = {
     serialize: (value: TypstTheme | null | undefined): string | null =>
       value ?? null,
   },
+  typstBodyFont: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(200),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstHeadingFont: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(200),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstPrimaryColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstTextColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstBackgroundColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
