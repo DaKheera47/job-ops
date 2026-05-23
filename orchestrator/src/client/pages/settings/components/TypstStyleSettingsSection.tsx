@@ -4,7 +4,7 @@ import { HEX_COLOR_REGEX } from "@shared/settings-registry.js";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useRef } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import {
   SearchableDropdown,
@@ -49,6 +49,7 @@ const FONT_FAMILY_OPTIONS: SearchableDropdownOption[] = [
   { value: "Monaco", label: "Monaco" },
   { value: "Menlo", label: "Menlo" },
 ];
+const FONT_PREVIEW_TEXT = "The quick brown fox jumps over the lazy dog.";
 
 type ColorFieldProps = {
   id: keyof UpdateSettingsInput;
@@ -80,6 +81,11 @@ const FontField: React.FC<FontFieldProps> = ({
   defaultValue,
 }) => {
   const { control } = useFormContext<UpdateSettingsInput>();
+  const previewValue = useWatch({ control, name: id });
+  const previewFont =
+    (typeof previewValue === "string" ? previewValue : "").trim() ||
+    effective ||
+    defaultValue;
 
   return (
     <div className="space-y-2">
@@ -130,6 +136,12 @@ const FontField: React.FC<FontFieldProps> = ({
             {defaultValue || "(from resume)"}
           </div>
         </div>
+      </div>
+      <div
+        className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground"
+        style={{ fontFamily: previewFont || undefined }}
+      >
+        {FONT_PREVIEW_TEXT}
       </div>
     </div>
   );
