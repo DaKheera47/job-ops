@@ -87,6 +87,11 @@ const FontField: React.FC<FontFieldProps> = ({
     effective ||
     defaultValue;
 
+  // Format font family for CSS - wrap in quotes if it contains spaces and add fallbacks
+  const previewFontFamily = previewFont
+    ? `"${previewFont}", system-ui, -apple-system, sans-serif`
+    : undefined;
+
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="text-sm font-medium">
@@ -137,12 +142,14 @@ const FontField: React.FC<FontFieldProps> = ({
           </div>
         </div>
       </div>
-      <div
-        className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground"
-        style={{ fontFamily: previewFont || undefined }}
-      >
-        {FONT_PREVIEW_TEXT}
-      </div>
+      {previewFontFamily && (
+        <div
+          className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground"
+          style={{ fontFamily: previewFontFamily }}
+        >
+          {FONT_PREVIEW_TEXT}
+        </div>
+      )}
     </div>
   );
 };
