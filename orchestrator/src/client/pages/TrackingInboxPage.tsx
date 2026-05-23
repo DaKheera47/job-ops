@@ -459,14 +459,12 @@ export const TrackingInboxPage: React.FC = () => {
         provider: "imap",
         accountKey,
         payload: {
-          payload: {
-            host: imapForm.host,
-            port: Number.parseInt(imapForm.port, 10),
-            user: imapForm.user,
-            password: imapForm.password,
-            tls: imapForm.tls,
-            displayName: imapForm.displayName || undefined,
-          },
+          host: imapForm.host,
+          port: Number.parseInt(imapForm.port, 10),
+          user: imapForm.user,
+          password: imapForm.password,
+          tls: imapForm.tls,
+          displayName: imapForm.displayName || undefined,
         },
       });
       trackProductEvent("tracking_inbox_connect_completed", {
