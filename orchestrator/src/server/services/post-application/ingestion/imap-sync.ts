@@ -130,6 +130,9 @@ async function createAutoStageEvent(args: {
   );
 }
 
+// Message processing concurrency - balances IMAP server load with processing speed
+const MESSAGE_PROCESSING_CONCURRENCY = 3;
+
 async function runWithConcurrency<T>(
   items: T[],
   concurrency: number,
@@ -234,7 +237,7 @@ export async function runImapIngestionSync(args: {
 
     await runWithConcurrency(
       messages,
-      3, // Process 3 messages concurrently
+      MESSAGE_PROCESSING_CONCURRENCY,
       async (message: ImapMessage) => {
         try {
           const externalMessageId = `imap-${parsedCredentials.host}-${message.id}`;

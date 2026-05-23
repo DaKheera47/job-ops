@@ -317,7 +317,7 @@ export const TrackingInboxPage: React.FC = () => {
             }
 
             toast.error(
-              `${provider} connect is not implemented yet. Use Gmail or IMAP for now.`,
+              `Only Gmail, O365, and IMAP providers are currently supported. Selected provider: ${provider}`,
             );
             return;
           }

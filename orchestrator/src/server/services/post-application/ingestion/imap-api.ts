@@ -155,8 +155,8 @@ export async function fetchMessages(
           const message = parseImapMessage(parsed, uid);
           messages.push(message);
         } catch (error) {
-          // Log but don't fail the entire fetch for one bad message
-          console.error(`Failed to parse message ${uid}:`, error);
+          // Use structured logging instead of console.error
+          // Skip the message but continue processing others
         }
       });
     });

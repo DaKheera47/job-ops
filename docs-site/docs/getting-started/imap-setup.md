@@ -98,8 +98,8 @@ After connecting:
 ### Connection security
 
 - Always use TLS/SSL (port 993) when possible
-- JobOps rejects unverified certificates by default for maximum compatibility
-- For self-hosted mail servers with self-signed certificates, ensure your server has a valid certificate
+- JobOps accepts unverified certificates by default for maximum compatibility with self-hosted servers
+- For self-hosted mail servers with self-signed certificates, ensure your server has a valid certificate or be aware of the security implications
 
 ### Multi-account support
 
