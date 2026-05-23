@@ -70,6 +70,7 @@ export type TypstStyleValues = {
   primaryColor: EffectiveDefault<string>;
   textColor: EffectiveDefault<string>;
   backgroundColor: EffectiveDefault<string>;
+  secondaryBackgroundColor: EffectiveDefault<string>;
 };
 
 export type PromptTemplatesValues = {

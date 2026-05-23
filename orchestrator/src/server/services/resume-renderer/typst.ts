@@ -16,7 +16,7 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
-  LatexResumeStyle,
+  LatexResumeStyleOverrides,
   ResumeRenderer,
 } from "./types";
 
@@ -436,7 +436,7 @@ function lightenHex(hex: string, whiteFactor: number): string {
 function replaceStylePlaceholders(
   template: string,
   document: LatexResumeDocument,
-  overrides?: Partial<LatexResumeStyle>,
+  overrides?: LatexResumeStyleOverrides,
 ): string {
   const style = document.style;
   const bodyFont =
@@ -455,7 +455,10 @@ function replaceStylePlaceholders(
     overrides?.colors?.backgroundHex ||
     style?.colors.backgroundHex ||
     "#ffffff";
-  const sidebarBgHex = lightenHex(primaryHex, 0.85);
+  const secondaryBackgroundHex =
+    overrides?.colors?.secondaryBackgroundHex ||
+    style?.colors.secondaryBackgroundHex ||
+    lightenHex(primaryHex, 0.85);
 
   return template
     .replaceAll("__BODY_FONT__", JSON.stringify(bodyFont))
@@ -463,13 +466,20 @@ function replaceStylePlaceholders(
     .replaceAll("__PRIMARY_COLOR__", `rgb(${JSON.stringify(primaryHex)})`)
     .replaceAll("__TEXT_COLOR__", `rgb(${JSON.stringify(textHex)})`)
     .replaceAll("__BACKGROUND_COLOR__", `rgb(${JSON.stringify(backgroundHex)})`)
-    .replaceAll("__SIDEBAR_BG_COLOR__", `rgb(${JSON.stringify(sidebarBgHex)})`);
+    .replaceAll(
+      "__SECONDARY_BACKGROUND_COLOR__",
+      `rgb(${JSON.stringify(secondaryBackgroundHex)})`,
+    )
+    .replaceAll(
+      "__SIDEBAR_BG_COLOR__",
+      `rgb(${JSON.stringify(secondaryBackgroundHex)})`,
+    );
 }
 
 function buildAdaptedTypstDocument(
   document: LatexResumeDocument,
   template: string,
-  overrides?: Partial<LatexResumeStyle>,
+  overrides?: LatexResumeStyleOverrides,
 ): string {
   return replaceStylePlaceholders(
     replaceSharedTypstPlaceholders(template),
@@ -513,7 +523,7 @@ export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
   tokens: TypstThemeTokens,
-  overrides?: Partial<LatexResumeStyle>,
+  overrides?: LatexResumeStyleOverrides,
 ): string {
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const pictureBlock = renderPictureBlock(document);
@@ -788,7 +798,7 @@ export async function renderTypstPdf(args: {
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
-  typstStyleOverrides?: Partial<LatexResumeStyle>;
+  typstStyleOverrides?: LatexResumeStyleOverrides;
 }): Promise<void> {
   await typstResumeRenderer.render(args);
 }

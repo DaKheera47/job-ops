@@ -20,6 +20,12 @@ vi.mock("./services/pdf-fingerprint", () => ({
     designResumeUpdatedAt: null,
     pdfRenderer: "latex",
     typstTheme: "classic",
+    typstBodyFont: null,
+    typstHeadingFont: null,
+    typstPrimaryColor: null,
+    typstTextColor: null,
+    typstBackgroundColor: null,
+    typstSecondaryBackgroundColor: null,
     rxresumeBaseResumeId: null,
   }),
 }));
@@ -37,6 +43,12 @@ describe("Tailoring Flow", () => {
       designResumeUpdatedAt: null,
       pdfRenderer: "latex",
       typstTheme: "classic",
+      typstBodyFont: null,
+      typstHeadingFont: null,
+      typstPrimaryColor: null,
+      typstTextColor: null,
+      typstBackgroundColor: null,
+      typstSecondaryBackgroundColor: null,
       rxresumeBaseResumeId: null,
     });
     vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(

@@ -86,6 +86,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   typstPrimaryColor: "",
   typstTextColor: "",
   typstBackgroundColor: "",
+  typstSecondaryBackgroundColor: "",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -365,6 +366,7 @@ const SECTION_FIELD_MAP: Record<
     "typstPrimaryColor",
     "typstTextColor",
     "typstBackgroundColor",
+    "typstSecondaryBackgroundColor",
   ],
   backup: ["backupEnabled", "backupHour", "backupMaxCount"],
   "danger-zone": [],
@@ -441,6 +443,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   typstPrimaryColor: null,
   typstTextColor: null,
   typstBackgroundColor: null,
+  typstSecondaryBackgroundColor: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -496,6 +499,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   typstPrimaryColor: data.typstPrimaryColor.override ?? "",
   typstTextColor: data.typstTextColor.override ?? "",
   typstBackgroundColor: data.typstBackgroundColor.override ?? "",
+  typstSecondaryBackgroundColor:
+    data.typstSecondaryBackgroundColor.override ?? "",
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
   renderMarkdownInJobDescriptions:
@@ -683,6 +688,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       backgroundColor: {
         effective: settings?.typstBackgroundColor?.value ?? "",
         default: settings?.typstBackgroundColor?.default ?? "",
+      },
+      secondaryBackgroundColor: {
+        effective: settings?.typstSecondaryBackgroundColor?.value ?? "",
+        default: settings?.typstSecondaryBackgroundColor?.default ?? "",
       },
     },
     display: {
@@ -1251,6 +1260,10 @@ export const SettingsPage: React.FC = () => {
           normalizeString(data.typstBackgroundColor),
           typstStyle.backgroundColor.default || null,
         ),
+        typstSecondaryBackgroundColor: nullIfSame(
+          normalizeString(data.typstSecondaryBackgroundColor),
+          typstStyle.secondaryBackgroundColor.default || null,
+        ),
         ...(dirtyFields.rxresumeBaseResumeId
           ? { rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId) }
           : {}),
@@ -1587,7 +1600,8 @@ export const SettingsPage: React.FC = () => {
           typstStyle.headingFont.effective ||
           typstStyle.primaryColor.effective ||
           typstStyle.textColor.effective ||
-          typstStyle.backgroundColor.effective
+          typstStyle.backgroundColor.effective ||
+          typstStyle.secondaryBackgroundColor.effective
           ? { label: "Customized", variant: "outline" as const }
           : { label: "Using defaults", variant: "secondary" as const };
       case "backup":

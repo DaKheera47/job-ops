@@ -466,6 +466,17 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
+  typstSecondaryBackgroundColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),

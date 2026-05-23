@@ -6,7 +6,12 @@ import type React from "react";
 import { useRef } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Input } from "@/components/ui/input";
+import {
+  SearchableDropdown,
+  type SearchableDropdownOption,
+} from "@/components/ui/searchable-dropdown";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 type TypstStyleSettingsSectionProps = {
   values: TypstStyleValues;
@@ -19,6 +24,32 @@ function isValidHex(value: string): boolean {
   return HEX_COLOR_REGEX.test(value);
 }
 
+const FONT_FAMILY_OPTIONS: SearchableDropdownOption[] = [
+  { value: "", label: "Use resume default" },
+  { value: "System UI", label: "System UI" },
+  { value: "Segoe UI", label: "Segoe UI" },
+  { value: "San Francisco", label: "San Francisco" },
+  { value: "Roboto", label: "Roboto" },
+  { value: "Helvetica", label: "Helvetica" },
+  { value: "Arial", label: "Arial" },
+  { value: "Verdana", label: "Verdana" },
+  { value: "Tahoma", label: "Tahoma" },
+  { value: "Trebuchet MS", label: "Trebuchet MS" },
+  { value: "Times New Roman", label: "Times New Roman" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "Garamond", label: "Garamond" },
+  { value: "Palatino", label: "Palatino" },
+  { value: "Noto Sans", label: "Noto Sans" },
+  { value: "Noto Serif", label: "Noto Serif" },
+  { value: "IBM Plex Sans", label: "IBM Plex Sans" },
+  { value: "IBM Plex Serif", label: "IBM Plex Serif" },
+  { value: "IBM Plex Mono", label: "IBM Plex Mono" },
+  { value: "Courier New", label: "Courier New" },
+  { value: "Consolas", label: "Consolas" },
+  { value: "Monaco", label: "Monaco" },
+  { value: "Menlo", label: "Menlo" },
+];
+
 type ColorFieldProps = {
   id: keyof UpdateSettingsInput;
   label: string;
@@ -27,6 +58,81 @@ type ColorFieldProps = {
   isDisabled: boolean;
   effective: string;
   defaultValue: string;
+};
+
+type FontFieldProps = {
+  id: keyof UpdateSettingsInput;
+  label: string;
+  description: string;
+  placeholder: string;
+  isDisabled: boolean;
+  effective: string;
+  defaultValue: string;
+};
+
+const FontField: React.FC<FontFieldProps> = ({
+  id,
+  label,
+  description,
+  placeholder,
+  isDisabled,
+  effective,
+  defaultValue,
+}) => {
+  const { control } = useFormContext<UpdateSettingsInput>();
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <p className="text-xs text-muted-foreground">{description}</p>
+      <Controller
+        name={id}
+        control={control}
+        render={({ field, fieldState }) => (
+          <>
+            <SearchableDropdown
+              inputId={id}
+              value={(field.value as string | null | undefined) ?? ""}
+              options={FONT_FAMILY_OPTIONS}
+              onValueChange={(nextValue) => field.onChange(nextValue)}
+              placeholder={placeholder}
+              searchPlaceholder="Search fonts..."
+              emptyText="No matching fonts."
+              allowCustomValue
+              disabled={isDisabled}
+              triggerClassName={cn(
+                "h-10 w-full",
+                fieldState.error && "border-destructive",
+              )}
+              ariaLabel={field.value ? String(field.value) : placeholder}
+            />
+            {fieldState.error && (
+              <p className="mt-2 text-xs text-destructive">
+                {fieldState.error.message}
+              </p>
+            )}
+          </>
+        )}
+      />
+      <div className="text-xs text-muted-foreground">
+        Type any font name to add a custom value.
+      </div>
+      <div className="grid gap-3 text-xs sm:grid-cols-2">
+        <div>
+          <div className="text-muted-foreground">Effective</div>
+          <div className="font-mono">{effective || "(from resume)"}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground">Default</div>
+          <div className="font-mono font-semibold">
+            {defaultValue || "(from resume)"}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const ColorField: React.FC<ColorFieldProps> = ({
@@ -122,7 +228,6 @@ const ColorField: React.FC<ColorFieldProps> = ({
 export const TypstStyleSettingsSection: React.FC<
   TypstStyleSettingsSectionProps
 > = ({ values, isLoading, isSaving, layoutMode }) => {
-  const { control, formState } = useFormContext<UpdateSettingsInput>();
   const isDisabled = isLoading || isSaving;
 
   return (
@@ -141,103 +246,31 @@ export const TypstStyleSettingsSection: React.FC<
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">Typography</h3>
 
-          <div className="space-y-2">
-            <label htmlFor="typstBodyFont" className="text-sm font-medium">
-              Body font family
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Font used for body text, contact lines, and skill tags. Defaults
-              to the resume typography setting or "IBM Plex Serif".
-            </p>
-            <Controller
-              name="typstBodyFont"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Input
-                  id="typstBodyFont"
-                  value={(field.value as string | null | undefined) ?? ""}
-                  placeholder={
-                    values.bodyFont.effective || "IBM Plex Serif (default)"
-                  }
-                  disabled={isDisabled}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  onBlur={field.onBlur}
-                  className={
-                    fieldState.error ? "border-destructive" : undefined
-                  }
-                />
-              )}
-            />
-            {formState.errors.typstBodyFont && (
-              <p className="text-xs text-destructive">
-                {formState.errors.typstBodyFont.message as string}
-              </p>
-            )}
-            <div className="grid gap-3 text-xs sm:grid-cols-2">
-              <div>
-                <div className="text-muted-foreground">Effective</div>
-                <div className="font-mono">
-                  {values.bodyFont.effective || "(from resume)"}
-                </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Default</div>
-                <div className="font-mono font-semibold">
-                  {values.bodyFont.default || "(from resume)"}
-                </div>
-              </div>
-            </div>
-          </div>
+          <FontField
+            id="typstBodyFont"
+            label="Body font family"
+            description='Font used for body text, contact lines, and skill tags. Defaults to the resume typography setting or "IBM Plex Serif".'
+            placeholder={
+              values.bodyFont.effective || "IBM Plex Serif (default)"
+            }
+            isDisabled={isDisabled}
+            effective={values.bodyFont.effective}
+            defaultValue={values.bodyFont.default}
+          />
 
           <Separator />
 
-          <div className="space-y-2">
-            <label htmlFor="typstHeadingFont" className="text-sm font-medium">
-              Heading font family
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Font used for section headings and the name. Defaults to the body
-              font when not set.
-            </p>
-            <Controller
-              name="typstHeadingFont"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Input
-                  id="typstHeadingFont"
-                  value={(field.value as string | null | undefined) ?? ""}
-                  placeholder={
-                    values.headingFont.effective || "IBM Plex Serif (default)"
-                  }
-                  disabled={isDisabled}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  onBlur={field.onBlur}
-                  className={
-                    fieldState.error ? "border-destructive" : undefined
-                  }
-                />
-              )}
-            />
-            {formState.errors.typstHeadingFont && (
-              <p className="text-xs text-destructive">
-                {formState.errors.typstHeadingFont.message as string}
-              </p>
-            )}
-            <div className="grid gap-3 text-xs sm:grid-cols-2">
-              <div>
-                <div className="text-muted-foreground">Effective</div>
-                <div className="font-mono">
-                  {values.headingFont.effective || "(from resume)"}
-                </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Default</div>
-                <div className="font-mono font-semibold">
-                  {values.headingFont.default || "(from resume)"}
-                </div>
-              </div>
-            </div>
-          </div>
+          <FontField
+            id="typstHeadingFont"
+            label="Heading font family"
+            description="Font used for section headings and the name. Defaults to the body font when not set."
+            placeholder={
+              values.headingFont.effective || "IBM Plex Serif (default)"
+            }
+            isDisabled={isDisabled}
+            effective={values.headingFont.effective}
+            defaultValue={values.headingFont.default}
+          />
         </div>
 
         <Separator />
@@ -246,7 +279,9 @@ export const TypstStyleSettingsSection: React.FC<
           <h3 className="text-sm font-semibold">Colors</h3>
           <p className="text-xs text-muted-foreground">
             Enter a 6-digit hex color (e.g. #dc2626) or click the swatch to use
-            a color picker. Leave blank to inherit from the resume design.
+            a color picker. Primary background fills the page; secondary
+            background is used for sidebars and other secondary surfaces. Leave
+            blank to inherit from the resume design.
           </p>
 
           <ColorField
@@ -275,12 +310,24 @@ export const TypstStyleSettingsSection: React.FC<
 
           <ColorField
             id="typstBackgroundColor"
-            label="Background color"
-            description="Page background color."
+            label="Primary background color"
+            description="Main page background color."
             placeholder="#ffffff"
             isDisabled={isDisabled}
             effective={values.backgroundColor.effective}
             defaultValue={values.backgroundColor.default}
+          />
+
+          <Separator />
+
+          <ColorField
+            id="typstSecondaryBackgroundColor"
+            label="Secondary background color"
+            description="Used for secondary surfaces like sidebars and section blocks."
+            placeholder="#f6f6f6"
+            isDisabled={isDisabled}
+            effective={values.secondaryBackgroundColor.effective}
+            defaultValue={values.secondaryBackgroundColor.default}
           />
         </div>
       </div>

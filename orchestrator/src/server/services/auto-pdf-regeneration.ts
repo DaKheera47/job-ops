@@ -23,6 +23,7 @@ const SETTINGS_INVALIDATION_KEYS = new Set<SettingKey>([
   "typstPrimaryColor",
   "typstTextColor",
   "typstBackgroundColor",
+  "typstSecondaryBackgroundColor",
   "rxresumeBaseResumeId",
   "rxresumeUrl",
   "rxresumeApiKey",

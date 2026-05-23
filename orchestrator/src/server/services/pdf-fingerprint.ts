@@ -37,6 +37,7 @@ export interface PdfFingerprintContext {
   typstPrimaryColor: string | null;
   typstTextColor: string | null;
   typstBackgroundColor: string | null;
+  typstSecondaryBackgroundColor: string | null;
   rxresumeBaseResumeId: string | null;
 }
 
@@ -51,6 +52,7 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     rawPrimaryColor,
     rawTextColor,
     rawBackgroundColor,
+    rawSecondaryBackgroundColor,
   ] = await Promise.all([
     getCurrentDesignResumeOrNullOnLegacy(),
     settingsRepo.getSetting("pdfRenderer"),
@@ -61,6 +63,7 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     settingsRepo.getSetting("typstPrimaryColor"),
     settingsRepo.getSetting("typstTextColor"),
     settingsRepo.getSetting("typstBackgroundColor"),
+    settingsRepo.getSetting("typstSecondaryBackgroundColor"),
   ]);
 
   const parsedRenderer = settingsRegistry.pdfRenderer.parse(
@@ -91,6 +94,10 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
       settingsRegistry.typstBackgroundColor.parse(
         rawBackgroundColor ?? undefined,
       ) ?? null,
+    typstSecondaryBackgroundColor:
+      settingsRegistry.typstSecondaryBackgroundColor.parse(
+        rawSecondaryBackgroundColor ?? undefined,
+      ) ?? null,
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
   };
 }
@@ -110,6 +117,7 @@ export function createJobPdfFingerprint(
           typstPrimaryColor: context.typstPrimaryColor,
           typstTextColor: context.typstTextColor,
           typstBackgroundColor: context.typstBackgroundColor,
+          typstSecondaryBackgroundColor: context.typstSecondaryBackgroundColor,
         }
       : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,

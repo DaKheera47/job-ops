@@ -36,7 +36,7 @@
 // ---------------------------------------------------------------------------
 
 #let accent = __PRIMARY_COLOR__
-#let sidebar-bg = __SIDEBAR_BG_COLOR__
+#let sidebar-bg = __SECONDARY_BACKGROUND_COLOR__
 // Fixed absolute width (≈ 30 % of A4 210 mm); page margins require absolute lengths.
 #let sidebar-col-width = 63mm
 

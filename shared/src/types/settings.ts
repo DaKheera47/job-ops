@@ -215,6 +215,7 @@ export interface AppSettings {
   typstPrimaryColor: Resolved<string>;
   typstTextColor: Resolved<string>;
   typstBackgroundColor: Resolved<string>;
+  typstSecondaryBackgroundColor: Resolved<string>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;

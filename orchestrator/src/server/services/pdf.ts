@@ -98,14 +98,21 @@ async function resolveTypstStyleOverrides(): Promise<
     }
   | undefined
 > {
-  const [bodyFont, headingFont, primaryColor, textColor, backgroundColor] =
-    await Promise.all([
-      getSetting("typstBodyFont"),
-      getSetting("typstHeadingFont"),
-      getSetting("typstPrimaryColor"),
-      getSetting("typstTextColor"),
-      getSetting("typstBackgroundColor"),
-    ]);
+  const [
+    bodyFont,
+    headingFont,
+    primaryColor,
+    textColor,
+    backgroundColor,
+    secondaryBackgroundColor,
+  ] = await Promise.all([
+    getSetting("typstBodyFont"),
+    getSetting("typstHeadingFont"),
+    getSetting("typstPrimaryColor"),
+    getSetting("typstTextColor"),
+    getSetting("typstBackgroundColor"),
+    getSetting("typstSecondaryBackgroundColor"),
+  ]);
 
   let hasValues = false;
   const typography: { bodyFontFamily?: string; headingFontFamily?: string } =
@@ -114,6 +121,7 @@ async function resolveTypstStyleOverrides(): Promise<
     primaryHex?: string;
     textHex?: string;
     backgroundHex?: string;
+    secondaryBackgroundHex?: string;
   } = {};
 
   const parsedBodyFont = settingsRegistry.typstBodyFont.parse(
@@ -153,6 +161,15 @@ async function resolveTypstStyleOverrides(): Promise<
   );
   if (parsedBg) {
     colors.backgroundHex = parsedBg;
+    hasValues = true;
+  }
+
+  const parsedSecondaryBg =
+    settingsRegistry.typstSecondaryBackgroundColor.parse(
+      secondaryBackgroundColor ?? undefined,
+    );
+  if (parsedSecondaryBg) {
+    colors.secondaryBackgroundHex = parsedSecondaryBg;
     hasValues = true;
   }
 
