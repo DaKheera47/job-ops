@@ -208,7 +208,7 @@ export async function runImapIngestionSync(args: {
 
     if (uids.length === 0) {
       await completePostApplicationSyncRun({
-        syncRunId: syncRun.id,
+        id: syncRun.id,
         status: "completed",
         messagesDiscovered: 0,
         messagesRelevant: 0,
@@ -269,8 +269,8 @@ export async function runImapIngestionSync(args: {
             activeJobs: minifiedJobs,
           });
 
-          const isRelevant = classification.relevanceDecision === "relevant";
-          const matchConfidence = classification.matchConfidence ?? 0;
+          const isRelevant = classification.isRelevant;
+          const matchConfidence = classification.confidence;
           const isAutoLinked = isRelevant && matchConfidence >= 0.95;
           const isPendingMatch =
             isRelevant && matchConfidence >= 0.5 && matchConfidence < 0.95;
@@ -306,13 +306,15 @@ export async function runImapIngestionSync(args: {
             subject: message.subject,
             receivedAt,
             snippet: message.bodyPreview,
-            classificationLabel: classification.classificationLabel,
-            classificationConfidence: classification.classificationConfidence,
-            classificationPayload: classification.classificationPayload,
-            relevanceLlmScore: classification.relevanceLlmScore,
-            relevanceDecision: classification.relevanceDecision,
-            matchedJobId: classification.matchedJobId,
-            matchConfidence: classification.matchConfidence,
+            classificationLabel: null,
+            classificationConfidence: null,
+            classificationPayload: null,
+            relevanceLlmScore: null,
+            relevanceDecision: classification.isRelevant
+              ? "relevant"
+              : "not_relevant",
+            matchedJobId: classification.bestMatchId,
+            matchConfidence: classification.confidence,
             stageTarget: classification.stageTarget,
             messageType: classification.messageType,
             stageEventPayload: null,
@@ -326,12 +328,12 @@ export async function runImapIngestionSync(args: {
           // Create auto stage event if high confidence match
           if (
             isAutoLinked &&
-            classification.matchedJobId &&
+            classification.bestMatchId &&
             classification.stageTarget &&
             classification.stageTarget !== "no_change"
           ) {
             await createAutoStageEvent({
-              jobId: classification.matchedJobId,
+              jobId: classification.bestMatchId,
               stageTarget: classification.stageTarget,
               receivedAt,
               note: `Auto-linked from IMAP: ${message.subject}`,
@@ -340,8 +342,8 @@ export async function runImapIngestionSync(args: {
             logger.info("IMAP message auto-linked", {
               provider: "imap",
               accountKey: args.accountKey,
-              messageId: storedMessage.id,
-              jobId: classification.matchedJobId,
+              messageId: storedMessage,
+              jobId: classification.bestMatchId,
               stageTarget: classification.stageTarget,
               matchConfidence,
             });
@@ -360,7 +362,7 @@ export async function runImapIngestionSync(args: {
 
     // Step 4: Complete sync run
     await completePostApplicationSyncRun({
-      syncRunId: syncRun.id,
+      id: syncRun.id,
       status: "completed",
       messagesDiscovered: discovered,
       messagesRelevant: relevant,
@@ -391,7 +393,7 @@ export async function runImapIngestionSync(args: {
     const errorMessage = normalizeErrorMessage(error);
 
     await completePostApplicationSyncRun({
-      syncRunId: syncRun.id,
+      id: syncRun.id,
       status: "failed",
       messagesDiscovered: discovered,
       messagesRelevant: relevant,

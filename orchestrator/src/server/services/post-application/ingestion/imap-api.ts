@@ -2,7 +2,9 @@ import { requestTimeout } from "@infra/errors";
 import { normalizeWhitespace } from "@shared/utils/string";
 import { convert } from "html-to-text";
 import Imap from "imap";
+// @ts-expect-error - mailparser doesn't have complete types
 import type { ParsedMail } from "mailparser";
+// @ts-expect-error - mailparser doesn't have complete types
 import { simpleParser } from "mailparser";
 import { inspect } from "node:util";
 
