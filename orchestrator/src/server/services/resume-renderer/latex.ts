@@ -229,7 +229,26 @@ function renderHeaderItems(
     renderedItems.push(`${icon}~${linkStr}`);
   }
 
-  return renderedItems.join(" \\quad ");
+  const N = renderedItems.length;
+  if (N === 0) return "";
+
+  if (N <= 3) {
+    return renderedItems.join(" \\quad ");
+  }
+
+  const numRows = Math.ceil(N / 3);
+  const rows: string[][] = [];
+  const baseSize = Math.floor(N / numRows);
+  const remainder = N % numRows;
+
+  let currentIndex = 0;
+  for (let r = 0; r < numRows; r++) {
+    const size = r < remainder ? baseSize + 1 : baseSize;
+    rows.push(renderedItems.slice(currentIndex, currentIndex + size));
+    currentIndex += size;
+  }
+
+  return rows.map((row) => row.join(" \\quad ")).join(" \\\\[4pt]\n    ");
 }
 
 function renderBullets(items: string[]): string {
@@ -513,7 +532,7 @@ export function buildLatexDocument(
   const hasHeaderItems =
     document.contactItems.length > 0 || document.profileItems.length > 0;
   const contactBlock = hasHeaderItems
-    ? `    \\small ${renderHeaderItems(document.contactItems, document.profileItems)}\n`
+    ? `    \\vspace{5pt} \\small ${renderHeaderItems(document.contactItems, document.profileItems)}\n`
     : "";
   const body = [
     renderSummarySection(document),

@@ -280,6 +280,42 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("\\section{References}");
   });
 
+  it("balances and formats contact items in the header across multiple rows with proper spacing when they exceed 3 items", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        contactItems: [
+          { text: "123-456-7890", kind: "phone" },
+          {
+            text: "jane@example.com",
+            url: "mailto:jane@example.com",
+            kind: "email",
+          },
+          { text: "jane.dev", url: "https://jane.dev", kind: "website" },
+        ],
+        profileItems: [
+          {
+            network: "LinkedIn",
+            username: "janedoe",
+            url: "https://linkedin.com/in/janedoe",
+          },
+          {
+            network: "GitHub",
+            username: "janedoe",
+            url: "https://github.com/janedoe",
+          },
+        ],
+      },
+      "__CONTACT_BLOCK__",
+    );
+
+    // Should have 3 items on the first row and 2 on the second row, separated by \\[4pt] and indented
+    expect(latex).toContain(
+      "\\faPhone~123-456-7890 \\quad \\faEnvelope~\\href{mailto:jane@example.com}{\\underline{jane@example.com}} \\quad \\faGlobe~\\href{https://jane.dev}{\\underline{jane.dev}} \\\\[4pt]\n" +
+        "    \\faLinkedin~\\href{https://linkedin.com/in/janedoe}{\\underline{linkedin.com/in/janedoe}} \\quad \\faGithub~\\href{https://github.com/janedoe}{\\underline{github.com/janedoe}}",
+    );
+  });
+
   it("compiles HTML formatting tags into LaTeX macros and escapes special characters", () => {
     const latex = buildLatexDocument(
       {
