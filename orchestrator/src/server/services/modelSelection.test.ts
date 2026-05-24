@@ -402,12 +402,12 @@ describe("Model Selection Logic", () => {
         },
       } as any);
 
-      await expect(resolveLlmModel("tailoring")).resolves.toBe("");
+      await expect(resolveLlmModel("tailoring")).resolves.toBe("gpt-5.4");
       await expect(
         resolveLlmRuntimeSettings("tailoring"),
       ).resolves.toMatchObject({
         provider: "codex",
-        model: "",
+        model: "gpt-5.4",
       });
     });
   });

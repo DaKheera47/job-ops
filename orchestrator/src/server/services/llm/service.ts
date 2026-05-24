@@ -605,6 +605,7 @@ function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "gemini" || provider === "gemini_cli") {
     return "google/gemini-3-flash-preview";
   }
+  if (provider === "codex") return "gpt-5.4";
   return null;
 }
 

@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("pdf-parse", () => ({
   default: vi.fn(),
 }));
+const pdfjsMock = vi.hoisted(() => ({
+  getDocument: vi.fn(),
+  AnnotationType: { LINK: 2 },
+}));
+
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => pdfjsMock);
 
 import pdfParse from "pdf-parse";
 import {
@@ -21,6 +27,18 @@ function makePdfParseResult(text: string) {
     version: "default" as const,
     text,
   };
+}
+
+function mockPdfAnnotations(annotations: unknown[]) {
+  pdfjsMock.getDocument.mockReturnValueOnce({
+    promise: Promise.resolve({
+      numPages: 1,
+      destroy: vi.fn().mockResolvedValue(undefined),
+      getPage: vi.fn().mockResolvedValue({
+        getAnnotations: vi.fn().mockResolvedValue(annotations),
+      }),
+    }),
+  });
 }
 
 function escapeXml(value: string): string {
@@ -53,6 +71,7 @@ async function makeDocxBuffer(text: string): Promise<Buffer> {
 describe("document text extraction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPdfAnnotations([]);
   });
 
   it("extracts readable PDF text", async () => {
@@ -62,6 +81,36 @@ describe("document text extraction", () => {
 
     await expect(extractPdfText(Buffer.from("%PDF-1.4"))).resolves.toBe(
       "Taylor Quinn\nSenior Engineer",
+    );
+  });
+
+  it("appends embedded PDF link annotations to extracted text", async () => {
+    vi.mocked(pdfParse).mockResolvedValueOnce(
+      makePdfParseResult("  Taylor Quinn\nLinkedIn\nGitHub  "),
+    );
+    pdfjsMock.getDocument.mockReset();
+    mockPdfAnnotations([
+      {
+        annotationType: pdfjsMock.AnnotationType.LINK,
+        url: "https://linkedin.com/in/taylor",
+      },
+      {
+        subtype: "Link",
+        unsafeUrl: "https://github.com/taylor",
+      },
+      {
+        annotationType: pdfjsMock.AnnotationType.LINK,
+        url: "https://github.com/taylor",
+      },
+    ]);
+
+    await expect(extractPdfText(Buffer.from("%PDF-1.4"))).resolves.toBe(
+      [
+        "Taylor Quinn\nLinkedIn\nGitHub",
+        "Embedded PDF hyperlinks:",
+        "- https://linkedin.com/in/taylor",
+        "- https://github.com/taylor",
+      ].join("\n"),
     );
   });
 
