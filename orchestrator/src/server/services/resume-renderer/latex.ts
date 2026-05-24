@@ -16,6 +16,7 @@ import type {
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
   LatexResumeOrderedSectionKey,
+  LatexResumeProfileItem,
   ResumeRenderer,
 } from "./types";
 
@@ -130,8 +131,105 @@ function renderLink(label: string, url?: string | null): string {
   return `\\href{${escapeLatexUrl(url)}}{\\underline{${escapeForCommand(label)}}}`;
 }
 
-function renderContactItems(items: LatexResumeContactItem[]): string {
-  return items.map((item) => renderLink(item.text, item.url)).join(" $|$ ");
+function getIconForKindOrNetwork(kindOrNetwork: string, text?: string): string {
+  let lower = kindOrNetwork.toLowerCase().trim();
+  if (!lower && text) {
+    if (text.includes("@")) {
+      lower = "email";
+    } else if (/^[+\d\s()-]+$/.test(text)) {
+      lower = "phone";
+    } else {
+      lower = "website";
+    }
+  }
+
+  switch (lower) {
+    case "phone":
+      return "\\faPhone";
+    case "email":
+    case "mail":
+      return "\\faEnvelope";
+    case "website":
+    case "web":
+    case "globe":
+      return "\\faGlobe";
+    case "linkedin":
+      return "\\faLinkedin";
+    case "github":
+      return "\\faGithub";
+    case "twitter":
+    case "x":
+      return "\\faXTwitter";
+    case "facebook":
+      return "\\faFacebook";
+    case "instagram":
+      return "\\faInstagram";
+    case "youtube":
+      return "\\faYoutube";
+    case "medium":
+      return "\\faMedium";
+    case "dev":
+    case "dev.to":
+      return "\\faDev";
+    case "stackoverflow":
+    case "stack-overflow":
+      return "\\faStackOverflow";
+    case "gitlab":
+      return "\\faGitlab";
+    case "dribbble":
+      return "\\faDribbble";
+    case "behance":
+      return "\\faBehance";
+    case "discord":
+      return "\\faDiscord";
+    case "reddit":
+      return "\\faReddit";
+    case "twitch":
+      return "\\faTwitch";
+    case "tiktok":
+      return "\\faTiktok";
+    case "skype":
+      return "\\faSkype";
+    case "whatsapp":
+      return "\\faWhatsapp";
+    case "telegram":
+      return "\\faTelegram";
+    case "pinterest":
+      return "\\faPinterest";
+    default:
+      return "\\faLink";
+  }
+}
+
+function cleanUrlForDisplay(url: string): string {
+  return url
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/+$/, "");
+}
+
+function renderHeaderItems(
+  contactItems: LatexResumeContactItem[],
+  profileItems: LatexResumeProfileItem[],
+): string {
+  const renderedItems: string[] = [];
+
+  for (const item of contactItems) {
+    const icon = getIconForKindOrNetwork(item.kind || "", item.text);
+    const linkStr = renderLink(item.text, item.url);
+    renderedItems.push(`${icon}~${linkStr}`);
+  }
+
+  for (const item of profileItems) {
+    const displayUrl = item.url
+      ? cleanUrlForDisplay(item.url)
+      : item.username || item.network;
+    const icon = getIconForKindOrNetwork(item.network);
+    const linkStr = renderLink(displayUrl, item.url);
+    renderedItems.push(`${icon}~${linkStr}`);
+  }
+
+  return renderedItems.join(" \\quad ");
 }
 
 function renderBullets(items: string[]): string {
@@ -248,18 +346,8 @@ function renderLineSection(title: string, lines: string[]): string {
   ].join("\n");
 }
 
-function renderProfilesSection(document: LatexResumeDocument): string {
-  if (document.profileItems.length === 0) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
-  const lines = document.profileItems.map((item) => {
-    const label = escapeForCommand(item.network);
-    const value = renderLink(
-      item.username || item.url || item.network,
-      item.url,
-    );
-    return `\\textbf{${label}}{: ${value}}`;
-  });
-  return renderLineSection(titles.profiles, lines);
+function renderProfilesSection(_document: LatexResumeDocument): string {
+  return "";
 }
 
 function renderCustomFieldsSection(document: LatexResumeDocument): string {
@@ -422,10 +510,11 @@ export function buildLatexDocument(
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
-  const contactBlock =
-    document.contactItems.length > 0
-      ? `    \\small ${renderContactItems(document.contactItems)}\n`
-      : "";
+  const hasHeaderItems =
+    document.contactItems.length > 0 || document.profileItems.length > 0;
+  const contactBlock = hasHeaderItems
+    ? `    \\small ${renderHeaderItems(document.contactItems, document.profileItems)}\n`
+    : "";
   const body = [
     renderSummarySection(document),
     renderCustomFieldsSection(document),

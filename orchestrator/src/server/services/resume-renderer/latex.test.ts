@@ -263,7 +263,10 @@ describe("latex resume renderer", () => {
 
     expect(latex).toContain("\\includegraphics");
     expect(latex).toContain("London, UK");
-    expect(latex).toContain("\\section{Profiles}");
+    expect(latex).not.toContain("\\section{Profiles}");
+    expect(latex).toContain(
+      "\\faLinkedin~\\href{https://linkedin.com/in/janedoe}{\\underline{linkedin.com/in/janedoe}}",
+    );
     expect(latex).toContain("\\section{Custom Fields}");
     expect(latex).toContain(
       "\\textbf{Eligibility}{: Eligible to work in the UK}",

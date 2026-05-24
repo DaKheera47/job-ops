@@ -421,6 +421,9 @@ export function DesignResumeDock({
     );
   };
 
+  const unmovableItems = items.filter((item) => !item.isReorderable);
+  const movableItems = items.filter((item) => item.isReorderable);
+
   return (
     <div
       style={{ width: panelWidth }}
@@ -449,7 +452,21 @@ export function DesignResumeDock({
             className="absolute left-0 right-0 top-3 flex flex-col items-center gap-2"
             style={{ y: -scrollOffset }}
           >
-            {items.map((item) => (
+            {unmovableItems.map((item) => (
+              <DesignResumeDockButton
+                key={item.id}
+                {...item}
+                mouseY={mouseY}
+                baseItemSize={baseItemSize}
+                magnification={magnification}
+                distance={distance}
+                spring={spring}
+              />
+            ))}
+            {unmovableItems.length > 0 && movableItems.length > 0 && (
+              <div className="my-1.5 h-px w-6 bg-border/60" />
+            )}
+            {movableItems.map((item) => (
               <DesignResumeDockButton
                 key={item.id}
                 {...item}

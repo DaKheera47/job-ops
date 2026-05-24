@@ -552,6 +552,8 @@ export function DesignResumeRail({
         />
       </DesignResumeSection>
 
+      <div className="my-1 border-t border-border/40" />
+
       {orderedDefinitions.map((definition) => {
         const isReorderable = REORDERABLE_SECTION_KEYS.includes(definition.key);
         return (
