@@ -161,7 +161,10 @@ function stripHtml(value: string): string {
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
       .replace(/<\/li>\s*<li[^>]*>/gi, "\n")
-      .replace(/<\/?[^>]+>/g, " "),
+      .replace(
+        /<(?!strong\b|b\b|em\b|i\b|\/strong\b|\/b\b|\/em\b|\/i\b)\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>/gi,
+        " ",
+      ),
   )
     .replace(/\s*\n\s*/g, "\n")
     .replace(/[ \t]+/g, " ")
