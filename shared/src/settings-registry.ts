@@ -25,6 +25,8 @@ function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
   return raw === undefined || raw === "" ? null : raw;
 }
 
+export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
 function parseIntOrNull(raw: string | undefined): number | null {
   if (!raw) return null;
   const parsed = parseInt(raw, 10);
@@ -413,6 +415,66 @@ export const settingsRegistry = {
     default: (): TypstTheme => "classic",
     parse: parseTypstThemeOrNull,
     serialize: (value: TypstTheme | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstBodyFont: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(200),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstHeadingFont: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(200),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstPrimaryColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstTextColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstBackgroundColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstSecondaryBackgroundColor: {
+    kind: "typed" as const,
+    schema: z
+      .string()
+      .trim()
+      .regex(/^(#[0-9a-fA-F]{6})?$/, "Must be a 6-digit hex color or empty"),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
   ukvisajobsMaxJobs: {

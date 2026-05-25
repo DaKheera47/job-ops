@@ -68,6 +68,12 @@ describe("auto PDF regeneration", () => {
       designResumeUpdatedAt: null,
       pdfRenderer: "latex",
       typstTheme: "classic",
+      typstBodyFont: null,
+      typstHeadingFont: null,
+      typstPrimaryColor: null,
+      typstTextColor: null,
+      typstBackgroundColor: null,
+      typstSecondaryBackgroundColor: null,
       rxresumeBaseResumeId: null,
     });
   });
@@ -184,6 +190,12 @@ describe("auto PDF regeneration", () => {
       designResumeUpdatedAt: null,
       pdfRenderer: "typst",
       typstTheme: "compact",
+      typstBodyFont: null,
+      typstHeadingFont: null,
+      typstPrimaryColor: null,
+      typstTextColor: null,
+      typstBackgroundColor: null,
+      typstSecondaryBackgroundColor: null,
       rxresumeBaseResumeId: null,
     });
     mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([

@@ -46,7 +46,7 @@ vi.mock("./pages/OrchestratorPage", () => ({
   OrchestratorPage: () => null,
 }));
 
-vi.mock("./pages/SettingsPage", () => ({
+vi.mock("./pages/settings", () => ({
   SettingsPage: () => null,
 }));
 

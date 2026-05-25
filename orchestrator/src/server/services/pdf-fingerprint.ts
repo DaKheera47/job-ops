@@ -32,17 +32,39 @@ export interface PdfFingerprintContext {
   designResumeUpdatedAt: string | null;
   pdfRenderer: PdfRenderer;
   typstTheme: TypstTheme;
+  typstBodyFont: string | null;
+  typstHeadingFont: string | null;
+  typstPrimaryColor: string | null;
+  typstTextColor: string | null;
+  typstBackgroundColor: string | null;
+  typstSecondaryBackgroundColor: string | null;
   rxresumeBaseResumeId: string | null;
 }
 
 export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintContext> {
-  const [designResume, rawRenderer, rawTypstTheme, configuredBaseResume] =
-    await Promise.all([
-      getCurrentDesignResumeOrNullOnLegacy(),
-      settingsRepo.getSetting("pdfRenderer"),
-      settingsRepo.getSetting("typstTheme"),
-      getConfiguredRxResumeBaseResumeId(),
-    ]);
+  const [
+    designResume,
+    rawRenderer,
+    rawTypstTheme,
+    configuredBaseResume,
+    rawBodyFont,
+    rawHeadingFont,
+    rawPrimaryColor,
+    rawTextColor,
+    rawBackgroundColor,
+    rawSecondaryBackgroundColor,
+  ] = await Promise.all([
+    getCurrentDesignResumeOrNullOnLegacy(),
+    settingsRepo.getSetting("pdfRenderer"),
+    settingsRepo.getSetting("typstTheme"),
+    getConfiguredRxResumeBaseResumeId(),
+    settingsRepo.getSetting("typstBodyFont"),
+    settingsRepo.getSetting("typstHeadingFont"),
+    settingsRepo.getSetting("typstPrimaryColor"),
+    settingsRepo.getSetting("typstTextColor"),
+    settingsRepo.getSetting("typstBackgroundColor"),
+    settingsRepo.getSetting("typstSecondaryBackgroundColor"),
+  ]);
 
   const parsedRenderer = settingsRegistry.pdfRenderer.parse(
     rawRenderer ?? undefined,
@@ -58,6 +80,24 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     designResumeUpdatedAt: designResume?.updatedAt ?? null,
     pdfRenderer: parsedRenderer ?? settingsRegistry.pdfRenderer.default(),
     typstTheme: parsedTypstTheme ?? settingsRegistry.typstTheme.default(),
+    typstBodyFont:
+      settingsRegistry.typstBodyFont.parse(rawBodyFont ?? undefined) ?? null,
+    typstHeadingFont:
+      settingsRegistry.typstHeadingFont.parse(rawHeadingFont ?? undefined) ??
+      null,
+    typstPrimaryColor:
+      settingsRegistry.typstPrimaryColor.parse(rawPrimaryColor ?? undefined) ??
+      null,
+    typstTextColor:
+      settingsRegistry.typstTextColor.parse(rawTextColor ?? undefined) ?? null,
+    typstBackgroundColor:
+      settingsRegistry.typstBackgroundColor.parse(
+        rawBackgroundColor ?? undefined,
+      ) ?? null,
+    typstSecondaryBackgroundColor:
+      settingsRegistry.typstSecondaryBackgroundColor.parse(
+        rawSecondaryBackgroundColor ?? undefined,
+      ) ?? null,
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
   };
 }
@@ -70,7 +110,15 @@ export function createJobPdfFingerprint(
     version: context.version,
     renderer: context.pdfRenderer,
     ...(context.pdfRenderer === "typst"
-      ? { typstTheme: context.typstTheme }
+      ? {
+          typstTheme: context.typstTheme,
+          typstBodyFont: context.typstBodyFont,
+          typstHeadingFont: context.typstHeadingFont,
+          typstPrimaryColor: context.typstPrimaryColor,
+          typstTextColor: context.typstTextColor,
+          typstBackgroundColor: context.typstBackgroundColor,
+          typstSecondaryBackgroundColor: context.typstSecondaryBackgroundColor,
+        }
       : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,
     designResumeDocumentId: context.designResumeDocumentId,

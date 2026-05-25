@@ -19,7 +19,10 @@ import {
   getTenantJobPdfPath,
   getTenantPdfDir,
 } from "./pdf-storage";
-import { renderResumePdf } from "./resume-renderer";
+import {
+  type LatexResumeStyleOverrides,
+  renderResumePdf,
+} from "./resume-renderer";
 import {
   deleteResume as deleteRxResume,
   exportResumePdf as exportRxResumePdf,
@@ -85,6 +88,92 @@ async function resolveTypstTheme() {
     settingsRegistry.typstTheme.parse(storedValue ?? undefined) ??
     settingsRegistry.typstTheme.default()
   );
+}
+
+async function resolveTypstStyleOverrides(): Promise<
+  LatexResumeStyleOverrides | undefined
+> {
+  const [
+    bodyFont,
+    headingFont,
+    primaryColor,
+    textColor,
+    backgroundColor,
+    secondaryBackgroundColor,
+  ] = await Promise.all([
+    getSetting("typstBodyFont"),
+    getSetting("typstHeadingFont"),
+    getSetting("typstPrimaryColor"),
+    getSetting("typstTextColor"),
+    getSetting("typstBackgroundColor"),
+    getSetting("typstSecondaryBackgroundColor"),
+  ]);
+
+  let hasValues = false;
+  const typography: { bodyFontFamily?: string; headingFontFamily?: string } =
+    {};
+  const colors: {
+    primaryHex?: string;
+    textHex?: string;
+    backgroundHex?: string;
+    secondaryBackgroundHex?: string;
+  } = {};
+
+  const parsedBodyFont = settingsRegistry.typstBodyFont.parse(
+    bodyFont ?? undefined,
+  );
+  if (parsedBodyFont) {
+    typography.bodyFontFamily = parsedBodyFont;
+    hasValues = true;
+  }
+
+  const parsedHeadingFont = settingsRegistry.typstHeadingFont.parse(
+    headingFont ?? undefined,
+  );
+  if (parsedHeadingFont) {
+    typography.headingFontFamily = parsedHeadingFont;
+    hasValues = true;
+  }
+
+  const parsedPrimary = settingsRegistry.typstPrimaryColor.parse(
+    primaryColor ?? undefined,
+  );
+  if (parsedPrimary) {
+    colors.primaryHex = parsedPrimary;
+    hasValues = true;
+  }
+
+  const parsedText = settingsRegistry.typstTextColor.parse(
+    textColor ?? undefined,
+  );
+  if (parsedText) {
+    colors.textHex = parsedText;
+    hasValues = true;
+  }
+
+  const parsedBg = settingsRegistry.typstBackgroundColor.parse(
+    backgroundColor ?? undefined,
+  );
+  if (parsedBg) {
+    colors.backgroundHex = parsedBg;
+    hasValues = true;
+  }
+
+  const parsedSecondaryBg =
+    settingsRegistry.typstSecondaryBackgroundColor.parse(
+      secondaryBackgroundColor ?? undefined,
+    );
+  if (parsedSecondaryBg) {
+    colors.secondaryBackgroundHex = parsedSecondaryBg;
+    hasValues = true;
+  }
+
+  if (!hasValues) return undefined;
+
+  return {
+    ...(Object.keys(typography).length > 0 ? { typography } : {}),
+    ...(Object.keys(colors).length > 0 ? { colors } : {}),
+  };
 }
 
 async function resolveLocalResumeLanguage(resumeJson: Record<string, unknown>) {
@@ -382,9 +471,12 @@ export async function generatePdf(
 
     const outputPath = getTenantJobPdfPath(jobId);
     if (renderer !== "rxresume") {
-      const [language, typstTheme] = await Promise.all([
+      const [language, typstTheme, typstStyleOverrides] = await Promise.all([
         resolveLocalResumeLanguage(preparedResume.data),
         renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
+        renderer === "typst"
+          ? resolveTypstStyleOverrides()
+          : Promise.resolve(undefined),
       ]);
       await renderResumePdf({
         resumeJson: preparedResume.data,
@@ -393,6 +485,7 @@ export async function generatePdf(
         language,
         renderer,
         typstTheme,
+        typstStyleOverrides,
       });
     } else {
       await renderRxResumePdf({
@@ -441,9 +534,12 @@ export async function generateDesignResumePdf(options?: {
   });
 
   if (renderer !== "rxresume") {
-    const [language, typstTheme] = await Promise.all([
+    const [language, typstTheme, typstStyleOverrides] = await Promise.all([
       resolveLocalResumeLanguage(designResume.data),
       renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
+      renderer === "typst"
+        ? resolveTypstStyleOverrides()
+        : Promise.resolve(undefined),
     ]);
     await renderResumePdf({
       resumeJson: designResume.data,
@@ -452,6 +548,7 @@ export async function generateDesignResumePdf(options?: {
       language,
       renderer,
       typstTheme,
+      typstStyleOverrides,
     });
   } else {
     await renderRxResumePdf({

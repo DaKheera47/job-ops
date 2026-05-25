@@ -10,6 +10,12 @@ const context: PdfFingerprintContext = {
   designResumeUpdatedAt: "2026-05-01T10:00:00.000Z",
   pdfRenderer: "latex",
   typstTheme: "classic",
+  typstBodyFont: null,
+  typstHeadingFont: null,
+  typstPrimaryColor: null,
+  typstTextColor: null,
+  typstBackgroundColor: null,
+  typstSecondaryBackgroundColor: null,
   rxresumeBaseResumeId: "rxresume-base-1",
 };
 
