@@ -336,7 +336,7 @@ export function DesignResumePdfPreview({
           </div>
         </div>
 
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-2 py-2 shadow-lg backdrop-blur">
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-full border border-border/70 bg-card/90 px-2 py-2 shadow-lg backdrop-blur">
           <button
             type="button"
             aria-label="Zoom out PDF preview"

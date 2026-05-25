@@ -15,6 +15,8 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
+  LatexResumeProfileItem,
   ResumeRenderer,
 } from "./types";
 
@@ -61,12 +63,54 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-function escapeLatexText(value: string): string {
-  return normalizeText(value)
+function escapeRawLatex(value: string): string {
+  return value
     .replace(/\\/g, "\\textbackslash{}")
     .replace(/([#$%&_{}])/g, "\\$1")
     .replace(/~/g, "\\textasciitilde{}")
     .replace(/\^/g, "\\textasciicircum{}");
+}
+
+function escapeLatexText(value: string): string {
+  const normalized = normalizeText(value);
+  const parts = normalized.split(/(<\/?(?:strong|b|em|i)\b[^>]*>)/gi);
+  const result: string[] = [];
+  const tagStack: string[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (part.startsWith("<") && part.endsWith(">")) {
+      const lower = part.toLowerCase();
+      if (lower.startsWith("<strong") || lower.startsWith("<b")) {
+        result.push("\\textbf{");
+        tagStack.push("bold");
+      } else if (lower.startsWith("</strong") || lower.startsWith("</b>")) {
+        if (tagStack.pop() === "bold") {
+          result.push("}");
+        } else {
+          result.push("}");
+        }
+      } else if (lower.startsWith("<em") || lower.startsWith("<i")) {
+        result.push("\\textit{");
+        tagStack.push("italic");
+      } else if (lower.startsWith("</em") || lower.startsWith("</i>")) {
+        if (tagStack.pop() === "italic") {
+          result.push("}");
+        } else {
+          result.push("}");
+        }
+      }
+    } else {
+      result.push(escapeRawLatex(part));
+    }
+  }
+
+  while (tagStack.pop()) {
+    result.push("}");
+  }
+
+  return result.join("");
 }
 
 function escapeLatexUrl(value: string): string {
@@ -87,8 +131,124 @@ function renderLink(label: string, url?: string | null): string {
   return `\\href{${escapeLatexUrl(url)}}{\\underline{${escapeForCommand(label)}}}`;
 }
 
-function renderContactItems(items: LatexResumeContactItem[]): string {
-  return items.map((item) => renderLink(item.text, item.url)).join(" $|$ ");
+function getIconForKindOrNetwork(kindOrNetwork: string, text?: string): string {
+  let lower = kindOrNetwork.toLowerCase().trim();
+  if (!lower && text) {
+    if (text.includes("@")) {
+      lower = "email";
+    } else if (/^[+\d\s()-]+$/.test(text)) {
+      lower = "phone";
+    } else {
+      lower = "website";
+    }
+  }
+
+  switch (lower) {
+    case "phone":
+      return "\\faPhone";
+    case "email":
+    case "mail":
+      return "\\faEnvelope";
+    case "website":
+    case "web":
+    case "globe":
+      return "\\faGlobe";
+    case "linkedin":
+      return "\\faLinkedin";
+    case "github":
+      return "\\faGithub";
+    case "twitter":
+    case "x":
+      return "\\faXTwitter";
+    case "facebook":
+      return "\\faFacebook";
+    case "instagram":
+      return "\\faInstagram";
+    case "youtube":
+      return "\\faYoutube";
+    case "medium":
+      return "\\faMedium";
+    case "dev":
+    case "dev.to":
+      return "\\faDev";
+    case "stackoverflow":
+    case "stack-overflow":
+      return "\\faStackOverflow";
+    case "gitlab":
+      return "\\faGitlab";
+    case "dribbble":
+      return "\\faDribbble";
+    case "behance":
+      return "\\faBehance";
+    case "discord":
+      return "\\faDiscord";
+    case "reddit":
+      return "\\faReddit";
+    case "twitch":
+      return "\\faTwitch";
+    case "tiktok":
+      return "\\faTiktok";
+    case "skype":
+      return "\\faSkype";
+    case "whatsapp":
+      return "\\faWhatsapp";
+    case "telegram":
+      return "\\faTelegram";
+    case "pinterest":
+      return "\\faPinterest";
+    default:
+      return "\\faLink";
+  }
+}
+
+function cleanUrlForDisplay(url: string): string {
+  return url
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/+$/, "");
+}
+
+function renderHeaderItems(
+  contactItems: LatexResumeContactItem[],
+  profileItems: LatexResumeProfileItem[],
+): string {
+  const renderedItems: string[] = [];
+
+  for (const item of contactItems) {
+    const icon = getIconForKindOrNetwork(item.kind || "", item.text);
+    const linkStr = renderLink(item.text, item.url);
+    renderedItems.push(`${icon}~${linkStr}`);
+  }
+
+  for (const item of profileItems) {
+    const displayUrl = item.url
+      ? cleanUrlForDisplay(item.url)
+      : item.username || item.network;
+    const icon = getIconForKindOrNetwork(item.network);
+    const linkStr = renderLink(displayUrl, item.url);
+    renderedItems.push(`${icon}~${linkStr}`);
+  }
+
+  const N = renderedItems.length;
+  if (N === 0) return "";
+
+  if (N <= 3) {
+    return renderedItems.join(" \\quad ");
+  }
+
+  const numRows = Math.ceil(N / 3);
+  const rows: string[][] = [];
+  const baseSize = Math.floor(N / numRows);
+  const remainder = N % numRows;
+
+  let currentIndex = 0;
+  for (let r = 0; r < numRows; r++) {
+    const size = r < remainder ? baseSize + 1 : baseSize;
+    rows.push(renderedItems.slice(currentIndex, currentIndex + size));
+    currentIndex += size;
+  }
+
+  return rows.map((row) => row.join(" \\quad ")).join(" \\\\[4pt]\n    ");
 }
 
 function renderBullets(items: string[]): string {
@@ -205,18 +365,8 @@ function renderLineSection(title: string, lines: string[]): string {
   ].join("\n");
 }
 
-function renderProfilesSection(document: LatexResumeDocument): string {
-  if (document.profileItems.length === 0) return "";
-  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
-  const lines = document.profileItems.map((item) => {
-    const label = escapeForCommand(item.network);
-    const value = renderLink(
-      item.username || item.url || item.network,
-      item.url,
-    );
-    return `\\textbf{${label}}{: ${value}}`;
-  });
-  return renderLineSection(titles.profiles, lines);
+function renderProfilesSection(_document: LatexResumeDocument): string {
+  return "";
 }
 
 function renderCustomFieldsSection(document: LatexResumeDocument): string {
@@ -291,6 +441,82 @@ function renderLocationBlock(document: LatexResumeDocument): string {
   return `\\begin{center}\\small ${escapeForCommand(document.location)}\\end{center}\n`;
 }
 
+function renderOrderedCoreSections(
+  document: LatexResumeDocument,
+  titles: ReturnType<typeof getLatexResumeSectionTitles>,
+): string[] {
+  const sectionOrder = document.sectionOrder ?? [
+    "profiles",
+    "experience",
+    "education",
+    "projects",
+    "skills",
+    "languages",
+    "interests",
+    "awards",
+    "certifications",
+    "publications",
+    "volunteer",
+    "references",
+  ];
+  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    profiles: () => renderProfilesSection(document),
+    experience: () =>
+      renderEntrySection({
+        title: titles.experience,
+        entries: document.experience,
+        kind: "subheading",
+      }),
+    education: () =>
+      renderEntrySection({
+        title: titles.education,
+        entries: document.education,
+        kind: "subheading",
+      }),
+    projects: () =>
+      renderEntrySection({
+        title: titles.projects,
+        entries: document.projects,
+        kind: "project",
+      }),
+    skills: () => renderSkillsSection(document),
+    languages: () => renderLanguagesSection(document),
+    interests: () => renderInterestsSection(document),
+    awards: () =>
+      renderEntrySection({
+        title: titles.awards,
+        entries: document.awards,
+        kind: "subheading",
+      }),
+    certifications: () =>
+      renderEntrySection({
+        title: titles.certifications,
+        entries: document.certifications,
+        kind: "subheading",
+      }),
+    publications: () =>
+      renderEntrySection({
+        title: titles.publications,
+        entries: document.publications,
+        kind: "subheading",
+      }),
+    volunteer: () =>
+      renderEntrySection({
+        title: titles.volunteer,
+        entries: document.volunteer,
+        kind: "subheading",
+      }),
+    references: () =>
+      renderEntrySection({
+        title: titles.references,
+        entries: document.references,
+        kind: "subheading",
+      }),
+  };
+
+  return sectionOrder.map((key) => builders[key]());
+}
+
 async function loadTemplate(): Promise<string> {
   return await readFile(TEMPLATE_PATH, "utf8");
 }
@@ -303,57 +529,15 @@ export function buildLatexDocument(
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
-  const contactBlock =
-    document.contactItems.length > 0
-      ? `    \\small ${renderContactItems(document.contactItems)}\n`
-      : "";
+  const hasHeaderItems =
+    document.contactItems.length > 0 || document.profileItems.length > 0;
+  const contactBlock = hasHeaderItems
+    ? `    \\vspace{5pt} \\small ${renderHeaderItems(document.contactItems, document.profileItems)}\n`
+    : "";
   const body = [
     renderSummarySection(document),
-    renderProfilesSection(document),
     renderCustomFieldsSection(document),
-    renderEntrySection({
-      title: titles.experience,
-      entries: document.experience,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.education,
-      entries: document.education,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.projects,
-      entries: document.projects,
-      kind: "project",
-    }),
-    renderSkillsSection(document),
-    renderLanguagesSection(document),
-    renderInterestsSection(document),
-    renderEntrySection({
-      title: titles.awards,
-      entries: document.awards,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.certifications,
-      entries: document.certifications,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.publications,
-      entries: document.publications,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.volunteer,
-      entries: document.volunteer,
-      kind: "subheading",
-    }),
-    renderEntrySection({
-      title: titles.references,
-      entries: document.references,
-      kind: "subheading",
-    }),
+    ...renderOrderedCoreSections(document, titles),
   ]
     .filter(Boolean)
     .join("\n");

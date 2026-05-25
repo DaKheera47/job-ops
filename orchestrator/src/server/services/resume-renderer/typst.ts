@@ -425,6 +425,91 @@ function renderLocationBlock(document: LatexResumeDocument): string {
   return `  #text(size: 9pt)[${escapeTypstText(document.location)}] \\\n`;
 }
 
+function renderOrderedCoreSections(
+  document: LatexResumeDocument,
+  titles: ReturnType<typeof getLatexResumeSectionTitles>,
+  metaSize: string,
+): string[] {
+  const sectionOrder = document.sectionOrder ?? [
+    "profiles",
+    "experience",
+    "education",
+    "projects",
+    "skills",
+    "languages",
+    "interests",
+    "awards",
+    "certifications",
+    "publications",
+    "volunteer",
+    "references",
+  ];
+  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    profiles: () => renderProfilesSection(document),
+    experience: () =>
+      renderEntrySection({
+        title: titles.experience,
+        entries: document.experience,
+        kind: "subheading",
+        metaSize,
+      }),
+    education: () =>
+      renderEntrySection({
+        title: titles.education,
+        entries: document.education,
+        kind: "subheading",
+        metaSize,
+      }),
+    projects: () =>
+      renderEntrySection({
+        title: titles.projects,
+        entries: document.projects,
+        kind: "project",
+        metaSize,
+      }),
+    skills: () => renderSkillsSection(document),
+    languages: () => renderLanguagesSection(document),
+    interests: () => renderInterestsSection(document),
+    awards: () =>
+      renderEntrySection({
+        title: titles.awards,
+        entries: document.awards,
+        kind: "subheading",
+        metaSize,
+      }),
+    certifications: () =>
+      renderEntrySection({
+        title: titles.certifications,
+        entries: document.certifications,
+        kind: "subheading",
+        metaSize,
+      }),
+    publications: () =>
+      renderEntrySection({
+        title: titles.publications,
+        entries: document.publications,
+        kind: "subheading",
+        metaSize,
+      }),
+    volunteer: () =>
+      renderEntrySection({
+        title: titles.volunteer,
+        entries: document.volunteer,
+        kind: "subheading",
+        metaSize,
+      }),
+    references: () =>
+      renderEntrySection({
+        title: titles.references,
+        entries: document.references,
+        kind: "subheading",
+        metaSize,
+      }),
+  };
+
+  return sectionOrder.map((key) => builders[key]());
+}
+
 export async function readTypstThemeManifest(
   theme: TypstTheme = "classic",
 ): Promise<TypstThemeManifest> {
@@ -554,92 +639,6 @@ export function normalizeTypstDocumentPicturePath(
       renderPath: typstPath,
     },
   };
-}
-
-function renderOrderedCoreSections(
-  document: LatexResumeDocument,
-  titles: ReturnType<typeof getLatexResumeSectionTitles>,
-  metaSize: string,
-): string[] {
-  const sectionOrder: LatexResumeOrderedSectionKey[] =
-    document.sectionOrder ?? [
-      "profiles",
-      "experience",
-      "education",
-      "projects",
-      "skills",
-      "languages",
-      "interests",
-      "awards",
-      "certifications",
-      "publications",
-      "volunteer",
-      "references",
-    ];
-  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
-    profiles: () => renderProfilesSection(document),
-    experience: () =>
-      renderEntrySection({
-        title: titles.experience,
-        entries: document.experience,
-        kind: "subheading",
-        metaSize,
-      }),
-    education: () =>
-      renderEntrySection({
-        title: titles.education,
-        entries: document.education,
-        kind: "subheading",
-        metaSize,
-      }),
-    projects: () =>
-      renderEntrySection({
-        title: titles.projects,
-        entries: document.projects,
-        kind: "project",
-        metaSize,
-      }),
-    skills: () => renderSkillsSection(document),
-    languages: () => renderLanguagesSection(document),
-    interests: () => renderInterestsSection(document),
-    awards: () =>
-      renderEntrySection({
-        title: titles.awards,
-        entries: document.awards,
-        kind: "subheading",
-        metaSize,
-      }),
-    certifications: () =>
-      renderEntrySection({
-        title: titles.certifications,
-        entries: document.certifications,
-        kind: "subheading",
-        metaSize,
-      }),
-    publications: () =>
-      renderEntrySection({
-        title: titles.publications,
-        entries: document.publications,
-        kind: "subheading",
-        metaSize,
-      }),
-    volunteer: () =>
-      renderEntrySection({
-        title: titles.volunteer,
-        entries: document.volunteer,
-        kind: "subheading",
-        metaSize,
-      }),
-    references: () =>
-      renderEntrySection({
-        title: titles.references,
-        entries: document.references,
-        kind: "subheading",
-        metaSize,
-      }),
-  };
-
-  return sectionOrder.map((key) => builders[key]());
 }
 
 export function buildTypstDocument(

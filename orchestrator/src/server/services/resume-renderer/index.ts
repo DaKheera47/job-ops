@@ -1,16 +1,13 @@
 import type { PdfRenderer, TypstTheme } from "@shared/types";
-import { normalizeResumeJsonToLatexDocument } from "./document";
+import { buildResumeRenderDocument } from "./document";
 import { renderLatexPdf } from "./latex";
 import type {
   LatexResumeStyleOverrides,
-  NormalizeResumeJsonToLatexDocumentOptions,
+  NormalizeResumeJsonOptions,
 } from "./types";
 import { renderTypstPdf } from "./typst";
 
-export {
-  buildResumeRenderDocument,
-  normalizeResumeJsonToLatexDocument,
-} from "./document";
+export { buildResumeRenderDocument } from "./document";
 export {
   getLatexTemplatePath,
   getTectonicBinary,
@@ -29,12 +26,12 @@ export async function renderResumePdf(args: {
   resumeJson: Record<string, unknown>;
   outputPath: string;
   jobId: string;
-  language?: NormalizeResumeJsonToLatexDocumentOptions["language"];
+  language?: NormalizeResumeJsonOptions["language"];
   renderer?: LocalPdfRenderer;
   typstTheme?: TypstTheme;
   typstStyleOverrides?: LatexResumeStyleOverrides;
 }): Promise<void> {
-  const document = normalizeResumeJsonToLatexDocument(args.resumeJson, {
+  const document = buildResumeRenderDocument(args.resumeJson, {
     language: args.language,
   });
   if (args.renderer === "typst") {

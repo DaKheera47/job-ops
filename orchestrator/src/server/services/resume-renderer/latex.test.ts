@@ -10,9 +10,9 @@ import {
   readLatexTemplate,
   renderLatexPdf,
 } from "./latex";
-import type { LatexResumeDocument } from "./types";
+import type { ResumeRenderDocument } from "./types";
 
-const baseDocument: LatexResumeDocument = {
+const baseDocument: ResumeRenderDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
   location: "London, UK",
@@ -151,6 +151,39 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("\\section{Habilidades técnicas}");
   });
 
+  it("respects custom core section ordering", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        education: [
+          {
+            title: "University",
+            subtitle: "MSc",
+            date: "2020",
+            bullets: ["Studied distributed systems"],
+          },
+        ],
+        projects: [
+          {
+            title: "Platform",
+            subtitle: "TypeScript",
+            date: "2024",
+            bullets: ["Built deployment tooling"],
+          },
+        ],
+        sectionOrder: ["skills", "projects", "experience", "education"],
+      },
+      "__BODY__",
+    );
+
+    expect(latex.indexOf("\\section{Technical Skills}")).toBeLessThan(
+      latex.indexOf("\\section{Projects}"),
+    );
+    expect(latex.indexOf("\\section{Projects}")).toBeLessThan(
+      latex.indexOf("\\section{Experience}"),
+    );
+  });
+
   it("renders the newly supported sections and picture block", () => {
     const latex = buildLatexDocument(
       {
@@ -230,7 +263,10 @@ describe("latex resume renderer", () => {
 
     expect(latex).toContain("\\includegraphics");
     expect(latex).toContain("London, UK");
-    expect(latex).toContain("\\section{Profiles}");
+    expect(latex).not.toContain("\\section{Profiles}");
+    expect(latex).toContain(
+      "\\faLinkedin~\\href{https://linkedin.com/in/janedoe}{\\underline{linkedin.com/in/janedoe}}",
+    );
     expect(latex).toContain("\\section{Custom Fields}");
     expect(latex).toContain(
       "\\textbf{Eligibility}{: Eligible to work in the UK}",
@@ -242,6 +278,72 @@ describe("latex resume renderer", () => {
     expect(latex).toContain("\\section{Publications}");
     expect(latex).toContain("\\section{Volunteer}");
     expect(latex).toContain("\\section{References}");
+  });
+
+  it("balances and formats contact items in the header across multiple rows with proper spacing when they exceed 3 items", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        contactItems: [
+          { text: "123-456-7890", kind: "phone" },
+          {
+            text: "jane@example.com",
+            url: "mailto:jane@example.com",
+            kind: "email",
+          },
+          { text: "jane.dev", url: "https://jane.dev", kind: "website" },
+        ],
+        profileItems: [
+          {
+            network: "LinkedIn",
+            username: "janedoe",
+            url: "https://linkedin.com/in/janedoe",
+          },
+          {
+            network: "GitHub",
+            username: "janedoe",
+            url: "https://github.com/janedoe",
+          },
+        ],
+      },
+      "__CONTACT_BLOCK__",
+    );
+
+    // Should have 3 items on the first row and 2 on the second row, separated by \\[4pt] and indented
+    expect(latex).toContain(
+      "\\faPhone~123-456-7890 \\quad \\faEnvelope~\\href{mailto:jane@example.com}{\\underline{jane@example.com}} \\quad \\faGlobe~\\href{https://jane.dev}{\\underline{jane.dev}} \\\\[4pt]\n" +
+        "    \\faLinkedin~\\href{https://linkedin.com/in/janedoe}{\\underline{linkedin.com/in/janedoe}} \\quad \\faGithub~\\href{https://github.com/janedoe}{\\underline{github.com/janedoe}}",
+    );
+  });
+
+  it("compiles HTML formatting tags into LaTeX macros and escapes special characters", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        summary:
+          "<strong>Bold summary</strong> & <em>Italic summary</em> with # and % sign.",
+        experience: [
+          {
+            title: "Acme & Sons",
+            subtitle: "<b>Senior</b> Platform Engineer",
+            date: "2023",
+            bullets: [
+              "Managed <i>critical</i> systems.",
+              "Handled $50k budgets.",
+            ],
+          },
+        ],
+      },
+      "__BODY__",
+    );
+
+    expect(latex).toContain(
+      "\\textbf{Bold summary} \\& \\textit{Italic summary} with \\# and \\% sign.",
+    );
+    expect(latex).toContain("Acme \\& Sons");
+    expect(latex).toContain("\\textbf{Senior} Platform Engineer");
+    expect(latex).toContain("Managed \\textit{critical} systems.");
+    expect(latex).toContain("Handled \\$50k budgets.");
   });
 
   it("fails with a helpful error when tectonic is unavailable", async () => {

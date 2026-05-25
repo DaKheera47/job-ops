@@ -100,3 +100,66 @@ export function getDesignResumeDialogItem(
   ) as Record<string, unknown>[];
   return items[index] ?? null;
 }
+
+export const REORDERABLE_SECTION_KEYS = [
+  "profiles",
+  "experience",
+  "education",
+  "projects",
+  "skills",
+  "languages",
+  "interests",
+  "awards",
+  "certifications",
+  "publications",
+  "volunteer",
+  "references",
+];
+
+export function getSectionOrder(resumeJson: Record<string, unknown>): string[] {
+  const metadata = resumeJson.metadata as Record<string, unknown> | undefined;
+  const layout = metadata?.layout as Record<string, unknown> | undefined;
+  const pages = layout?.pages as unknown[] | undefined;
+  const firstPage = pages?.[0] as Record<string, unknown> | undefined;
+  const mainSections = firstPage?.main;
+
+  const order: string[] = [];
+  if (Array.isArray(mainSections)) {
+    for (const key of mainSections) {
+      if (
+        typeof key === "string" &&
+        REORDERABLE_SECTION_KEYS.includes(key) &&
+        !order.includes(key)
+      ) {
+        order.push(key);
+      }
+    }
+  }
+
+  for (const key of REORDERABLE_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      order.push(key);
+    }
+  }
+
+  return order;
+}
+
+export function getOrderedDefinitions(
+  resumeJson: Record<string, unknown>,
+  definitions: ItemDefinition[],
+): ItemDefinition[] {
+  const order = getSectionOrder(resumeJson);
+  const reorderableDefs = definitions.filter((d) =>
+    REORDERABLE_SECTION_KEYS.includes(d.key),
+  );
+  reorderableDefs.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+
+  let reorderableIndex = 0;
+  return definitions.map((d) => {
+    if (REORDERABLE_SECTION_KEYS.includes(d.key)) {
+      return reorderableDefs[reorderableIndex++];
+    }
+    return d;
+  });
+}

@@ -9,6 +9,8 @@ import type {
   DesignResumeJson,
   ResumeProjectsSettings,
 } from "@shared/types";
+import type React from "react";
+import { useMemo, useState } from "react";
 import { Accordion } from "@/components/ui/accordion";
 import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import {
@@ -24,7 +26,16 @@ import {
 } from "./DesignResumeListSection";
 import { DesignResumeSection } from "./DesignResumeSection";
 import { ITEM_DEFINITIONS, type ItemDefinition } from "./definitions";
-import { asArray, asRecord, setByPath, toBoolean, toText } from "./utils";
+import {
+  asArray,
+  asRecord,
+  getOrderedDefinitions,
+  getSectionOrder,
+  REORDERABLE_SECTION_KEYS,
+  setByPath,
+  toBoolean,
+  toText,
+} from "./utils";
 
 type DesignResumeRailProps = {
   draft: DesignResumeDocument;
@@ -149,6 +160,113 @@ export function DesignResumeRail({
   const { settings } = useSettings();
   const updateSettingsMutation = useUpdateSettingsMutation();
   const resumeJson = draft.resumeJson as Record<string, unknown>;
+
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+
+  const resetDragState = () => {
+    setDraggingKey(null);
+    setDragOverKey(null);
+  };
+
+  const handleDragStart = (
+    event: React.DragEvent<HTMLButtonElement>,
+    key: string,
+  ) => {
+    setDraggingKey(key);
+    setDragOverKey(key);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+  };
+
+  const handleDragEnd = () => {
+    resetDragState();
+  };
+
+  const handleDragOver = (
+    event: React.DragEvent<HTMLDivElement>,
+    key: string,
+  ) => {
+    if (draggingKey == null) return;
+    if (
+      !REORDERABLE_SECTION_KEYS.includes(draggingKey) ||
+      !REORDERABLE_SECTION_KEYS.includes(key)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverKey(key);
+  };
+
+  const handleDrop = (
+    event: React.DragEvent<HTMLDivElement>,
+    targetKey: string,
+  ) => {
+    event.preventDefault();
+    const sourceKey = event.dataTransfer.getData("text/plain") || draggingKey;
+    if (!sourceKey || sourceKey === targetKey) {
+      resetDragState();
+      return;
+    }
+
+    if (
+      !REORDERABLE_SECTION_KEYS.includes(sourceKey) ||
+      !REORDERABLE_SECTION_KEYS.includes(targetKey)
+    ) {
+      resetDragState();
+      return;
+    }
+
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentOrder = getSectionOrder(next as Record<string, unknown>);
+      const fromIndex = currentOrder.indexOf(sourceKey);
+      const toIndex = currentOrder.indexOf(targetKey);
+      if (fromIndex !== -1 && toIndex !== -1) {
+        const nextOrder = [...currentOrder];
+        const [removed] = nextOrder.splice(fromIndex, 1);
+        nextOrder.splice(toIndex, 0, removed);
+
+        if (!next.metadata) {
+          next.metadata = {} as DesignResumeJson["metadata"];
+        }
+        if (!next.metadata.layout) {
+          next.metadata.layout = { sidebarWidth: 0, pages: [] };
+        }
+        if (!next.metadata.layout.pages) {
+          next.metadata.layout.pages = [];
+        }
+        if (next.metadata.layout.pages.length === 0) {
+          next.metadata.layout.pages.push({
+            fullWidth: false,
+            main: nextOrder,
+            sidebar: [],
+          });
+        } else {
+          next.metadata.layout.pages[0].main = nextOrder;
+        }
+      }
+      return next;
+    });
+
+    trackProductEvent("resume_studio_section_edited", {
+      section: sourceKey,
+      action: "reorder",
+      item_count_bucket: "0",
+      device_layout:
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(max-width: 639px)").matches
+          ? "mobile"
+          : "desktop",
+    });
+
+    resetDragState();
+  };
+
+  const orderedDefinitions = useMemo(() => {
+    return getOrderedDefinitions(resumeJson, ITEM_DEFINITIONS);
+  }, [resumeJson]);
   const basics = (asRecord(resumeJson.basics) ?? {}) as Record<string, unknown>;
   const picture = (asRecord(resumeJson.picture) ?? {}) as Record<
     string,
@@ -434,12 +552,37 @@ export function DesignResumeRail({
         />
       </DesignResumeSection>
 
-      {ITEM_DEFINITIONS.map((definition) => (
-        <DesignResumeListSection
-          key={definition.key}
-          {...getListSectionProps(definition)}
-        />
-      ))}
+      <div className="my-1 border-t border-border/40" />
+
+      {orderedDefinitions.map((definition) => {
+        const isReorderable = REORDERABLE_SECTION_KEYS.includes(definition.key);
+        return (
+          <DesignResumeListSection
+            key={definition.key}
+            {...getListSectionProps(definition)}
+            isDragging={draggingKey === definition.key}
+            isDragTarget={
+              dragOverKey === definition.key && draggingKey !== definition.key
+            }
+            dragHandleProps={
+              isReorderable
+                ? {
+                    onDragStart: (e) => handleDragStart(e, definition.key),
+                    onDragEnd: handleDragEnd,
+                  }
+                : undefined
+            }
+            onDragOver={
+              isReorderable
+                ? (e) => handleDragOver(e, definition.key)
+                : undefined
+            }
+            onDrop={
+              isReorderable ? (e) => handleDrop(e, definition.key) : undefined
+            }
+          />
+        );
+      })}
     </Accordion>
   );
 }

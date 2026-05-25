@@ -312,7 +312,12 @@ export const InProgressBoardPage: React.FC = () => {
                       </Badge>
                     </header>
 
-                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
+                    <div
+                      className={cn(
+                        "min-h-0 flex-1 space-y-2 p-2.5 [scrollbar-gutter:stable]",
+                        dragging ? "overflow-hidden" : "overflow-y-auto",
+                      )}
+                    >
                       {laneCards.length === 0 ? (
                         <div className="rounded-md border border-dashed border-border/35 bg-background/20 px-2.5 py-2 text-[11px] text-muted-foreground/80">
                           Drop a card here or log a stage.
