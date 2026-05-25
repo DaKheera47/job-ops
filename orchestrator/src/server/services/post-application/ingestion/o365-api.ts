@@ -131,8 +131,13 @@ export async function resolveO365AccessToken(
     );
   }
 
+  // Microsoft may rotate the refresh token on each use. Prefer the new one
+  // when present so subsequent refreshes don't fail with invalid_grant.
+  const rotatedRefreshToken = asString(data?.refresh_token);
+
   return {
     ...credentials,
+    ...(rotatedRefreshToken ? { refreshToken: rotatedRefreshToken } : {}),
     accessToken,
     expiryDate: Date.now() + expiresIn * 1000,
   };

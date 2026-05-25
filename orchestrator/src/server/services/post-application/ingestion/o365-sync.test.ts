@@ -46,6 +46,44 @@ describe("o365 sync http behavior", () => {
     ).rejects.toThrow("O365 token refresh failed with HTTP 401.");
   });
 
+  it("adopts rotated refresh token when Microsoft returns a new one", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        access_token: "new-access-token",
+        expires_in: 3600,
+        refresh_token: "rotated-refresh-token",
+      }),
+    } as unknown as Response);
+
+    const result = await resolveO365AccessToken({
+      refreshToken: "original-refresh-token",
+    });
+
+    expect(result.accessToken).toBe("new-access-token");
+    expect(result.refreshToken).toBe("rotated-refresh-token");
+  });
+
+  it("keeps the original refresh token when Microsoft does not return a new one", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        access_token: "new-access-token",
+        expires_in: 3600,
+        // no refresh_token field
+      }),
+    } as unknown as Response);
+
+    const result = await resolveO365AccessToken({
+      refreshToken: "original-refresh-token",
+    });
+
+    expect(result.accessToken).toBe("new-access-token");
+    expect(result.refreshToken).toBe("original-refresh-token");
+  });
+
   it("maps graph API abort to REQUEST_TIMEOUT", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(
       new DOMException("Aborted", "AbortError"),
