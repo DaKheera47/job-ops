@@ -411,7 +411,20 @@ async function exchangeO365AuthorizationCode(args: {
     unknown
   >;
   if (!response.ok) {
-    throw upstreamError("Microsoft OAuth token exchange failed.");
+    const upstreamOAuthError = asNonEmptyString(data.error);
+    const upstreamOAuthErrorDescription = asNonEmptyString(
+      data.error_description,
+    );
+    const messageParts = [
+      `Microsoft OAuth token exchange failed with status ${response.status}.`,
+      ...(upstreamOAuthError
+        ? [`error: ${upstreamOAuthError}.`]
+        : []),
+      ...(upstreamOAuthErrorDescription
+        ? [`error_description: ${upstreamOAuthErrorDescription}`]
+        : []),
+    ];
+    throw upstreamError(messageParts.join(" "));
   }
 
   const refreshToken = asNonEmptyString(data.refresh_token);
