@@ -1264,7 +1264,7 @@ function rebuildPostApplicationTablesForO365(): void {
         );
         // Recreate index dropped with the old table.
         sqlite.exec(
-          "CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at ON post_application_sync_runs(provider, account_key, started_at DESC)",
+          "CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at ON post_application_sync_runs(provider, account_key, started_at)",
         );
       }
 
