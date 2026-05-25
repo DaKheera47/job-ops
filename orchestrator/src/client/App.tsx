@@ -24,11 +24,12 @@ import { GmailOauthCallbackPage } from "./pages/GmailOauthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { InProgressBoardPage } from "./pages/InProgressBoardPage";
 import { JobPage } from "./pages/JobPage";
+import { O365OauthCallbackPage } from "./pages/O365OauthCallbackPage";
 import { OfflinePage } from "./pages/OfflinePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
-import { SettingsPage } from "./pages/SettingsPage";
 import { SignInPage } from "./pages/SignInPage";
+import { SettingsPage } from "./pages/settings";
 import { TracerLinksPage } from "./pages/TracerLinksPage";
 import { TrackingInboxPage } from "./pages/TrackingInboxPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
@@ -177,6 +178,10 @@ export const App: React.FC = () => {
                 <Route
                   path="/oauth/gmail/callback"
                   element={<GmailOauthCallbackPage />}
+                />
+                <Route
+                  path="/oauth/o365/callback"
+                  element={<O365OauthCallbackPage />}
                 />
                 <Route path="/job/:id" element={<JobPage />} />
                 <Route path="/job/:id/:view" element={<JobPage />} />

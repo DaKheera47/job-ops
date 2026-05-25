@@ -213,6 +213,23 @@ describe("normalizeResumeJsonToLatexDocument", () => {
           ],
         },
       },
+      metadata: {
+        design: {
+          colors: {
+            primary: "rgba(74, 124, 143, 1)",
+            text: "#1f2937",
+            background: "rgb(245, 247, 250)",
+          },
+        },
+        typography: {
+          body: {
+            fontFamily: "Inter",
+          },
+          heading: {
+            fontFamily: "Playfair Display",
+          },
+        },
+      },
     });
 
     expect(document.picture?.assetId).toBe("asset-1");
@@ -239,6 +256,17 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.references).toHaveLength(1);
     expect(document.sectionTitles?.profiles).toBe("Links");
     expect(document.sectionTitles?.summary).toBe("About");
+    expect(document.style).toEqual({
+      colors: {
+        primaryHex: "#4a7c8f",
+        textHex: "#1f2937",
+        backgroundHex: "#f5f7fa",
+      },
+      typography: {
+        bodyFontFamily: "Inter",
+        headingFontFamily: "Playfair Display",
+      },
+    });
   });
 
   it("respects hidden sections and items", () => {
@@ -264,6 +292,48 @@ describe("normalizeResumeJsonToLatexDocument", () => {
     expect(document.profileItems).toHaveLength(0);
     expect(document.awards).toHaveLength(1);
     expect(document.awards[0]?.title).toBe("Visible award");
+  });
+
+  it("normalizes design colors to hex with safe fallbacks", () => {
+    const shortHex = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: { design: { colors: { primary: "#abc" } } },
+    });
+    expect(shortHex.style?.colors.primaryHex).toBe("#aabbcc");
+
+    const rgb = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: {
+        design: {
+          colors: {
+            primary: "rgba(74, 124, 143, 1)",
+            text: "rgb(-20, 260, 12.7)",
+            background: "#f5f7fa",
+          },
+        },
+      },
+    });
+    expect(rgb.style?.colors.primaryHex).toBe("#4a7c8f");
+    expect(rgb.style?.colors.textHex).toBe("#00ff0d");
+    expect(rgb.style?.colors.backgroundHex).toBe("#f5f7fa");
+
+    const fallback = normalizeResumeJsonToLatexDocument({
+      basics: { name: "Jane Doe" },
+      metadata: {
+        design: {
+          colors: {
+            primary: "not-a-color",
+            text: "",
+            background: "wat",
+          },
+        },
+      },
+    });
+    expect(fallback.style?.colors).toEqual({
+      primaryHex: "#dc2626",
+      textHex: "#000000",
+      backgroundHex: "#ffffff",
+    });
   });
 
   it("preserves basic formatting tags and strips other HTML tags", () => {

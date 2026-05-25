@@ -75,7 +75,7 @@ afterEach(() => {
 
 describe("post-application provider registry", () => {
   it("lists registered providers", () => {
-    expect(listPostApplicationProviders()).toEqual(["gmail", "imap"]);
+    expect(listPostApplicationProviders()).toEqual(["gmail", "imap", "o365"]);
   });
 
   it("resolves a known provider", () => {
@@ -209,7 +209,7 @@ describe("post-application provider action dispatcher", () => {
     });
   });
 
-  it("maps IMAP not-implemented errors to service unavailable app errors", async () => {
+  it("maps IMAP missing-credentials errors to invalid request app errors", async () => {
     await expect(
       executePostApplicationProviderAction({
         provider: "imap",
@@ -217,10 +217,8 @@ describe("post-application provider action dispatcher", () => {
         accountKey: "account:imap:test",
       }),
     ).rejects.toMatchObject({
-      status: 503,
-      code: "SERVICE_UNAVAILABLE",
-      message:
-        "IMAP provider is not implemented yet for account 'account:imap:test'.",
+      status: 400,
+      code: "INVALID_REQUEST",
     });
   });
 

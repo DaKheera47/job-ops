@@ -93,6 +93,73 @@ For a full step-by-step setup, exact scope requirements, and troubleshooting, se
 
 - [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
 
+## O365 OAuth (Tracking Inbox)
+
+If you want O365/Outlook integration, configure Microsoft Entra OAuth credentials.
+
+### 1) Create Entra app registration
+
+In Microsoft Entra admin center:
+
+1. Register an app.
+2. Add Web redirect URI:
+  - `http://localhost:3005/oauth/o365/callback`
+  - Or production URL, for example `https://your-domain.com/oauth/o365/callback`
+3. Add Microsoft Graph delegated permissions: `Mail.Read`, `User.Read`, `offline_access`.
+4. Create a client secret.
+
+### 2) Configure environment variables
+
+- `O365_OAUTH_CLIENT_ID` (required)
+- `O365_OAUTH_CLIENT_SECRET` (required)
+- `O365_OAUTH_REDIRECT_URI` (optional, recommended in production)
+- `O365_OAUTH_TENANT_ID` (optional, defaults to `common`)
+
+### 3) Restart and connect
+
+- Restart container
+- Open Tracking Inbox, choose `o365`, and click **Connect**
+
+For the full Entra/Azure setup, tenant guidance, and troubleshooting, see:
+
+- [O365 OAuth Setup (Entra ID / Azure)](/docs/next/getting-started/o365-oauth-setup)
+
+## IMAP Email (Tracking Inbox)
+
+IMAP provides a simpler alternative for email integration without OAuth setup.
+
+### What is IMAP?
+
+- Works with any IMAP-compatible email provider (Gmail, Outlook, Yahoo, iCloud, etc.)
+- No OAuth app registration required
+- Direct credential-based authentication
+- Supports custom domains and legacy email systems
+
+### How to connect
+
+1. Open **Tracking Inbox**
+2. Select provider **imap**
+3. Click **Connect IMAP**
+4. Enter connection details:
+   - **Host**: Your IMAP server (e.g., `imap.gmail.com`, `outlook.office365.com`)
+   - **Port**: Usually `993` for secure IMAP
+   - **User**: Your full email address
+   - **Password**: Your email password or app-specific password
+   - **TLS**: Enable (recommended)
+
+### Common IMAP servers
+
+| Provider | IMAP Server | Port |
+|----------|-------------|------|
+| Gmail | `imap.gmail.com` | 993 |
+| Outlook/O365 | `outlook.office365.com` | 993 |
+| Yahoo | `imap.mail.yahoo.com` | 993 |
+| iCloud | `imap.mail.me.com` | 993 |
+
+For detailed setup, server configurations, and troubleshooting, see:
+
+- [IMAP Email Setup](/docs/next/getting-started/imap-setup)
+
 ## Email-to-job matching overview
 
 ```mermaid

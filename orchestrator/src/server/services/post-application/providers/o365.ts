@@ -1,11 +1,10 @@
-import { encryptCredential } from "@infra/credentials-crypto";
 import { logger } from "@infra/logger";
 import {
   disconnectPostApplicationIntegration,
   getPostApplicationIntegration,
   upsertConnectedPostApplicationIntegration,
 } from "@server/repositories/post-application-integrations";
-import { runImapIngestionSync } from "@server/services/post-application/ingestion/imap-sync";
+import { runO365IngestionSync } from "@server/services/post-application/ingestion/o365-sync";
 import type { PostApplicationIntegration } from "@shared/types";
 import { providerInvalidRequest } from "./errors";
 import type {
@@ -17,13 +16,13 @@ import type {
   PostApplicationProviderSyncArgs,
 } from "./types";
 
-type ImapCredentialPayload = {
-  host: string;
-  port?: number;
-  user: string;
-  password: string;
-  tls?: boolean;
-  allowSelfSignedCerts?: boolean;
+type O365CredentialPayload = {
+  refreshToken: string;
+  accessToken?: string;
+  expiryDate?: number;
+  scope?: string;
+  tokenType?: string;
+  email?: string;
   displayName?: string;
 };
 
@@ -39,51 +38,30 @@ function asNumber(value: unknown): number | undefined {
     : undefined;
 }
 
-function asBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
-}
-
-function parseImapCredentials(
+function parseO365Credentials(
   args: PostApplicationProviderConnectArgs,
-): ImapCredentialPayload {
+): O365CredentialPayload {
   const raw = args.payload?.payload;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw providerInvalidRequest(
-      "IMAP connect requires payload credentials in body.payload.",
+      "O365 connect requires payload credentials in connectPayload.payload.",
     );
   }
 
-  const host = asString((raw as Record<string, unknown>).host);
-  const user = asString((raw as Record<string, unknown>).user);
-  const password = asString((raw as Record<string, unknown>).password);
-
-  if (!host) {
+  const refreshToken = asString((raw as Record<string, unknown>).refreshToken);
+  if (!refreshToken) {
     throw providerInvalidRequest(
-      "IMAP connect requires a non-empty host in body.payload.host.",
-    );
-  }
-
-  if (!user) {
-    throw providerInvalidRequest(
-      "IMAP connect requires a non-empty user in body.payload.user.",
-    );
-  }
-
-  if (!password) {
-    throw providerInvalidRequest(
-      "IMAP connect requires a non-empty password in body.payload.password.",
+      "O365 connect requires a non-empty refreshToken in connectPayload.payload.refreshToken.",
     );
   }
 
   return {
-    host,
-    user,
-    password,
-    port: asNumber((raw as Record<string, unknown>).port),
-    tls: asBoolean((raw as Record<string, unknown>).tls),
-    allowSelfSignedCerts: asBoolean(
-      (raw as Record<string, unknown>).allowSelfSignedCerts,
-    ),
+    refreshToken,
+    accessToken: asString((raw as Record<string, unknown>).accessToken),
+    expiryDate: asNumber((raw as Record<string, unknown>).expiryDate),
+    scope: asString((raw as Record<string, unknown>).scope),
+    tokenType: asString((raw as Record<string, unknown>).tokenType),
+    email: asString((raw as Record<string, unknown>).email),
     displayName: asString((raw as Record<string, unknown>).displayName),
   };
 }
@@ -97,15 +75,16 @@ function toPublicIntegration(
   return {
     ...integration,
     credentials: {
-      host: asString(credentials.host) ?? null,
-      port: asNumber(credentials.port) ?? 993,
-      user: asString(credentials.user) ?? null,
-      hasPassword:
-        typeof credentials.password === "string" &&
-        credentials.password.length > 0,
-      tls: asBoolean(credentials.tls) ?? true,
-      allowSelfSignedCerts:
-        asBoolean(credentials.allowSelfSignedCerts) ?? false,
+      hasRefreshToken:
+        typeof credentials.refreshToken === "string" &&
+        credentials.refreshToken.length > 0,
+      hasAccessToken:
+        typeof credentials.accessToken === "string" &&
+        credentials.accessToken.length > 0,
+      scope: asString(credentials.scope) ?? null,
+      tokenType: asString(credentials.tokenType) ?? null,
+      expiryDate: asNumber(credentials.expiryDate) ?? null,
+      email: asString(credentials.email) ?? null,
     },
   };
 }
@@ -116,57 +95,61 @@ function buildStatus(
   message?: string,
 ): PostApplicationProviderActionResult {
   const publicIntegration = toPublicIntegration(integration);
-  const hasPassword = Boolean(publicIntegration?.credentials?.hasPassword);
+  const hasRefreshToken = Boolean(
+    publicIntegration?.credentials?.hasRefreshToken,
+  );
 
   return {
     status: {
-      provider: "imap",
+      provider: "o365",
       accountKey,
-      connected: publicIntegration?.status === "connected" && hasPassword,
+      connected: publicIntegration?.status === "connected" && hasRefreshToken,
       integration: publicIntegration,
     },
     message,
   };
 }
 
-export const imapProvider: PostApplicationProviderAdapter = {
-  key: "imap",
-
+export const o365Provider: PostApplicationProviderAdapter = {
+  key: "o365",
   async connect(
     args: PostApplicationProviderConnectArgs,
   ): Promise<PostApplicationProviderActionResult> {
-    const credentials = parseImapCredentials(args);
+    const credentials = parseO365Credentials(args);
     const displayName =
       credentials.displayName ??
-      `IMAP (${credentials.user}@${credentials.host})`;
+      credentials.email ??
+      `O365 (${args.accountKey})`;
 
     const integration = await upsertConnectedPostApplicationIntegration({
-      provider: "imap",
+      provider: "o365",
       accountKey: args.accountKey,
       displayName,
       credentials: {
-        host: credentials.host,
-        port: credentials.port ?? 993,
-        user: credentials.user,
-        password: encryptCredential(credentials.password),
-        tls: credentials.tls !== false,
-        allowSelfSignedCerts: credentials.allowSelfSignedCerts ?? false,
+        refreshToken: credentials.refreshToken,
+        ...(credentials.accessToken
+          ? { accessToken: credentials.accessToken }
+          : {}),
+        ...(typeof credentials.expiryDate === "number"
+          ? { expiryDate: credentials.expiryDate }
+          : {}),
+        ...(credentials.scope ? { scope: credentials.scope } : {}),
+        ...(credentials.tokenType ? { tokenType: credentials.tokenType } : {}),
+        ...(credentials.email ? { email: credentials.email } : {}),
       },
     });
 
-    logger.info("IMAP integration connected", {
-      provider: "imap",
+    logger.info("O365 integration connected", {
+      provider: "o365",
       accountKey: args.accountKey,
       initiatedBy: args.initiatedBy ?? null,
       integrationId: integration.id,
-      host: credentials.host,
-      port: credentials.port ?? 993,
     });
 
     return buildStatus(
       args.accountKey,
       integration,
-      "IMAP integration connected.",
+      "O365 integration connected.",
     );
   },
 
@@ -174,14 +157,14 @@ export const imapProvider: PostApplicationProviderAdapter = {
     args: PostApplicationProviderStatusArgs,
   ): Promise<PostApplicationProviderActionResult> {
     const integration = await getPostApplicationIntegration(
-      "imap",
+      "o365",
       args.accountKey,
     );
     if (!integration) {
       return buildStatus(
         args.accountKey,
         null,
-        "IMAP provider is not connected.",
+        "O365 provider is not connected.",
       );
     }
 
@@ -192,27 +175,27 @@ export const imapProvider: PostApplicationProviderAdapter = {
     args: PostApplicationProviderSyncArgs,
   ): Promise<PostApplicationProviderActionResult> {
     const integration = await getPostApplicationIntegration(
-      "imap",
+      "o365",
       args.accountKey,
     );
     if (!integration) {
       throw providerInvalidRequest(
-        `IMAP account '${args.accountKey}' is not connected.`,
+        `O365 account '${args.accountKey}' is not connected.`,
       );
     }
 
-    const summary = await runImapIngestionSync({
+    const summary = await runO365IngestionSync({
       accountKey: args.accountKey,
       maxMessages: args.payload?.maxMessages,
       searchDays: args.payload?.searchDays,
     });
 
     const refreshedIntegration = await getPostApplicationIntegration(
-      "imap",
+      "o365",
       args.accountKey,
     );
-    logger.info("IMAP sync completed", {
-      provider: "imap",
+    logger.info("O365 sync completed", {
+      provider: "o365",
       accountKey: args.accountKey,
       initiatedBy: args.initiatedBy ?? null,
       integrationId: integration.id,
@@ -232,17 +215,16 @@ export const imapProvider: PostApplicationProviderAdapter = {
   async disconnect(
     args: PostApplicationProviderDisconnectArgs,
   ): Promise<PostApplicationProviderActionResult> {
-    const integration = await getPostApplicationIntegration(
-      "imap",
-      args.accountKey,
-    );
-
     const disconnected = await disconnectPostApplicationIntegration(
-      "imap",
+      "o365",
       args.accountKey,
     );
-    logger.info("IMAP integration disconnected", {
-      provider: "imap",
+    const integration = disconnected
+      ? disconnected
+      : await getPostApplicationIntegration("o365", args.accountKey);
+
+    logger.info("O365 integration disconnected", {
+      provider: "o365",
       accountKey: args.accountKey,
       initiatedBy: args.initiatedBy ?? null,
       integrationId: disconnected?.id ?? integration?.id ?? null,
@@ -250,8 +232,8 @@ export const imapProvider: PostApplicationProviderAdapter = {
 
     return buildStatus(
       args.accountKey,
-      disconnected,
-      "IMAP integration disconnected.",
+      integration,
+      "O365 integration disconnected.",
     );
   },
 };

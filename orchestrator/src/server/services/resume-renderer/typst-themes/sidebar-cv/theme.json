@@ -1,0 +1,7 @@
+{
+  "id": "sidebar-cv",
+  "label": "Sidebar CV",
+  "description": "A two-column CV with a tinted sidebar for photo, summary, and contact details.",
+  "kind": "adapted",
+  "entrypoint": "main.typ"
+}

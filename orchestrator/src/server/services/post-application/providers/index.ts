@@ -8,6 +8,7 @@ export {
 } from "./errors";
 export { gmailProvider } from "./gmail";
 export { imapProvider } from "./imap";
+export { o365Provider } from "./o365";
 export {
   listPostApplicationProviders,
   resolvePostApplicationProvider,
