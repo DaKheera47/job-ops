@@ -234,4 +234,42 @@ describe("o365 sync auto-log idempotency", () => {
       }),
     );
   });
+
+  it("stores a safe fallback timestamp and skips auto stage events when receivedDateTime is invalid", async () => {
+    const { runO365IngestionSync } = await import("./o365-sync");
+    const { getMessageMetadata } = await import("./o365-api");
+
+    vi.mocked(getMessageMetadata).mockResolvedValueOnce({
+      id: "message-1",
+      conversationId: "thread-1",
+      subject: "Interview update",
+      bodyPreview: "snippet",
+      from: {
+        emailAddress: { name: "Recruiter", address: "jobs@example.com" },
+      },
+      receivedDateTime: "invalid-date",
+    });
+    getPostApplicationMessageByExternalId.mockResolvedValueOnce(null);
+    upsertPostApplicationMessage.mockResolvedValueOnce({
+      message: {
+        id: "post-msg-1",
+        matchedJobId: "job-1",
+        processingStatus: "auto_linked",
+        stageTarget: "assessment",
+        receivedAt: 0,
+      },
+      wasCreated: true,
+      previousProcessingStatus: null,
+      autoLinkTransitioned: true,
+    });
+
+    await runO365IngestionSync({ accountKey: "default", maxMessages: 1 });
+
+    expect(upsertPostApplicationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receivedAt: 0,
+      }),
+    );
+    expect(transitionStage).not.toHaveBeenCalled();
+  });
 });

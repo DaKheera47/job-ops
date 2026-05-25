@@ -458,26 +458,40 @@ async function fetchO365UserProfile(accessToken: string): Promise<{
   email?: string;
   displayName?: string;
 }> {
-  const response = await fetch("https://graph.microsoft.com/v1.0/me", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  try {
+    const response = await fetchWithTimeout(
+      "https://graph.microsoft.com/v1.0/me",
+      {
+        timeoutMs: O365_HTTP_TIMEOUT_MS,
+        init: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      },
+    );
 
-  if (!response.ok) return {};
-  const data = (await response.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
-  const email =
-    asNonEmptyString(data.mail) ??
-    asNonEmptyString(data.userPrincipalName) ??
-    undefined;
-  const displayName = asNonEmptyString(data.displayName) ?? undefined;
-  return {
-    ...(email ? { email } : {}),
-    ...(displayName ? { displayName } : {}),
-  };
+    if (!response.ok) return {};
+    const data = (await response.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const email =
+      asNonEmptyString(data.mail) ??
+      asNonEmptyString(data.userPrincipalName) ??
+      undefined;
+    const displayName = asNonEmptyString(data.displayName) ?? undefined;
+    return {
+      ...(email ? { email } : {}),
+      ...(displayName ? { displayName } : {}),
+    };
+  } catch (error) {
+    logger.warn("O365 profile enrichment failed during oauth exchange", {
+      route: "post-application/providers/o365/oauth/exchange",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {};
+  }
 }
 
 postApplicationProvidersRouter.get(

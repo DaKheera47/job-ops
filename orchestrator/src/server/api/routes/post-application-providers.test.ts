@@ -436,4 +436,89 @@ describe.sequential("Post-Application Provider actions API", () => {
       }),
     );
   });
+
+  it("keeps oauth exchange successful when O365 profile enrichment fails", async () => {
+    const { executePostApplicationProviderAction } = await import(
+      "@server/services/post-application/providers"
+    );
+    process.env.O365_OAUTH_CLIENT_ID = "o365-client-id";
+    process.env.O365_OAUTH_CLIENT_SECRET = "o365-client-secret";
+    process.env.O365_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/o365/callback`;
+    process.env.O365_OAUTH_TENANT_ID = "contoso-tenant";
+
+    vi.mocked(executePostApplicationProviderAction).mockResolvedValueOnce({
+      provider: "o365",
+      action: "connect",
+      accountKey: "default",
+      status: {
+        provider: "o365",
+        accountKey: "default",
+        connected: true,
+        integration: null,
+      },
+    });
+
+    const realFetch = globalThis.fetch;
+    const fetchMock = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (
+          url ===
+          "https://login.microsoftonline.com/contoso-tenant/oauth2/v2.0/token"
+        ) {
+          return new Response(
+            JSON.stringify({
+              access_token: "o365-access-token",
+              refresh_token: "o365-refresh-token",
+              expires_in: 3600,
+              scope: "offline_access Mail.Read User.Read",
+              token_type: "Bearer",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+        if (url === "https://graph.microsoft.com/v1.0/me") {
+          throw new Error("network failure");
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const startRes = await nativeFetch(
+      `${baseUrl}/api/post-application/providers/o365/oauth/start`,
+    );
+    const startBody = await startRes.json();
+
+    const exchangeRes = await nativeFetch(
+      `${baseUrl}/api/post-application/providers/o365/oauth/exchange`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountKey: "default",
+          state: startBody.data.state,
+          code: "oauth-code",
+        }),
+      },
+    );
+    const exchangeBody = await exchangeRes.json();
+
+    expect(exchangeRes.status).toBe(200);
+    expect(exchangeBody.ok).toBe(true);
+    expect(executePostApplicationProviderAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "o365",
+        action: "connect",
+        connectPayload: expect.objectContaining({
+          payload: expect.objectContaining({
+            refreshToken: "o365-refresh-token",
+          }),
+        }),
+      }),
+    );
+  });
 });

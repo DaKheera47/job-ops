@@ -23,6 +23,7 @@ describe("o365 sync http behavior", () => {
     process.env.O365_OAUTH_CLIENT_ID = originalClientId;
     process.env.O365_OAUTH_CLIENT_SECRET = originalClientSecret;
     process.env.O365_OAUTH_TENANT_ID = originalTenantId;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 

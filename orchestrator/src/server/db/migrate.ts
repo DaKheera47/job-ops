@@ -1194,10 +1194,17 @@ function rebuildPostApplicationTablesForO365(): void {
 
   if (allTablesHaveO365) return;
 
+  const foreignKeysPragma = sqlite.prepare("PRAGMA foreign_keys").get() as
+    | { foreign_keys?: number }
+    | undefined;
+  const foreignKeysWereEnabled =
+    Number(foreignKeysPragma?.foreign_keys ?? 1) === 1;
+
   sqlite.exec("PRAGMA foreign_keys = OFF");
   try {
     sqlite.transaction(() => {
-      sqlite.exec(`CREATE TABLE IF NOT EXISTS post_application_integrations_new (
+      sqlite.exec("DROP TABLE IF EXISTS post_application_integrations_new");
+      sqlite.exec(`CREATE TABLE post_application_integrations_new (
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
         provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
@@ -1225,7 +1232,8 @@ function rebuildPostApplicationTablesForO365(): void {
       );
 
       if (tableExists("post_application_sync_runs")) {
-        sqlite.exec(`CREATE TABLE IF NOT EXISTS post_application_sync_runs_new (
+        sqlite.exec("DROP TABLE IF EXISTS post_application_sync_runs_new");
+        sqlite.exec(`CREATE TABLE post_application_sync_runs_new (
           id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
           provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
@@ -1269,7 +1277,8 @@ function rebuildPostApplicationTablesForO365(): void {
       }
 
       if (tableExists("post_application_messages")) {
-        sqlite.exec(`CREATE TABLE IF NOT EXISTS post_application_messages_new (
+        sqlite.exec("DROP TABLE IF EXISTS post_application_messages_new");
+        sqlite.exec(`CREATE TABLE post_application_messages_new (
           id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
           provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap', 'o365')),
@@ -1333,7 +1342,9 @@ function rebuildPostApplicationTablesForO365(): void {
       }
     })();
   } finally {
-    sqlite.exec("PRAGMA foreign_keys = ON");
+    sqlite.exec(
+      `PRAGMA foreign_keys = ${foreignKeysWereEnabled ? "ON" : "OFF"}`,
+    );
   }
 }
 

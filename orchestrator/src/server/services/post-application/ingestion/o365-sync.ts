@@ -84,9 +84,9 @@ function parseFromField(from: {
   return { fromAddress, fromDomain, senderName };
 }
 
-function parseReceivedAt(receivedDateTime: string): number {
+function parseReceivedAt(receivedDateTime: string): number | null {
   const parsed = Date.parse(receivedDateTime);
-  return Number.isFinite(parsed) ? parsed : Date.now();
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function resolveProcessingStatus(input: {
@@ -259,6 +259,19 @@ export async function runO365IngestionSync(args: {
           metadata.from,
         );
         const receivedAt = parseReceivedAt(metadata.receivedDateTime);
+        if (receivedAt === null) {
+          logger.warn(
+            "Invalid O365 message receivedDateTime; storing fallback timestamp and skipping auto stage event",
+            {
+              provider: "o365",
+              accountKey: args.accountKey,
+              externalMessageId: metadata.id,
+              syncRunId: syncRun.id,
+              receivedDateTime: metadata.receivedDateTime,
+            },
+          );
+        }
+        const receivedAtForStorage = receivedAt ?? 0;
         const existingMessage = await getPostApplicationMessageByExternalId(
           "o365",
           args.accountKey,
@@ -278,7 +291,7 @@ export async function runO365IngestionSync(args: {
               fromDomain,
               senderName,
               subject: metadata.subject,
-              receivedAt,
+              receivedAt: receivedAtForStorage,
               snippet: metadata.bodyPreview,
               classificationLabel: existingMessage.classificationLabel,
               classificationConfidence:
@@ -303,7 +316,11 @@ export async function runO365IngestionSync(args: {
             matched += 1;
           }
 
-          if (autoLinkTransitioned && savedMessage.matchedJobId) {
+          if (
+            autoLinkTransitioned &&
+            savedMessage.matchedJobId &&
+            savedMessage.receivedAt > 0
+          ) {
             await createAutoStageEvent({
               jobId: savedMessage.matchedJobId,
               stageTarget: savedMessage.stageTarget ?? "no_change",
@@ -355,7 +372,7 @@ export async function runO365IngestionSync(args: {
             fromDomain,
             senderName,
             subject: metadata.subject,
-            receivedAt,
+            receivedAt: receivedAtForStorage,
             snippet: metadata.bodyPreview,
             classificationLabel: routerResult.stageTarget,
             classificationConfidence: routerResult.confidence / 100,
@@ -384,7 +401,11 @@ export async function runO365IngestionSync(args: {
           matched += 1;
         }
 
-        if (autoLinkTransitioned && savedMessage.matchedJobId) {
+        if (
+          autoLinkTransitioned &&
+          savedMessage.matchedJobId &&
+          savedMessage.receivedAt > 0
+        ) {
           await createAutoStageEvent({
             jobId: savedMessage.matchedJobId,
             stageTarget: savedMessage.stageTarget ?? "no_change",
