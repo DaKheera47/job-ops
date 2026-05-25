@@ -595,10 +595,6 @@ function replaceStylePlaceholders(
     .replaceAll(
       "__SECONDARY_BACKGROUND_COLOR__",
       `rgb(${JSON.stringify(secondaryBackgroundHex)})`,
-    )
-    .replaceAll(
-      "__SIDEBAR_BG_COLOR__",
-      `rgb(${JSON.stringify(secondaryBackgroundHex)})`,
     );
 }
 
