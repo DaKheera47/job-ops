@@ -215,6 +215,11 @@ const ColorField: React.FC<ColorFieldProps> = ({
                     fieldState.error ? "border-destructive" : undefined
                   }
                 />
+                {fieldState.error && (
+                  <p className="mt-2 text-xs text-destructive">
+                    {fieldState.error.message}
+                  </p>
+                )}
               </div>
             </div>
           );

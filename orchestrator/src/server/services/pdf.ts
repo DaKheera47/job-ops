@@ -19,7 +19,10 @@ import {
   getTenantJobPdfPath,
   getTenantPdfDir,
 } from "./pdf-storage";
-import { renderResumePdf } from "./resume-renderer";
+import {
+  type LatexResumeStyleOverrides,
+  renderResumePdf,
+} from "./resume-renderer";
 import {
   deleteResume as deleteRxResume,
   exportResumePdf as exportRxResumePdf,
@@ -88,15 +91,7 @@ async function resolveTypstTheme() {
 }
 
 async function resolveTypstStyleOverrides(): Promise<
-  | {
-      colors?: {
-        primaryHex?: string;
-        textHex?: string;
-        backgroundHex?: string;
-      };
-      typography?: { bodyFontFamily?: string; headingFontFamily?: string };
-    }
-  | undefined
+  LatexResumeStyleOverrides | undefined
 > {
   const [
     bodyFont,
