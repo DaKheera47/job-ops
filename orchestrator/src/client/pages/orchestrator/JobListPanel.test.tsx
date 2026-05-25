@@ -173,6 +173,39 @@ describe("JobListPanel", () => {
     expect(onSelectJob).toHaveBeenCalledWith("job-2");
   });
 
+  it("shows discovered jobs without scores as awaiting AI scoring", () => {
+    const jobs = [
+      createJob({
+        id: "job-1",
+        title: "Backend Engineer",
+        status: "discovered",
+        suitabilityScore: null,
+        suitabilityReason: null,
+      }),
+    ];
+
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="discovered"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Waiting for AI scoring to finish."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("AI misconfiguration or service error."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a yellow status dot for flagged reposts without an inline badge", () => {
     const jobs = [
       createJob({

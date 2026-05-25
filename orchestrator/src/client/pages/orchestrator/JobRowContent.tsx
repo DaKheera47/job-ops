@@ -27,7 +27,7 @@ function getSuitabilityScoreTone(score: number): string {
 
 function isAwaitingAiScore(job: JobListItem): boolean {
   if (job.suitabilityScore != null) return false;
-  return job.status === "processing";
+  return job.status === "discovered" || job.status === "processing";
 }
 
 export const JobRowContent = ({
@@ -106,10 +106,13 @@ export const JobRowContent = ({
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <Loader2
+                  aria-label="Waiting for AI scoring to finish."
+                  className="h-4 w-4 animate-spin text-muted-foreground"
+                />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-60 text-xs">
-                AI is still tailoring and scoring this job.
+                Waiting for AI scoring to finish.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -119,7 +122,10 @@ export const JobRowContent = ({
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <XCircle className="h-4 w-4 text-destructive" />
+                <XCircle
+                  aria-label="AI misconfiguration or service error."
+                  className="h-4 w-4 text-destructive"
+                />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-60 text-xs">
                 AI misconfiguration or service error. Please check your settings

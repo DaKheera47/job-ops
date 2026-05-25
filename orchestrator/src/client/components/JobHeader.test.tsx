@@ -171,6 +171,27 @@ describe("JobHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows discovered jobs without scores as awaiting AI scoring", () => {
+    renderWithRouter(
+      <JobHeader
+        job={{
+          ...mockJob,
+          suitabilityScore: null,
+          suitabilityReason: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("img", { name: "Waiting for AI scoring to finish." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", {
+        name: "AI misconfiguration or service error. Please check your settings and AI service status.",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a tooltip for ready jobs", () => {
     const readyJob = {
       ...mockJob,

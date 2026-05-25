@@ -26,7 +26,7 @@ const getSuitabilityScoreTokens = (
     return {
       shell: "border-blue-300/55 bg-blue-500/10 text-blue-200",
       value: "loading",
-      label: "AI is still tailoring and scoring this job.",
+      label: "Waiting for AI scoring to finish.",
     };
   }
 
@@ -66,7 +66,7 @@ export function isAwaitingAiScore(
   job: Pick<Job, "status" | "suitabilityScore">,
 ): boolean {
   if (job.suitabilityScore != null) return false;
-  return job.status === "processing";
+  return job.status === "discovered" || job.status === "processing";
 }
 
 export const ScoreRing: React.FC<{
