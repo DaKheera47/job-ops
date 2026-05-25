@@ -72,7 +72,7 @@ Then restart the container/app.
 
 1. Open **Tracking Inbox**.
 2. Select provider **o365**.
-3. Click **Connect o365**.
+3. Click **Connect**.
 4. Complete Microsoft consent.
 
 JobOps starts OAuth with:

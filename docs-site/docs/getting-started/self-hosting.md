@@ -118,7 +118,7 @@ In Microsoft Entra admin center:
 ### 3) Restart and connect
 
 - Restart container
-- Open Tracking Inbox, choose `o365`, and click **Connect o365**
+- Open Tracking Inbox, choose `o365`, and click **Connect**
 
 For the full Entra/Azure setup, tenant guidance, and troubleshooting, see:
 

@@ -62,7 +62,7 @@ O365_OAUTH_REDIRECT_URI=https://your-domain.com/oauth/o365/callback
 O365_OAUTH_TENANT_ID=common
 ```
 
-Then connect in UI via **Tracking Inbox → choose `o365` provider → Connect o365**.
+Then connect in UI via **Tracking Inbox → choose `o365` provider → Connect**.
 
 Detailed setup guide:
 
