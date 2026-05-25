@@ -3,7 +3,11 @@ import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { resolveRequestOrigin } from "@server/infra/request-origin";
-import { O365_OAUTH_SCOPE } from "@server/services/post-application/ingestion/o365-api";
+import {
+  fetchWithTimeout,
+  O365_HTTP_TIMEOUT_MS,
+  O365_OAUTH_SCOPE,
+} from "@server/services/post-application/ingestion/o365-api";
 import { executePostApplicationProviderAction } from "@server/services/post-application/providers";
 import { getActiveTenantId } from "@server/tenancy/context";
 import {
@@ -398,12 +402,15 @@ async function exchangeO365AuthorizationCode(args: {
     scope: O365_OAUTH_SCOPE,
   });
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://login.microsoftonline.com/${args.azureTenantId}/oauth2/v2.0/token`,
     {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
+      timeoutMs: O365_HTTP_TIMEOUT_MS,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      },
     },
   );
   const data = (await response.json().catch(() => ({}))) as Record<
@@ -417,9 +424,7 @@ async function exchangeO365AuthorizationCode(args: {
     );
     const messageParts = [
       `Microsoft OAuth token exchange failed with status ${response.status}.`,
-      ...(upstreamOAuthError
-        ? [`error: ${upstreamOAuthError}.`]
-        : []),
+      ...(upstreamOAuthError ? [`error: ${upstreamOAuthError}.`] : []),
       ...(upstreamOAuthErrorDescription
         ? [`error_description: ${upstreamOAuthErrorDescription}`]
         : []),
