@@ -6,6 +6,7 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
   LatexResumePicture,
   LatexResumeProfileItem,
   LatexResumeSectionTitles,
@@ -88,6 +89,21 @@ const LATEX_RESUME_SECTION_TITLES: Record<
   },
 };
 
+const ORDERABLE_SECTION_KEYS = [
+  "profiles",
+  "experience",
+  "education",
+  "projects",
+  "skills",
+  "languages",
+  "interests",
+  "awards",
+  "certifications",
+  "publications",
+  "volunteer",
+  "references",
+] as const satisfies readonly LatexResumeOrderedSectionKey[];
+
 function asRecord(value: unknown): RecordLike | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as RecordLike)
@@ -149,7 +165,10 @@ function stripHtml(value: string): string {
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
       .replace(/<\/li>\s*<li[^>]*>/gi, "\n")
-      .replace(/<\/?[^>]+>/g, " "),
+      .replace(
+        /<(?!strong\b|b\b|em\b|i\b|\/strong\b|\/b\b|\/em\b|\/i\b)\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>/gi,
+        " ",
+      ),
   )
     .replace(/\s*\n\s*/g, "\n")
     .replace(/[ \t]+/g, " ")
@@ -209,6 +228,37 @@ function getCustomFieldsTitle(
 ): string {
   const basics = (asRecord(resumeJson.basics) ?? {}) as RecordLike;
   return toText(basics.customFieldsTitle).trim() || titles.customFields;
+}
+
+function getOrderedSectionKeys(
+  resumeJson: RecordLike,
+): LatexResumeOrderedSectionKey[] {
+  const metadata = asRecord(resumeJson.metadata);
+  const layout = asRecord(metadata?.layout);
+  const pages = asArray(layout?.pages);
+  const firstPage = asRecord(pages[0]);
+  const mainSections = asArray(firstPage?.main);
+
+  const order: LatexResumeOrderedSectionKey[] = [];
+  const allowed = new Set<LatexResumeOrderedSectionKey>(ORDERABLE_SECTION_KEYS);
+
+  for (const key of mainSections) {
+    if (
+      typeof key === "string" &&
+      allowed.has(key as LatexResumeOrderedSectionKey) &&
+      !order.includes(key as LatexResumeOrderedSectionKey)
+    ) {
+      order.push(key as LatexResumeOrderedSectionKey);
+    }
+  }
+
+  for (const key of ORDERABLE_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      order.push(key);
+    }
+  }
+
+  return order;
 }
 
 function componentToHex(value: number): string {
@@ -517,6 +567,7 @@ export function normalizeResumeJsonToLatexDocument(
     publications: buildPublicationEntries(record),
     volunteer: buildVolunteerEntries(record),
     references: buildReferenceEntries(record),
+    sectionOrder: getOrderedSectionKeys(record),
     style: buildStyle(record),
     sectionTitles: {
       profiles: getSectionTitle(record, "profiles", titles),
@@ -535,4 +586,11 @@ export function normalizeResumeJsonToLatexDocument(
       references: getSectionTitle(record, "references", titles),
     },
   };
+}
+
+export function buildResumeRenderDocument(
+  resumeJson: Record<string, unknown>,
+  options: NormalizeResumeJsonToLatexDocumentOptions = {},
+): LatexResumeDocument {
+  return normalizeResumeJsonToLatexDocument(resumeJson, options);
 }

@@ -7,7 +7,10 @@ import type {
 } from "./types";
 import { renderTypstPdf } from "./typst";
 
-export { normalizeResumeJsonToLatexDocument } from "./document";
+export {
+  buildResumeRenderDocument,
+  normalizeResumeJsonToLatexDocument,
+} from "./document";
 export {
   getLatexTemplatePath,
   getTectonicBinary,

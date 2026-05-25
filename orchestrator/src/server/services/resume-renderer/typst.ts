@@ -16,6 +16,7 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
   LatexResumeStyleOverrides,
   ResumeRenderer,
 } from "./types";
@@ -188,8 +189,50 @@ function normalizeText(value: string): string {
     .trim();
 }
 
+function escapeRawTypst(value: string): string {
+  return value.replace(/([\\#*$@_[\]{}<>`])/g, "\\$1");
+}
+
 function escapeTypstText(value: string): string {
-  return normalizeText(value).replace(/([\\#*$@_[\]{}<>`])/g, "\\$1");
+  const normalized = normalizeText(value);
+  const parts = normalized.split(/(<\/?(?:strong|b|em|i)\b[^>]*>)/gi);
+  const result: string[] = [];
+  const tagStack: string[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (part.startsWith("<") && part.endsWith(">")) {
+      const lower = part.toLowerCase();
+      if (lower.startsWith("<strong") || lower.startsWith("<b")) {
+        result.push("#strong[");
+        tagStack.push("bold");
+      } else if (lower.startsWith("</strong") || lower.startsWith("</b>")) {
+        if (tagStack.pop() === "bold") {
+          result.push("]");
+        } else {
+          result.push("]");
+        }
+      } else if (lower.startsWith("<em") || lower.startsWith("<i")) {
+        result.push("#emph[");
+        tagStack.push("italic");
+      } else if (lower.startsWith("</em") || lower.startsWith("</i>")) {
+        if (tagStack.pop() === "italic") {
+          result.push("]");
+        } else {
+          result.push("]");
+        }
+      }
+    } else {
+      result.push(escapeRawTypst(part));
+    }
+  }
+
+  while (tagStack.pop()) {
+    result.push("]");
+  }
+
+  return result.join("");
 }
 
 function escapeTypstUrl(value: string): string {
@@ -519,6 +562,92 @@ export function normalizeTypstDocumentPicturePath(
   };
 }
 
+function renderOrderedCoreSections(
+  document: LatexResumeDocument,
+  titles: ReturnType<typeof getLatexResumeSectionTitles>,
+  metaSize: string,
+): string[] {
+  const sectionOrder: LatexResumeOrderedSectionKey[] =
+    document.sectionOrder ?? [
+      "profiles",
+      "experience",
+      "education",
+      "projects",
+      "skills",
+      "languages",
+      "interests",
+      "awards",
+      "certifications",
+      "publications",
+      "volunteer",
+      "references",
+    ];
+  const builders: Record<LatexResumeOrderedSectionKey, () => string> = {
+    profiles: () => renderProfilesSection(document),
+    experience: () =>
+      renderEntrySection({
+        title: titles.experience,
+        entries: document.experience,
+        kind: "subheading",
+        metaSize,
+      }),
+    education: () =>
+      renderEntrySection({
+        title: titles.education,
+        entries: document.education,
+        kind: "subheading",
+        metaSize,
+      }),
+    projects: () =>
+      renderEntrySection({
+        title: titles.projects,
+        entries: document.projects,
+        kind: "project",
+        metaSize,
+      }),
+    skills: () => renderSkillsSection(document),
+    languages: () => renderLanguagesSection(document),
+    interests: () => renderInterestsSection(document),
+    awards: () =>
+      renderEntrySection({
+        title: titles.awards,
+        entries: document.awards,
+        kind: "subheading",
+        metaSize,
+      }),
+    certifications: () =>
+      renderEntrySection({
+        title: titles.certifications,
+        entries: document.certifications,
+        kind: "subheading",
+        metaSize,
+      }),
+    publications: () =>
+      renderEntrySection({
+        title: titles.publications,
+        entries: document.publications,
+        kind: "subheading",
+        metaSize,
+      }),
+    volunteer: () =>
+      renderEntrySection({
+        title: titles.volunteer,
+        entries: document.volunteer,
+        kind: "subheading",
+        metaSize,
+      }),
+    references: () =>
+      renderEntrySection({
+        title: titles.references,
+        entries: document.references,
+        kind: "subheading",
+        metaSize,
+      }),
+  };
+
+  return sectionOrder.map((key) => builders[key]());
+}
+
 export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
@@ -537,59 +666,8 @@ export function buildTypstDocument(
       : "";
   const body = [
     renderSummarySection(document),
-    renderProfilesSection(document),
     renderCustomFieldsSection(document),
-    renderEntrySection({
-      title: titles.experience,
-      entries: document.experience,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.education,
-      entries: document.education,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.projects,
-      entries: document.projects,
-      kind: "project",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderSkillsSection(document),
-    renderLanguagesSection(document),
-    renderInterestsSection(document),
-    renderEntrySection({
-      title: titles.awards,
-      entries: document.awards,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.certifications,
-      entries: document.certifications,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.publications,
-      entries: document.publications,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.volunteer,
-      entries: document.volunteer,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
-    renderEntrySection({
-      title: titles.references,
-      entries: document.references,
-      kind: "subheading",
-      metaSize: tokens.entryMetaSize,
-    }),
+    ...renderOrderedCoreSections(document, titles, tokens.entryMetaSize),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -696,6 +774,31 @@ async function runTypst(args: {
   });
 }
 
+export function convertDocFieldsToTypst(
+  doc: LatexResumeDocument,
+): LatexResumeDocument {
+  const convertBullets = (bullets: string[]) =>
+    bullets.map((bullet) => escapeTypstText(bullet));
+
+  const convertEntry = (entry: LatexResumeEntry): LatexResumeEntry => ({
+    ...entry,
+    bullets: convertBullets(entry.bullets),
+  });
+
+  return {
+    ...doc,
+    summary: doc.summary ? escapeTypstText(doc.summary) : null,
+    experience: doc.experience.map(convertEntry),
+    education: doc.education.map(convertEntry),
+    projects: doc.projects.map(convertEntry),
+    awards: doc.awards.map(convertEntry),
+    certifications: doc.certifications.map(convertEntry),
+    publications: doc.publications.map(convertEntry),
+    volunteer: doc.volunteer.map(convertEntry),
+    references: doc.references.map(convertEntry),
+  };
+}
+
 export const typstResumeRenderer: ResumeRenderer = {
   async render({
     document,
@@ -720,6 +823,7 @@ export const typstResumeRenderer: ResumeRenderer = {
         tempDir,
       );
       let typst: string;
+      let resumeDataDoc: LatexResumeDocument;
       if (manifest.kind === "native") {
         if (!tokens) {
           throw new Error(
@@ -732,15 +836,17 @@ export const typstResumeRenderer: ResumeRenderer = {
           tokens,
           typstStyleOverrides,
         );
+        resumeDataDoc = typstDocument;
       } else {
         typst = buildAdaptedTypstDocument(
           typstDocument,
           template,
           typstStyleOverrides,
         );
+        resumeDataDoc = convertDocFieldsToTypst(typstDocument);
       }
 
-      await writeFile(resumeDataPath, JSON.stringify(typstDocument), "utf8");
+      await writeFile(resumeDataPath, JSON.stringify(resumeDataDoc), "utf8");
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,
