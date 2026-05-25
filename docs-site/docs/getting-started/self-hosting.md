@@ -93,6 +93,42 @@ For a full step-by-step setup, exact scope requirements, and troubleshooting, se
 
 - [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
 
+## IMAP Email (Tracking Inbox)
+
+IMAP provides a simpler alternative for email integration without OAuth setup.
+
+### What is IMAP?
+
+- Works with any IMAP-compatible email provider (Gmail, Outlook, Yahoo, iCloud, etc.)
+- No OAuth app registration required
+- Direct credential-based authentication
+- Supports custom domains and legacy email systems
+
+### How to connect
+
+1. Open **Tracking Inbox**
+2. Select provider **imap**
+3. Click **Connect IMAP**
+4. Enter connection details:
+   - **Host**: Your IMAP server (e.g., `imap.gmail.com`, `outlook.office365.com`)
+   - **Port**: Usually `993` for secure IMAP
+   - **User**: Your full email address
+   - **Password**: Your email password or app-specific password
+   - **TLS**: Enable (recommended)
+
+### Common IMAP servers
+
+| Provider | IMAP Server | Port |
+|----------|-------------|------|
+| Gmail | `imap.gmail.com` | 993 |
+| Outlook/O365 | `outlook.office365.com` | 993 |
+| Yahoo | `imap.mail.yahoo.com` | 993 |
+| iCloud | `imap.mail.me.com` | 993 |
+
+For detailed setup, server configurations, and troubleshooting, see:
+
+- [IMAP Email Setup](/docs/next/getting-started/imap-setup)
+
 ## Email-to-job matching overview
 
 ```mermaid
