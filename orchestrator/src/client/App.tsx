@@ -27,7 +27,7 @@ import { JobPage } from "./pages/JobPage";
 import { OfflinePage } from "./pages/OfflinePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
-import { SettingsPage } from "./pages/SettingsPage";
+import { SettingsPage } from "./pages/settings";
 import { SignInPage } from "./pages/SignInPage";
 import { TracerLinksPage } from "./pages/TracerLinksPage";
 import { TrackingInboxPage } from "./pages/TrackingInboxPage";
