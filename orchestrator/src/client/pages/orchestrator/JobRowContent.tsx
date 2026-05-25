@@ -1,3 +1,4 @@
+import { isAwaitingAiScore } from "@client/components";
 import type { JobListItem } from "@shared/types.js";
 import { Loader2, XCircle } from "lucide-react";
 import { isPdfRegenerating, isPdfStale } from "@/client/lib/pdf-freshness";
@@ -23,11 +24,6 @@ function getSuitabilityScoreTone(score: number): string {
   if (score >= 70) return "text-emerald-400/90";
   if (score >= 50) return "text-foreground/60";
   return "text-muted-foreground/60";
-}
-
-function isAwaitingAiScore(job: JobListItem): boolean {
-  if (job.suitabilityScore != null) return false;
-  return job.status === "discovered" || job.status === "processing";
 }
 
 export const JobRowContent = ({
