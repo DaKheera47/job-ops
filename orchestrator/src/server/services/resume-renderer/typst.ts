@@ -208,20 +208,14 @@ function escapeTypstText(value: string): string {
         result.push("#strong[");
         tagStack.push("bold");
       } else if (lower.startsWith("</strong") || lower.startsWith("</b>")) {
-        if (tagStack.pop() === "bold") {
-          result.push("]");
-        } else {
-          result.push("]");
-        }
+        tagStack.pop();
+        result.push("]");
       } else if (lower.startsWith("<em") || lower.startsWith("<i")) {
         result.push("#emph[");
         tagStack.push("italic");
       } else if (lower.startsWith("</em") || lower.startsWith("</i>")) {
-        if (tagStack.pop() === "italic") {
-          result.push("]");
-        } else {
-          result.push("]");
-        }
+        tagStack.pop();
+        result.push("]");
       }
     } else {
       result.push(escapeRawTypst(part));

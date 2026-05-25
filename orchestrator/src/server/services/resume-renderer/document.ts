@@ -166,6 +166,7 @@ function stripHtml(value: string): string {
       .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
       .replace(/<\/li>\s*<li[^>]*>/gi, "\n")
       .replace(
+        // Strip all tags except inline formatting: <strong>, <b>, <em>, <i> and their closing variants
         /<(?!strong\b|b\b|em\b|i\b|\/strong\b|\/b\b|\/em\b|\/i\b)\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>/gi,
         " ",
       ),
