@@ -163,12 +163,11 @@ async function runWithConcurrency<T>(
   worker: (item: T) => Promise<void>,
 ): Promise<void> {
   if (items.length === 0) return;
-  const queue = [...items];
+  let i = 0;
   const workers = Array.from({ length: Math.max(1, concurrency) }).map(
     async () => {
-      while (queue.length > 0) {
-        const next = queue.shift();
-        if (!next) return;
+      while (i < items.length) {
+        const next = items[i++];
         await worker(next);
       }
     },
@@ -354,11 +353,12 @@ export async function runO365IngestionSync(args: {
           routerResult.bestMatchId && activeJobIds.has(routerResult.bestMatchId)
             ? routerResult.bestMatchId
             : null;
-        const isAutoLinked = routerResult.confidence >= 95 && matchedJobId;
+        const isAutoLinked =
+          routerResult.confidence >= 95 && matchedJobId !== null;
         const isPendingMatch = routerResult.confidence >= 50;
         const isRelevantOrphan = routerResult.isRelevant;
         const processingStatus = resolveProcessingStatus({
-          isAutoLinked: Boolean(isAutoLinked),
+          isAutoLinked,
           isPendingMatch,
           isRelevantOrphan,
         });

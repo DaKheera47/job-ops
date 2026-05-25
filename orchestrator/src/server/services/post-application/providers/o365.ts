@@ -44,14 +44,14 @@ function parseO365Credentials(
   const raw = args.payload?.payload;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw providerInvalidRequest(
-      "O365 connect requires payload credentials in body.payload.",
+      "O365 connect requires payload credentials in connectPayload.payload.",
     );
   }
 
   const refreshToken = asString((raw as Record<string, unknown>).refreshToken);
   if (!refreshToken) {
     throw providerInvalidRequest(
-      "O365 connect requires a non-empty refreshToken in body.payload.refreshToken.",
+      "O365 connect requires a non-empty refreshToken in connectPayload.payload.refreshToken.",
     );
   }
 
@@ -232,7 +232,7 @@ export const o365Provider: PostApplicationProviderAdapter = {
 
     return buildStatus(
       args.accountKey,
-      disconnected,
+      integration,
       "O365 integration disconnected.",
     );
   },
