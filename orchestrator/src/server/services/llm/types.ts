@@ -107,6 +107,7 @@ export type ProviderStrategy = {
 export interface LlmApiError extends Error {
   status?: number;
   body?: string;
+  retryAfterMs?: number;
 }
 
 export function getLlmMessageText(content: LlmMessageContent): string {

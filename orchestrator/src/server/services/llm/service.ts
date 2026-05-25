@@ -9,7 +9,11 @@ import {
   getOrderedModes,
   rememberSuccessfulMode,
 } from "./policies/mode-selection";
-import { getRetryDelayMs, shouldRetryAttempt } from "./policies/retry-policy";
+import {
+  getRetryDelayMs,
+  parseRetryAfterMs,
+  shouldRetryAttempt,
+} from "./policies/retry-policy";
 import { strategies } from "./providers";
 import type {
   JsonSchemaDefinition,
@@ -352,16 +356,24 @@ export class LlmService {
     } = args;
     const jobId = args.jobId;
     const model = normalizeModelForProvider(this.provider, rawModel);
+    let lastRetryAfterMs: number | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 0) {
+          const delayMs = getRetryDelayMs(
+            retryDelayMs,
+            attempt,
+            lastRetryAfterMs,
+          );
           logger.info("LLM retry attempt", {
             jobId: jobId ?? "unknown",
             attempt,
             maxRetries,
+            delayMs,
+            retryAfterMs: lastRetryAfterMs ?? "none",
           });
-          await sleep(getRetryDelayMs(retryDelayMs, attempt));
+          await sleep(delayMs);
         }
 
         const { url, headers, body } = this.strategy.buildRequest({
@@ -389,6 +401,9 @@ export class LlmService {
           ) as LlmApiError;
           err.status = response.status;
           err.body = truncate(errorBody, 600);
+          err.retryAfterMs = parseRetryAfterMs(
+            response.headers?.get?.("retry-after"),
+          );
           throw err;
         }
 
@@ -405,6 +420,7 @@ export class LlmService {
         const message = error instanceof Error ? error.message : String(error);
         const status = (error as LlmApiError).status;
         const body = (error as LlmApiError).body;
+        lastRetryAfterMs = (error as LlmApiError).retryAfterMs;
 
         if (
           this.strategy.isCapabilityError({
