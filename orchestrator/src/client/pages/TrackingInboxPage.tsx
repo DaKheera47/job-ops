@@ -74,7 +74,7 @@ type OauthResultMessage = {
   code?: string;
   error?: string;
 };
-type OauthCapableProvider = "gmail" | "o365";
+type OauthCapableProvider = keyof typeof OAUTH_RESULT_TYPES;
 
 function formatEpochMs(value?: number | null): string {
   if (!value) return "n/a";
