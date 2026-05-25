@@ -60,6 +60,12 @@ vi.mock("@infra/product-analytics", () => ({
   trackServerProductEvent: vi.fn(),
 }));
 
+const resolveO365AccessTokenMock = vi.fn().mockResolvedValue({
+  refreshToken: "refresh-token",
+  accessToken: "access-token",
+  expiryDate: Date.now() + 60 * 60 * 1000,
+});
+
 const llmCallJson = vi.fn().mockResolvedValue({
   success: true,
   data: {
@@ -81,11 +87,7 @@ vi.mock("@server/services/llm/service", () => ({
 }));
 
 vi.mock("./o365-api", () => ({
-  resolveO365AccessToken: vi.fn().mockResolvedValue({
-    refreshToken: "refresh-token",
-    accessToken: "access-token",
-    expiryDate: Date.now() + 60 * 60 * 1000,
-  }),
+  resolveO365AccessToken: resolveO365AccessTokenMock,
   listMessageIds: vi
     .fn()
     .mockResolvedValue([{ id: "message-1", conversationId: "thread-1" }]),
@@ -114,6 +116,11 @@ describe("o365 sync auto-log idempotency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     llmCallJson.mockClear();
+    resolveO365AccessTokenMock.mockResolvedValue({
+      refreshToken: "refresh-token",
+      accessToken: "access-token",
+      expiryDate: Date.now() + 60 * 60 * 1000,
+    });
   });
 
   it("creates auto stage event only on first auto_linked transition", async () => {
@@ -185,5 +192,44 @@ describe("o365 sync auto-log idempotency", () => {
 
     expect(upsertPostApplicationMessage).toHaveBeenCalledTimes(2);
     expect(transitionStage).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists rotated refresh tokens even when the access token payload is otherwise unchanged", async () => {
+    const { upsertConnectedPostApplicationIntegration } = await import(
+      "@server/repositories/post-application-integrations"
+    );
+    const { runO365IngestionSync } = await import("./o365-sync");
+
+    resolveO365AccessTokenMock.mockResolvedValueOnce({
+      refreshToken: "rotated-refresh-token",
+      accessToken: "access-token",
+      expiryDate: Date.now() + 60 * 60 * 1000,
+    });
+    getPostApplicationMessageByExternalId.mockResolvedValueOnce(null);
+    upsertPostApplicationMessage.mockResolvedValueOnce({
+      message: {
+        id: "post-msg-1",
+        matchedJobId: "job-1",
+        processingStatus: "auto_linked",
+        stageTarget: "assessment",
+        receivedAt: Date.now(),
+      },
+      wasCreated: true,
+      previousProcessingStatus: null,
+      autoLinkTransitioned: true,
+    });
+
+    await runO365IngestionSync({ accountKey: "default", maxMessages: 1 });
+
+    expect(upsertConnectedPostApplicationIntegration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "o365",
+        accountKey: "default",
+        credentials: expect.objectContaining({
+          refreshToken: "rotated-refresh-token",
+          accessToken: "access-token",
+        }),
+      }),
+    );
   });
 });

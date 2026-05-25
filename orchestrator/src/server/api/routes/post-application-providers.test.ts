@@ -2,6 +2,8 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
+const nativeFetch = globalThis.fetch;
+
 vi.mock("@server/services/post-application/providers", () => ({
   executePostApplicationProviderAction: vi.fn(),
 }));
@@ -14,6 +16,10 @@ describe.sequential("Post-Application Provider actions API", () => {
   const originalClientId = process.env.GMAIL_OAUTH_CLIENT_ID;
   const originalClientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
   const originalRedirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI;
+  const originalO365ClientId = process.env.O365_OAUTH_CLIENT_ID;
+  const originalO365ClientSecret = process.env.O365_OAUTH_CLIENT_SECRET;
+  const originalO365RedirectUri = process.env.O365_OAUTH_REDIRECT_URI;
+  const originalO365TenantId = process.env.O365_OAUTH_TENANT_ID;
   const originalOauthStateMaxEntries =
     process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES;
   const originalOauthStateTtlMs =
@@ -27,9 +33,14 @@ describe.sequential("Post-Application Provider actions API", () => {
     process.env.GMAIL_OAUTH_CLIENT_ID = originalClientId;
     process.env.GMAIL_OAUTH_CLIENT_SECRET = originalClientSecret;
     process.env.GMAIL_OAUTH_REDIRECT_URI = originalRedirectUri;
+    process.env.O365_OAUTH_CLIENT_ID = originalO365ClientId;
+    process.env.O365_OAUTH_CLIENT_SECRET = originalO365ClientSecret;
+    process.env.O365_OAUTH_REDIRECT_URI = originalO365RedirectUri;
+    process.env.O365_OAUTH_TENANT_ID = originalO365TenantId;
     process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES =
       originalOauthStateMaxEntries;
     process.env.POST_APPLICATION_OAUTH_STATE_TTL_MS = originalOauthStateTtlMs;
+    vi.unstubAllGlobals();
     await stopServer({ server, closeDb, tempDir });
     vi.clearAllMocks();
   });
@@ -328,5 +339,101 @@ describe.sequential("Post-Application Provider actions API", () => {
     expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(body.error.message).toContain("Gmail OAuth is not configured");
     expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("includes the configured O365 scope during oauth code exchange", async () => {
+    const { executePostApplicationProviderAction } = await import(
+      "@server/services/post-application/providers"
+    );
+    process.env.O365_OAUTH_CLIENT_ID = "o365-client-id";
+    process.env.O365_OAUTH_CLIENT_SECRET = "o365-client-secret";
+    process.env.O365_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/o365/callback`;
+    process.env.O365_OAUTH_TENANT_ID = "contoso-tenant";
+
+    vi.mocked(executePostApplicationProviderAction).mockResolvedValueOnce({
+      provider: "o365",
+      action: "connect",
+      accountKey: "default",
+      status: {
+        provider: "o365",
+        accountKey: "default",
+        connected: true,
+        integration: null,
+      },
+    });
+
+    const realFetch = globalThis.fetch;
+    const fetchMock = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (
+          url ===
+          "https://login.microsoftonline.com/contoso-tenant/oauth2/v2.0/token"
+        ) {
+          const params =
+            init?.body instanceof URLSearchParams
+              ? init.body
+              : new URLSearchParams(String(init?.body ?? ""));
+          expect(params.get("scope")).toBe(
+            "offline_access Mail.Read User.Read",
+          );
+          return new Response(
+            JSON.stringify({
+              access_token: "o365-access-token",
+              refresh_token: "o365-refresh-token",
+              expires_in: 3600,
+              scope: "offline_access Mail.Read User.Read",
+              token_type: "Bearer",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+        if (url === "https://graph.microsoft.com/v1.0/me") {
+          return new Response(
+            JSON.stringify({
+              mail: "user@example.com",
+              displayName: "Example User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const startRes = await nativeFetch(
+      `${baseUrl}/api/post-application/providers/o365/oauth/start`,
+    );
+    const startBody = await startRes.json();
+
+    const exchangeRes = await nativeFetch(
+      `${baseUrl}/api/post-application/providers/o365/oauth/exchange`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountKey: "default",
+          state: startBody.data.state,
+          code: "oauth-code",
+        }),
+      },
+    );
+    const exchangeBody = await exchangeRes.json();
+
+    expect(exchangeRes.status).toBe(200);
+    expect(exchangeBody.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://login.microsoftonline.com/contoso-tenant/oauth2/v2.0/token",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
   });
 });

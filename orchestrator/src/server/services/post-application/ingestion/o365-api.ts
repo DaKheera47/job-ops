@@ -4,6 +4,7 @@ import { convert } from "html-to-text";
 
 export const O365_HTTP_TIMEOUT_MS = 15_000;
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
+export const O365_OAUTH_SCOPE = "offline_access Mail.Read User.Read";
 
 export type O365Credentials = {
   refreshToken: string;
@@ -101,6 +102,7 @@ export async function resolveO365AccessToken(
     client_secret: clientSecret,
     grant_type: "refresh_token",
     refresh_token: credentials.refreshToken,
+    scope: credentials.scope ?? O365_OAUTH_SCOPE,
   });
 
   const response = await fetchWithTimeout(
@@ -134,12 +136,16 @@ export async function resolveO365AccessToken(
   // Microsoft may rotate the refresh token on each use. Prefer the new one
   // when present so subsequent refreshes don't fail with invalid_grant.
   const rotatedRefreshToken = asString(data?.refresh_token);
+  const scope = asString(data?.scope);
+  const tokenType = asString(data?.token_type);
 
   return {
     ...credentials,
     ...(rotatedRefreshToken ? { refreshToken: rotatedRefreshToken } : {}),
     accessToken,
     expiryDate: Date.now() + expiresIn * 1000,
+    ...(scope ? { scope } : {}),
+    ...(tokenType ? { tokenType } : {}),
   };
 }
 

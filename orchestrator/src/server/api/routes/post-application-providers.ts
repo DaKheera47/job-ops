@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { O365_OAUTH_SCOPE } from "@server/services/post-application/ingestion/o365-api";
 import { executePostApplicationProviderAction } from "@server/services/post-application/providers";
 import { getActiveTenantId } from "@server/tenancy/context";
 import {
@@ -43,7 +44,6 @@ const oauthExchangeBodySchema = z.object({
 export const postApplicationProvidersRouter = Router();
 
 const GMAIL_OAUTH_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
-const O365_OAUTH_SCOPE = "offline_access Mail.Read User.Read";
 const oauthStateStore = new Map<
   string,
   {
@@ -389,6 +389,7 @@ async function exchangeO365AuthorizationCode(args: {
     client_secret: args.clientSecret,
     redirect_uri: args.redirectUri,
     grant_type: "authorization_code",
+    scope: O365_OAUTH_SCOPE,
   });
 
   const response = await fetch(

@@ -104,6 +104,19 @@ function normalizeErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
+function didResolvedCredentialsChange(
+  currentCredentials: O365Credentials,
+  resolvedCredentials: O365Credentials,
+): boolean {
+  return (
+    resolvedCredentials.refreshToken !== currentCredentials.refreshToken ||
+    resolvedCredentials.accessToken !== currentCredentials.accessToken ||
+    resolvedCredentials.expiryDate !== currentCredentials.expiryDate ||
+    resolvedCredentials.scope !== currentCredentials.scope ||
+    resolvedCredentials.tokenType !== currentCredentials.tokenType
+  );
+}
+
 async function createAutoStageEvent(args: {
   jobId: string;
   stageTarget: PostApplicationRouterStageTarget;
@@ -201,10 +214,7 @@ export async function runO365IngestionSync(args: {
     }
     const accessToken = resolvedCredentials.accessToken;
 
-    if (
-      resolvedCredentials.accessToken !== parsedCredentials.accessToken ||
-      resolvedCredentials.expiryDate !== parsedCredentials.expiryDate
-    ) {
+    if (didResolvedCredentialsChange(parsedCredentials, resolvedCredentials)) {
       await upsertConnectedPostApplicationIntegration({
         provider: "o365",
         accountKey: args.accountKey,

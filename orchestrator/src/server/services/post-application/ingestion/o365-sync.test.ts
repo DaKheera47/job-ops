@@ -1,6 +1,11 @@
 import type { AppError } from "@infra/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { extractBodyText, graphApi, resolveO365AccessToken } from "./o365-api";
+import {
+  extractBodyText,
+  graphApi,
+  O365_OAUTH_SCOPE,
+  resolveO365AccessToken,
+} from "./o365-api";
 
 describe("o365 sync http behavior", () => {
   const originalClientId = process.env.O365_OAUTH_CLIENT_ID;
@@ -63,6 +68,45 @@ describe("o365 sync http behavior", () => {
 
     expect(result.accessToken).toBe("new-access-token");
     expect(result.refreshToken).toBe("rotated-refresh-token");
+  });
+
+  it("includes the granted scope when refreshing an O365 token", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        access_token: "new-access-token",
+        expires_in: 3600,
+      }),
+    } as unknown as Response);
+
+    await resolveO365AccessToken({
+      refreshToken: "original-refresh-token",
+      scope: "offline_access Mail.ReadBasic User.Read",
+    });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    const params = new URLSearchParams(String(init?.body));
+    expect(params.get("scope")).toBe("offline_access Mail.ReadBasic User.Read");
+  });
+
+  it("falls back to the shared O365 scope when refreshing without stored scope", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        access_token: "new-access-token",
+        expires_in: 3600,
+      }),
+    } as unknown as Response);
+
+    await resolveO365AccessToken({
+      refreshToken: "original-refresh-token",
+    });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    const params = new URLSearchParams(String(init?.body));
+    expect(params.get("scope")).toBe(O365_OAUTH_SCOPE);
   });
 
   it("keeps the original refresh token when Microsoft does not return a new one", async () => {
