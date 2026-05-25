@@ -72,6 +72,7 @@ import {
   type LogEventFormValues,
   LogEventModal,
 } from "../components/LogEventModal";
+import { getDeleteEventDescription } from "./job/deleteEventDescription";
 import { JobTimeline } from "./job/Timeline";
 import { JobDocumentsPanel } from "./job-page/JobDocumentsPanel";
 import { JobEmailsPanel } from "./job-page/JobEmailsPanel";
@@ -977,6 +978,7 @@ export const JobPage: React.FC = () => {
           setEventToDelete(null);
         }}
         onConfirm={handleDeleteEvent}
+        description={getDeleteEventDescription(events, eventToDelete)}
       />
 
       <JobDetailsEditDrawer
