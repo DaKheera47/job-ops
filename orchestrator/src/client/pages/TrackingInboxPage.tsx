@@ -60,10 +60,10 @@ import { EmailViewerList } from "./tracking-inbox/EmailViewerList";
 const PROVIDER_OPTIONS: PostApplicationProvider[] = [
   ...POST_APPLICATION_PROVIDERS,
 ];
-const OAUTH_RESULT_TYPES: Partial<Record<PostApplicationProvider, string>> = {
+const OAUTH_RESULT_TYPES = {
   gmail: "gmail-oauth-result",
   o365: "o365-oauth-result",
-};
+} as const satisfies Partial<Record<PostApplicationProvider, string>>;
 const OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
 const EMPTY_INBOX_ITEMS: PostApplicationInboxItem[] = [];
 const EMPTY_SYNC_RUNS: PostApplicationSyncRun[] = [];

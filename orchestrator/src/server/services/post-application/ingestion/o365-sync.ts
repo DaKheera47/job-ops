@@ -291,7 +291,10 @@ export async function runO365IngestionSync(args: {
               fromDomain,
               senderName,
               subject: metadata.subject,
-              receivedAt: receivedAtForStorage,
+              receivedAt:
+                receivedAt !== null
+                  ? receivedAtForStorage
+                  : existingMessage.receivedAt,
               snippet: metadata.bodyPreview,
               classificationLabel: existingMessage.classificationLabel,
               classificationConfidence:
