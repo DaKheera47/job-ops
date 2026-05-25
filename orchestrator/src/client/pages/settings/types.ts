@@ -64,6 +64,15 @@ export type ScoringValues = {
   scoringInstructions: EffectiveDefault<string>;
 };
 
+export type TypstStyleValues = {
+  bodyFont: EffectiveDefault<string>;
+  headingFont: EffectiveDefault<string>;
+  primaryColor: EffectiveDefault<string>;
+  textColor: EffectiveDefault<string>;
+  backgroundColor: EffectiveDefault<string>;
+  secondaryBackgroundColor: EffectiveDefault<string>;
+};
+
 export type PromptTemplatesValues = {
   ghostwriterSystemPromptTemplate: EffectiveDefault<string>;
   tailoringPromptTemplate: EffectiveDefault<string>;

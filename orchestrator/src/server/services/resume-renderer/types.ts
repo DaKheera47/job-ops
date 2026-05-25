@@ -77,6 +77,38 @@ export interface LatexResumeSectionTitles {
   references: string;
 }
 
+export type LatexResumeOrderedSectionKey =
+  | "profiles"
+  | "experience"
+  | "education"
+  | "projects"
+  | "skills"
+  | "languages"
+  | "interests"
+  | "awards"
+  | "certifications"
+  | "publications"
+  | "volunteer"
+  | "references";
+
+export interface LatexResumeStyle {
+  colors: {
+    primaryHex: string;
+    textHex: string;
+    backgroundHex: string;
+    secondaryBackgroundHex?: string;
+  };
+  typography: {
+    bodyFontFamily: string;
+    headingFontFamily: string;
+  };
+}
+
+export type LatexResumeStyleOverrides = {
+  colors?: Partial<LatexResumeStyle["colors"]>;
+  typography?: Partial<LatexResumeStyle["typography"]>;
+};
+
 export interface LatexResumeDocument {
   name: string;
   headline?: string | null;
@@ -97,7 +129,9 @@ export interface LatexResumeDocument {
   publications: LatexResumeEntry[];
   volunteer: LatexResumeEntry[];
   references: LatexResumeEntry[];
+  sectionOrder?: LatexResumeOrderedSectionKey[];
   sectionTitles?: LatexResumeSectionTitles;
+  style?: LatexResumeStyle;
 }
 
 export interface RenderResumePdfArgs {
@@ -105,6 +139,7 @@ export interface RenderResumePdfArgs {
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
+  typstStyleOverrides?: LatexResumeStyleOverrides;
 }
 
 export interface ResumeRenderer {
@@ -114,3 +149,11 @@ export interface ResumeRenderer {
 export interface NormalizeResumeJsonToLatexDocumentOptions {
   language?: ChatStyleManualLanguage;
 }
+
+export type ResumeRenderContactItem = LatexResumeContactItem;
+export type ResumeRenderEntry = LatexResumeEntry;
+export type ResumeRenderSkillGroup = LatexResumeSkillGroup;
+export type ResumeRenderSectionTitles = LatexResumeSectionTitles;
+export type ResumeRenderDocument = LatexResumeDocument;
+export type NormalizeResumeJsonOptions =
+  NormalizeResumeJsonToLatexDocumentOptions;

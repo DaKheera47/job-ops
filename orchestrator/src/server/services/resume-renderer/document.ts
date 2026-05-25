@@ -6,6 +6,7 @@ import type {
   LatexResumeEntry,
   LatexResumeInterestItem,
   LatexResumeLanguageItem,
+  LatexResumeOrderedSectionKey,
   LatexResumePicture,
   LatexResumeProfileItem,
   LatexResumeSectionTitles,
@@ -88,6 +89,21 @@ const LATEX_RESUME_SECTION_TITLES: Record<
   },
 };
 
+const ORDERABLE_SECTION_KEYS = [
+  "profiles",
+  "experience",
+  "education",
+  "projects",
+  "skills",
+  "languages",
+  "interests",
+  "awards",
+  "certifications",
+  "publications",
+  "volunteer",
+  "references",
+] as const satisfies readonly LatexResumeOrderedSectionKey[];
+
 function asRecord(value: unknown): RecordLike | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as RecordLike)
@@ -108,6 +124,10 @@ function toNumber(value: unknown, fallback = 0): number {
 
 function toBoolean(value: unknown, fallback = false): boolean {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function getByPath(source: RecordLike, path: string): unknown {
@@ -145,7 +165,11 @@ function stripHtml(value: string): string {
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
       .replace(/<\/li>\s*<li[^>]*>/gi, "\n")
-      .replace(/<\/?[^>]+>/g, " "),
+      .replace(
+        // Strip all tags except inline formatting: <strong>, <b>, <em>, <i> and their closing variants
+        /<(?!strong\b|b\b|em\b|i\b|\/strong\b|\/b\b|\/em\b|\/i\b)\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>/gi,
+        " ",
+      ),
   )
     .replace(/\s*\n\s*/g, "\n")
     .replace(/[ \t]+/g, " ")
@@ -205,6 +229,96 @@ function getCustomFieldsTitle(
 ): string {
   const basics = (asRecord(resumeJson.basics) ?? {}) as RecordLike;
   return toText(basics.customFieldsTitle).trim() || titles.customFields;
+}
+
+function getOrderedSectionKeys(
+  resumeJson: RecordLike,
+): LatexResumeOrderedSectionKey[] {
+  const metadata = asRecord(resumeJson.metadata);
+  const layout = asRecord(metadata?.layout);
+  const pages = asArray(layout?.pages);
+  const firstPage = asRecord(pages[0]);
+  const mainSections = asArray(firstPage?.main);
+
+  const order: LatexResumeOrderedSectionKey[] = [];
+  const allowed = new Set<LatexResumeOrderedSectionKey>(ORDERABLE_SECTION_KEYS);
+
+  for (const key of mainSections) {
+    if (
+      typeof key === "string" &&
+      allowed.has(key as LatexResumeOrderedSectionKey) &&
+      !order.includes(key as LatexResumeOrderedSectionKey)
+    ) {
+      order.push(key as LatexResumeOrderedSectionKey);
+    }
+  }
+
+  for (const key of ORDERABLE_SECTION_KEYS) {
+    if (!order.includes(key)) {
+      order.push(key);
+    }
+  }
+
+  return order;
+}
+
+function componentToHex(value: number): string {
+  return clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0");
+}
+
+function normalizeColorToHex(value: unknown, fallbackHex: string): string {
+  const color = toText(value).trim();
+  if (!color) return fallbackHex;
+
+  const shortHex = color.match(/^#([0-9a-f]{3})$/i);
+  if (shortHex) {
+    const [r, g, b] = shortHex[1].split("");
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+
+  const longHex = color.match(/^#([0-9a-f]{6})$/i);
+  if (longHex) {
+    return `#${longHex[1].toLowerCase()}`;
+  }
+
+  const rgbMatch = color.match(
+    /^rgba?\(\s*(-?[0-9]+(?:\.[0-9]+)?)\s*,\s*(-?[0-9]+(?:\.[0-9]+)?)\s*,\s*(-?[0-9]+(?:\.[0-9]+)?)(?:\s*,\s*[0-9]+(?:\.[0-9]+)?\s*)?\)$/i,
+  );
+  if (rgbMatch) {
+    const r = Number(rgbMatch[1]);
+    const g = Number(rgbMatch[2]);
+    const b = Number(rgbMatch[3]);
+    if (![r, g, b].some((part) => Number.isNaN(part))) {
+      return `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
+    }
+  }
+
+  return fallbackHex;
+}
+
+function buildStyle(resumeJson: RecordLike) {
+  const metadata = (asRecord(resumeJson.metadata) ?? {}) as RecordLike;
+  const design = (asRecord(metadata.design) ?? {}) as RecordLike;
+  const colors = (asRecord(design.colors) ?? {}) as RecordLike;
+  const typography = (asRecord(metadata.typography) ?? {}) as RecordLike;
+  const bodyTypography = (asRecord(typography.body) ?? {}) as RecordLike;
+  const headingTypography = (asRecord(typography.heading) ?? {}) as RecordLike;
+
+  const bodyFontFamily = toText(bodyTypography.fontFamily).trim();
+  const headingFontFamily = toText(headingTypography.fontFamily).trim();
+
+  return {
+    colors: {
+      primaryHex: normalizeColorToHex(colors.primary, "#dc2626"),
+      textHex: normalizeColorToHex(colors.text, "#000000"),
+      backgroundHex: normalizeColorToHex(colors.background, "#ffffff"),
+    },
+    typography: {
+      bodyFontFamily: bodyFontFamily || "IBM Plex Serif",
+      headingFontFamily:
+        headingFontFamily || bodyFontFamily || "IBM Plex Serif",
+    },
+  };
 }
 
 function buildPicture(resumeJson: RecordLike): LatexResumePicture | null {
@@ -454,6 +568,8 @@ export function normalizeResumeJsonToLatexDocument(
     publications: buildPublicationEntries(record),
     volunteer: buildVolunteerEntries(record),
     references: buildReferenceEntries(record),
+    sectionOrder: getOrderedSectionKeys(record),
+    style: buildStyle(record),
     sectionTitles: {
       profiles: getSectionTitle(record, "profiles", titles),
       summary: getSectionTitle(record, "summary", titles),
@@ -471,4 +587,11 @@ export function normalizeResumeJsonToLatexDocument(
       references: getSectionTitle(record, "references", titles),
     },
   };
+}
+
+export function buildResumeRenderDocument(
+  resumeJson: Record<string, unknown>,
+  options: NormalizeResumeJsonToLatexDocumentOptions = {},
+): LatexResumeDocument {
+  return normalizeResumeJsonToLatexDocument(resumeJson, options);
 }

@@ -80,6 +80,14 @@ type DesignResumeListSectionProps = {
   onEdit: (index: number) => void;
   onUpdateItems: (nextItems: Record<string, unknown>[]) => void;
   projectPolicy?: ProjectPolicyConfig;
+  dragHandleProps?: {
+    onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
+    onDragEnd: () => void;
+  };
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void;
+  isDragging?: boolean;
+  isDragTarget?: boolean;
 };
 
 type DesignResumeListItemCardProps = {
@@ -575,13 +583,25 @@ export function DesignResumeListSectionContent({
   );
 }
 
-export function DesignResumeListSection(props: DesignResumeListSectionProps) {
+export function DesignResumeListSection({
+  dragHandleProps,
+  onDragOver,
+  onDrop,
+  isDragging,
+  isDragTarget,
+  ...props
+}: DesignResumeListSectionProps) {
   return (
     <DesignResumeSection
       value={props.definition.key}
       title={props.definition.title}
       subtitle={props.definition.description}
       badge={props.items.length === 0 ? "Empty" : `${props.items.length}`}
+      dragHandleProps={dragHandleProps}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      isDragging={isDragging}
+      isDragTarget={isDragTarget}
     >
       <DesignResumeListSectionContent {...props} />
     </DesignResumeSection>
