@@ -11,6 +11,7 @@ vi.mock("@server/repositories/post-application-integrations", () => ({
       refreshToken: "refresh-token",
       accessToken: "access-token",
       expiryDate: Date.now() + 60 * 60 * 1000,
+      email: "user@example.com",
     },
     lastConnectedAt: null,
     lastSyncedAt: null,
@@ -228,6 +229,7 @@ describe("o365 sync auto-log idempotency", () => {
         credentials: expect.objectContaining({
           refreshToken: "rotated-refresh-token",
           accessToken: "access-token",
+          email: "user@example.com",
         }),
       }),
     );

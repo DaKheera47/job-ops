@@ -225,7 +225,7 @@ export async function runO365IngestionSync(args: {
           expiryDate: resolvedCredentials.expiryDate,
           scope: resolvedCredentials.scope,
           tokenType: resolvedCredentials.tokenType,
-          email: resolvedCredentials.email,
+          email: resolvedCredentials.email ?? parsedCredentials.email,
         },
       });
     }
