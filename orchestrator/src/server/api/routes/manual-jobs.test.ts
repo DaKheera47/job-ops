@@ -177,4 +177,95 @@ describe.sequential("Manual jobs API routes", () => {
 
     expect(res.status).toBe(400);
   });
+
+  it("skips tailoring and scoring when skipTailoring is true", async () => {
+    const { processJob } = await import("@server/pipeline/index");
+    const { scoreJobSuitability } = await import("@server/services/scorer");
+    vi.mocked(processJob).mockClear();
+    vi.mocked(scoreJobSuitability).mockClear();
+
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        skipTailoring: true,
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/jobs/skip-tailor",
+          jobDescription: "Great role",
+        },
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.status).toBe("discovered");
+    expect(vi.mocked(processJob)).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(vi.mocked(scoreJobSuitability)).not.toHaveBeenCalled();
+
+    const followupRes = await fetch(`${baseUrl}/api/jobs/${body.data.id}`);
+    const followupBody = await followupRes.json();
+    expect(followupBody.data.status).toBe("discovered");
+    expect(followupBody.data.suitabilityScore).toBeNull();
+    expect(followupBody.data.tailoredSummary ?? null).toBeNull();
+  });
+
+  it("falls back to autoTailorOnManualImport setting when skipTailoring is omitted", async () => {
+    const { processJob } = await import("@server/pipeline/index");
+    const { setSetting } = await import("@server/repositories/settings");
+    vi.mocked(processJob).mockClear();
+    await setSetting("autoTailorOnManualImport", "0");
+
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/jobs/setting-default",
+          jobDescription: "Great role",
+        },
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.status).toBe("discovered");
+    expect(vi.mocked(processJob)).not.toHaveBeenCalled();
+  });
+
+  it("still tailors when skipTailoring is explicitly false even if setting is off", async () => {
+    const { processJob } = await import("@server/pipeline/index");
+    const { setSetting } = await import("@server/repositories/settings");
+    const { scoreJobSuitability } = await import("@server/services/scorer");
+    vi.mocked(processJob).mockClear();
+    vi.mocked(scoreJobSuitability).mockResolvedValue({
+      score: 70,
+      reason: "Fit",
+    });
+    await setSetting("autoTailorOnManualImport", "0");
+
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        skipTailoring: false,
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/jobs/explicit-tailor",
+          jobDescription: "Great role",
+        },
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.status).toBe("processing");
+    expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id, {
+      analyticsOrigin: "manual_job_create",
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useSettings } from "@client/hooks/useSettings";
 import type { ManualJobDraft } from "@shared/types.js";
 import {
   ArrowDown,
@@ -25,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -326,6 +328,10 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     useState<ManualImportTrackingSource>("pasted_description");
   const [importSourceHost, setImportSourceHost] = useState<string | null>(null);
   const [fetchedSourceUrl, setFetchedSourceUrl] = useState<string | null>(null);
+  const { autoTailorOnManualImport } = useSettings();
+  const [tailorAfterImport, setTailorAfterImport] = useState<boolean>(
+    autoTailorOnManualImport,
+  );
 
   useEffect(() => {
     if (active) {
@@ -351,6 +357,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
           getSourceHost(normalized.applicationLink),
       );
       setFetchedSourceUrl(normalized.jobUrl || null);
+      setTailorAfterImport(autoTailorOnManualImport);
       return;
     }
     setStep("paste");
@@ -365,7 +372,14 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setImportSource("pasted_description");
     setImportSourceHost(null);
     setFetchedSourceUrl(null);
-  }, [active, initialDraft, initialSource, initialSourceHost]);
+    setTailorAfterImport(autoTailorOnManualImport);
+  }, [
+    active,
+    initialDraft,
+    initialSource,
+    initialSourceHost,
+    autoTailorOnManualImport,
+  ]);
 
   const progressStep: ManualImportProgressStep =
     step === "review" ? "review" : "paste";
@@ -469,9 +483,15 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     try {
       setIsImporting(true);
       const payload = toPayload(draft);
-      const created = await api.importManualJob({ job: payload });
+      const skipTailoring = !tailorAfterImport;
+      const created = await api.importManualJob({
+        job: payload,
+        skipTailoring,
+      });
       toast.success("Job imported", {
-        description: "The job was tailored and moved to the ready column.",
+        description: skipTailoring
+          ? "Saved to Discovered without tailoring. You can tailor it anytime from the job detail view."
+          : "The job was tailored and moved to the ready column.",
       });
       await onImported({
         jobId: created.id,
@@ -683,6 +703,31 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
               </div>
             </ReviewSection>
 
+            <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card/40 px-3 py-3">
+              <Checkbox
+                id="tailor-after-import"
+                checked={tailorAfterImport}
+                onCheckedChange={(checked) => {
+                  setTailorAfterImport(checked === true);
+                }}
+                disabled={isImporting}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="tailor-after-import"
+                  className="cursor-pointer text-sm font-medium leading-none"
+                >
+                  Tailor automatically after import
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Off saves LLM tokens — the job lands in Discovered and you can
+                  tailor it later from the job detail view. Default comes from
+                  Settings → Display.
+                </p>
+              </div>
+            </div>
+
             <div className="sticky bottom-0 -mx-1 flex gap-3 border-t border-border/70 bg-background/95 px-1 py-4 backdrop-blur">
               <Button
                 type="button"
@@ -703,7 +748,11 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                {isImporting ? "Importing..." : "Import job"}
+                {isImporting
+                  ? "Importing..."
+                  : tailorAfterImport
+                    ? "Import & tailor"
+                    : "Import without tailoring"}
               </Button>
             </div>
           </div>

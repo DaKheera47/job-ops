@@ -83,6 +83,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
+  autoTailorOnManualImport: null,
   chatStyleTone: "",
   chatStyleFormality: "",
   chatStyleConstraints: "",
@@ -334,7 +335,11 @@ const SECTION_FIELD_MAP: Record<
     "adzunaAppId",
     "adzunaAppKey",
   ],
-  display: ["showSponsorInfo", "renderMarkdownInJobDescriptions"],
+  display: [
+    "showSponsorInfo",
+    "renderMarkdownInJobDescriptions",
+    "autoTailorOnManualImport",
+  ],
   backup: ["backupEnabled", "backupHour", "backupMaxCount"],
   "danger-zone": [],
 };
@@ -408,6 +413,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
+  autoTailorOnManualImport: null,
   chatStyleTone: null,
   chatStyleFormality: null,
   chatStyleConstraints: null,
@@ -459,6 +465,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   showSponsorInfo: data.showSponsorInfo.override,
   renderMarkdownInJobDescriptions:
     data.renderMarkdownInJobDescriptions.override,
+  autoTailorOnManualImport: data.autoTailorOnManualImport.override,
   chatStyleTone: data.chatStyleTone.override ?? "",
   chatStyleFormality: data.chatStyleFormality.override ?? "",
   chatStyleConstraints: data.chatStyleConstraints.override ?? "",
@@ -630,6 +637,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       renderMarkdownInJobDescriptions: {
         effective: settings?.renderMarkdownInJobDescriptions?.value ?? true,
         default: settings?.renderMarkdownInJobDescriptions?.default ?? true,
+      },
+      autoTailorOnManualImport: {
+        effective: settings?.autoTailorOnManualImport?.value ?? true,
+        default: settings?.autoTailorOnManualImport?.default ?? true,
       },
     },
     chat: {
@@ -1177,6 +1188,10 @@ export const SettingsPage: React.FC = () => {
         renderMarkdownInJobDescriptions: nullIfSame(
           data.renderMarkdownInJobDescriptions,
           display.renderMarkdownInJobDescriptions.default,
+        ),
+        autoTailorOnManualImport: nullIfSame(
+          data.autoTailorOnManualImport,
+          display.autoTailorOnManualImport.default,
         ),
         chatStyleTone: normalizeString(data.chatStyleTone),
         chatStyleFormality: normalizeString(data.chatStyleFormality),

@@ -10,6 +10,11 @@ vi.mock("../api", () => ({
   importManualJob: vi.fn(),
 }));
 
+const mockedUseSettings = vi.fn(() => ({ autoTailorOnManualImport: true }));
+vi.mock("@client/hooks/useSettings", () => ({
+  useSettings: () => mockedUseSettings(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -20,6 +25,7 @@ vi.mock("sonner", () => ({
 describe("ManualImportSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedUseSettings.mockReturnValue({ autoTailorOnManualImport: true });
   });
 
   it("runs analyze -> review -> import on the happy path", async () => {
@@ -67,7 +73,11 @@ describe("ManualImportSheet", () => {
       target: { value: "  120k  " },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /import job/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /^(import & tailor|import without tailoring)$/i,
+      }),
+    );
 
     await waitFor(() => expect(api.importManualJob).toHaveBeenCalled());
     expect(api.importManualJob).toHaveBeenCalledWith({
@@ -79,6 +89,7 @@ describe("ManualImportSheet", () => {
         salary: "120k",
         jobDescription: rawDescription.trim(),
       }),
+      skipTailoring: false,
     });
 
     await waitFor(() =>
@@ -119,7 +130,9 @@ describe("ManualImportSheet", () => {
 
     await screen.findByText("AI inference failed. Fill details manually.");
 
-    const importButton = screen.getByRole("button", { name: /import job/i });
+    const importButton = screen.getByRole("button", {
+      name: /^(import & tailor|import without tailoring)$/i,
+    });
     expect(importButton).toBeDisabled();
 
     fireEvent.change(
@@ -201,13 +214,109 @@ describe("ManualImportSheet", () => {
 
     await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
 
-    fireEvent.click(screen.getByRole("button", { name: /import job/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /^(import & tailor|import without tailoring)$/i,
+      }),
+    );
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Import failed"),
     );
     expect(onOpenChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /import job/i })).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: /^(import & tailor|import without tailoring)$/i,
+      }),
+    ).toBeEnabled();
+  });
+
+  it("sends skipTailoring: true when the user unchecks 'Tailor automatically after import'", async () => {
+    vi.mocked(api.inferManualJob).mockResolvedValue({
+      job: {
+        title: "Backend Engineer",
+        employer: "Acme Labs",
+        jobUrl: "https://example.com/jobs/skip",
+        jobDescription: "Role description",
+      },
+    });
+    vi.mocked(api.importManualJob).mockResolvedValue({ id: "job-3" } as any);
+
+    render(
+      <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Paste the full job description here, or fetch it from a URL above...",
+      ),
+      { target: { value: "Backend Engineer role." } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+
+    await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
+
+    const tailorCheckbox = screen.getByLabelText(
+      /tailor automatically after import/i,
+    );
+    fireEvent.click(tailorCheckbox);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /import without tailoring/i }),
+    );
+
+    await waitFor(() => expect(api.importManualJob).toHaveBeenCalled());
+    expect(api.importManualJob).toHaveBeenCalledWith(
+      expect.objectContaining({ skipTailoring: true }),
+    );
+    expect(toast.success).toHaveBeenCalledWith(
+      "Job imported",
+      expect.objectContaining({
+        description: expect.stringMatching(/discovered/i),
+      }),
+    );
+  });
+
+  it("defaults the tailor checkbox to off when autoTailorOnManualImport setting is false", async () => {
+    mockedUseSettings.mockReturnValue({ autoTailorOnManualImport: false });
+
+    vi.mocked(api.inferManualJob).mockResolvedValue({
+      job: {
+        title: "Backend Engineer",
+        employer: "Acme Labs",
+        jobUrl: "https://example.com/jobs/default-off",
+        jobDescription: "Role description",
+      },
+    });
+    vi.mocked(api.importManualJob).mockResolvedValue({ id: "job-4" } as any);
+
+    render(
+      <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Paste the full job description here, or fetch it from a URL above...",
+      ),
+      { target: { value: "Backend Engineer role." } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+
+    await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
+
+    expect(
+      screen.getByLabelText(/tailor automatically after import/i),
+    ).not.toBeChecked();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /import without tailoring/i }),
+    );
+
+    await waitFor(() =>
+      expect(api.importManualJob).toHaveBeenCalledWith(
+        expect.objectContaining({ skipTailoring: true }),
+      ),
+    );
   });
 
   describe("URL fetch functionality", () => {
@@ -346,7 +455,11 @@ describe("ManualImportSheet", () => {
       fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
 
       await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
-      fireEvent.click(screen.getByRole("button", { name: /import job/i }));
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /^(import & tailor|import without tailoring)$/i,
+        }),
+      );
 
       await waitFor(() =>
         expect(onImported).toHaveBeenCalledWith({

@@ -9,7 +9,7 @@ Manual import lets users add jobs that automated scrapers miss.
 
 ## Big picture
 
-User pastes raw description, AI infers structure, user reviews edits, then import saves and scores the job.
+User pastes raw description, AI infers structure, user reviews edits, then import saves the job. By default the import also tailors and scores the job; this can be skipped per-import (or globally via Settings) so the job lands in Discovered and can be tailored later.
 
 ## 1) Input
 
@@ -53,9 +53,18 @@ Import endpoint:
 
 - `POST /api/manual-jobs/import`
 
-On import:
+Request body accepts an optional `skipTailoring` boolean. When omitted, the route falls back to the `autoTailorOnManualImport` workspace setting (default: `true`). The review step in the UI exposes this as the "Tailor automatically after import" checkbox.
+
+On import with tailoring enabled:
 
 - Generates unique job ID if URL absent
 - Stores source as `manual`
-- Triggers async suitability scoring
-- Persists score and reason
+- Runs the tailoring pipeline (resume + PDF) and persists score and reason
+- Job ends in `processing` and progresses to `ready` when tailoring completes
+
+On import with tailoring skipped (`skipTailoring: true` or workspace setting off):
+
+- Generates unique job ID if URL absent
+- Stores source as `manual`
+- Job lands in `discovered` immediately; no LLM scoring, no PDF render
+- Tailoring can be triggered later from the job detail view

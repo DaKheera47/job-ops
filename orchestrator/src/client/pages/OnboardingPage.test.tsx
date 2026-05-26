@@ -136,6 +136,7 @@ describe("OnboardingPage", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     vi.mocked(useRxResumeConfigState).mockReturnValue({
@@ -796,6 +797,7 @@ describe("OnboardingPage", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     renderPage();

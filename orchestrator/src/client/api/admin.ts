@@ -36,6 +36,7 @@ export async function inferManualJob(input: {
 
 export async function importManualJob(input: {
   job: ManualJobDraft;
+  skipTailoring?: boolean;
 }): Promise<Job> {
   return fetchApi<Job>("/manual-jobs/import", {
     method: "POST",

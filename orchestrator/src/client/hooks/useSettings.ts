@@ -29,6 +29,7 @@ export function useSettings() {
     showSponsorInfo: settings?.showSponsorInfo?.value ?? true,
     renderMarkdownInJobDescriptions:
       settings?.renderMarkdownInJobDescriptions?.value ?? true,
+    autoTailorOnManualImport: settings?.autoTailorOnManualImport?.value ?? true,
     refreshSettings,
   };
 }

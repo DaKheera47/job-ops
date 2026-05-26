@@ -80,6 +80,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Toggle visa sponsor badge visibility in job lists/details
 - Toggle `Render Markdown in job descriptions` to control whether expanded job descriptions show formatted headings, lists, bold text, and code blocks
 - Default: Markdown rendering is enabled
+- Toggle `Auto-tailor manually imported jobs` to control whether jobs created through Manual Import immediately run tailoring + suitability scoring + PDF generation, or land in Discovered so you can tailor them later
+- Default: Auto-tailor on import is enabled. The per-import "Tailor automatically after import" checkbox in the Manual Import review step defaults to this setting and can override it for a single import
 
 ### Writing Style & Language
 

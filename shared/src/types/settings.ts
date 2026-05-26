@@ -232,6 +232,7 @@ export interface AppSettings {
   jobspyCountryIndeed: Resolved<string>;
   showSponsorInfo: Resolved<boolean>;
   renderMarkdownInJobDescriptions: Resolved<boolean>;
+  autoTailorOnManualImport: Resolved<boolean>;
   chatStyleTone: Resolved<string>;
   chatStyleFormality: Resolved<string>;
   chatStyleConstraints: Resolved<string>;

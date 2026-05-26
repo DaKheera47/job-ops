@@ -10,10 +10,12 @@ import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { processJob } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
+import { getSetting } from "@server/repositories/settings";
 import { generateJobBrief } from "@server/services/job-brief";
 import { inferManualJobDetails } from "@server/services/manualJob";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
+import { settingsRegistry } from "@shared/settings-registry";
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
@@ -29,6 +31,7 @@ const manualJobInferenceSchema = z.object({
 });
 
 const manualJobImportSchema = z.object({
+  skipTailoring: z.boolean().optional(),
   job: z.object({
     source: z
       .string()
@@ -60,6 +63,19 @@ const cleanOptional = (value?: string | null) => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
+
+async function resolveSkipTailoring(
+  explicit: boolean | undefined,
+): Promise<boolean> {
+  if (typeof explicit === "boolean") return explicit;
+  const raw = await getSetting("autoTailorOnManualImport");
+  const parsed = settingsRegistry.autoTailorOnManualImport.parse(
+    raw ?? undefined,
+  );
+  const autoTailor =
+    parsed ?? settingsRegistry.autoTailorOnManualImport.default();
+  return !autoTailor;
+}
 
 const BLOCKED_AUTOFETCH_HOSTS: Array<{
   label: string;
@@ -300,6 +316,12 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
       degreeRequired: cleanOptional(job.degreeRequired) ?? undefined,
       starting: cleanOptional(job.starting) ?? undefined,
     });
+
+    const skipTailoring = await resolveSkipTailoring(input.skipTailoring);
+    if (skipTailoring) {
+      ok(res, createdJob);
+      return;
+    }
 
     const processResult = await processJob(createdJob.id, {
       analyticsOrigin: "manual_job_create",

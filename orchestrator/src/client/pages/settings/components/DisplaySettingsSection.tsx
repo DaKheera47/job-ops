@@ -19,7 +19,11 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
   isSaving,
   layoutMode,
 }) => {
-  const { showSponsorInfo, renderMarkdownInJobDescriptions } = values;
+  const {
+    showSponsorInfo,
+    renderMarkdownInJobDescriptions,
+    autoTailorOnManualImport,
+  } = values;
   const { control } = useFormContext<UpdateSettingsInput>();
 
   return (
@@ -97,6 +101,41 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
 
         <Separator />
 
+        <div className="flex items-start space-x-3">
+          <Controller
+            name="autoTailorOnManualImport"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="autoTailorOnManualImport"
+                checked={field.value ?? autoTailorOnManualImport.default}
+                onCheckedChange={(checked) => {
+                  field.onChange(
+                    checked === "indeterminate" ? null : checked === true,
+                  );
+                }}
+                disabled={isLoading || isSaving}
+              />
+            )}
+          />
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="autoTailorOnManualImport"
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              Auto-tailor manually imported jobs
+            </label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, jobs added via Manual Import are immediately scored
+              and have a tailored resume PDF generated. Turn off to save LLM
+              tokens and tailor later from the job detail view. You can override
+              this per import in the review step.
+            </p>
+          </div>
+        </div>
+
+        <Separator />
+
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">
@@ -130,6 +169,22 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
             </div>
             <div className="break-words font-mono text-xs font-semibold">
               {renderMarkdownInJobDescriptions.default ? "Enabled" : "Disabled"}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">
+              Auto-tailor on import effective
+            </div>
+            <div className="break-words font-mono text-xs">
+              {autoTailorOnManualImport.effective ? "Enabled" : "Disabled"}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">
+              Auto-tailor on import default
+            </div>
+            <div className="break-words font-mono text-xs font-semibold">
+              {autoTailorOnManualImport.default ? "Enabled" : "Disabled"}
             </div>
           </div>
         </div>

@@ -70,6 +70,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result, rerender } = renderHookWithQueryClient(() =>
@@ -124,6 +125,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result } = renderHookWithQueryClient(() =>
@@ -183,6 +185,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result, rerender } = renderHookWithQueryClient(() =>
@@ -253,6 +256,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result } = renderHookWithQueryClient(() =>
@@ -304,6 +308,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result } = renderHookWithQueryClient(() =>
@@ -351,6 +356,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result } = renderHookWithQueryClient(() =>
@@ -397,6 +403,7 @@ describe("useOnboardingRequirement", () => {
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
     }));
 
     const { result } = renderHookWithQueryClient(() =>

@@ -244,6 +244,11 @@ export const createAppSettings = (
     default: true,
     override: null,
   },
+  autoTailorOnManualImport: {
+    value: true,
+    default: true,
+    override: null,
+  },
   chatStyleTone: {
     value: "professional",
     default: "professional",
