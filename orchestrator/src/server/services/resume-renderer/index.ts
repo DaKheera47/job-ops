@@ -1,7 +1,10 @@
 import type { PdfRenderer, TypstTheme } from "@shared/types";
 import { buildResumeRenderDocument } from "./document";
 import { renderLatexPdf } from "./latex";
-import type { NormalizeResumeJsonOptions } from "./types";
+import type {
+  LatexResumeStyleOverrides,
+  NormalizeResumeJsonOptions,
+} from "./types";
 import { renderTypstPdf } from "./typst";
 
 export { buildResumeRenderDocument } from "./document";
@@ -26,6 +29,7 @@ export async function renderResumePdf(args: {
   language?: NormalizeResumeJsonOptions["language"];
   renderer?: LocalPdfRenderer;
   typstTheme?: TypstTheme;
+  typstStyleOverrides?: LatexResumeStyleOverrides;
 }): Promise<void> {
   const document = buildResumeRenderDocument(args.resumeJson, {
     language: args.language,
@@ -36,6 +40,7 @@ export async function renderResumePdf(args: {
       outputPath: args.outputPath,
       jobId: args.jobId,
       typstTheme: args.typstTheme,
+      typstStyleOverrides: args.typstStyleOverrides,
     });
     return;
   }

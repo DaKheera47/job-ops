@@ -210,6 +210,12 @@ export interface AppSettings {
   resumeProjects: Resolved<ResumeProjectsSettings>;
   pdfRenderer: Resolved<PdfRenderer>;
   typstTheme: Resolved<TypstTheme>;
+  typstBodyFont: Resolved<string>;
+  typstHeadingFont: Resolved<string>;
+  typstPrimaryColor: Resolved<string>;
+  typstTextColor: Resolved<string>;
+  typstBackgroundColor: Resolved<string>;
+  typstSecondaryBackgroundColor: Resolved<string>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;

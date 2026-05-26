@@ -10,6 +10,7 @@ import {
   convertDocFieldsToTypst,
   getTypstBinary,
   getTypstTemplatePath,
+  normalizeTypstDocumentPicturePath,
   readTypstTemplate,
   readTypstTheme,
   readTypstThemeManifest,
@@ -238,6 +239,110 @@ describe("typst resume renderer", () => {
     expect(typst).toContain('#let resume = json("resume-data.json")');
   });
 
+  it("respects custom core section ordering", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        education: [
+          {
+            title: "University",
+            subtitle: "MSc",
+            date: "2020",
+            bullets: ["Studied distributed systems"],
+          },
+        ],
+        projects: [
+          {
+            title: "Platform",
+            subtitle: "TypeScript",
+            date: "2024",
+            bullets: ["Built deployment tooling"],
+          },
+        ],
+        sectionOrder: ["skills", "projects", "experience", "education"],
+      },
+      "__BODY__",
+      tokens,
+    );
+
+    expect(typst.indexOf("= Technical Skills")).toBeLessThan(
+      typst.indexOf("= Projects"),
+    );
+    expect(typst.indexOf("= Projects")).toBeLessThan(
+      typst.indexOf("= Experience"),
+    );
+  });
+
+  it("applies document style colors and fonts in native templates", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        style: {
+          colors: {
+            primaryHex: "#4a7c8f",
+            textHex: "#1f2937",
+            backgroundHex: "#f5f7fa",
+          },
+          typography: {
+            bodyFontFamily: "Inter",
+            headingFontFamily: "Playfair Display",
+          },
+        },
+      },
+      "__BODY_FONT__\n__HEADING_FONT__\n__PRIMARY_COLOR__\n__TEXT_COLOR__\n__BACKGROUND_COLOR__",
+      tokens,
+    );
+
+    expect(typst).toContain('"Inter"');
+    expect(typst).toContain('"Playfair Display"');
+    expect(typst).toContain('rgb("#4a7c8f")');
+    expect(typst).toContain('rgb("#1f2937")');
+    expect(typst).toContain('rgb("#f5f7fa")');
+  });
+
+  it("resolves style placeholders inside the dynamically-generated headline block", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      {
+        ...baseDocument,
+        style: {
+          colors: {
+            primaryHex: "#4a7c8f",
+            textHex: "#aabbcc",
+            backgroundHex: "#ffffff",
+          },
+          typography: {
+            bodyFontFamily: "Inter",
+            headingFontFamily: "Roboto",
+          },
+        },
+      },
+      "__HEADLINE_BLOCK__",
+      tokens,
+    );
+
+    expect(typst).not.toContain("__HEADING_FONT__");
+    expect(typst).not.toContain("__TEXT_COLOR__");
+    expect(typst).toContain('"Roboto"');
+    expect(typst).toContain('rgb("#aabbcc")');
+  });
+
+  it("falls back to default style placeholders when style metadata is missing", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      baseDocument,
+      "__BODY_FONT__\n__HEADING_FONT__\n__PRIMARY_COLOR__\n__TEXT_COLOR__\n__BACKGROUND_COLOR__",
+      tokens,
+    );
+
+    expect(typst).toContain('"IBM Plex Serif"');
+    expect(typst).toContain('rgb("#202020")');
+    expect(typst).toContain('rgb("#000000")');
+    expect(typst).toContain('rgb("#ffffff")');
+  });
+
   it("keeps links in the clean-print-cv adapter", async () => {
     const template = await readTypstTemplate("clean-print-cv");
 
@@ -422,6 +527,91 @@ describe("typst resume renderer", () => {
     ]);
   });
 
+  it("normalizes absolute picture paths under compile cwd for Typst", async () => {
+    const compileCwd = await createTempDir();
+    tempDirs.push(compileCwd);
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: join(compileCwd, "resume-picture.png"),
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      compileCwd,
+    );
+
+    expect(normalizedDocument.picture?.renderPath).toBe("resume-picture.png");
+  });
+
+  it("keeps document unchanged when picture is missing", () => {
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      { ...baseDocument, picture: null },
+      join(tmpdir(), "job-ops-resume-render-path-test"),
+    );
+    expect(normalizedDocument).toEqual({ ...baseDocument, picture: null });
+  });
+
+  it("keeps relative picture paths unchanged", () => {
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: "resume-picture.png",
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      join(tmpdir(), "job-ops-resume-render-path-test"),
+    );
+    expect(normalizedDocument.picture?.renderPath).toBe("resume-picture.png");
+  });
+
+  it("does not rewrite absolute picture paths outside compile cwd", () => {
+    const compileCwd = join(tmpdir(), "job-ops-resume-render-path-test");
+    const outsidePath = join(tmpdir(), "somewhere-else", "resume-picture.png");
+    const normalizedDocument = normalizeTypstDocumentPicturePath(
+      {
+        ...baseDocument,
+        picture: {
+          url: "https://jane.dev/photo.png",
+          assetId: null,
+          renderPath: outsidePath,
+          hidden: false,
+          size: 88,
+          rotation: 0,
+          aspectRatio: 1,
+          borderRadius: 0,
+          borderColor: "",
+          borderWidth: 0,
+          shadowColor: "",
+          shadowWidth: 0,
+        },
+      },
+      compileCwd,
+    );
+    expect(normalizedDocument.picture?.renderPath).toBe(outsidePath);
+  });
+
   it("fails with a helpful error when typst is unavailable", async () => {
     const previous = process.env.TYPST_BIN;
     process.env.TYPST_BIN = "/definitely/missing/typst";
@@ -456,6 +646,45 @@ describe("typst resume renderer", () => {
         outputPath,
         jobId: "job-render-success",
         typstTheme: "compact",
+      });
+
+      const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {
+        stdio: "ignore",
+      });
+      expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
+    "renders the sidebar-cv theme when typst is installed",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+      const outputPath = join(tempDir, "sidebar-cv.pdf");
+
+      await renderTypstPdf({
+        document: {
+          ...baseDocument,
+          profileItems: [
+            {
+              network: "LinkedIn",
+              username: "janedoe",
+              url: "https://linkedin.com/in/janedoe",
+            },
+          ],
+          languages: [{ language: "English", fluency: "Native", level: 5 }],
+          certifications: [
+            {
+              title: "AWS Solutions Architect",
+              subtitle: "Amazon",
+              date: "2023",
+              bullets: ["Professional level"],
+            },
+          ],
+        },
+        outputPath,
+        jobId: "job-render-sidebar-cv",
+        typstTheme: "sidebar-cv",
       });
 
       const stats = spawnSync("sh", ["-lc", `test -s "${outputPath}"`], {
