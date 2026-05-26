@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { AppError, badRequest } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { isDemoMode } from "@server/config/demo";
 import { resolveRequestOrigin } from "@server/infra/request-origin";
 import { generateFinalPdf, summarizeJob } from "@server/pipeline/index";
@@ -135,12 +136,14 @@ jobsDocumentsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
     });
     uploadedPath = uploaded.outputPath;
 
+    const promotingToReady = currentJob.status === "discovered";
     const job = await jobsRepo.updateJob(req.params.id, {
       pdfPath: uploaded.outputPath,
       pdfSource: "uploaded",
       pdfRegenerating: false,
       pdfFingerprint: null,
       pdfGeneratedAt: new Date().toISOString(),
+      ...(promotingToReady ? { status: "ready" } : {}),
     });
 
     if (!job) {
@@ -173,6 +176,20 @@ jobsDocumentsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
       fileName: input.fileName,
       byteLength: uploaded.byteLength,
     });
+
+    if (promotingToReady) {
+      void trackServerProductEvent(
+        "job_moved_to_ready",
+        {
+          origin: "pdf_upload",
+          tracer_links_enabled: job.tracerLinksEnabled,
+        },
+        {
+          requestOrigin: resolveRequestOrigin(req),
+          urlPath: "/jobs",
+        },
+      );
+    }
 
     ok(res, await hydrateJobPdfFreshness(job), 201);
   } catch (error) {

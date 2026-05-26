@@ -640,10 +640,40 @@ describe.sequential("Jobs API routes", () => {
     expect(res.status).toBe(201);
     expect(body.ok).toBe(true);
     expect(body.data.pdfPath).toBe(storedPath);
+    expect(body.data.status).toBe("ready");
+    expect(body.data.readyAt).toBeTruthy();
     expect(typeof body.meta.requestId).toBe("string");
     await expect(readFile(storedPath, "utf8")).resolves.toContain(
       "Uploaded resume",
     );
+  });
+
+  it("does not regress job status when uploading a PDF for an applied job", async () => {
+    const { createJob, updateJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Replace PDF Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/replace-pdf",
+      jobDescription: "Test description",
+    });
+    await updateJob(job.id, { status: "applied" });
+
+    const pdfContent = Buffer.from("%PDF-1.7\nReplacement resume\n");
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: "replacement-resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: pdfContent.toString("base64"),
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.ok).toBe(true);
+    expect(body.data.status).toBe("applied");
   });
 
   it("rejects uploaded files that are not valid PDFs", async () => {
