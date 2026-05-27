@@ -12,8 +12,8 @@ type JobBriefPaneProps = {
 
 const CARD_ENTER_TRANSITION = { duration: 0.1, ease: "easeOut" } as const;
 const BULLET_ENTER_TRANSITION = { duration: 0.1, ease: "easeOut" } as const;
-const BULLET_STAGGER_SECONDS = 0.02;
-const BULLET_STAGGER_BASE_DELAY = 0.05;
+const BULLET_STAGGER_SECONDS = 0.015;
+const BULLET_STAGGER_BASE_DELAY = 0.03;
 const HIGHLIGHT_X_OFFSET = 6;
 const FADE_ONLY_BULLET_SECTIONS = new Set(["Company offers", "They want"]);
 
@@ -41,11 +41,6 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
       return { ...section, startIndex };
     });
   }, [bulletSections]);
-
-  const totalBulletCount = useMemo(
-    () => bulletSections.reduce((count, section) => count + section.items.length, 0),
-    [bulletSections],
-  );
 
   if (!brief) {
     return (
@@ -95,7 +90,6 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
           <HighlightsSection
             jobId={job.id}
             items={brief.specifics}
-            staggerAfter={totalBulletCount}
             prefersReducedMotion={prefersReducedMotion}
           />
         )}
@@ -125,21 +119,17 @@ const FitLine: React.FC<{ job: Job }> = ({ job }) => {
 const HighlightsSection: React.FC<{
   jobId: string;
   items: string[];
-  staggerAfter: number;
   prefersReducedMotion: boolean | null;
-}> = ({ jobId, items, staggerAfter, prefersReducedMotion }) => (
+}> = ({ jobId, items, prefersReducedMotion }) => (
   <div className="space-y-2">
     <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
       Highlights
     </div>
     <div className="flex flex-wrap gap-1.5">
-      {items.map((item, index) => {
-        const rightToLeftIndex = items.length - 1 - index;
-
-        return (
+      {items.map((item, index) => (
           <motion.span
             key={`${jobId}-highlight-${index}-${item}`}
-            className="inline-flex items-center whitespace-nowrap rounded-lg bg-background/40 px-2 py-1 text-foreground"
+            className="inline-flex items-center whitespace-nowrap rounded-lg border border-border/45 bg-background px-2 py-1 text-foreground shadow-sm"
             initial={
               prefersReducedMotion ? false : { opacity: 0, x: HIGHLIGHT_X_OFFSET }
             }
@@ -149,14 +139,12 @@ const HighlightsSection: React.FC<{
               delay: prefersReducedMotion
                 ? 0
                 : BULLET_STAGGER_BASE_DELAY +
-                  staggerAfter * BULLET_STAGGER_SECONDS +
-                  rightToLeftIndex * BULLET_STAGGER_SECONDS,
+                  index * BULLET_STAGGER_SECONDS,
             }}
           >
             <span className="truncate">{item}</span>
           </motion.span>
-        );
-      })}
+      ))}
     </div>
   </div>
 );
