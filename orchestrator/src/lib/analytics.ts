@@ -97,6 +97,14 @@ type ProductEventMap = {
     result_group: string;
     query_length_bucket: string;
   };
+  jobs_sort_changed: {
+    sort_key: string;
+    sort_direction: "asc" | "desc";
+    previous_sort_key: string;
+    previous_sort_direction: "asc" | "desc";
+    tab: string;
+    filtered_count_bucket: string;
+  };
   tracking_inbox_connect_started: {
     provider: string;
     account_key_is_default: boolean;

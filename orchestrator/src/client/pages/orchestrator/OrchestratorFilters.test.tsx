@@ -1,9 +1,26 @@
 import type { JobSource } from "@shared/types.js";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { trackProductEvent } from "@/lib/analytics";
 import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
+
+vi.mock("@/lib/analytics", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/analytics")>();
+  return {
+    ...actual,
+    trackProductEvent: vi.fn(),
+  };
+});
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
@@ -19,6 +36,10 @@ afterAll(() => {
     configurable: true,
     value: originalScrollIntoView,
   });
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 const renderFilters = (
@@ -124,12 +145,28 @@ describe("OrchestratorFilters", () => {
       key: "datePosted",
       direction: "desc",
     });
+    expect(trackProductEvent).toHaveBeenCalledWith("jobs_sort_changed", {
+      sort_key: "datePosted",
+      sort_direction: "desc",
+      previous_sort_key: "score",
+      previous_sort_direction: "desc",
+      tab: "ready",
+      filtered_count_bucket: "2_5",
+    });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort order" }));
     fireEvent.click(await screen.findByText("Smallest first"));
     expect(props.onSortChange).toHaveBeenCalledWith({
       key: "score",
       direction: "asc",
+    });
+    expect(trackProductEvent).toHaveBeenCalledWith("jobs_sort_changed", {
+      sort_key: "score",
+      sort_direction: "asc",
+      previous_sort_key: "score",
+      previous_sort_direction: "desc",
+      tab: "ready",
+      filtered_count_bucket: "2_5",
     });
   });
 

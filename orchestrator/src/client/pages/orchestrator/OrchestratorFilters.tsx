@@ -31,6 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { sourceLabel } from "@/lib/utils";
 import type {
   DateFilterDimension,
@@ -237,6 +238,22 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   const showSalaryMax =
     salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
   const commandShortcutLabel = getDisplayKey(SHORTCUTS.search);
+
+  const applySortChange = (nextSort: JobSort) => {
+    if (nextSort.key === sort.key && nextSort.direction === sort.direction) {
+      return;
+    }
+
+    trackProductEvent("jobs_sort_changed", {
+      sort_key: nextSort.key,
+      sort_direction: nextSort.direction,
+      previous_sort_key: sort.key,
+      previous_sort_direction: sort.direction,
+      tab: activeTab,
+      filtered_count_bucket: bucketCount(filteredCount),
+    });
+    onSortChange(nextSort);
+  };
 
   return (
     <Tabs
@@ -625,7 +642,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                           <Select
                             value={sort.key}
                             onValueChange={(value) =>
-                              onSortChange({
+                              applySortChange({
                                 key: value as JobSort["key"],
                                 direction:
                                   defaultSortDirection[value as JobSort["key"]],
@@ -656,7 +673,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                           <Select
                             value={sort.direction}
                             onValueChange={(value) =>
-                              onSortChange({
+                              applySortChange({
                                 ...sort,
                                 direction: value as JobSort["direction"],
                               })
