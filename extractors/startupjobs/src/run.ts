@@ -95,6 +95,7 @@ function mapStartupJob(row: StartupJobRecord): CreateJobInput | null {
     degreeRequired: row.degreeRequired || undefined,
     starting: row.starting || undefined,
     jobDescription: row.jobDescription || undefined,
+    datePosted: row.publishedAt || undefined,
     jobType: inferJobType(row.disciplines),
     isRemote: row.location?.toLowerCase().includes("remote") ?? undefined,
   };

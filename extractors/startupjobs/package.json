@@ -4,7 +4,7 @@
   "type": "module",
   "description": "startup.jobs extractor backed by the startup-jobs-scraper package",
   "dependencies": {
-    "startup-jobs-scraper": "^0.1.0"
+    "startup-jobs-scraper": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

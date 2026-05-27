@@ -114,4 +114,27 @@ describe("runStartupJobs", () => {
       }),
     );
   });
+
+  it("propagates the scraper published date into datePosted", async () => {
+    const { scrapeStartupJobsViaAlgolia } = await import(
+      "startup-jobs-scraper"
+    );
+    const scrapeMock = vi.mocked(scrapeStartupJobsViaAlgolia);
+    scrapeMock.mockResolvedValueOnce([
+      {
+        title: "Senior Software Engineer",
+        employer: "Example Startup",
+        jobUrl: "https://startup.jobs/example-job",
+        publishedAt: "2026-05-22T08:41:29Z",
+      },
+    ]);
+
+    const { runStartupJobs } = await import("../src/run");
+
+    const result = await runStartupJobs({
+      searchTerms: ["software engineer"],
+    });
+
+    expect(result.jobs[0]?.datePosted).toBe("2026-05-22T08:41:29Z");
+  });
 });
