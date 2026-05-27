@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { Link } from "react-router-dom";
+import { formatPostingAgeLabel } from "@/client/lib/job-posting-age";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -65,6 +66,22 @@ const memoryLinks = [
   },
 ];
 
+const PostingAgeRow: React.FC<{ datePosted: Job["datePosted"] }> = ({
+  datePosted,
+}) => {
+  const postingAge = formatPostingAgeLabel(datePosted);
+  if (!postingAge) return null;
+
+  return (
+    <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+      <span className="text-muted-foreground">Posted</span>
+      <span className="text-right font-medium" title={postingAge.tooltip}>
+        {postingAge.label}
+      </span>
+    </div>
+  );
+};
+
 export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
   job,
   activeMemoryView,
@@ -106,6 +123,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
             {job.location || "Unknown"}
           </span>
         </div>
+        <PostingAgeRow datePosted={job.datePosted} />
         <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
           <span className="text-muted-foreground">Found</span>
           <span className="text-right font-medium">

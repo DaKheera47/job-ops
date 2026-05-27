@@ -141,6 +141,15 @@ describe("JobHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows posting age when the source provides a posting date", () => {
+    renderWithRouter(
+      <JobHeader job={{ ...mockJob, datePosted: "1 hour ago" }} />,
+    );
+
+    expect(screen.getByText("Posted 1 hour ago")).toBeInTheDocument();
+    expect(screen.getByText("Source reported: 1 hour ago")).toBeInTheDocument();
+  });
+
   it("shows contextual tooltips for discovered, tracer off, and suitability score", () => {
     const jobWithTooltips = {
       ...mockJob,

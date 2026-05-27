@@ -69,4 +69,11 @@ describe("JobPageLeftSidebar application details", () => {
     expect(screen.getByText("Applied")).toBeInTheDocument();
     expect(screen.getByText(/1 May 2026/)).toBeInTheDocument();
   });
+
+  it("shows the source posting age when available", () => {
+    renderSidebar({ datePosted: "1 hour ago" });
+
+    expect(screen.getByText("Posted")).toBeInTheDocument();
+    expect(screen.getByText("1 hour ago")).toBeInTheDocument();
+  });
 });
