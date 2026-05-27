@@ -61,16 +61,24 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   return (
     <motion.section
       key={job.id}
-      className={cn("space-y-4", className)}
+      className={cn("@container/brief space-y-8", className)}
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={CARD_ENTER_TRANSITION}
     >
-      <p className="mb-8 text-lg font-bold leading-7 text-foreground">
+      <p className="text-lg font-bold leading-7 text-foreground">
         {brief.role_summary}
       </p>
 
-      <div className="grid gap-x-2 gap-y-6 lg:grid-cols-2">
+      {brief.specifics.length > 0 && (
+        <HighlightsSection
+          jobId={job.id}
+          items={brief.specifics}
+          prefersReducedMotion={prefersReducedMotion}
+        />
+      )}
+
+      <div className="flex flex-col gap-6 @3xl/brief:grid @3xl/brief:grid-cols-3 @3xl/brief:gap-x-4 @3xl/brief:gap-y-6">
         {bulletSectionsWithOffset.map((section) => (
           <BulletSection
             key={section.title}
@@ -82,14 +90,6 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
             prefersReducedMotion={prefersReducedMotion}
           />
         ))}
-
-        {brief.specifics.length > 0 && (
-          <HighlightsSection
-            jobId={job.id}
-            items={brief.specifics}
-            prefersReducedMotion={prefersReducedMotion}
-          />
-        )}
       </div>
     </motion.section>
   );
@@ -118,7 +118,7 @@ const HighlightsSection: React.FC<{
   items: string[];
   prefersReducedMotion: boolean | null;
 }> = ({ jobId, items, prefersReducedMotion }) => (
-  <div className="space-y-2">
+  <div className="w-full space-y-2">
     <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
       Highlights
     </div>
