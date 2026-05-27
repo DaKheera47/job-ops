@@ -124,23 +124,22 @@ const HighlightsSection: React.FC<{
     </div>
     <div className="flex flex-wrap gap-1.5">
       {items.map((item, index) => (
-          <motion.span
-            key={`${jobId}-highlight-${index}-${item}`}
-            className="inline-flex items-center whitespace-nowrap rounded-lg border border-border/45 bg-background px-2 py-1 text-foreground shadow-sm"
-            initial={
-              prefersReducedMotion ? false : { opacity: 0, x: HIGHLIGHT_X_OFFSET }
-            }
-            animate={{ opacity: 1, x: 0 }}
-            transition={{
-              ...BULLET_ENTER_TRANSITION,
-              delay: prefersReducedMotion
-                ? 0
-                : BULLET_STAGGER_BASE_DELAY +
-                  index * BULLET_STAGGER_SECONDS,
-            }}
-          >
-            <span className="truncate">{item}</span>
-          </motion.span>
+        <motion.span
+          key={`${jobId}-highlight-${index}-${item}`}
+          className="inline-flex items-center whitespace-nowrap rounded-lg border border-border/45 bg-background px-2 py-1 text-foreground shadow-sm"
+          initial={
+            prefersReducedMotion ? false : { opacity: 0, x: HIGHLIGHT_X_OFFSET }
+          }
+          animate={{ opacity: 1, x: 0 }}
+          transition={{
+            ...BULLET_ENTER_TRANSITION,
+            delay: prefersReducedMotion
+              ? 0
+              : BULLET_STAGGER_BASE_DELAY + index * BULLET_STAGGER_SECONDS,
+          }}
+        >
+          <span className="truncate">{item}</span>
+        </motion.span>
       ))}
     </div>
   </div>
@@ -153,14 +152,7 @@ const BulletSection: React.FC<{
   startIndex: number;
   fadeOnly: boolean;
   prefersReducedMotion: boolean | null;
-}> = ({
-  jobId,
-  title,
-  items,
-  startIndex,
-  fadeOnly,
-  prefersReducedMotion,
-}) => {
+}> = ({ jobId, title, items, startIndex, fadeOnly, prefersReducedMotion }) => {
   if (items.length === 0) return null;
 
   const bulletInitial = prefersReducedMotion

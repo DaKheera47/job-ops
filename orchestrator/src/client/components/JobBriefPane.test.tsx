@@ -4,9 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { JobBriefPane } from "./JobBriefPane";
 
 vi.mock("framer-motion", async () => {
-  const actual = await vi.importActual<typeof import("framer-motion")>(
-    "framer-motion",
-  );
+  const actual =
+    await vi.importActual<typeof import("framer-motion")>("framer-motion");
   return {
     ...actual,
     useReducedMotion: () => true,
