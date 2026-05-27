@@ -410,6 +410,19 @@ describe("Model Selection Logic", () => {
         model: "",
       });
     });
+
+    it("resolves OPENROUTER_API_KEY from env when no stored key is set", async () => {
+      delete process.env.LLM_API_KEY;
+      process.env.OPENROUTER_API_KEY = "sk-openrouter-only";
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "",
+      });
+
+      await expect(resolveLlmRuntimeSettings()).resolves.toMatchObject({
+        provider: "openrouter",
+        apiKey: "sk-openrouter-only",
+      });
+    });
   });
 
   describe("Project Selection Service", () => {

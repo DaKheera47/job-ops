@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { mapGlmProviderAlias } from "@shared/settings-registry";
 import { toStringOrNull } from "@shared/utils/type-conversion";
 import { CodexClient } from "./codex/client";
@@ -55,27 +56,21 @@ export class LlmService {
     const strategy = strategies[resolvedProvider];
     const baseUrl = normalizedBaseUrl || strategy.defaultBaseUrl;
 
-    let apiKey =
-      toStringOrNull(options.apiKey) ||
-      toStringOrNull(getOriginalEnvValue("LLM_API_KEY")) ||
-      null;
+    const apiKey = resolveLlmApiKey({
+      storedApiKey: options.apiKey,
+      provider: resolvedProvider,
+    });
 
-    // Backwards-compat migration: OPENROUTER_API_KEY -> LLM_API_KEY.
-    // This prevents users from losing access when upgrading (keys are often only shown once).
     if (
-      !apiKey &&
+      !toStringOrNull(options.apiKey) &&
+      !toStringOrNull(getOriginalEnvValue("LLM_API_KEY")) &&
       resolvedProvider === "openrouter" &&
+      apiKey &&
       toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
     ) {
       logger.warn(
-        "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
+        "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Use LLM_API_KEY instead; keys are often only shown once.",
       );
-      const migrated = toStringOrNull(
-        getOriginalEnvValue("OPENROUTER_API_KEY"),
-      );
-      if (migrated) {
-        apiKey = migrated;
-      }
     }
 
     this.provider = resolvedProvider;

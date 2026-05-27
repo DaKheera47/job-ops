@@ -1,5 +1,6 @@
 import * as settingsRepo from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { LlmService } from "@server/services/llm/service";
 import { getEffectiveSettings } from "@server/services/settings";
 import {
@@ -135,11 +136,11 @@ export async function resolveLlmRuntimeSettings(
     model,
     provider,
     baseUrl,
-    apiKey:
-      purposeApiKey ||
-      overrides?.llmApiKey ||
-      getOriginalEnvValue("LLM_API_KEY") ||
-      null,
+    apiKey: resolveLlmApiKey({
+      purposeApiKey,
+      storedApiKey: overrides?.llmApiKey,
+      provider,
+    }),
   };
 }
 

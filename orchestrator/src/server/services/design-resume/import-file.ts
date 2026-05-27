@@ -1504,7 +1504,7 @@ export async function importDesignResumeFromFile(
 
   if (providerRequiresApiKey(provider) && !runtime.apiKey) {
     throw serviceUnavailable(
-      "Connect your AI provider in Settings before importing a resume file.",
+      "Configure an LLM API key in Settings or set LLM_API_KEY in your environment before importing a resume file.",
     );
   }
 

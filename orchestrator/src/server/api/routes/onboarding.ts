@@ -4,6 +4,7 @@ import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { LlmService } from "@server/services/llm/service";
 import { suggestOnboardingSearchTerms } from "@server/services/onboarding-search-terms";
 import {
@@ -64,11 +65,10 @@ async function validateLlm(options: {
         getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
         undefined
     : undefined;
-  const resolvedApiKey =
-    options.apiKey?.trim() ||
-    storedApiKey?.trim() ||
-    getOriginalEnvValue("LLM_API_KEY")?.trim() ||
-    null;
+  const resolvedApiKey = resolveLlmApiKey({
+    storedApiKey: options.apiKey ?? storedApiKey,
+    provider: normalizedProvider,
+  });
 
   logger.debug("LLM onboarding validation resolved config", {
     provider: normalizedProvider ?? null,
