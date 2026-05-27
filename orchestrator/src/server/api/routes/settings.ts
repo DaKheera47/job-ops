@@ -14,12 +14,12 @@ import { getSetting } from "@server/repositories/settings";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { setBackupSettings } from "@server/services/backup/index";
 import { getOriginalEnvValue } from "@server/services/envSettings";
-import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import {
   disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
 } from "@server/services/llm/codex/login";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {

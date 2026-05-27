@@ -56,7 +56,9 @@ export async function getEnvSettingsData(
         continue;
       }
       const hintLength =
-        effectiveSecret.length > 4 ? 4 : Math.max(effectiveSecret.length - 1, 1);
+        effectiveSecret.length > 4
+          ? 4
+          : Math.max(effectiveSecret.length - 1, 1);
       // biome-ignore lint/suspicious/noExplicitAny: explicit partial assignment
       (values as any)[hintKey] = effectiveSecret.slice(0, hintLength);
     } else {
