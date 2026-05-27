@@ -1,3 +1,4 @@
+import { getPostingDateSortValue } from "@client/lib/job-posting-age";
 import type { AppSettings, JobListItem, JobSource } from "@shared/types";
 import type { DateFilterDimension, FilterTab, JobSort } from "./constants";
 import {
@@ -100,6 +101,18 @@ export const compareJobs = (a: JobListItem, b: JobListItem, sort: JobSort) => {
     case "discoveredAt": {
       const aDate = dateValue(a.discoveredAt);
       const bDate = dateValue(b.discoveredAt);
+      if (aDate == null && bDate == null) {
+        value = 0;
+        break;
+      }
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      value = compareNumber(aDate, bDate);
+      break;
+    }
+    case "datePosted": {
+      const aDate = getPostingDateSortValue(a.datePosted);
+      const bDate = getPostingDateSortValue(b.datePosted);
       if (aDate == null && bDate == null) {
         value = 0;
         break;

@@ -26,13 +26,13 @@ const createWrapper = (initialEntry: string) => {
 
 describe("useOrchestratorFilters", () => {
   it("parses a valid sort query param", () => {
-    const { Wrapper } = createWrapper("/ready?sort=date-asc");
+    const { Wrapper } = createWrapper("/ready?sort=datePosted-asc");
     const { result } = renderHook(() => useOrchestratorFilters(), {
       wrapper: Wrapper,
     });
 
     expect(result.current.sort).toEqual({
-      key: "date",
+      key: "datePosted",
       direction: "asc",
     });
   });

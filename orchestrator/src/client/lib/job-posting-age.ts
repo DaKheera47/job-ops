@@ -61,6 +61,22 @@ function parseRelativeAgeDays(value: string): number | null {
   return null;
 }
 
+export function getPostingDateSortValue(
+  datePosted: string | null | undefined,
+  now = new Date(),
+): number | null {
+  const raw = datePosted?.trim();
+  if (!raw) return null;
+
+  const parsed = parsePostingDate(raw);
+  if (parsed) return parsed.getTime();
+
+  const ageDays = parseRelativeAgeDays(raw);
+  if (ageDays == null) return null;
+
+  return now.getTime() - ageDays * 86_400_000;
+}
+
 function plural(value: number, unit: string): string {
   return `${value}${unit}`;
 }

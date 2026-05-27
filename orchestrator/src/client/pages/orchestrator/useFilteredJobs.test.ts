@@ -254,6 +254,56 @@ describe("useFilteredJobs", () => {
     expect(result.current.map((job) => job.id)).toEqual(["newer", "older"]);
   });
 
+  it("sorts by posting date while keeping missing values last", () => {
+    const jobs: Job[] = [
+      {
+        ...baseJob,
+        id: "missing",
+        datePosted: null,
+      },
+      {
+        ...baseJob,
+        id: "older",
+        datePosted: "2026-05-24",
+      },
+      {
+        ...baseJob,
+        id: "newer",
+        datePosted: "2026-05-26",
+      },
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ direction }: { direction: "asc" | "desc" }) =>
+        useFilteredJobs(
+          jobs,
+          "all",
+          defaultDateFilter,
+          "all",
+          "all",
+          { mode: "at_least", min: null, max: null },
+          { key: "datePosted", direction },
+        ),
+      {
+        initialProps: { direction: "desc" as "asc" | "desc" },
+      },
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual([
+      "newer",
+      "older",
+      "missing",
+    ]);
+
+    rerender({ direction: "asc" });
+
+    expect(result.current.map((job) => job.id)).toEqual([
+      "older",
+      "newer",
+      "missing",
+    ]);
+  });
+
   it("falls back through the date sort priority when the primary timestamp is missing", () => {
     const jobs: Job[] = [
       {

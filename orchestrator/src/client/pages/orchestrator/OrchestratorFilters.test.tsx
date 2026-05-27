@@ -119,9 +119,9 @@ describe("OrchestratorFilters", () => {
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
-    fireEvent.click(await screen.findByText("Date"));
+    fireEvent.click(await screen.findByText("Posted"));
     expect(props.onSortChange).toHaveBeenCalledWith({
-      key: "date",
+      key: "datePosted",
       direction: "desc",
     });
 

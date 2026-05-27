@@ -26,6 +26,7 @@ const allowedSalaryModes: SalaryFilterMode[] = [
 ];
 const allowedSortKeys: JobSort["key"][] = [
   "date",
+  "datePosted",
   "discoveredAt",
   "score",
   "salary",
