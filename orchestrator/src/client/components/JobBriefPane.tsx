@@ -61,15 +61,12 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   return (
     <motion.section
       key={job.id}
-      className={cn(
-        "space-y-4 rounded-lg bg-muted/50 p-4",
-        className,
-      )}
+      className={cn("space-y-4", className)}
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={CARD_ENTER_TRANSITION}
     >
-      <p className="text-lg font-bold leading-7 text-foreground">
+      <p className="mb-8 text-lg font-bold leading-7 text-foreground">
         {brief.role_summary}
       </p>
 
