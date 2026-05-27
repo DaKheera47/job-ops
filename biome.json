@@ -12,7 +12,9 @@
       "!!docs-site/.docusaurus",
       "!!docs-site/build",
       "!!**/.venv",
-      "!!.claude"
+      "!!.claude",
+      "!!data",
+      "!!storage"
     ]
   },
   "css": {
