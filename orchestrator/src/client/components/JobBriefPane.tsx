@@ -10,8 +10,12 @@ type JobBriefPaneProps = {
   className?: string;
 };
 
-const BULLET_ENTER_TRANSITION = { duration: 0.15, ease: "easeOut" } as const;
-const BULLET_STAGGER_SECONDS = 0.04;
+const CARD_ENTER_TRANSITION = { duration: 0.1, ease: "easeOut" } as const;
+const BULLET_ENTER_TRANSITION = { duration: 0.1, ease: "easeOut" } as const;
+const BULLET_STAGGER_SECONDS = 0.02;
+const BULLET_STAGGER_BASE_DELAY = 0.05;
+const HIGHLIGHT_X_OFFSET = 6;
+const FADE_ONLY_BULLET_SECTIONS = new Set(["Company offers", "They want"]);
 
 export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   job,
@@ -38,6 +42,11 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
     });
   }, [bulletSections]);
 
+  const totalBulletCount = useMemo(
+    () => bulletSections.reduce((count, section) => count + section.items.length, 0),
+    [bulletSections],
+  );
+
   if (!brief) {
     return (
       <section
@@ -55,8 +64,17 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   }
 
   return (
-    <section className={cn("space-y-4", className)}>
-      <p className="flex items-center gap-2 rounded-lg border-border bg-muted/50 p-4 text-lg font-bold leading-7 text-foreground">
+    <motion.section
+      key={job.id}
+      className={cn(
+        "space-y-4 rounded-lg bg-muted/50 p-4",
+        className,
+      )}
+      initial={prefersReducedMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={CARD_ENTER_TRANSITION}
+    >
+      <p className="text-lg font-bold leading-7 text-foreground">
         {brief.role_summary}
       </p>
 
@@ -68,29 +86,21 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
             title={section.title}
             items={section.items}
             startIndex={section.startIndex}
+            fadeOnly={FADE_ONLY_BULLET_SECTIONS.has(section.title)}
             prefersReducedMotion={prefersReducedMotion}
           />
         ))}
 
         {brief.specifics.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Highlights
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {brief.specifics.map((item) => (
-                <span
-                  key={item}
-                  className="inline-flex items-center whitespace-nowrap rounded-lg bg-muted/50 px-2 py-1 text-foreground"
-                >
-                  <span className="truncate">{item}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+          <HighlightsSection
+            jobId={job.id}
+            items={brief.specifics}
+            staggerAfter={totalBulletCount}
+            prefersReducedMotion={prefersReducedMotion}
+          />
         )}
       </div>
-    </section>
+    </motion.section>
   );
 };
 
@@ -112,14 +122,67 @@ const FitLine: React.FC<{ job: Job }> = ({ job }) => {
   );
 };
 
+const HighlightsSection: React.FC<{
+  jobId: string;
+  items: string[];
+  staggerAfter: number;
+  prefersReducedMotion: boolean | null;
+}> = ({ jobId, items, staggerAfter, prefersReducedMotion }) => (
+  <div className="space-y-2">
+    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      Highlights
+    </div>
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((item, index) => {
+        const rightToLeftIndex = items.length - 1 - index;
+
+        return (
+          <motion.span
+            key={`${jobId}-highlight-${index}-${item}`}
+            className="inline-flex items-center whitespace-nowrap rounded-lg bg-background/40 px-2 py-1 text-foreground"
+            initial={
+              prefersReducedMotion ? false : { opacity: 0, x: HIGHLIGHT_X_OFFSET }
+            }
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              ...BULLET_ENTER_TRANSITION,
+              delay: prefersReducedMotion
+                ? 0
+                : BULLET_STAGGER_BASE_DELAY +
+                  staggerAfter * BULLET_STAGGER_SECONDS +
+                  rightToLeftIndex * BULLET_STAGGER_SECONDS,
+            }}
+          >
+            <span className="truncate">{item}</span>
+          </motion.span>
+        );
+      })}
+    </div>
+  </div>
+);
+
 const BulletSection: React.FC<{
   jobId: string;
   title: string;
   items: string[];
   startIndex: number;
+  fadeOnly: boolean;
   prefersReducedMotion: boolean | null;
-}> = ({ jobId, title, items, startIndex, prefersReducedMotion }) => {
+}> = ({
+  jobId,
+  title,
+  items,
+  startIndex,
+  fadeOnly,
+  prefersReducedMotion,
+}) => {
   if (items.length === 0) return null;
+
+  const bulletInitial = prefersReducedMotion
+    ? false
+    : fadeOnly
+      ? { opacity: 0 }
+      : { opacity: 0, y: 4 };
 
   return (
     <div className="space-y-2">
@@ -131,15 +194,14 @@ const BulletSection: React.FC<{
           <motion.li
             key={`${jobId}-${title}-${index}-${item}`}
             className="flex gap-2"
-            initial={
-              prefersReducedMotion ? false : { opacity: 0, y: 6 }
-            }
+            initial={bulletInitial}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               ...BULLET_ENTER_TRANSITION,
               delay: prefersReducedMotion
                 ? 0
-                : (startIndex + index) * BULLET_STAGGER_SECONDS,
+                : BULLET_STAGGER_BASE_DELAY +
+                  (startIndex + index) * BULLET_STAGGER_SECONDS,
             }}
           >
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground/45" />
