@@ -4,7 +4,10 @@ export interface PostingAgeLabel {
   label: string;
   inlineLabel: string;
   tooltip: string;
+  tone: PostingAgeTone;
 }
+
+export type PostingAgeTone = "fresh" | "aging" | "old";
 
 const RELATIVE_SOURCE_PATTERN =
   /\b(ago|today|yesterday|minute|hour|day|week|month|year)s?\b/i;
@@ -19,6 +22,45 @@ function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+function getCalendarAgeDays(date: Date, now: Date): number {
+  return Math.max(
+    0,
+    Math.floor(
+      (startOfLocalDay(now).getTime() - startOfLocalDay(date).getTime()) /
+        86_400_000,
+    ),
+  );
+}
+
+function getPostingAgeTone(ageDays: number | null): PostingAgeTone {
+  if (ageDays === null) return "old";
+  if (ageDays <= 4) return "fresh";
+  if (ageDays <= 14) return "aging";
+  return "old";
+}
+
+function parseRelativeAgeDays(value: string): number | null {
+  const normalized = value.trim().toLowerCase();
+  if (/\btoday\b/.test(normalized)) return 0;
+  if (/\byesterday\b/.test(normalized)) return 1;
+
+  const match = /(\d+)\s*(minute|hour|day|week|month|year)s?\s+ago\b/.exec(
+    normalized,
+  );
+  if (!match) return null;
+
+  const amount = Number.parseInt(match[1] ?? "", 10);
+  if (!Number.isFinite(amount)) return null;
+
+  const unit = match[2];
+  if (unit === "minute" || unit === "hour") return 0;
+  if (unit === "day") return amount;
+  if (unit === "week") return amount * 7;
+  if (unit === "month") return amount * 30;
+  if (unit === "year") return amount * 365;
+  return null;
+}
+
 function plural(value: number, unit: string): string {
   return `${value}${unit}`;
 }
@@ -27,10 +69,7 @@ function formatRelativePostingAge(date: Date, now: Date): string {
   const elapsedMs = Math.max(0, now.getTime() - date.getTime());
   const elapsedMinutes = Math.floor(elapsedMs / 60_000);
   const elapsedHours = Math.floor(elapsedMs / 3_600_000);
-  const calendarDays = Math.floor(
-    (startOfLocalDay(now).getTime() - startOfLocalDay(date).getTime()) /
-      86_400_000,
-  );
+  const calendarDays = getCalendarAgeDays(date, now);
 
   if (elapsedMinutes < 1) return "just now";
   if (elapsedMinutes < 60) return plural(elapsedMinutes, "m ago");
@@ -57,14 +96,17 @@ export function formatPostingAgeLabel(
   const parsed = parsePostingDate(raw);
   if (!parsed) {
     if (!RELATIVE_SOURCE_PATTERN.test(raw) || raw.length > 48) return null;
+    const ageDays = parseRelativeAgeDays(raw);
     return {
       label: raw,
       inlineLabel: `Posted ${raw}`,
       tooltip: `Source reported: ${raw}`,
+      tone: getPostingAgeTone(ageDays),
     };
   }
 
   const label = formatRelativePostingAge(parsed, now);
+  const ageDays = getCalendarAgeDays(parsed, now);
   const absolute =
     raw.length === 10
       ? (formatDate(raw) ?? raw)
@@ -74,5 +116,6 @@ export function formatPostingAgeLabel(
     label,
     inlineLabel: `Posted ${label}`,
     tooltip: `Source posting date: ${absolute}`,
+    tone: getPostingAgeTone(ageDays),
   };
 }

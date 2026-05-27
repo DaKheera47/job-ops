@@ -164,6 +164,12 @@ const AppliedDuplicatePill: React.FC<{
   );
 };
 
+const postingAgeDotColor = {
+  fresh: "bg-emerald-500",
+  aging: "bg-amber-500",
+  old: "bg-slate-500",
+};
+
 export const JobHeader: React.FC<JobHeaderProps> = ({
   job,
   className,
@@ -280,7 +286,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
 
           {postingAge && (
             <StatusIndicator
-              dotColor="bg-cyan-500"
+              dotColor={postingAgeDotColor[postingAge.tone]}
               label={postingAge.inlineLabel}
               tooltip={postingAge.tooltip}
               tooltipClassName="max-w-xs"
