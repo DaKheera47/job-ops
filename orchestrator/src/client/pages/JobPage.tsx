@@ -3,7 +3,6 @@ import {
   type ApplicationTask,
   type Job,
   type JobNote,
-  type JobOutcome,
   type ResumeProjectCatalogItem,
   STAGE_LABELS,
   type StageEvent,
@@ -44,6 +43,7 @@ import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
+import { logJobStageEvent } from "@/client/lib/logJobStageEvent";
 import {
   getPdfActionLabels,
   isPdfRegenerating,
@@ -298,60 +298,17 @@ export const JobPage: React.FC = () => {
       return;
     }
 
-    let toStage: ApplicationStage | "no_change" = values.stage as
-      | ApplicationStage
-      | "no_change";
-    let outcome: JobOutcome | null = null;
-
-    if (values.stage === "rejected") {
-      toStage = "closed";
-      outcome = "rejected";
-    } else if (values.stage === "withdrawn") {
-      toStage = "closed";
-      outcome = "withdrawn";
-    }
-
     const currentStage = events.at(-1)?.toStage ?? "applied";
-    const effectiveStage =
-      toStage === "no_change" ? (currentStage ?? "applied") : toStage;
 
     try {
-      if (eventId) {
-        await api.updateJobStageEvent(job.id, eventId, {
-          toStage: toStage === "no_change" ? undefined : toStage,
-          occurredAt: toTimestamp(values.date) ?? undefined,
-          metadata: {
-            note: values.notes?.trim() || undefined,
-            eventLabel: values.title.trim() || undefined,
-            reasonCode:
-              values.reasonCode ||
-              (values.stage === "no_change"
-                ? undefined
-                : "job_page_manual_stage"),
-            actor: "user",
-            eventType: values.stage === "no_change" ? "note" : "status_update",
-            externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
-          },
-          outcome,
-        });
-      } else {
-        const newEvent = await api.transitionJobStage(job.id, {
-          toStage: effectiveStage,
-          occurredAt: toTimestamp(values.date),
-          metadata: {
-            note: values.notes?.trim() || undefined,
-            eventLabel: values.title.trim() || undefined,
-            reasonCode:
-              values.reasonCode ||
-              (values.stage === "no_change"
-                ? undefined
-                : "job_page_manual_stage"),
-            actor: "user",
-            eventType: values.stage === "no_change" ? "note" : "status_update",
-            externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
-          },
-          outcome,
-        });
+      const { effectiveStage, newEvent } = await logJobStageEvent({
+        jobId: job.id,
+        currentStage,
+        values,
+        eventId,
+      });
+
+      if (newEvent) {
         pendingEventRef.current = newEvent;
       }
 
@@ -1002,13 +959,6 @@ export const JobPage: React.FC = () => {
       />
     </main>
   );
-};
-
-const toTimestamp = (value: string) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return Math.floor(date.getTime() / 1000);
 };
 
 const mergeEvents = (events: StageEvent[], pending: StageEvent | null) => {

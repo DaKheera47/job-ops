@@ -41,6 +41,8 @@ interface LogEventModalProps {
   onClose: () => void;
   onLog: (values: LogEventFormValues, eventId?: string) => Promise<void>;
   editingEvent?: StageEvent | null;
+  jobTitle?: string;
+  employer?: string;
 }
 
 const STAGE_OPTIONS = [
@@ -71,6 +73,8 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
   onClose,
   onLog,
   editingEvent,
+  jobTitle,
+  employer,
 }) => {
   const {
     register,
@@ -148,7 +152,11 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
           <AlertDialogDescription>
             {editingEvent
               ? "Update the details of this event."
-              : "Record a new update or stage change for this application."}
+              : jobTitle
+                ? `Record a new update or stage change for ${jobTitle}${
+                    employer ? ` at ${employer}` : ""
+                  }.`
+                : "Record a new update or stage change for this application."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
