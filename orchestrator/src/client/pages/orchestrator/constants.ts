@@ -83,7 +83,6 @@ export type DateFilterPreset = "7" | "14" | "30" | "90" | "custom";
 export type DateFilterDimension = "ready" | "applied" | "closed" | "discovered";
 
 export type SortKey =
-  | "date"
   | "datePosted"
   | "discoveredAt"
   | "score"
@@ -108,7 +107,6 @@ export interface SalaryFilter {
 export interface JobSort {
   key: SortKey;
   direction: SortDirection;
-  datePriority?: DateFilterDimension[];
 }
 
 export interface JobDateFilter {
@@ -127,7 +125,6 @@ export const DEFAULT_DATE_FILTER: JobDateFilter = {
 };
 
 export const sortLabels: Record<JobSort["key"], string> = {
-  date: "Workflow date",
   datePosted: "Posted",
   discoveredAt: "Discovered",
   score: "Score",
@@ -137,7 +134,6 @@ export const sortLabels: Record<JobSort["key"], string> = {
 };
 
 export const defaultSortDirection: Record<JobSort["key"], SortDirection> = {
-  date: "desc",
   datePosted: "desc",
   discoveredAt: "desc",
   score: "desc",

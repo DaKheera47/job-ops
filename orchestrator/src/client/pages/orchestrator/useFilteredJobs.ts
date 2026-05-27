@@ -17,13 +17,6 @@ const getSponsorCategory = (score: number | null): SponsorFilter => {
   return "not_found";
 };
 
-const dateSortPriorityOrder: DateFilterDimension[] = [
-  "ready",
-  "applied",
-  "closed",
-  "discovered",
-];
-
 export const useFilteredJobs = (
   jobs: JobListItem[],
   activeTab: FilterTab,
@@ -109,12 +102,7 @@ export const useFilteredJobs = (
       });
     }
 
-    const effectiveSort =
-      sort.key === "date"
-        ? { ...sort, datePriority: getDatePriority(dateFilter.dimensions) }
-        : sort;
-
-    return [...filtered].sort((a, b) => compareJobs(a, b, effectiveSort));
+    return [...filtered].sort((a, b) => compareJobs(a, b, sort));
   }, [
     jobs,
     activeTab,
@@ -139,13 +127,6 @@ const matchesDateDimension = (
   if (filter.startDate && localDate < filter.startDate) return false;
   if (filter.endDate && localDate > filter.endDate) return false;
   return true;
-};
-
-const getDatePriority = (dimensions: DateFilterDimension[]) => {
-  const enabled = dateSortPriorityOrder.filter((dimension) =>
-    dimensions.includes(dimension),
-  );
-  return enabled.length > 0 ? enabled : dateSortPriorityOrder;
 };
 
 const toLocalDateKey = (value: number): string | null => {

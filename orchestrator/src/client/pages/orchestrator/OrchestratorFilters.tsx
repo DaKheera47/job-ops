@@ -95,7 +95,6 @@ const salaryModeOptions: Array<{
 const sortFieldOrder: JobSort["key"][] = [
   "score",
   "datePosted",
-  "date",
   "discoveredAt",
   "salary",
   "title",
@@ -105,7 +104,6 @@ const sortFieldOrder: JobSort["key"][] = [
 const sortFieldLabels: Record<JobSort["key"], string> = {
   score: "Score",
   datePosted: "Posted",
-  date: "Workflow date",
   discoveredAt: "Discovered",
   salary: "Salary",
   title: "Title",
@@ -151,7 +149,7 @@ const getDateRangeForPreset = (preset: Exclude<DateFilterPreset, "custom">) => {
 const getDirectionOptions = (
   key: JobSort["key"],
 ): Array<{ value: JobSort["direction"]; label: string }> => {
-  if (key === "date" || key === "datePosted" || key === "discoveredAt") {
+  if (key === "datePosted" || key === "discoveredAt") {
     return [
       { value: "desc", label: "Most recent" },
       { value: "asc", label: "Least recent" },

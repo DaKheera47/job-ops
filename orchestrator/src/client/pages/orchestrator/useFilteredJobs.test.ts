@@ -220,40 +220,6 @@ describe("useFilteredJobs", () => {
     expect(result.current.map((job) => job.id)).toEqual(["match"]);
   });
 
-  it("sorts by date using the active date context", () => {
-    const jobs: Job[] = [
-      {
-        ...baseJob,
-        id: "older",
-        appliedAt: "2026-04-03T14:00:00.000Z",
-      },
-      {
-        ...baseJob,
-        id: "newer",
-        appliedAt: "2026-04-05T14:00:00.000Z",
-      },
-    ];
-
-    const { result } = renderHook(() =>
-      useFilteredJobs(
-        jobs,
-        "all",
-        {
-          dimensions: ["applied"],
-          startDate: null,
-          endDate: null,
-          preset: null,
-        },
-        "all",
-        "all",
-        { mode: "at_least", min: null, max: null },
-        { key: "date", direction: "desc" },
-      ),
-    );
-
-    expect(result.current.map((job) => job.id)).toEqual(["newer", "older"]);
-  });
-
   it("sorts by posting date while keeping missing values last", () => {
     const jobs: Job[] = [
       {
@@ -302,41 +268,5 @@ describe("useFilteredJobs", () => {
       "newer",
       "missing",
     ]);
-  });
-
-  it("falls back through the date sort priority when the primary timestamp is missing", () => {
-    const jobs: Job[] = [
-      {
-        ...baseJob,
-        id: "fallback",
-        appliedAt: "2026-04-05T14:00:00.000Z",
-        readyAt: null,
-      },
-      {
-        ...baseJob,
-        id: "ready",
-        readyAt: "2026-04-04T14:00:00.000Z",
-        appliedAt: "2026-04-03T14:00:00.000Z",
-      },
-    ];
-
-    const { result } = renderHook(() =>
-      useFilteredJobs(
-        jobs,
-        "all",
-        {
-          dimensions: ["ready", "applied"],
-          startDate: null,
-          endDate: null,
-          preset: null,
-        },
-        "all",
-        "all",
-        { mode: "at_least", min: null, max: null },
-        { key: "date", direction: "desc" },
-      ),
-    );
-
-    expect(result.current.map((job) => job.id)).toEqual(["fallback", "ready"]);
   });
 });
