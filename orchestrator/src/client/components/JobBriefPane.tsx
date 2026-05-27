@@ -1,6 +1,8 @@
 import type { Job, JobBrief } from "@shared/types.js";
+import { motion, useReducedMotion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import type React from "react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 type JobBriefPaneProps = {
@@ -8,11 +10,33 @@ type JobBriefPaneProps = {
   className?: string;
 };
 
+const BULLET_ENTER_TRANSITION = { duration: 0.15, ease: "easeOut" } as const;
+const BULLET_STAGGER_SECONDS = 0.04;
+
 export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   job,
   className,
 }) => {
   const brief = parseJobBrief(job.jobBrief);
+  const prefersReducedMotion = useReducedMotion();
+
+  const bulletSections = useMemo(() => {
+    if (!brief) return [];
+    return [
+      { title: "Company offers", items: brief.company_offers },
+      { title: "They want", items: brief.they_want },
+      { title: "Missing or unclear", items: brief.missing_or_unclear },
+    ];
+  }, [brief]);
+
+  const bulletSectionsWithOffset = useMemo(() => {
+    let offset = 0;
+    return bulletSections.map((section) => {
+      const startIndex = offset;
+      offset += section.items.length;
+      return { ...section, startIndex };
+    });
+  }, [bulletSections]);
 
   if (!brief) {
     return (
@@ -32,17 +56,21 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
 
   return (
     <section className={cn("space-y-4", className)}>
-      <p className="text-lg font-bold leading-7 text-foreground border-border p-4 rounded-lg bg-muted/50 flex items-center gap-2">
+      <p className="flex items-center gap-2 rounded-lg border-border bg-muted/50 p-4 text-lg font-bold leading-7 text-foreground">
         {brief.role_summary}
       </p>
 
-      <div className="grid gap-y-6 gap-x-2 lg:grid-cols-2">
-        <BulletSection title="Company offers" items={brief.company_offers} />
-        <BulletSection title="They want" items={brief.they_want} />
-        <BulletSection
-          title="Missing or unclear"
-          items={brief.missing_or_unclear}
-        />
+      <div className="grid gap-x-2 gap-y-6 lg:grid-cols-2">
+        {bulletSectionsWithOffset.map((section) => (
+          <BulletSection
+            key={section.title}
+            jobId={job.id}
+            title={section.title}
+            items={section.items}
+            startIndex={section.startIndex}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+        ))}
 
         {brief.specifics.length > 0 && (
           <div className="space-y-2">
@@ -53,7 +81,7 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
               {brief.specifics.map((item) => (
                 <span
                   key={item}
-                  className="whitespace-nowrap inline-flex items-center text-foreground bg-muted/50 rounded-lg px-2 py-1"
+                  className="inline-flex items-center whitespace-nowrap rounded-lg bg-muted/50 px-2 py-1 text-foreground"
                 >
                   <span className="truncate">{item}</span>
                 </span>
@@ -84,10 +112,13 @@ const FitLine: React.FC<{ job: Job }> = ({ job }) => {
   );
 };
 
-const BulletSection: React.FC<{ title: string; items: string[] }> = ({
-  title,
-  items,
-}) => {
+const BulletSection: React.FC<{
+  jobId: string;
+  title: string;
+  items: string[];
+  startIndex: number;
+  prefersReducedMotion: boolean | null;
+}> = ({ jobId, title, items, startIndex, prefersReducedMotion }) => {
   if (items.length === 0) return null;
 
   return (
@@ -96,11 +127,24 @@ const BulletSection: React.FC<{ title: string; items: string[] }> = ({
         {title}
       </div>
       <ul className="space-y-1.5 leading-6 text-foreground">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
+        {items.map((item, index) => (
+          <motion.li
+            key={`${jobId}-${title}-${index}-${item}`}
+            className="flex gap-2"
+            initial={
+              prefersReducedMotion ? false : { opacity: 0, y: 6 }
+            }
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              ...BULLET_ENTER_TRANSITION,
+              delay: prefersReducedMotion
+                ? 0
+                : (startIndex + index) * BULLET_STAGGER_SECONDS,
+            }}
+          >
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground/45" />
             <span>{item}</span>
-          </li>
+          </motion.li>
         ))}
       </ul>
     </div>

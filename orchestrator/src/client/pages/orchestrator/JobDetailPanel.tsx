@@ -78,7 +78,6 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import type { FilterTab } from "./constants";
-import { JobDetailContentTransition } from "./JobDetailContentTransition";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
@@ -711,10 +710,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         }
       />
 
-      <JobDetailContentTransition
-        jobId={selectedJob.id}
-        className="flex min-w-0 flex-col rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4"
-      >
+      <div className="flex min-w-0 flex-col rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4">
         <TabsContent value="brief" className="space-y-4">
           {!brief && (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -921,7 +917,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             }
           }}
         />
-      </JobDetailContentTransition>
+      </div>
     </Tabs>
   );
 };

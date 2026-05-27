@@ -1,7 +1,17 @@
 import { createJob } from "@shared/testing/factories.js";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { JobBriefPane } from "./JobBriefPane";
+
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual<typeof import("framer-motion")>(
+    "framer-motion",
+  );
+  return {
+    ...actual,
+    useReducedMotion: () => true,
+  };
+});
 
 describe("JobBriefPane", () => {
   it("renders the UI-ready brief fields", () => {
