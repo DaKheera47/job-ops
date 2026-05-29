@@ -100,9 +100,12 @@ export interface HiringCafeResult {
 }
 
 class HiringCafeChallengeError extends Error {
-  constructor() {
+  readonly challengeUrl: string;
+
+  constructor(challengeUrl = BASE_URL) {
     super("Hiring Cafe returned a challenge page instead of search data.");
     this.name = "HiringCafeChallengeError";
+    this.challengeUrl = challengeUrl;
   }
 }
 
@@ -310,13 +313,13 @@ function parseRawJobs(value: unknown): HiringCafeRawJob[] {
   );
 }
 
-function parseNextData(html: string): unknown {
+function parseNextData(html: string, challengeUrl = BASE_URL): unknown {
   const match = html.match(
     /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>\s*([\s\S]*?)\s*<\/script>/i,
   );
   if (!match) {
     if (/cloudflare|cf-browser-verification|challenge-platform/i.test(html)) {
-      throw new HiringCafeChallengeError();
+      throw new HiringCafeChallengeError(challengeUrl);
     }
     throw new Error(
       "Hiring Cafe response did not include Next.js search data.",
@@ -355,8 +358,9 @@ export function parseHiringCafeSsrPage(html: string): HiringCafeSsrPage {
 
 export function parseHiringCafeJobDetailPage(
   html: string,
+  challengeUrl = BASE_URL,
 ): HiringCafeRawJob | null {
-  const data = parseNextData(html);
+  const data = parseNextData(html, challengeUrl);
 
   const props = asRecord(asRecord(data)?.props);
   const pageProps = asRecord(props?.pageProps);
@@ -401,7 +405,7 @@ async function fetchHiringCafeSearchPage(args: {
   const body = await response.text();
   if (!response.ok) {
     if (/cloudflare|cf-browser-verification|challenge-platform/i.test(body)) {
-      throw new HiringCafeChallengeError();
+      throw new HiringCafeChallengeError(url);
     }
     const statusText = response.statusText ? ` ${response.statusText}` : "";
     throw new Error(
@@ -409,7 +413,14 @@ async function fetchHiringCafeSearchPage(args: {
     );
   }
 
-  return parseHiringCafeSsrPage(body);
+  try {
+    return parseHiringCafeSsrPage(body);
+  } catch (error) {
+    if (error instanceof HiringCafeChallengeError) {
+      throw new HiringCafeChallengeError(url);
+    }
+    throw error;
+  }
 }
 
 async function fetchHiringCafeJobDetail(args: {
@@ -432,13 +443,13 @@ async function fetchHiringCafeJobDetail(args: {
   const body = await response.text();
   if (!response.ok) {
     if (/cloudflare|cf-browser-verification|challenge-platform/i.test(body)) {
-      throw new HiringCafeChallengeError();
+      throw new HiringCafeChallengeError(url.toString());
     }
     return null;
   }
 
   try {
-    return parseHiringCafeJobDetailPage(body);
+    return parseHiringCafeJobDetailPage(body, url.toString());
   } catch (error) {
     if (error instanceof HiringCafeChallengeError) throw error;
     return null;
@@ -768,7 +779,9 @@ export async function runHiringCafe(
       jobs: [],
       error: message,
       challengeRequired:
-        error instanceof HiringCafeChallengeError ? BASE_URL : undefined,
+        error instanceof HiringCafeChallengeError
+          ? error.challengeUrl
+          : undefined,
     };
   }
 }

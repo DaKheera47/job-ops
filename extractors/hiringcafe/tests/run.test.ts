@@ -230,6 +230,36 @@ describe("runHiringCafe", () => {
     );
   });
 
+  it("surfaces the challenged detail page URL when enrichment hits a challenge", async () => {
+    const searchHit = createRawJob({
+      requisition_id: "req-1",
+      job_information: {
+        title: "Web Developer",
+      },
+    });
+    const fetchMock = vi.fn((url: string) => {
+      if (url === "https://hiring.cafe/job/req-1") {
+        return Promise.resolve(
+          createTextResponse("<html>cloudflare challenge-platform</html>"),
+        );
+      }
+
+      return Promise.resolve(createTextResponse(createSearchHtml([searchHit])));
+    });
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      challengeRequired: "https://hiring.cafe/job/req-1",
+    });
+  });
+
   it("serializes locality search state for strict city filters", async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url.startsWith("https://nominatim.openstreetmap.org/search")) {
