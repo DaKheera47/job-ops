@@ -15,7 +15,7 @@ Hiring Cafe is a browser-backed extractor that queries Hiring Cafe search APIs a
 
 Implementation split:
 
-1. `extractors/hiringcafe/src/main.ts` builds search state, calls Hiring Cafe APIs, and writes dataset JSON.
+1. `extractors/hiringcafe/src/main.ts` builds search state, calls Hiring Cafe APIs, fetches job detail pages when search hits omit full descriptions, and writes dataset JSON.
 2. `orchestrator/src/server/services/hiring-cafe.ts` runs the extractor, streams progress events, and maps rows for pipeline import.
 
 ## Why it exists
@@ -41,6 +41,7 @@ Defaults and constraints:
 - No new Hiring Cafe settings fields were added.
 - `worldwide` and `usa/ca` run in broad mode without a strict country location filter.
 - Hiring Cafe is enabled by default in source selection.
+- Full job descriptions are loaded from Hiring Cafe detail pages when the search result payload only includes summary fields.
 - The normalized job payload now preserves structured location evidence from the formatted workplace and city/state/country fields.
 - `HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS` controls recency window when running extractor directly (default `7`).
 - When a city is provided via `searchCities`, Hiring Cafe uses city radius search (default `1` mile) and strict city post-filtering.

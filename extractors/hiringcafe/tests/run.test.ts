@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildHiringCafeSearchUrl,
+  parseHiringCafeJobDetailPage,
   parseHiringCafeSsrPage,
   runHiringCafe,
 } from "../src/run";
@@ -50,6 +51,25 @@ function createSearchHtml(hits: unknown[], isLastPage = true): string {
   `;
 }
 
+function createJobDetailHtml(job: unknown): string {
+  return `
+    <!doctype html>
+    <script id="__NEXT_DATA__" type="application/json">
+      ${JSON.stringify({
+        props: {
+          pageProps: {
+            job,
+          },
+        },
+        page: "/job/[requisitionId]",
+        query: {
+          requisitionId: "req-1",
+        },
+      })}
+    </script>
+  `;
+}
+
 function createRawJob(overrides: Record<string, unknown> = {}) {
   return {
     original_source_id: "job-1",
@@ -84,6 +104,25 @@ describe("Hiring Cafe SSR parser", () => {
     expect(page.jobs).toHaveLength(1);
     expect(page.totalCount).toBe(1);
     expect(page.isLastPage).toBe(true);
+  });
+
+  it("extracts the job payload from a rendered detail page", () => {
+    const job = createRawJob({
+      requisition_id: "req-1",
+      job_information: {
+        title: "Web Developer",
+        description: "<p>Full job description.</p>",
+      },
+    });
+
+    const parsed = parseHiringCafeJobDetailPage(createJobDetailHtml(job));
+
+    expect(parsed).toMatchObject({
+      requisition_id: "req-1",
+      job_information: expect.objectContaining({
+        description: "<p>Full job description.</p>",
+      }),
+    });
   });
 
   it("builds the public search URL with url-encoded JSON state", () => {
@@ -132,6 +171,57 @@ describe("runHiringCafe", () => {
     ]);
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("https://hiring.cafe/"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
+        }),
+      }),
+    );
+  });
+
+  it("fetches the job detail page when the search hit omits the full description", async () => {
+    const baseJob = createRawJob();
+    const searchHit = createRawJob({
+      requisition_id: "req-1",
+      job_information: {
+        title: "Web Developer",
+      },
+      v5_processed_job_data: {
+        ...baseJob.v5_processed_job_data,
+        requirements_summary: "Short requirements summary.",
+      },
+    });
+    const detailJob = {
+      ...searchHit,
+      job_information: {
+        title: "Web Developer",
+        description: "<p>Full detail page description.</p>",
+      },
+    };
+    const fetchMock = vi.fn((url: string) => {
+      if (url === "https://hiring.cafe/job/req-1") {
+        return Promise.resolve(
+          createTextResponse(createJobDetailHtml(detailJob)),
+        );
+      }
+
+      return Promise.resolve(createTextResponse(createSearchHtml([searchHit])));
+    });
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.jobs[0]).toMatchObject({
+      sourceJobId: "job-1",
+      jobDescription: "<p>Full detail page description.</p>",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://hiring.cafe/job/req-1",
       expect.objectContaining({
         headers: expect.objectContaining({
           "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
