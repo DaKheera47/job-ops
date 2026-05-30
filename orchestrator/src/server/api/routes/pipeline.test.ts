@@ -1,4 +1,5 @@
 import type { Server } from "node:http";
+import type { PipelineSearchPresetConfig } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -103,6 +104,194 @@ describe.sequential("Pipeline API routes", () => {
         jobsProcessed: 3,
       }),
     ]);
+  });
+
+  it("creates, applies, updates, lists, and deletes pipeline saved searches", async () => {
+    const config: PipelineSearchPresetConfig = {
+      searchTerms: ["backend engineer"],
+      sources: ["linkedin"],
+      country: "united kingdom",
+      cityLocations: ["London"],
+      workplaceTypes: ["remote", "hybrid"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+      topN: 10,
+      minSuitabilityScore: 55,
+      runBudget: 250,
+      automaticPresetId: "custom",
+    };
+
+    const createRes = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "London backend", config }),
+    });
+    const createBody = await createRes.json();
+
+    expect(createRes.status).toBe(201);
+    expect(createBody.ok).toBe(true);
+    expect(createBody.meta.requestId).toBeTruthy();
+    expect(createBody.data).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        name: "London backend",
+        config,
+        lastUsedAt: null,
+      }),
+    );
+
+    const duplicateRes = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "London backend", config }),
+    });
+    const duplicateBody = await duplicateRes.json();
+    expect(duplicateRes.status).toBe(409);
+    expect(duplicateBody.error.code).toBe("CONFLICT");
+
+    const usedRes = await fetch(
+      `${baseUrl}/api/pipeline/search-presets/${createBody.data.id}/used`,
+      { method: "POST" },
+    );
+    const usedBody = await usedRes.json();
+    expect(usedRes.status).toBe(200);
+    expect(usedBody.data.lastUsedAt).toEqual(expect.any(String));
+
+    const updateRes = await fetch(
+      `${baseUrl}/api/pipeline/search-presets/${createBody.data.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Senior backend",
+          config: { ...config, searchTerms: ["senior backend engineer"] },
+        }),
+      },
+    );
+    const updateBody = await updateRes.json();
+    expect(updateRes.status).toBe(200);
+    expect(updateBody.data.name).toBe("Senior backend");
+    expect(updateBody.data.config.searchTerms).toEqual([
+      "senior backend engineer",
+    ]);
+
+    const listRes = await fetch(`${baseUrl}/api/pipeline/search-presets`);
+    const listBody = await listRes.json();
+    expect(listRes.status).toBe(200);
+    expect(listBody.ok).toBe(true);
+    expect(listBody.data.searches).toHaveLength(1);
+    expect(listBody.data.searches[0].name).toBe("Senior backend");
+
+    const deleteRes = await fetch(
+      `${baseUrl}/api/pipeline/search-presets/${createBody.data.id}`,
+      { method: "DELETE" },
+    );
+    const deleteBody = await deleteRes.json();
+    expect(deleteRes.status).toBe(200);
+    expect(deleteBody.data).toEqual({ deleted: true });
+
+    const missingDeleteRes = await fetch(
+      `${baseUrl}/api/pipeline/search-presets/${createBody.data.id}`,
+      { method: "DELETE" },
+    );
+    expect(missingDeleteRes.status).toBe(404);
+  });
+
+  it("scopes pipeline saved searches by tenant and user", async () => {
+    const { db, schema } = await import("@server/db");
+    const { runWithRequestContext } = await import(
+      "@server/infra/request-context"
+    );
+    const repo = await import("@server/repositories/pipeline-search-presets");
+    const config: PipelineSearchPresetConfig = {
+      searchTerms: ["platform engineer"],
+      sources: ["linkedin"],
+      country: "united states",
+      cityLocations: ["New York"],
+      workplaceTypes: ["remote"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+      topN: 5,
+      minSuitabilityScore: 65,
+      runBudget: 150,
+      automaticPresetId: "fast",
+    };
+
+    await db.insert(schema.tenants).values({
+      id: "tenant-alt",
+      name: "Alt",
+      slug: "tenant-alt",
+    });
+
+    await runWithRequestContext(
+      {
+        requestId: "saved-search-user-a",
+        tenantId: "tenant_default",
+        userId: "user-a",
+      },
+      () =>
+        repo.createPipelineSearchPreset({
+          name: "Same name",
+          config,
+        }),
+    );
+    await runWithRequestContext(
+      {
+        requestId: "saved-search-user-b",
+        tenantId: "tenant_default",
+        userId: "user-b",
+      },
+      () =>
+        repo.createPipelineSearchPreset({
+          name: "Same name",
+          config,
+        }),
+    );
+    await runWithRequestContext(
+      {
+        requestId: "saved-search-tenant-alt",
+        tenantId: "tenant-alt",
+        userId: "user-a",
+      },
+      () =>
+        repo.createPipelineSearchPreset({
+          name: "Same name",
+          config,
+        }),
+    );
+
+    const userAResults = await runWithRequestContext(
+      {
+        requestId: "saved-search-list-a",
+        tenantId: "tenant_default",
+        userId: "user-a",
+      },
+      () => repo.listPipelineSearchPresets(),
+    );
+    const userBResults = await runWithRequestContext(
+      {
+        requestId: "saved-search-list-b",
+        tenantId: "tenant_default",
+        userId: "user-b",
+      },
+      () => repo.listPipelineSearchPresets(),
+    );
+    const tenantAltResults = await runWithRequestContext(
+      {
+        requestId: "saved-search-list-alt",
+        tenantId: "tenant-alt",
+        userId: "user-a",
+      },
+      () => repo.listPipelineSearchPresets(),
+    );
+
+    expect(userAResults).toHaveLength(1);
+    expect(userBResults).toHaveLength(1);
+    expect(tenantAltResults).toHaveLength(1);
+    expect(
+      new Set([userAResults[0].id, userBResults[0].id, tenantAltResults[0].id])
+        .size,
+    ).toBe(3);
   });
 
   it("returns pipeline run insights for a completed run", async () => {

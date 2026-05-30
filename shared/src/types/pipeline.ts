@@ -121,6 +121,49 @@ export interface PipelineStatusResponse {
   nextScheduledRun: string | null;
 }
 
+export type PipelineSearchPresetMode =
+  | "fast"
+  | "balanced"
+  | "detailed"
+  | "custom";
+
+export interface PipelineSearchPresetConfig {
+  searchTerms: string[];
+  sources: ExtractorSourceId[];
+  country: string;
+  cityLocations: string[];
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  searchScope: LocationSearchScope;
+  matchStrictness: LocationMatchStrictness;
+  topN: number;
+  minSuitabilityScore: number;
+  runBudget: number;
+  automaticPresetId?: PipelineSearchPresetMode;
+}
+
+export interface PipelineSearchPreset {
+  id: string;
+  name: string;
+  config: PipelineSearchPresetConfig;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface PipelineSearchPresetsResponse {
+  searches: PipelineSearchPreset[];
+}
+
+export interface CreatePipelineSearchPresetInput {
+  name: string;
+  config: PipelineSearchPresetConfig;
+}
+
+export interface UpdatePipelineSearchPresetInput {
+  name?: string;
+  config?: PipelineSearchPresetConfig;
+}
+
 export type PipelineProgressStep =
   | "idle"
   | "crawling"

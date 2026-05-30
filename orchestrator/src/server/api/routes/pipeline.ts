@@ -28,6 +28,7 @@ import {
   subscribeToProgress,
 } from "@server/pipeline/index";
 import * as pipelineRepo from "@server/repositories/pipeline";
+import * as pipelineSearchPresetsRepo from "@server/repositories/pipeline-search-presets";
 import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
 import {
   buildChallengeViewerUrl,
@@ -53,6 +54,12 @@ import { z } from "zod";
 
 export const pipelineRouter = Router();
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
+const pipelineSourceSchema = z.enum(
+  PIPELINE_EXTRACTOR_SOURCE_IDS as [
+    (typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number],
+    ...(typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number][],
+  ],
+);
 
 function toSelectedSourcesValue(
   sources: readonly string[] | undefined,
@@ -184,6 +191,177 @@ pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
   }
 });
 
+const pipelineSearchPresetConfigSchema = z.object({
+  searchTerms: z.array(z.string().trim().min(1).max(200)).min(1).max(100),
+  sources: z.array(pipelineSourceSchema).min(1),
+  country: z.string().trim().max(100),
+  cityLocations: z.array(z.string().trim().min(1).max(100)).max(25),
+  workplaceTypes: z.array(z.enum(WORKPLACE_TYPE_VALUES)).min(1).max(3),
+  searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
+  matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
+  topN: z.number().int().min(1).max(50),
+  minSuitabilityScore: z.number().int().min(0).max(100),
+  runBudget: z.number().int().min(50).max(1000),
+  automaticPresetId: z
+    .enum(["fast", "balanced", "detailed", "custom"])
+    .optional(),
+});
+
+const createPipelineSearchPresetSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    config: pipelineSearchPresetConfigSchema,
+  })
+  .strict();
+
+const updatePipelineSearchPresetSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    config: pipelineSearchPresetConfigSchema.optional(),
+  })
+  .strict()
+  .refine((value) => value.name !== undefined || value.config !== undefined, {
+    message: "Provide a name or config update",
+  });
+
+pipelineRouter.get("/search-presets", async (_req: Request, res: Response) => {
+  try {
+    ok(res, {
+      searches: await pipelineSearchPresetsRepo.listPipelineSearchPresets(),
+    });
+  } catch (error) {
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+pipelineRouter.post("/search-presets", async (req: Request, res: Response) => {
+  try {
+    const input = createPipelineSearchPresetSchema.parse(req.body);
+    if (
+      await pipelineSearchPresetsRepo.pipelineSearchPresetNameExists({
+        name: input.name,
+      })
+    ) {
+      return fail(
+        res,
+        conflict("A saved search with this name already exists"),
+      );
+    }
+
+    ok(
+      res,
+      await pipelineSearchPresetsRepo.createPipelineSearchPreset(input),
+      201,
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, badRequest(error.message, error.flatten()));
+    }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+pipelineRouter.patch(
+  "/search-presets/:id",
+  async (req: Request, res: Response) => {
+    try {
+      const input = updatePipelineSearchPresetSchema.parse(req.body);
+      if (
+        input.name !== undefined &&
+        (await pipelineSearchPresetsRepo.pipelineSearchPresetNameExists({
+          name: input.name,
+          excludingId: req.params.id,
+        }))
+      ) {
+        return fail(
+          res,
+          conflict("A saved search with this name already exists"),
+        );
+      }
+
+      const updated =
+        await pipelineSearchPresetsRepo.updatePipelineSearchPreset(
+          req.params.id,
+          input,
+        );
+      if (!updated) return fail(res, notFound("Saved search not found"));
+      ok(res, updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return fail(res, badRequest(error.message, error.flatten()));
+      }
+      fail(
+        res,
+        new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+      );
+    }
+  },
+);
+
+pipelineRouter.post(
+  "/search-presets/:id/used",
+  async (req: Request, res: Response) => {
+    try {
+      const updated =
+        await pipelineSearchPresetsRepo.markPipelineSearchPresetUsed(
+          req.params.id,
+        );
+      if (!updated) return fail(res, notFound("Saved search not found"));
+      ok(res, updated);
+    } catch (error) {
+      fail(
+        res,
+        new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+      );
+    }
+  },
+);
+
+pipelineRouter.delete(
+  "/search-presets/:id",
+  async (req: Request, res: Response) => {
+    try {
+      const deleted =
+        await pipelineSearchPresetsRepo.deletePipelineSearchPreset(
+          req.params.id,
+        );
+      if (deleted === 0) return fail(res, notFound("Saved search not found"));
+      ok(res, { deleted: true });
+    } catch (error) {
+      fail(
+        res,
+        new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+      );
+    }
+  },
+);
+
 /**
  * GET /api/pipeline/runs/:id/insights - Get exact and inferred metrics for a run
  */
@@ -215,17 +393,7 @@ pipelineRouter.get(
 const runPipelineSchema = z.object({
   topN: z.number().min(1).max(50).optional(),
   minSuitabilityScore: z.number().min(0).max(100).optional(),
-  sources: z
-    .array(
-      z.enum(
-        PIPELINE_EXTRACTOR_SOURCE_IDS as [
-          (typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number],
-          ...(typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number][],
-        ],
-      ),
-    )
-    .min(1)
-    .optional(),
+  sources: z.array(pipelineSourceSchema).min(1).optional(),
   runBudget: z.number().min(50).max(1000).optional(),
   searchTerms: z.array(z.string().trim().min(1)).optional(),
   country: z.string().trim().optional(),

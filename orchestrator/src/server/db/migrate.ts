@@ -317,6 +317,25 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
     ON auth_sessions(revoked_at)`,
 
+  `CREATE TABLE IF NOT EXISTS pipeline_search_presets (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    config TEXT NOT NULL,
+    last_used_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id, name)
+  )`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_pipeline_search_presets_tenant_user_name_unique
+    ON pipeline_search_presets(tenant_id, user_id, name)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_pipeline_search_presets_tenant_user_updated
+    ON pipeline_search_presets(tenant_id, user_id, updated_at)`,
+
   `CREATE TABLE IF NOT EXISTS design_resume_documents (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',

@@ -1,8 +1,13 @@
+import * as api from "@client/api";
 import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import { useSettings } from "@client/hooks/useSettings";
+import { showErrorToast } from "@client/lib/error-toast";
+import { queryKeys } from "@client/lib/queryKeys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import type { VirtualListHandle } from "@/client/lib/virtual-list";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
@@ -36,6 +41,7 @@ export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const {
     searchParams,
     sourceFilter,
@@ -155,6 +161,67 @@ export const OrchestratorPage: React.FC = () => {
     pipelineSources,
     loadJobs,
     navigateWithContext,
+  });
+
+  const savedSearchesQuery = useQuery({
+    queryKey: queryKeys.pipeline.searchPresets(),
+    queryFn: api.getPipelineSearchPresets,
+    enabled: isRunModeModalOpen && runMode === "automatic",
+    staleTime: 30_000,
+  });
+
+  const createSavedSearchMutation = useMutation({
+    mutationFn: api.createPipelineSearchPreset,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.pipeline.searchPresets(),
+      });
+      toast.success("Saved search created");
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to create saved search");
+    },
+  });
+
+  const updateSavedSearchMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Parameters<typeof api.updatePipelineSearchPreset>[1];
+    }) => api.updatePipelineSearchPreset(id, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.pipeline.searchPresets(),
+      });
+      toast.success("Saved search updated");
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to update saved search");
+    },
+  });
+
+  const deleteSavedSearchMutation = useMutation({
+    mutationFn: api.deletePipelineSearchPreset,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.pipeline.searchPresets(),
+      });
+      toast.success("Saved search deleted");
+    },
+    onError: (error) => {
+      showErrorToast(error, "Failed to delete saved search");
+    },
+  });
+
+  const markSavedSearchUsedMutation = useMutation({
+    mutationFn: api.markPipelineSearchPresetUsed,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.pipeline.searchPresets(),
+      });
+    },
   });
 
   const activeJobs = useFilteredJobs(
@@ -521,6 +588,22 @@ export const OrchestratorPage: React.FC = () => {
         onModeChange={setRunMode}
         onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
         onManualImported={handleManualImported}
+        savedSearches={savedSearchesQuery.data?.searches ?? []}
+        isSavedSearchesLoading={savedSearchesQuery.isFetching}
+        onCreateSavedSearch={(input) =>
+          createSavedSearchMutation.mutateAsync(input)
+        }
+        onUpdateSavedSearch={(id, input) =>
+          updateSavedSearchMutation.mutateAsync({ id, input })
+        }
+        onDeleteSavedSearch={(id) =>
+          deleteSavedSearchMutation.mutateAsync(id).then(() => undefined)
+        }
+        onApplySavedSearch={(preset) =>
+          markSavedSearchUsedMutation
+            .mutateAsync(preset.id)
+            .then(() => undefined)
+        }
       />
 
       {!isDesktop && (
