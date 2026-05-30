@@ -9,40 +9,65 @@ A plain-English walkthrough of the Gradcracker extractor in `extractors/gradcrac
 
 Original website: [gradcracker.com](https://www.gradcracker.com)
 
-## Big picture
+## What it is
 
-The crawler builds search URLs, scrapes listing pages, then opens job details for descriptions and apply URLs.
+The Gradcracker extractor finds UK graduate roles from [gradcracker.com](https://www.gradcracker.com).
 
-## 1) Build search URLs
+It now uses a fast HTTP-first scraper for normal runs. The scraper fetches Gradcracker list and detail HTML with a browser-like HTTP fingerprint, parses job cards locally, and decodes Gradcracker apply links without opening a browser. The older Playwright/Crawlee flow remains as a fallback when the HTTP path is blocked.
 
-- Combines UK regions with role terms.
-- Defaults include roles such as `web-development` and `software-systems`.
-- `GRADCRACKER_SEARCH_TERMS` overrides defaults.
+## Why it exists
 
-## 2) Crawl list pages
+Gradcracker is useful for UK graduate and early-career STEM roles that broad aggregators often miss.
 
-- Waits for job cards (`article[wire:key]`).
-- Extracts title, employer, discipline, deadline, salary, location, degree, start date.
-- Queues job detail pages.
+The HTTP-first implementation keeps the same normalized job output while avoiding the startup cost of launching a browser for every successful run.
 
-Controls:
+## How to use it
 
-- `GRADCRACKER_MAX_JOBS_PER_TERM`
-- `JOBOPS_SKIP_APPLY_FOR_EXISTING=1`
-- `JOBOPS_EXISTING_JOB_URLS` / `JOBOPS_EXISTING_JOB_URLS_FILE`
+1. Open **Run jobs** and choose **Automatic**.
+2. Select **United Kingdom** as the country.
+3. Leave **Gradcracker** enabled in **Sources** or toggle it on.
+4. Set your usual search terms and run budget.
+5. Start the run and monitor progress in the pipeline progress card.
 
-## 3) Crawl detail pages
+Defaults and controls:
 
-- Waits for `.body-content`
-- Captures full description text
-- Clicks apply button to resolve final application URL
-- Handles popup and same-tab redirects
+- Search terms are converted to Gradcracker role slugs, such as `software systems` to `software-systems`.
+- Defaults include `web-development` and `software-systems`.
+- `GRADCRACKER_MAX_JOBS_PER_TERM` controls the per-term cap.
+- `GRADCRACKER_HTTP_DETAIL_CONCURRENCY` controls concurrent detail-page fetches. The default is `6`.
+- `JOBOPS_SKIP_APPLY_FOR_EXISTING=1` and `JOBOPS_EXISTING_JOB_URLS_FILE` are still honored by the browser fallback.
+- `GRADCRACKER_FORCE_BROWSER=1` forces the legacy Playwright/Crawlee path.
+- `GRADCRACKER_DISABLE_BROWSER_FALLBACK=1` returns the HTTP scraper result directly if the fast path is blocked.
 
-## 4) Progress reporting
+Implementation flow:
 
-Set `JOBOPS_EMIT_PROGRESS=1` for structured progress lines consumable by orchestrator UI.
+1. Build search URLs from UK regions and role terms.
+2. Fetch list pages and parse `article[wire:key]` job cards.
+3. Fetch detail pages for new jobs only.
+4. Extract `.body-content` description text.
+5. Decode Gradcracker `/out/...` apply URLs from the `u` query parameter.
+6. Fall back to Playwright/Crawlee only when the HTTP path cannot proceed.
 
-## Notes
+## Common problems
 
-- Uses Playwright + Crawlee via Camoufox.
-- Low concurrency and longer timeouts for stability.
+### Gradcracker does not return jobs
+
+- Confirm the selected country is **United Kingdom**.
+- Try Gradcracker-specific terms such as `software systems`, `web development`, or `data science`.
+- Lower the run budget if a term is too broad and you only need the newest listings.
+
+### The HTTP scraper is blocked
+
+- Leave browser fallback enabled so the extractor can use the existing Playwright/Crawlee challenge handling.
+- Set `GRADCRACKER_FORCE_BROWSER=1` when you specifically need to debug the legacy browser flow.
+
+### Apply links stay on Gradcracker
+
+- Some listings may not expose a decodable `/out/...` target.
+- The extractor still stores the Gradcracker job URL, so those postings remain usable even when the final application URL is unavailable.
+
+## Related pages
+
+- [Extractors Overview](/docs/next/extractors/overview)
+- [Pipeline Run](/docs/next/features/pipeline-run)
+- [Add an Extractor](/docs/next/workflows/add-an-extractor)

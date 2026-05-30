@@ -25,6 +25,7 @@ export const manifest: ExtractorManifest = {
       existingJobUrls,
       searchTerms: context.searchTerms,
       maxJobsPerTerm,
+      shouldCancel: context.shouldCancel,
       onProgress: (progress) => {
         if (context.shouldCancel?.()) return;
 
