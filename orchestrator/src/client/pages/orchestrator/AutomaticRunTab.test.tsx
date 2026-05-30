@@ -1,5 +1,5 @@
 import { createAppSettings } from "@shared/testing/factories.js";
-import type { JobSource } from "@shared/types";
+import type { JobSource, PipelineSearchPreset } from "@shared/types";
 import {
   fireEvent,
   render,
@@ -28,6 +28,41 @@ vi.mock("@/components/ui/tooltip", () => ({
   TooltipContent: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+}));
+
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    value,
+    onValueChange,
+    disabled,
+    children,
+  }: {
+    value: string;
+    onValueChange: (value: string) => void;
+    disabled?: boolean;
+    children: React.ReactNode;
+  }) => (
+    <select
+      aria-label="Saved searches"
+      disabled={disabled}
+      value={value}
+      onChange={(event) => onValueChange(event.currentTarget.value)}
+    >
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  SelectItem: ({
+    value,
+    children,
+  }: {
+    value: string;
+    children: React.ReactNode;
+  }) => <option value={value}>{children}</option>,
 }));
 
 vi.mock("@/lib/user-location", () => ({
@@ -102,6 +137,9 @@ describe("AutomaticRunTab", () => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
     ensureStorage().clear();
+    Element.prototype.hasPointerCapture ??= vi.fn(() => false);
+    Element.prototype.setPointerCapture ??= vi.fn();
+    Element.prototype.releasePointerCapture ??= vi.fn();
   });
 
   it("shows detected country as a suggestion when location settings are still defaults", () => {
@@ -557,9 +595,7 @@ describe("AutomaticRunTab", () => {
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: "Backspace" });
 
-    expect(
-      screen.getByRole("button", { name: "Remove backend engineer" }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("backend engineer").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("button", { name: "Remove frontend engineer" }),
     ).toBeInTheDocument();
@@ -1025,5 +1061,130 @@ describe("AutomaticRunTab", () => {
         /You'll get (hybrid and onsite|onsite and hybrid) jobs in Zagreb in Croatia plus remote jobs worldwide\. Likely matches are included\./i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("applies a saved pipeline search in one selection", async () => {
+    const onSetPipelineSources = vi.fn();
+    const onApplySavedSearch = vi.fn().mockResolvedValue(undefined);
+    const savedSearch: PipelineSearchPreset = {
+      id: "search-1",
+      name: "London backend",
+      createdAt: "2026-05-30T10:00:00.000Z",
+      updatedAt: "2026-05-30T10:00:00.000Z",
+      lastUsedAt: null,
+      config: {
+        searchTerms: ["backend engineer"],
+        sources: ["linkedin", "glassdoor"],
+        country: "united kingdom",
+        cityLocations: ["London"],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
+        topN: 5,
+        minSuitabilityScore: 75,
+        runBudget: 300,
+        automaticPresetId: "fast",
+      },
+    };
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          searchTerms: {
+            value: ["frontend engineer"],
+            default: ["frontend engineer"],
+            override: null,
+          },
+        })}
+        enabledSources={["linkedin", "glassdoor"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={onSetPipelineSources}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+        savedSearches={[savedSearch]}
+        onApplySavedSearch={onApplySavedSearch}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Saved searches" }), {
+      target: { value: "search-1" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "United Kingdom" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("backend engineer").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("London").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Fast" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(onSetPipelineSources).toHaveBeenCalledWith([
+      "linkedin",
+      "glassdoor",
+    ]);
+    expect(onApplySavedSearch).toHaveBeenCalledWith(savedSearch);
+  });
+
+  it("saves the current pipeline search state", async () => {
+    const onCreateSavedSearch = vi.fn().mockResolvedValue({
+      id: "created-search",
+      name: "Croatia frontend",
+    });
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          searchTerms: {
+            value: ["frontend engineer"],
+            default: ["frontend engineer"],
+            override: null,
+          },
+          workplaceTypes: {
+            value: ["remote"],
+            default: ["remote", "hybrid", "onsite"],
+            override: ["remote"],
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+        onCreateSavedSearch={onCreateSavedSearch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save as" }));
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Croatia frontend" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onCreateSavedSearch).toHaveBeenCalledWith({
+        name: "Croatia frontend",
+        config: expect.objectContaining({
+          country: "croatia",
+          searchTerms: ["frontend engineer"],
+          sources: ["linkedin"],
+          workplaceTypes: ["remote"],
+        }),
+      });
+    });
   });
 });

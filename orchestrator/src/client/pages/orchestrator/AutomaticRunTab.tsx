@@ -16,9 +16,24 @@ import {
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
-import type { AppSettings, JobSource } from "@shared/types";
+import type {
+  AppSettings,
+  CreatePipelineSearchPresetInput,
+  JobSource,
+  PipelineSearchPreset,
+  PipelineSearchPresetConfig,
+  UpdatePipelineSearchPresetInput,
+} from "@shared/types";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Info, Loader2, Sparkles } from "lucide-react";
+import {
+  BookmarkPlus,
+  Check,
+  Info,
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -32,10 +47,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { getDetectedCountryKey } from "@/lib/user-location";
 import { sourceLabel } from "@/lib/utils";
@@ -68,6 +98,17 @@ interface AutomaticRunTabProps {
   onSetPipelineSources: (sources: JobSource[]) => void;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
+  savedSearches?: PipelineSearchPreset[];
+  isSavedSearchesLoading?: boolean;
+  onCreateSavedSearch?: (
+    input: CreatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onUpdateSavedSearch?: (
+    id: string,
+    input: UpdatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onDeleteSavedSearch?: (id: string) => Promise<void>;
+  onApplySavedSearch?: (preset: PipelineSearchPreset) => Promise<void>;
 }
 
 const DEFAULT_VALUES: AutomaticRunValues = {
@@ -247,9 +288,24 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   onSetPipelineSources,
   isPipelineRunning,
   onSaveAndRun,
+  savedSearches = [],
+  isSavedSearchesLoading = false,
+  onCreateSavedSearch,
+  onUpdateSavedSearch,
+  onDeleteSavedSearch,
+  onApplySavedSearch,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveDialogMode, setSaveDialogMode] = useState<"create" | "update">(
+    "create",
+  );
+  const [saveName, setSaveName] = useState("");
+  const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<
+    string | null
+  >(null);
   const prefersReducedMotion = useReducedMotion();
   const [sourceDisplayOrder, setSourceDisplayOrder] =
     useState<JobSource[]>(enabledSources);
@@ -556,6 +612,38 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => summarizeLocationPreferences(values),
     [values],
   );
+  const selectedSavedSearch = useMemo(
+    () =>
+      selectedSavedSearchId
+        ? (savedSearches.find(
+            (search) => search.id === selectedSavedSearchId,
+          ) ?? null)
+        : null,
+    [savedSearches, selectedSavedSearchId],
+  );
+  const savedSearchSupportEnabled = Boolean(
+    onCreateSavedSearch ||
+      onUpdateSavedSearch ||
+      onDeleteSavedSearch ||
+      onApplySavedSearch ||
+      savedSearches.length > 0,
+  );
+  const currentSavedSearchConfig = useMemo<PipelineSearchPresetConfig>(
+    () => ({
+      searchTerms: values.searchTerms,
+      sources: pipelineSources as PipelineSearchPresetConfig["sources"],
+      country: values.country,
+      cityLocations: values.cityLocations,
+      workplaceTypes: values.workplaceTypes,
+      searchScope: values.searchScope,
+      matchStrictness: values.matchStrictness,
+      topN: values.topN,
+      minSuitabilityScore: values.minSuitabilityScore,
+      runBudget: values.runBudget,
+      automaticPresetId: selectedPreset,
+    }),
+    [pipelineSources, selectedPreset, values],
+  );
 
   const runDisabled =
     isPipelineRunning ||
@@ -612,6 +700,84 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     }
   };
 
+  const applySavedSearch = async (preset: PipelineSearchPreset) => {
+    const config = preset.config;
+    setSelectedSavedSearchId(preset.id);
+    setSelectedPreset(config.automaticPresetId ?? "custom");
+    setValue("topN", String(config.topN), { shouldDirty: true });
+    setValue("minSuitabilityScore", String(config.minSuitabilityScore), {
+      shouldDirty: true,
+    });
+    setValue("runBudget", String(config.runBudget), { shouldDirty: true });
+    setValue("country", normalizeUiCountryKey(config.country), {
+      shouldDirty: true,
+    });
+    setValue("cityLocations", config.cityLocations, { shouldDirty: true });
+    setValue("cityLocationDraft", "");
+    setValue("workplaceTypes", normalizeWorkplaceTypes(config.workplaceTypes), {
+      shouldDirty: true,
+    });
+    setValue("searchScope", config.searchScope, { shouldDirty: true });
+    setValue("matchStrictness", config.matchStrictness, { shouldDirty: true });
+    setValue("searchTerms", config.searchTerms, { shouldDirty: true });
+    setValue("searchTermDraft", "");
+
+    const nextSources = config.sources.filter((source) =>
+      enabledSources.includes(source),
+    );
+    if (nextSources.length > 0) {
+      onSetPipelineSources(nextSources);
+    }
+
+    await onApplySavedSearch?.(preset);
+  };
+
+  const openSaveDialog = (mode: "create" | "update") => {
+    setSaveDialogMode(mode);
+    setSaveName(mode === "update" ? (selectedSavedSearch?.name ?? "") : "");
+    setSaveDialogOpen(true);
+  };
+
+  const handleSaveSearch = async () => {
+    const name = saveName.trim();
+    if (!name) return;
+
+    setIsSavingSearch(true);
+    try {
+      if (saveDialogMode === "update" && selectedSavedSearch) {
+        await onUpdateSavedSearch?.(selectedSavedSearch.id, {
+          name,
+          config: currentSavedSearchConfig,
+        });
+        setSelectedSavedSearchId(selectedSavedSearch.id);
+      } else if (onCreateSavedSearch) {
+        const created = await onCreateSavedSearch({
+          name,
+          config: currentSavedSearchConfig,
+        });
+        setSelectedSavedSearchId(created.id);
+      }
+      setSaveDialogOpen(false);
+    } finally {
+      setIsSavingSearch(false);
+    }
+  };
+
+  const handleDeleteSelectedSearch = async () => {
+    if (!selectedSavedSearch || !onDeleteSavedSearch) return;
+    const id = selectedSavedSearch.id;
+    await onDeleteSavedSearch(id);
+    setSelectedSavedSearchId(null);
+  };
+
+  useEffect(() => {
+    if (!selectedSavedSearchId) return;
+    if (savedSearches.some((search) => search.id === selectedSavedSearchId)) {
+      return;
+    }
+    setSelectedSavedSearchId(null);
+  }, [savedSearches, selectedSavedSearchId]);
+
   const countryOptions = useMemo(
     () =>
       SUPPORTED_COUNTRY_KEYS.filter(
@@ -625,7 +791,142 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {saveDialogMode === "update"
+                ? "Update saved search"
+                : "Save search"}
+            </DialogTitle>
+            <DialogDescription>
+              Save the current pipeline search setup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="saved-search-name">Name</Label>
+            <Input
+              id="saved-search-name"
+              value={saveName}
+              onChange={(event) => setSaveName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSaveSearch();
+                }
+              }}
+              placeholder="e.g. London platform roles"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSaveDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={isSavingSearch || saveName.trim().length === 0}
+              onClick={() => void handleSaveSearch()}
+            >
+              {isSavingSearch ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        {savedSearchSupportEnabled ? (
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <div className="grid gap-3 md:grid-cols-[120px_1fr] md:items-center">
+                <Label className="text-base font-semibold">
+                  Saved searches
+                </Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Select
+                    value={selectedSavedSearchId ?? ""}
+                    onValueChange={(id) => {
+                      const preset = savedSearches.find(
+                        (search) => search.id === id,
+                      );
+                      if (preset) void applySavedSearch(preset);
+                    }}
+                    disabled={savedSearches.length === 0}
+                  >
+                    <SelectTrigger
+                      aria-label="Saved searches"
+                      className="h-9 min-w-0 flex-1"
+                    >
+                      <SelectValue
+                        placeholder={
+                          isSavedSearchesLoading
+                            ? "Loading..."
+                            : "Select saved search"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedSearches.map((search) => (
+                        <SelectItem key={search.id} value={search.id}>
+                          {search.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {onCreateSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => openSaveDialog("create")}
+                      >
+                        <BookmarkPlus className="h-4 w-4" />
+                        Save as
+                      </Button>
+                    ) : null}
+                    {onUpdateSavedSearch && selectedSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => openSaveDialog("update")}
+                      >
+                        <Save className="h-4 w-4" />
+                        Update
+                      </Button>
+                    ) : null}
+                    {onDeleteSavedSearch && selectedSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete saved search"
+                        title="Delete saved search"
+                        onClick={() => void handleDeleteSelectedSearch()}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card>
           <CardContent className="space-y-6 pt-6">
             <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">

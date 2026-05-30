@@ -296,6 +296,31 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   resultSummary: text("result_summary", { mode: "json" }),
 });
 
+export const pipelineSearchPresets = sqliteTable(
+  "pipeline_search_presets",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    config: text("config", { mode: "json" }).notNull(),
+    lastUsedAt: text("last_used_at"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserNameUnique: uniqueIndex(
+      "idx_pipeline_search_presets_tenant_user_name_unique",
+    ).on(table.tenantId, table.userId, table.name),
+    tenantUserUpdatedIndex: index(
+      "idx_pipeline_search_presets_tenant_user_updated",
+    ).on(table.tenantId, table.userId, table.updatedAt),
+  }),
+);
+
 export const jobChatThreads = sqliteTable(
   "job_chat_threads",
   {
@@ -899,6 +924,9 @@ export type InterviewRow = typeof interviews.$inferSelect;
 export type NewInterviewRow = typeof interviews.$inferInsert;
 export type PipelineRunRow = typeof pipelineRuns.$inferSelect;
 export type NewPipelineRunRow = typeof pipelineRuns.$inferInsert;
+export type PipelineSearchPresetRow = typeof pipelineSearchPresets.$inferSelect;
+export type NewPipelineSearchPresetRow =
+  typeof pipelineSearchPresets.$inferInsert;
 export type JobChatThreadRow = typeof jobChatThreads.$inferSelect;
 export type NewJobChatThreadRow = typeof jobChatThreads.$inferInsert;
 export type JobChatMessageRow = typeof jobChatMessages.$inferSelect;

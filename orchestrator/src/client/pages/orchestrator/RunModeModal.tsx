@@ -1,6 +1,12 @@
 import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import { ManualImportFlow } from "@client/components/ManualImportFlow";
-import type { AppSettings, JobSource } from "@shared/types";
+import type {
+  AppSettings,
+  CreatePipelineSearchPresetInput,
+  JobSource,
+  PipelineSearchPreset,
+  UpdatePipelineSearchPresetInput,
+} from "@shared/types";
 import type React from "react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -28,6 +34,17 @@ interface RunModeModalProps {
   onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   onManualImported: (result: ManualImportResult) => Promise<void>;
+  savedSearches?: PipelineSearchPreset[];
+  isSavedSearchesLoading?: boolean;
+  onCreateSavedSearch?: (
+    input: CreatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onUpdateSavedSearch?: (
+    id: string,
+    input: UpdatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onDeleteSavedSearch?: (id: string) => Promise<void>;
+  onApplySavedSearch?: (preset: PipelineSearchPreset) => Promise<void>;
 }
 
 export const RunModeModal: React.FC<RunModeModalProps> = ({
@@ -43,6 +60,12 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onModeChange,
   onSaveAndRunAutomatic,
   onManualImported,
+  savedSearches,
+  isSavedSearchesLoading,
+  onCreateSavedSearch,
+  onUpdateSavedSearch,
+  onDeleteSavedSearch,
+  onApplySavedSearch,
 }) => {
   const isManualMode = mode === "manual";
 
@@ -83,6 +106,12 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
                 onSetPipelineSources={onSetPipelineSources}
                 isPipelineRunning={isPipelineRunning}
                 onSaveAndRun={onSaveAndRunAutomatic}
+                savedSearches={savedSearches}
+                isSavedSearchesLoading={isSavedSearchesLoading}
+                onCreateSavedSearch={onCreateSavedSearch}
+                onUpdateSavedSearch={onUpdateSavedSearch}
+                onDeleteSavedSearch={onDeleteSavedSearch}
+                onApplySavedSearch={onApplySavedSearch}
               />
             </TabsContent>
 

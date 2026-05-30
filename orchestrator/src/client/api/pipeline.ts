@@ -1,11 +1,15 @@
 import type {
+  CreatePipelineSearchPresetInput,
   JobSource,
   LocationMatchStrictness,
   LocationSearchScope,
   PipelineProgressState,
   PipelineRun,
   PipelineRunInsights,
+  PipelineSearchPreset,
+  PipelineSearchPresetsResponse,
   PipelineStatusResponse,
+  UpdatePipelineSearchPresetInput,
 } from "@shared/types";
 import { fetchApi } from "./core";
 
@@ -61,6 +65,54 @@ export async function getPipelineRunInsights(
 ): Promise<PipelineRunInsights> {
   return fetchApi<PipelineRunInsights>(
     `/pipeline/runs/${encodeURIComponent(id)}/insights`,
+  );
+}
+
+export async function getPipelineSearchPresets(): Promise<PipelineSearchPresetsResponse> {
+  return fetchApi<PipelineSearchPresetsResponse>("/pipeline/search-presets");
+}
+
+export async function createPipelineSearchPreset(
+  input: CreatePipelineSearchPresetInput,
+): Promise<PipelineSearchPreset> {
+  return fetchApi<PipelineSearchPreset>("/pipeline/search-presets", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePipelineSearchPreset(
+  id: string,
+  input: UpdatePipelineSearchPresetInput,
+): Promise<PipelineSearchPreset> {
+  return fetchApi<PipelineSearchPreset>(
+    `/pipeline/search-presets/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function markPipelineSearchPresetUsed(
+  id: string,
+): Promise<PipelineSearchPreset> {
+  return fetchApi<PipelineSearchPreset>(
+    `/pipeline/search-presets/${encodeURIComponent(id)}/used`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function deletePipelineSearchPreset(
+  id: string,
+): Promise<{ deleted: true }> {
+  return fetchApi<{ deleted: true }>(
+    `/pipeline/search-presets/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+    },
   );
 }
 
