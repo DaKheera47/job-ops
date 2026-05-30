@@ -5,6 +5,7 @@ import {
   MotionConfig,
   motion,
   type Transition,
+  useReducedMotion,
 } from "framer-motion";
 import React from "react";
 
@@ -17,7 +18,6 @@ const MASK_IMAGE = `linear-gradient(to right, transparent 0, #000 ${MASK_WIDTH},
 
 const MASK_SIZE = `100% calc(100% - ${MASK_HEIGHT} * 2),calc(100% - ${MASK_WIDTH} * 2) 100%,${MASK_WIDTH} ${MASK_HEIGHT},${MASK_WIDTH} ${MASK_HEIGHT},${MASK_WIDTH} ${MASK_HEIGHT},${MASK_WIDTH} ${MASK_HEIGHT}`;
 
-const DigitWidthMap = new WeakMap<HTMLElement, string>();
 const JustifyContext = React.createContext<{ justify: "left" | "right" }>({
   justify: "left",
 });
@@ -34,11 +34,6 @@ function useIsFirstRender() {
   return isFirst.current;
 }
 
-function calculateEmWidth(element: HTMLElement) {
-  const { width, fontSize } = getComputedStyle(element);
-  return `${parseFloat(width) / parseFloat(fontSize)}em`;
-}
-
 function safeModulo(n: number, m: number) {
   return ((n % m) + m) % m;
 }
@@ -52,8 +47,11 @@ function NumberMask({ children }: { children: React.ReactNode }) {
         margin: `0 calc(-1 * ${MASK_WIDTH})`,
         padding: `calc(${MASK_HEIGHT} / 2) ${MASK_WIDTH}`,
         position: "relative",
-        zIndex: -1,
+        zIndex: 0,
         overflow: "clip",
+        lineHeight: 1,
+        verticalAlign: "middle",
+        contain: "layout paint",
         WebkitMaskImage: MASK_IMAGE,
         WebkitMaskSize: MASK_SIZE,
         WebkitMaskPosition:
@@ -78,8 +76,7 @@ const Digit = React.forwardRef<HTMLSpanElement, DigitProps>(function Digit(
   ref,
 ) {
   const { transition } = React.useContext(MotionContext);
-  const initialRef = React.useRef(initialValue).current;
-  const isFirstRender = useIsFirstRender();
+  const shouldReduceMotion = useReducedMotion();
   const containerRef = React.useRef<HTMLSpanElement>(null);
   const elementRef = React.useRef<HTMLSpanElement>(null);
 
@@ -89,24 +86,19 @@ const Digit = React.forwardRef<HTMLSpanElement, DigitProps>(function Digit(
     [],
   );
 
-  const digitRefs = React.useRef<(HTMLSpanElement | null)[]>(
-    new Array(10).fill(null),
-  );
   const isPresent = true; // Fallback context flag derived from standard layout states
   const targetValue = isPresent ? value : 0;
-
-  React.useLayoutEffect(() => {
-    const digitEl = digitRefs.current[initialRef];
-    if (containerRef.current && digitEl) {
-      containerRef.current.style.width = calculateEmWidth(digitEl);
-    }
-  }, [initialRef]);
 
   const previousValueRef = React.useRef(initialValue);
 
   React.useLayoutEffect(() => {
     if (!containerRef.current || targetValue === previousValueRef.current)
       return;
+
+    if (shouldReduceMotion) {
+      previousValueRef.current = targetValue;
+      return;
+    }
 
     const containerRect = containerRef.current.getBoundingClientRect();
     const elementRect = elementRef.current?.getBoundingClientRect();
@@ -137,52 +129,19 @@ const Digit = React.forwardRef<HTMLSpanElement, DigitProps>(function Digit(
       },
     );
 
-    // Also animate the width of containerRef from the previous digit's width to the new digit's width
-    const prevDigitEl = digitRefs.current[prev];
-    const targetDigitEl = digitRefs.current[targetValue];
-    if (prevDigitEl && targetDigitEl) {
-      const prevWidth =
-        (elementRef.current && DigitWidthMap.get(elementRef.current)) ||
-        calculateEmWidth(prevDigitEl);
-      const nextWidth = calculateEmWidth(targetDigitEl);
-
-      animate(
-        containerRef.current,
-        { width: [prevWidth, nextWidth] },
-        {
-          type: "spring",
-          duration: 0.6,
-          bounce: 0,
-          ...transition,
-        },
-      );
-    }
-
     return () => {
       controls.stop();
       previousValueRef.current = targetValue;
     };
-  }, [targetValue, trend, transition]);
-
-  React.useEffect(() => {
-    const digitEl = digitRefs.current[targetValue];
-    if ((isFirstRender && initialRef === targetValue) || !digitEl) return;
-
-    const emWidth = calculateEmWidth(digitEl);
-    if (elementRef.current) {
-      DigitWidthMap.set(elementRef.current, emWidth);
-    }
-  }, [targetValue, isFirstRender, initialRef]);
+  }, [targetValue, trend, transition, shouldReduceMotion]);
 
   const renderDigitSpan = (num: number) => (
     <span
       key={num}
       style={{
         display: "inline-block",
-        padding: `calc(${MASK_HEIGHT} / 2) 0`,
-      }}
-      ref={(el) => {
-        digitRefs.current[num] = el;
+        height: "1em",
+        lineHeight: 1,
       }}
     >
       {num}
@@ -202,7 +161,19 @@ const Digit = React.forwardRef<HTMLSpanElement, DigitProps>(function Digit(
       {...props}
       ref={elementRef}
       data-state={isPresent ? undefined : "exiting"}
-      style={{ display: "inline-flex", justifyContent: "center" }}
+      data-animated-number-digit
+      style={{
+        display: "inline-flex",
+        justifyContent: "center",
+        flex: "0 0 1ch",
+        width: "1ch",
+        minWidth: "1ch",
+        maxWidth: "1ch",
+        lineHeight: 1,
+        fontVariantNumeric: "tabular-nums",
+        fontFeatureSettings: '"tnum" 1',
+        overflow: "visible",
+      }}
     >
       <span
         ref={containerRef}
@@ -212,6 +183,11 @@ const Digit = React.forwardRef<HTMLSpanElement, DigitProps>(function Digit(
           flexDirection: "column",
           alignItems: "center",
           position: "relative",
+          flex: "0 0 1ch",
+          width: "1ch",
+          height: "1em",
+          lineHeight: 1,
+          overflow: "visible",
         }}
       >
         {upperDigits.length > 0 && (
