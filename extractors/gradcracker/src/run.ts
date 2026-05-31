@@ -29,7 +29,8 @@ const STORAGE_DIR = join(EXTRACTOR_DIR, "storage/datasets/default");
 const JOBOPS_STORAGE_DIR = join(EXTRACTOR_DIR, "storage/jobops");
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 const GRADCRACKER_BASE_URL = "https://www.gradcracker.com";
-const DEFAULT_DETAIL_CONCURRENCY = 6;
+const DEFAULT_DETAIL_CONCURRENCY = 2;
+const DEFAULT_REQUEST_DELAY_MS = 1_000;
 
 const LOCATIONS = [
   "london-and-south-east",
@@ -69,6 +70,7 @@ export interface RunCrawlerOptions {
   fetchImpl?: FetchLike;
   browserFallback?: boolean;
   detailConcurrency?: number;
+  requestDelayMs?: number;
 }
 
 interface JobExtractorProgress {
@@ -80,8 +82,15 @@ interface JobExtractorProgress {
   jobPagesEnqueued?: number;
   jobPagesSkipped?: number;
   jobPagesProcessed?: number;
+  detail?: string;
   ts?: string;
 }
+
+type GradcrackerChildProgressEvent =
+  | { type: "challenge_required"; url: string }
+  | { type: "progress"; progress: JobExtractorProgress };
+
+const CHILD_OUTPUT_HISTORY_LIMIT = 40;
 
 export interface GradcrackerJobSummary {
   title: string;
@@ -122,6 +131,75 @@ class ChallengeRequiredError extends Error {
   }
 }
 
+export function parseGradcrackerProgressLine(
+  line: string,
+): GradcrackerChildProgressEvent | null {
+  if (!line.startsWith(JOBOPS_PROGRESS_PREFIX)) return null;
+
+  const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  if (
+    parsed.event === "challenge_required" &&
+    typeof parsed.url === "string" &&
+    parsed.url.length > 0
+  ) {
+    return { type: "challenge_required", url: parsed.url };
+  }
+
+  return {
+    type: "progress",
+    progress: parsed as JobExtractorProgress,
+  };
+}
+
+function rememberChildOutputLine(lines: string[], line: string): void {
+  const cleaned = line.replace(/\s+/g, " ").trim();
+  if (!cleaned) return;
+  lines.push(cleaned);
+  if (lines.length > CHILD_OUTPUT_HISTORY_LIMIT) {
+    lines.splice(0, lines.length - CHILD_OUTPUT_HISTORY_LIMIT);
+  }
+}
+
+export function summarizeGradcrackerBrowserFailure(
+  lines: string[],
+  fallbackMessage: string,
+): string {
+  const combined = lines.join("\n");
+  const missingExecutable = /Executable doesn't exist at ([^\n]+)/.exec(
+    combined,
+  );
+  const failedLaunch = /Failed to launch browser/i.test(combined);
+
+  if (missingExecutable || failedLaunch) {
+    const path = missingExecutable?.[1]?.trim();
+    return [
+      "Gradcracker browser fallback could not launch Playwright Firefox.",
+      path ? `Missing executable: ${path}.` : undefined,
+      "Rebuild the Docker image so the Node Playwright browser binary is installed, or run `npx playwright install firefox` in the runtime image.",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  const meaningfulLine = [...lines]
+    .reverse()
+    .find(
+      (line) =>
+        !line.startsWith("INFO  PlaywrightCrawler") && !line.startsWith("> "),
+    );
+
+  return meaningfulLine
+    ? `Gradcracker browser fallback failed: ${meaningfulLine}`
+    : fallbackMessage;
+}
+
 function toPositiveIntOrFallback(
   value: number | string | undefined,
   fallback: number,
@@ -135,6 +213,63 @@ function toPositiveIntOrFallback(
 
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(1, Math.floor(parsed));
+}
+
+function toNonNegativeIntOrFallback(
+  value: number | string | undefined,
+  fallback: number,
+): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.floor(parsed));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createRequestStartLimiter(minIntervalMs: number): () => Promise<void> {
+  if (minIntervalMs <= 0) return async () => {};
+
+  let nextStartAt = 0;
+  let queue = Promise.resolve();
+
+  return async () => {
+    const previous = queue;
+    let releaseQueue!: () => void;
+    queue = new Promise<void>((resolve) => {
+      releaseQueue = resolve;
+    });
+
+    await previous;
+    try {
+      const waitMs = Math.max(0, nextStartAt - Date.now());
+      if (waitMs > 0) {
+        await sleep(waitMs);
+      }
+      nextStartAt = Date.now() + minIntervalMs;
+    } finally {
+      releaseQueue();
+    }
+  };
+}
+
+function createPacedFetch(
+  fetchImpl: FetchLike,
+  requestDelayMs: number,
+): FetchLike {
+  const waitForRequestTurn = createRequestStartLimiter(requestDelayMs);
+
+  return async (input, init) => {
+    await waitForRequestTurn();
+    return fetchImpl(input, init);
+  };
 }
 
 function normalizeSearchRole(value: string): string {
@@ -476,7 +611,14 @@ async function mapWithConcurrency<T, R>(
 export async function runHttpCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
-  const fetchImpl = options.fetchImpl ?? createImpitFetch();
+  const rawFetchImpl = options.fetchImpl ?? createImpitFetch();
+  const requestDelayMs = toNonNegativeIntOrFallback(
+    options.requestDelayMs ??
+      process.env.GRADCRACKER_HTTP_REQUEST_DELAY_MS ??
+      (options.fetchImpl ? 0 : DEFAULT_REQUEST_DELAY_MS),
+    DEFAULT_REQUEST_DELAY_MS,
+  );
+  const fetchImpl = createPacedFetch(rawFetchImpl, requestDelayMs);
   const roles = resolveRoles(options.searchTerms);
   const maxJobsPerTerm = toPositiveIntOrFallback(options.maxJobsPerTerm, 50);
   const existingJobUrls = new Set(
@@ -624,6 +766,7 @@ async function runBrowserCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
   let challengeRequired: string | undefined;
+  const childOutputLines: string[] = [];
 
   try {
     await clearStorageDataset();
@@ -652,25 +795,35 @@ async function runBrowserCrawler(
         },
       });
 
+      let settled = false;
+      const failForChallenge = (url: string) => {
+        if (settled) return;
+        settled = true;
+        challengeRequired = url;
+        options.onProgress?.({
+          currentUrl: url,
+          detail: `Gradcracker hit a Cloudflare challenge: ${url}`,
+          ts: new Date().toISOString(),
+        });
+        child.kill("SIGTERM");
+        reject(new ChallengeRequiredError(url));
+      };
+
       const handleLine = (line: string, stream: NodeJS.WriteStream) => {
-        if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) {
-          const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
-          try {
-            const parsed = JSON.parse(raw) as Record<string, unknown>;
-            // Detect challenge_required signal from the child process
-            if (
-              parsed.event === "challenge_required" &&
-              typeof parsed.url === "string"
-            ) {
-              challengeRequired = parsed.url;
-              return;
-            }
-            options.onProgress?.(parsed as unknown as JobExtractorProgress);
-          } catch {
-            // ignore malformed progress lines
+        if (settled) return;
+
+        const progressEvent = parseGradcrackerProgressLine(line);
+        if (progressEvent) {
+          if (progressEvent.type === "challenge_required") {
+            failForChallenge(progressEvent.url);
+            return;
           }
+          options.onProgress?.(progressEvent.progress);
           return;
         }
+
+        if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) return;
+        rememberChildOutputLine(childOutputLines, line);
         stream.write(`${line}\n`);
       };
 
@@ -687,14 +840,27 @@ async function runBrowserCrawler(
       child.on("close", (code) => {
         stdoutRl?.close();
         stderrRl?.close();
+        if (settled) return;
+        settled = true;
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`Crawler exited with code ${code}`));
+          reject(
+            new Error(
+              summarizeGradcrackerBrowserFailure(
+                childOutputLines,
+                `Gradcracker browser crawler exited with code ${code}`,
+              ),
+            ),
+          );
         }
       });
 
-      child.on("error", reject);
+      child.on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      });
     });
 
     const jobs = await readCrawledJobs();
@@ -726,6 +892,16 @@ export async function runCrawler(
 
   const browserResult = await runBrowserCrawler(options);
   if (browserResult.success) return browserResult;
+
+  if (httpResult.challengeRequired && browserResult.error) {
+    return {
+      ...httpResult,
+      error: httpResult.error
+        ? `${httpResult.error}; ${browserResult.error}`
+        : browserResult.error,
+    };
+  }
+
   return browserResult.error || browserResult.challengeRequired
     ? browserResult
     : httpResult;

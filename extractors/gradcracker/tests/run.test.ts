@@ -3,7 +3,9 @@ import {
   decodeGradcrackerOutUrl,
   parseGradcrackerDetailPage,
   parseGradcrackerListPage,
+  parseGradcrackerProgressLine,
   runHttpCrawler,
+  summarizeGradcrackerBrowserFailure,
 } from "../src/run";
 
 function createResponse(
@@ -157,6 +159,45 @@ describe("Gradcracker HTTP scraper", () => {
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
+  it("paces HTTP request starts when a delay is configured", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+
+    try {
+      const requestStartedAt: number[] = [];
+      const fetchMock = vi.fn(async (input: string | URL) => {
+        requestStartedAt.push(Date.now());
+        const url = String(input);
+        if (url.includes("/graduate-job/81268/")) {
+          return createResponse(DETAIL_HTML, { url });
+        }
+        return createResponse(LIST_HTML, { url });
+      });
+
+      const resultPromise = runHttpCrawler({
+        searchTerms: ["software systems"],
+        maxJobsPerTerm: 1,
+        fetchImpl: fetchMock,
+        requestDelayMs: 100,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(requestStartedAt).toEqual([0]);
+
+      await vi.advanceTimersByTimeAsync(99);
+      expect(requestStartedAt).toEqual([0]);
+
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(resultPromise).resolves.toMatchObject({
+        success: true,
+        jobs: [expect.objectContaining({ employer: "WSP" })],
+      });
+      expect(requestStartedAt).toEqual([0, 100]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("reports Cloudflare challenges from the HTTP path", async () => {
     const fetchMock = vi.fn(async (input: string | URL) =>
       createResponse("<title>Just a moment...</title>", {
@@ -176,6 +217,46 @@ describe("Gradcracker HTTP scraper", () => {
     expect(result.success).toBe(false);
     expect(result.challengeRequired).toContain(
       "software-systems-graduate-jobs-in-london-and-south-east",
+    );
+  });
+
+  it("detects child-process Cloudflare progress signals", () => {
+    expect(
+      parseGradcrackerProgressLine(
+        'JOBOPS_PROGRESS {"event":"challenge_required","url":"https://www.gradcracker.com/challenge"}',
+      ),
+    ).toEqual({
+      type: "challenge_required",
+      url: "https://www.gradcracker.com/challenge",
+    });
+
+    expect(
+      parseGradcrackerProgressLine(
+        'JOBOPS_PROGRESS {"phase":"list","listPagesProcessed":1,"jobCardsFound":12}',
+      ),
+    ).toEqual({
+      type: "progress",
+      progress: {
+        phase: "list",
+        listPagesProcessed: 1,
+        jobCardsFound: 12,
+      },
+    });
+  });
+
+  it("summarizes missing Playwright browser fallback failures", () => {
+    expect(
+      summarizeGradcrackerBrowserFailure(
+        [
+          "Failed to launch browser. Please check the following:",
+          "browserType.launchPersistentContext: Executable doesn't exist at /ms-playwright/firefox-1511/firefox/firefox",
+          "Please run the following command to download new browsers:",
+          "npx playwright install",
+        ],
+        "Crawler exited with code 1",
+      ),
+    ).toBe(
+      "Gradcracker browser fallback could not launch Playwright Firefox. Missing executable: /ms-playwright/firefox-1511/firefox/firefox. Rebuild the Docker image so the Node Playwright browser binary is installed, or run `npx playwright install firefox` in the runtime image.",
     );
   });
 });

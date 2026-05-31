@@ -34,7 +34,8 @@ Defaults and controls:
 - Search terms are converted to Gradcracker role slugs, such as `software systems` to `software-systems`.
 - Defaults include `web-development` and `software-systems`.
 - `GRADCRACKER_MAX_JOBS_PER_TERM` controls the per-term cap.
-- `GRADCRACKER_HTTP_DETAIL_CONCURRENCY` controls concurrent detail-page fetches. The default is `6`.
+- `GRADCRACKER_HTTP_DETAIL_CONCURRENCY` controls concurrent detail-page fetches. The default is `2`.
+- `GRADCRACKER_HTTP_REQUEST_DELAY_MS` controls the minimum delay between HTTP request starts. The default is `1000`.
 - `JOBOPS_SKIP_APPLY_FOR_EXISTING=1` and `JOBOPS_EXISTING_JOB_URLS_FILE` are still honored by the browser fallback.
 - `GRADCRACKER_FORCE_BROWSER=1` forces the legacy Playwright/Crawlee path.
 - `GRADCRACKER_DISABLE_BROWSER_FALLBACK=1` returns the HTTP scraper result directly if the fast path is blocked.

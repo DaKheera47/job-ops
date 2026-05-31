@@ -53,6 +53,16 @@ describe("extractor deployment config", () => {
     );
   });
 
+  it("installs the Node Playwright Firefox binary for browser fallbacks", async () => {
+    const dockerfile = await readFile(resolve(process.cwd(), "../Dockerfile"), {
+      encoding: "utf8",
+    });
+
+    expect(dockerfile).toContain(
+      "./node_modules/.bin/playwright install firefox",
+    );
+  });
+
   it("syncs the Naukri extractor in compose development mode", async () => {
     const composeFile = await readFile(
       resolve(process.cwd(), "../docker-compose.yml"),

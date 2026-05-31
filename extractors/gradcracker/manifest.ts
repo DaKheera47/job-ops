@@ -38,6 +38,7 @@ export const manifest: ExtractorManifest = {
           jobPagesEnqueued: progress.jobPagesEnqueued,
           jobPagesSkipped: progress.jobPagesSkipped,
           jobPagesProcessed: progress.jobPagesProcessed,
+          detail: progress.detail,
         });
       },
     });

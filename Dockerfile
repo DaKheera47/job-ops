@@ -154,6 +154,11 @@ RUN --mount=type=cache,target=/root/.npm \
     npm install --workspaces --include-workspace-root --omit=dev \
     --no-audit --no-fund --progress=false
 
+# Browser fallbacks and the Cloudflare solver run through Node Playwright.
+# Python Playwright uses a different browser revision, so install the Node
+# Firefox binary explicitly into PLAYWRIGHT_BROWSERS_PATH.
+RUN ./node_modules/.bin/playwright install firefox
+
 FROM runtime-base AS tectonic
 
 ARG TARGETARCH
