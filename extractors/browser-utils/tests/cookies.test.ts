@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createPersistedFetchCookieJar,
   getCloudflareCookieStorageDir,
   invalidateCookies,
   readCookieJar,
@@ -80,7 +81,11 @@ describe("cookies", () => {
     it("returns hasCookies false when no file exists", async () => {
       const dir = storageDir();
       const result = await readCookieJar("nonexistent", dir);
-      expect(result).toEqual({ hasCookies: false });
+      expect(result).toEqual({
+        hasCookies: false,
+        hasClearanceCookie: false,
+        cookieCount: 0,
+      });
     });
 
     it("returns saved userAgent and hasCookies true", async () => {
@@ -91,6 +96,8 @@ describe("cookies", () => {
 
       const result = await readCookieJar("hiringcafe", dir);
       expect(result.hasCookies).toBe(true);
+      expect(result.hasClearanceCookie).toBe(true);
+      expect(result.cookieCount).toBe(1);
       expect(result.userAgent).toBe("Mozilla/5.0 SolverUA");
     });
 
@@ -114,6 +121,8 @@ describe("cookies", () => {
 
       const result = await readCookieJar("hiringcafe", dir);
       expect(result.hasCookies).toBe(false);
+      expect(result.hasClearanceCookie).toBe(false);
+      expect(result.cookieCount).toBe(0);
       // UA is still returned — caller decides whether to use it
       expect(result.userAgent).toBe("Mozilla/5.0 StaleUA");
     });
@@ -124,6 +133,7 @@ describe("cookies", () => {
 
       const result = await readCookieJar("gradcracker", dir);
       expect(result.hasCookies).toBe(true);
+      expect(result.hasClearanceCookie).toBe(true);
       expect(result.userAgent).toBeUndefined();
     });
   });
@@ -160,7 +170,7 @@ describe("cookies", () => {
         "Mozilla/5.0 Camoufox/123",
       );
 
-      await saveCookies(ctx, "test-extractor", dir);
+      await expect(saveCookies(ctx, "test-extractor", dir)).resolves.toBe(1);
 
       const jar = await readCookieJar("test-extractor", dir);
       expect(jar.hasCookies).toBe(true);
@@ -185,7 +195,7 @@ describe("cookies", () => {
         pages: () => [],
       } as unknown as import("playwright").BrowserContext;
 
-      await saveCookies(ctx, "no-pages", dir);
+      await expect(saveCookies(ctx, "no-pages", dir)).resolves.toBe(1);
 
       const jar = await readCookieJar("no-pages", dir);
       expect(jar.hasCookies).toBe(true);
@@ -196,10 +206,47 @@ describe("cookies", () => {
       const dir = storageDir();
       const ctx = mockContext([{ name: "irrelevant_cookie" }]);
 
-      await saveCookies(ctx, "empty", dir);
+      await expect(saveCookies(ctx, "empty", dir)).resolves.toBe(0);
 
       const jar = await readCookieJar("empty", dir);
       expect(jar.hasCookies).toBe(false);
+    });
+  });
+
+  describe("createPersistedFetchCookieJar", () => {
+    it("replays saved Playwright cookies through a Fetch-compatible jar", async () => {
+      const dir = storageDir();
+      writeCookieJar(dir, "gradcracker", {
+        userAgent: "Mozilla/5.0 SolverUA",
+      });
+
+      const result = await createPersistedFetchCookieJar("gradcracker", dir);
+
+      expect(result.hasCookies).toBe(true);
+      expect(result.hasClearanceCookie).toBe(true);
+      expect(result.cookieCount).toBe(1);
+      expect(result.userAgent).toBe("Mozilla/5.0 SolverUA");
+      await expect(
+        result.cookieJar.getCookieString("https://www.example.com/jobs"),
+      ).resolves.toBe("cf_clearance=fake");
+      await expect(
+        result.cookieJar.getCookieString("http://www.example.com/jobs"),
+      ).resolves.toBe("");
+    });
+
+    it("keeps response cookies in memory for later HTTP requests", async () => {
+      const dir = storageDir();
+      writeCookieJar(dir, "gradcracker");
+
+      const result = await createPersistedFetchCookieJar("gradcracker", dir);
+      await result.cookieJar.setCookie(
+        "session_id=abc; Domain=.example.com; Path=/; Secure",
+        "https://www.example.com/jobs",
+      );
+
+      await expect(
+        result.cookieJar.getCookieString("https://www.example.com/jobs"),
+      ).resolves.toBe("cf_clearance=fake; session_id=abc");
     });
   });
 

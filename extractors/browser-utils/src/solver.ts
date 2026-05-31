@@ -1,12 +1,32 @@
 import type { BrowserContext } from "playwright";
 import { isChallengePage } from "./challenge.js";
-import { saveCookies } from "./cookies.js";
+import { readCookieJar, saveCookies } from "./cookies.js";
 import { createLaunchOptions } from "./launch.js";
 
 export type SolverResult =
-  | { status: "solved" }
+  | { status: "solved"; cookiesSaved: number }
   | { status: "timeout" }
   | { status: "error"; message: string };
+
+function noReusableCookiesError(): SolverResult {
+  return {
+    status: "error",
+    message:
+      "Challenge appeared solved, but no reusable Cloudflare clearance cookie was saved.",
+  };
+}
+
+async function saveReusableCookies(
+  context: BrowserContext,
+  extractorId: string,
+  storageDir: string,
+): Promise<number | null> {
+  const cookiesSaved = await saveCookies(context, extractorId, storageDir);
+  if (cookiesSaved === 0) return null;
+
+  const jar = await readCookieJar(extractorId, storageDir);
+  return jar.hasClearanceCookie ? cookiesSaved : null;
+}
 
 const SOLVED_PAGE = `data:text/html,${encodeURIComponent(`<!DOCTYPE html>
 <html><head><style>
@@ -63,9 +83,14 @@ export async function solveChallenge(
     // If there's no challenge, we're done — save cookies anyway since the
     // browser session established a valid cf_clearance
     if (!(await isChallengePage(page))) {
-      await saveCookies(context, extractorId, storageDir);
+      const cookiesSaved = await saveReusableCookies(
+        context,
+        extractorId,
+        storageDir,
+      );
+      if (cookiesSaved === null) return noReusableCookiesError();
       await showSolvedPage(page);
-      return { status: "solved" };
+      return { status: "solved", cookiesSaved };
     }
 
     // Poll until the challenge is resolved or timeout
@@ -76,9 +101,14 @@ export async function solveChallenge(
       await page.waitForTimeout(pollInterval);
 
       if (!(await isChallengePage(page))) {
-        await saveCookies(context, extractorId, storageDir);
+        const cookiesSaved = await saveReusableCookies(
+          context,
+          extractorId,
+          storageDir,
+        );
+        if (cookiesSaved === null) return noReusableCookiesError();
         await showSolvedPage(page);
-        return { status: "solved" };
+        return { status: "solved", cookiesSaved };
       }
     }
 

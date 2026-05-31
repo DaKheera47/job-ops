@@ -47,7 +47,8 @@ Implementation flow:
 3. Fetch detail pages for new jobs only.
 4. Extract `.body-content` description text.
 5. Decode Gradcracker `/out/...` apply URLs from the `u` query parameter.
-6. Fall back to Playwright/Crawlee only when the HTTP path cannot proceed.
+6. Reuse saved Cloudflare clearance cookies from the headed solve flow on the HTTP retry.
+7. Fall back to Playwright/Crawlee only when the HTTP path cannot proceed.
 
 ## Common problems
 
@@ -60,6 +61,7 @@ Implementation flow:
 ### The HTTP scraper is blocked
 
 - Leave browser fallback enabled so the extractor can use the existing Playwright/Crawlee challenge handling.
+- When the app opens a challenge browser, complete the challenge and wait for the solver to save a `cf_clearance` cookie. The next HTTP retry uses that saved cookie and the same browser user agent.
 - Set `GRADCRACKER_FORCE_BROWSER=1` when you specifically need to debug the legacy browser flow.
 
 ### Apply links stay on Gradcracker

@@ -3,6 +3,10 @@ import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import {
+  createPersistedFetchCookieJar,
+  getCloudflareCookieStorageDir,
+} from "browser-utils";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
 import { Impit } from "impit";
@@ -28,6 +32,7 @@ const EXTRACTOR_DIR = join(srcDir, "..");
 const STORAGE_DIR = join(EXTRACTOR_DIR, "storage/datasets/default");
 const JOBOPS_STORAGE_DIR = join(EXTRACTOR_DIR, "storage/jobops");
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+const EXTRACTOR_ID = "gradcracker";
 const GRADCRACKER_BASE_URL = "https://www.gradcracker.com";
 const DEFAULT_DETAIL_CONCURRENCY = 2;
 const DEFAULT_REQUEST_DELAY_MS = 1_000;
@@ -491,10 +496,19 @@ export function parseGradcrackerDetailPage(
   };
 }
 
-function createImpitFetch(): FetchLike {
+async function createImpitFetch(): Promise<FetchLike> {
+  const persistedCookies = await createPersistedFetchCookieJar(
+    EXTRACTOR_ID,
+    getCloudflareCookieStorageDir(),
+  );
+  const headers = persistedCookies.userAgent
+    ? { "user-agent": persistedCookies.userAgent }
+    : undefined;
   const impit = new Impit({
     browser: "firefox",
     timeout: 30_000,
+    cookieJar: persistedCookies.cookieJar,
+    ...(headers ? { headers } : {}),
   });
 
   return (input, init) =>
@@ -611,7 +625,7 @@ async function mapWithConcurrency<T, R>(
 export async function runHttpCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
-  const rawFetchImpl = options.fetchImpl ?? createImpitFetch();
+  const rawFetchImpl = options.fetchImpl ?? (await createImpitFetch());
   const requestDelayMs = toNonNegativeIntOrFallback(
     options.requestDelayMs ??
       process.env.GRADCRACKER_HTTP_REQUEST_DELAY_MS ??

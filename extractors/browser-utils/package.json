@@ -10,7 +10,8 @@
     "./*": "./src/*"
   },
   "dependencies": {
-    "camoufox-js": "^0.9.2"
+    "camoufox-js": "^0.9.2",
+    "tough-cookie": "^6.0.1"
   },
   "peerDependencies": {
     "playwright": "*"

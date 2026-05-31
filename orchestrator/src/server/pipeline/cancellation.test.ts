@@ -5,16 +5,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const stepState = vi.hoisted(() => {
   let resolveDiscover:
-    | ((value: { discoveredJobs: []; sourceErrors: [] }) => void)
+    | ((value: {
+        discoveredJobs: [];
+        sourceErrors: [];
+        pendingChallenges: [];
+      }) => void)
     | null = null;
   return {
     setResolver: (
-      fn: (value: { discoveredJobs: []; sourceErrors: [] }) => void,
+      fn: (value: {
+        discoveredJobs: [];
+        sourceErrors: [];
+        pendingChallenges: [];
+      }) => void,
     ) => {
       resolveDiscover = fn;
     },
     resolveDiscover: () =>
-      resolveDiscover?.({ discoveredJobs: [], sourceErrors: [] }),
+      resolveDiscover?.({
+        discoveredJobs: [],
+        sourceErrors: [],
+        pendingChallenges: [],
+      }),
   };
 });
 
@@ -35,7 +47,11 @@ vi.mock("./steps", () => ({
   loadProfileStep: vi.fn(async () => ({})),
   discoverJobsStep: vi.fn(
     () =>
-      new Promise<{ discoveredJobs: []; sourceErrors: [] }>((resolve) => {
+      new Promise<{
+        discoveredJobs: [];
+        sourceErrors: [];
+        pendingChallenges: [];
+      }>((resolve) => {
         stepState.setResolver(resolve);
       }),
   ),

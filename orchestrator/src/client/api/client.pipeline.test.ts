@@ -156,6 +156,7 @@ describe("pipeline client helpers", () => {
           status: "solved",
           extractorId: "gradcracker",
           challengesRemaining: 0,
+          cookiesSaved: 1,
         },
         meta: { requestId: "req-solve" },
       }),
@@ -165,6 +166,7 @@ describe("pipeline client helpers", () => {
       status: "solved",
       extractorId: "gradcracker",
       challengesRemaining: 0,
+      cookiesSaved: 1,
     });
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/pipeline/solve-challenge",

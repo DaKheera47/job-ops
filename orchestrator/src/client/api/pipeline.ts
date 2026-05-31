@@ -43,11 +43,13 @@ export async function solvePipelineChallenge(extractorId: string): Promise<{
   status: "solved";
   extractorId: string;
   challengesRemaining: number;
+  cookiesSaved: number;
 }> {
   return fetchApi<{
     status: "solved";
     extractorId: string;
     challengesRemaining: number;
+    cookiesSaved: number;
   }>("/pipeline/solve-challenge", {
     method: "POST",
     body: JSON.stringify({ extractorId }),

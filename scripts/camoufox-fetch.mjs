@@ -1,3 +1,4 @@
+import { downloadMMDB } from "camoufox-js/dist/locale.js";
 import { CamoufoxFetcher } from "camoufox-js/dist/pkgman.js";
 
 const githubToken = process.env.GITHUB_TOKEN?.trim() || "";
@@ -50,3 +51,4 @@ if (githubToken) {
 }
 
 await new CamoufoxFetcher().install();
+await downloadMMDB();

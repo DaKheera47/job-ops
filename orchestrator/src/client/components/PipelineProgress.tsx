@@ -16,6 +16,7 @@ import type { PipelineProgressState } from "@shared/types";
 import { Loader2, ShieldAlert } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { subscribeToEventSource } from "@/client/lib/sse";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       await solvePipelineChallenge(extractorId);
     } catch (err) {
       viewerWindow?.close();
-      console.error("Solve challenge request failed:", err);
+      showErrorToast(err, "Failed to solve challenge");
     } finally {
       setSolvingExtractor(null);
     }

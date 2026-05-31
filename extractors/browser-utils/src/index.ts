@@ -5,9 +5,8 @@
  * needs to handle Cloudflare WAF challenges, retry transient failures, or
  * persist cookies between runs.
  *
- * NOT for: HTTP-only extractors (adzuna, startupjobs) or Python-based
- * extractors (jobspy). Those don't use Playwright and can't benefit from
- * browser-level anti-detection.
+ * HTTP extractors can also reuse the persisted cookie-jar helpers when a
+ * headed challenge solve needs to carry over to a fetch-based retry.
  */
 
 export {
@@ -19,9 +18,12 @@ export {
 } from "./challenge.js";
 export {
   type CookieJarInfo,
+  createPersistedFetchCookieJar,
+  type FetchCookieJar,
   getCloudflareCookieStorageDir,
   invalidateCookies,
   loadCookies,
+  type PersistedFetchCookieJarInfo,
   readCookieJar,
   saveCookies,
 } from "./cookies.js";

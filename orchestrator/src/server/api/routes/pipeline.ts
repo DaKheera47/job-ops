@@ -695,12 +695,14 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
         route: "/api/pipeline/solve-challenge",
         extractorId: body.extractorId,
         challengesRemaining: remaining,
+        cookiesSaved: result.cookiesSaved,
       });
 
       ok(res, {
         status: "solved",
         extractorId: body.extractorId,
         challengesRemaining: remaining,
+        cookiesSaved: result.cookiesSaved,
       });
     } else {
       logger.warn("Challenge solver did not succeed", {
