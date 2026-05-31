@@ -53,12 +53,16 @@ describe("extractor deployment config", () => {
     );
   });
 
-  it("installs the Node Playwright Firefox binary for browser fallbacks", async () => {
+  it("does not install a vanilla Node Playwright Firefox binary", async () => {
+    // Camoufox is the only supported browser in production. The vanilla Firefox
+    // fallback was removed so that a missing Camoufox binary surfaces as a hard
+    // failure rather than silently degrading anti-detection. Keeping this
+    // assertion prevents the fallback from being accidentally reintroduced.
     const dockerfile = await readFile(resolve(process.cwd(), "../Dockerfile"), {
       encoding: "utf8",
     });
 
-    expect(dockerfile).toContain(
+    expect(dockerfile).not.toContain(
       "./node_modules/.bin/playwright install firefox",
     );
   });
