@@ -52,9 +52,22 @@ export const manifest: ExtractorManifest = {
       };
     }
 
+    // Gradcracker is a UK-only board. Its location strings are UK region names
+    // (e.g. "London and South East", "North West") which don't contain "United
+    // Kingdom" / "UK", so the orchestrator's country filter would drop every job
+    // without an explicit country key. Stamp it here so the matcher knows.
+    const jobs = result.jobs.map((job) => ({
+      ...job,
+      locationEvidence: {
+        country: "united kingdom",
+        location: job.location ?? null,
+        source: "gradcracker",
+      },
+    }));
+
     return {
       success: true,
-      jobs: result.jobs,
+      jobs,
     };
   },
 };

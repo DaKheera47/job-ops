@@ -385,12 +385,12 @@ export async function runPipeline(
       }
 
       ensureNotCancelled(tenantId);
-      const { created } = await importJobsStep({ discoveredJobs });
-      jobsDiscovered = created;
+      jobsDiscovered = discoveredJobs.length;
+      const { created, skipped } = await importJobsStep({ discoveredJobs });
 
       await persistResultSummary({ stage: "import" });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-        jobsDiscovered: created,
+        jobsDiscovered,
       });
 
       let unprocessedJobs: import("@shared/types").Job[] = [];
@@ -474,22 +474,24 @@ export async function runPipeline(
         resultSummary,
       });
 
-      progressHelpers.complete(created, processedCount);
+      progressHelpers.complete(jobsDiscovered, processedCount);
       pipelineLogger.info("Pipeline run completed", {
-        jobsDiscovered: created,
+        jobsDiscovered,
+        jobsImported: created,
+        jobsSkipped: skipped,
         jobsProcessed: processedCount,
       });
 
       await notifyPipelineWebhookStep("pipeline.completed", {
         pipelineRunId: pipelineRun.id,
-        jobsDiscovered: created,
+        jobsDiscovered,
         jobsScored: unprocessedJobs.length,
         jobsProcessed: processedCount,
       });
 
       return {
         success: true,
-        jobsDiscovered: created,
+        jobsDiscovered,
         jobsProcessed: processedCount,
       };
     } catch (error) {
