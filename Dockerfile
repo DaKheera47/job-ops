@@ -3,7 +3,7 @@
 # ============================================================================
 # SHARED BASE IMAGES
 # ============================================================================
-FROM node:22-slim AS runtime-base
+FROM --platform=$TARGETPLATFORM node:22-slim AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
@@ -30,9 +30,24 @@ RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
 WORKDIR /app
 
-FROM runtime-base AS build-base
+FROM --platform=$BUILDPLATFORM node:22-slim AS build-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_ENV=production
+
+WORKDIR /app
 
 # Install compiler toolchain only for build-oriented stages.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    python3 python3-minimal libpython3.11-minimal \
+    build-essential pkg-config \
+    curl && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+FROM runtime-base AS target-build-base
+
+# Install compiler toolchain for target-platform dependency stages only.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
@@ -40,10 +55,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ============================================================================
 # BUILD INPUT STAGES
 # ============================================================================
-FROM build-base AS python-deps
+FROM target-build-base AS python-deps
+
+ARG TARGETARCH
 
 # Install Python dependencies with pip cache.
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,id=pip-${TARGETARCH},target=/root/.cache/pip \
     pip3 install --break-system-packages playwright python-jobspy
 
 # Install Firefox for Python Playwright.
@@ -51,9 +68,10 @@ RUN python3 -m playwright install firefox
 
 FROM build-base AS node-deps
 
+ARG BUILDARCH
+
 # Copy package files for dependency installation.
 COPY package*.json ./
-COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
@@ -73,15 +91,11 @@ COPY extractors/fiveamsat/package*.json ./extractors/fiveamsat/
 COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
-# Install Node dependencies with npm cache (dev deps needed for build).
-RUN --mount=type=cache,target=/root/.npm \
+# Install build-time Node dependencies on the native builder platform. The
+# resulting client/docs assets are architecture-neutral static files.
+RUN --mount=type=cache,id=npm-build-${BUILDARCH},target=/root/.npm \
     npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
-
-# Fetch Camoufox binaries and GeoLite data before copying source to keep the
-# downloads cached and avoid runtime GitHub calls during browser launch.
-RUN --mount=type=secret,id=github_token,required=false \
-    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM node-deps AS build-sources
 
@@ -124,6 +138,8 @@ RUN npm run build:client
 # ============================================================================
 FROM runtime-base AS runtime-node-deps
 
+ARG TARGETARCH
+
 # Install virtual display dependencies for the headed Cloudflare challenge solver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb x11vnc novnc websockify && \
@@ -151,7 +167,7 @@ COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only.
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=npm-runtime-${TARGETARCH},target=/root/.npm \
     npm install --workspaces --include-workspace-root --omit=dev \
     --no-audit --no-fund --progress=false
 
@@ -159,6 +175,14 @@ RUN --mount=type=cache,target=/root/.npm \
 # Python Playwright uses a different browser revision, so install the Node
 # Firefox binary explicitly into PLAYWRIGHT_BROWSERS_PATH.
 RUN ./node_modules/.bin/playwright install firefox
+
+FROM runtime-node-deps AS camoufox-cache
+
+# Fetch target-platform Camoufox binaries after production dependencies are
+# installed so arm64 images do not inherit x64 browser assets from build stages.
+COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
+RUN --mount=type=secret,id=github_token,required=false \
+    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM runtime-base AS tectonic
 
@@ -215,7 +239,7 @@ COPY --from=tectonic /usr/local/bin/tectonic /usr/local/bin/tectonic
 COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 COPY --from=python-deps /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
 COPY --from=python-deps /ms-playwright /ms-playwright
-COPY --from=node-deps /root/.cache/camoufox /root/.cache/camoufox
+COPY --from=camoufox-cache /root/.cache/camoufox /root/.cache/camoufox
 
 # Copy built assets and runtime source code.
 COPY --from=client-build /app/orchestrator/dist ./orchestrator/dist
