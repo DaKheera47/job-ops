@@ -24,45 +24,32 @@ const DEFAULTS: Required<Omit<BrowserLaunchOptions, "args">> = {
 
 /**
  * Creates Playwright launch options using Camoufox for anti-detection.
- * Falls back to vanilla Firefox if Camoufox fails to initialize.
+ *
+ * Camoufox is baked into the production Docker image via the `camoufox-cache`
+ * build stage and is the only supported browser. There is no vanilla Firefox
+ * fallback: if Camoufox is unavailable it means the image was built incorrectly
+ * or the binary was not fetched, and we want that to surface as an immediate
+ * hard failure rather than silently degrading anti-detection in production.
  *
  * This centralizes the launch config so all extractors use the same
  * anti-detection settings. Update this one place when Camoufox options change.
  *
- * @returns Launch options and a flag indicating whether Camoufox was used
+ * @returns Launch options for use with playwright's firefox.launch()
  */
 export async function createLaunchOptions(
   options: BrowserLaunchOptions = {},
-): Promise<{ launchOptions: LaunchOptions; usedCamoufox: boolean }> {
+): Promise<{ launchOptions: LaunchOptions; usedCamoufox: true }> {
   const merged = { ...DEFAULTS, ...options };
 
-  try {
-    const { launchOptions } = await import("camoufox-js");
+  const { launchOptions } = await import("camoufox-js");
 
-    const opts = await launchOptions({
-      headless: merged.headless,
-      humanize: merged.humanize,
-      geoip: merged.geoip,
-      block_webrtc: merged.block_webrtc,
-      args: options.args,
-    });
+  const opts = await launchOptions({
+    headless: merged.headless,
+    humanize: merged.humanize,
+    geoip: merged.geoip,
+    block_webrtc: merged.block_webrtc,
+    args: options.args,
+  });
 
-    return { launchOptions: opts, usedCamoufox: true };
-  } catch (error) {
-    // Camoufox binary missing or incompatible — fall back to vanilla Firefox.
-    // This happens in CI or when the binary hasn't been fetched yet.
-    console.warn(
-      `[browser-utils] Camoufox unavailable, falling back to vanilla Firefox: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-
-    return {
-      launchOptions: {
-        headless: merged.headless,
-        args: options.args,
-      },
-      usedCamoufox: false,
-    };
-  }
+  return { launchOptions: opts, usedCamoufox: true };
 }
