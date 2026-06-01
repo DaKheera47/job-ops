@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   type AuthUser,
@@ -36,6 +36,8 @@ import type {
   ValidationState,
 } from "./onboarding/types";
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
+
+const TOTAL_ONBOARDING_STEPS = 4;
 
 function getRequirement(
   requirements: OnboardingRequirement[],
@@ -77,13 +79,13 @@ function getActionLabel(action: OnboardingRequirementPrimaryAction): string {
 function getPanelStepLabel(panel: OnboardingPanelId): string {
   switch (panel) {
     case "account":
-      return "Step 1 of 3";
+      return "Step 1 of 4";
     case "model":
-      return "Step 2 of 3";
+      return "Step 2 of 4";
     case "resume":
-      return "Step 3 of 3";
+      return "Step 3 of 4";
     case "first-run":
-      return "Ready";
+      return "Step 4 of 4";
   }
 }
 
@@ -200,6 +202,7 @@ const AccountSetupOnboarding: React.FC<{
   const [password, setPassword] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [coachReplayNonce, setCoachReplayNonce] = useState(0);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -236,12 +239,22 @@ const AccountSetupOnboarding: React.FC<{
       />
 
       <PageMain className="space-y-4">
+        <OnboardingCoach
+          activePanel="account"
+          onPanelChange={() => undefined}
+          replayNonce={coachReplayNonce}
+          scope="account"
+          status={null}
+        />
+
         <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
           <Card className="border-border/60 bg-card shadow-none">
             <CardHeader className="space-y-1.5 pb-4">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="text-base">Launch checks</CardTitle>
-                <span className="text-xs text-muted-foreground">0/3</span>
+                <span className="text-xs text-muted-foreground">
+                  0/{TOTAL_ONBOARDING_STEPS}
+                </span>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
                 Start with a private workspace account, then connect the
@@ -293,6 +306,16 @@ const AccountSetupOnboarding: React.FC<{
                   ))}
                 </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-muted-foreground"
+                onClick={() => setCoachReplayNonce((value) => value + 1)}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Replay guide
+              </Button>
             </CardContent>
           </Card>
 
@@ -303,7 +326,7 @@ const AccountSetupOnboarding: React.FC<{
             >
               <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span>Step 1 of 3</span>
+                  <span>{getPanelStepLabel("account")}</span>
                 </div>
                 <div className="space-y-1.5">
                   <CardTitle className="text-2xl leading-tight">
@@ -387,7 +410,11 @@ const AccountSetupOnboarding: React.FC<{
                   <KeyRound className="h-4 w-4" />
                   Passwords stay in this Job Ops instance.
                 </div>
-                <Button type="submit" disabled={isBusy}>
+                <Button
+                  type="submit"
+                  disabled={isBusy}
+                  data-onboarding-target="primary-action"
+                >
                   {isBusy ? "Creating account..." : "Create account"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -406,6 +433,7 @@ const LaunchOnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
+  const searchTermsAttemptedRef = useRef(false);
 
   const modelRequirement = useMemo(
     () => getRequirement(onboarding.requirements, "model"),
@@ -430,11 +458,32 @@ const LaunchOnboardingPage: React.FC = () => {
     }
   }, [onboarding.complete, onboarding.nextRequirementId]);
 
-  if (flow.demoMode) {
-    return <Navigate to="/jobs/ready" replace />;
-  }
+  useEffect(() => {
+    if (
+      !onboarding.complete ||
+      flow.demoMode ||
+      activePanel !== "first-run" ||
+      flow.settingsLoading ||
+      flow.hasSavedSearchTerms ||
+      flow.isGeneratingSearchTerms ||
+      searchTermsAttemptedRef.current
+    ) {
+      return;
+    }
 
-  if (!onboarding.checking && onboarding.complete) {
+    searchTermsAttemptedRef.current = true;
+    void flow.ensureSearchTerms();
+  }, [
+    activePanel,
+    flow.demoMode,
+    flow.ensureSearchTerms,
+    flow.hasSavedSearchTerms,
+    flow.isGeneratingSearchTerms,
+    flow.settingsLoading,
+    onboarding.complete,
+  ]);
+
+  if (flow.demoMode) {
     return <Navigate to="/jobs/ready" replace />;
   }
 
@@ -450,8 +499,9 @@ const LaunchOnboardingPage: React.FC = () => {
   const completedCount =
     onboarding.requirements.filter(
       (requirement) => requirement.status === "ready",
-    ).length + 1;
-  const requirementCount = onboarding.requirements.length + 1;
+    ).length +
+    1 +
+    (onboarding.complete ? 1 : 0);
 
   const submitActivePanel = async () => {
     if (activePanel === "account") {
@@ -460,17 +510,21 @@ const LaunchOnboardingPage: React.FC = () => {
     }
     if (activePanel === "model") {
       const status = await flow.handleSaveModel();
-      if (status?.complete) navigate("/jobs/ready", { replace: true });
+      if (status?.complete) setActivePanel("first-run");
       return;
     }
     if (activePanel === "resume") {
       if (flow.resumeSetupMode === "rxresume") {
         const status = await flow.handleSaveRxresume();
-        if (status?.complete) navigate("/jobs/ready", { replace: true });
+        if (status?.complete) setActivePanel("first-run");
         return;
       }
       await onboarding.refetch();
       return;
+    }
+    if (activePanel === "first-run") {
+      const ready = await flow.ensureSearchTerms();
+      if (!ready) return;
     }
     navigate("/jobs/ready", { replace: true });
   };
@@ -497,7 +551,7 @@ const LaunchOnboardingPage: React.FC = () => {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="text-base">Launch checks</CardTitle>
                 <span className="text-xs text-muted-foreground">
-                  {completedCount}/{requirementCount || 3}
+                  {completedCount}/{TOTAL_ONBOARDING_STEPS}
                 </span>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
@@ -675,12 +729,40 @@ const LaunchOnboardingPage: React.FC = () => {
                           Command centre is loaded
                         </div>
                         <p className="text-sm leading-6 text-muted-foreground">
-                          Job Ops will prepare search terms from your resume
-                          automatically, then open the ready queue where jobs
-                          can be scored, matched, tailored, and worked through.
-                          You can still tune advanced search controls later from
-                          the run modal or Settings.
+                          Job Ops prepares search terms from your resume before
+                          opening the ready queue. You can still tune advanced
+                          search controls later from the run modal or Settings.
                         </p>
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        {flow.isGeneratingSearchTerms ? (
+                          <p className="text-sm text-muted-foreground">
+                            Preparing resume-based search terms...
+                          </p>
+                        ) : flow.savedSearchTerms.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {flow.savedSearchTerms.map((term) => (
+                              <span
+                                key={term}
+                                className="rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-muted-foreground"
+                              >
+                                {term}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={flow.isBusy}
+                            onClick={() =>
+                              void flow.ensureSearchTerms({ force: true })
+                            }
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Prepare search terms
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -701,6 +783,7 @@ const LaunchOnboardingPage: React.FC = () => {
                     type="submit"
                     disabled={
                       flow.isBusy ||
+                      flow.isGeneratingSearchTerms ||
                       (activePanel === "first-run" && !onboarding.complete)
                     }
                     data-onboarding-target="primary-action"
@@ -708,7 +791,9 @@ const LaunchOnboardingPage: React.FC = () => {
                     {activePanel === "account"
                       ? "Continue setup"
                       : activePanel === "first-run"
-                        ? "Open ready queue"
+                        ? flow.isGeneratingSearchTerms
+                          ? "Preparing search terms..."
+                          : "Open ready queue"
                         : getActionLabel(
                             activeRequirement?.primaryAction ?? "none",
                           )}

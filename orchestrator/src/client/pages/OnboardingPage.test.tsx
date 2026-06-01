@@ -16,6 +16,7 @@ vi.mock("@client/api", () => ({
   saveOnboardingModel: vi.fn(),
   saveOnboardingRxResume: vi.fn(),
   setupFirstAdmin: vi.fn(),
+  suggestOnboardingSearchTerms: vi.fn(),
   updateSettings: vi.fn(),
 }));
 
@@ -88,6 +89,11 @@ const baseSettings = {
   rxresumeUrl: "https://resume.example.com",
   rxresumeApiKeyHint: "rx-k",
   rxresumeBaseResumeId: "resume-1",
+  searchTerms: {
+    value: ["web developer"],
+    default: ["web developer"],
+    override: null,
+  },
 };
 
 const authUser = {
@@ -209,6 +215,27 @@ describe("OnboardingPage", () => {
       updatedAt: "2026-06-01T00:00:00.000Z",
     } as any);
     vi.mocked(api.setupFirstAdmin).mockResolvedValue(authUser);
+    vi.mocked(api.suggestOnboardingSearchTerms).mockResolvedValue({
+      terms: ["Backend Engineer", "Platform Engineer"],
+      source: "fallback",
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      const searchTerms =
+        update.searchTerms ?? baseSettings.searchTerms.override;
+      return {
+        ...baseSettings,
+        searchTerms: {
+          value: searchTerms ?? baseSettings.searchTerms.value,
+          default: baseSettings.searchTerms.default,
+          override: searchTerms,
+        },
+        pdfRenderer: {
+          ...baseSettings.pdfRenderer,
+          value: update.pdfRenderer ?? baseSettings.pdfRenderer.value,
+          override: update.pdfRenderer ?? baseSettings.pdfRenderer.override,
+        },
+      } as any;
+    });
   });
 
   it("shows one active server requirement and collapses completed checks", async () => {
@@ -229,7 +256,7 @@ describe("OnboardingPage", () => {
     expect(
       screen.getByRole("button", { name: /account workspace/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("2/3")).toBeInTheDocument();
+    expect(screen.getByText("2/4")).toBeInTheDocument();
     expect(screen.getByText("Model connected")).toBeInTheDocument();
     expect(screen.getAllByText("Load your resume").length).toBeGreaterThan(0);
   });
@@ -309,7 +336,7 @@ describe("OnboardingPage", () => {
     });
   });
 
-  it("redirects once the server status is complete", async () => {
+  it("prepares search terms before opening the ready queue", async () => {
     const completeStatus: OnboardingStatusResponse = {
       complete: true,
       nextRequirementId: null,
@@ -331,6 +358,19 @@ describe("OnboardingPage", () => {
 
     await renderPage();
 
+    expect(
+      await screen.findByText("Ready for the first run"),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.suggestOnboardingSearchTerms).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        searchTerms: ["Backend Engineer", "Platform Engineer"],
+      });
+    });
+    expect(screen.queryByText("ready page")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /open ready queue/i }));
     expect(await screen.findByText("ready page")).toBeInTheDocument();
   });
 
@@ -352,6 +392,9 @@ describe("OnboardingPage", () => {
     expect(
       screen.getByText("Create your workspace account"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
+    expect(screen.getByText("0/4")).toBeInTheDocument();
+    expect(screen.getByTestId("coach")).toHaveTextContent("coach:0");
 
     fireEvent.change(screen.getByLabelText(/^name$/i), {
       target: { value: "Admin User" },
@@ -375,6 +418,6 @@ describe("OnboardingPage", () => {
     expect(
       screen.getByRole("button", { name: /account workspace/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1/3")).toBeInTheDocument();
+    expect(screen.getByText("1/4")).toBeInTheDocument();
   });
 });

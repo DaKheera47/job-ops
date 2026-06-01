@@ -30,6 +30,7 @@ const RAIL_ITEMS: Array<{
     subtitle: "Launch",
   },
 ];
+const TOTAL_ONBOARDING_STEPS = RAIL_ITEMS.length;
 
 function getRequirement(
   requirements: OnboardingRequirement[],
@@ -78,10 +79,11 @@ export const OnboardingStepRail: React.FC<{
 }) => {
   const completedCount =
     requirements.filter((requirement) => requirement.status === "ready")
-      .length + 1;
-  const requirementCount = requirements.length + 1;
+      .length +
+    1 +
+    (complete ? 1 : 0);
   const progressValue = Math.round(
-    (completedCount / Math.max(requirementCount, 1)) * 100,
+    (completedCount / Math.max(TOTAL_ONBOARDING_STEPS, 1)) * 100,
   );
 
   return (

@@ -149,7 +149,7 @@ describe("OnboardingCoach", () => {
     act(() => {
       (joyrideState.props?.onEvent as (data: unknown) => void)({
         action: "next",
-        index: 4,
+        index: 5,
         status: "running",
         type: "step:after",
       });
@@ -162,5 +162,24 @@ describe("OnboardingCoach", () => {
     await waitFor(() => {
       expect(view.queryByTestId("joyride")).toBeNull();
     });
+  });
+
+  it("starts the account tour before onboarding status is available", async () => {
+    renderCoach({
+      activePanel: "account",
+      scope: "account",
+      status: null,
+    });
+
+    await waitFor(() => {
+      expect(joyrideState.props?.run).toBe(true);
+    });
+    expect(joyrideState.props?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: '[data-onboarding-target="account-form"]',
+        }),
+      ]),
+    );
   });
 });

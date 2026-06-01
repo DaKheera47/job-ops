@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import type { OnboardingPanelId } from "../types";
 
 const TOUR_STORAGE_KEY = "jobops.onboarding.coach.dismissed.v1";
+const ACCOUNT_TOUR_STORAGE_KEY = "jobops.onboarding.coach.account.dismissed.v1";
 
 type CoachStep = Step & {
   data?: {
@@ -22,19 +23,17 @@ type CoachStep = Step & {
   };
 };
 
-function readDismissed(): boolean {
+function readDismissed(storageKey: string): boolean {
   try {
-    return (
-      localStorage.getItem(getAuthScopedStorageKey(TOUR_STORAGE_KEY)) === "1"
-    );
+    return localStorage.getItem(getAuthScopedStorageKey(storageKey)) === "1";
   } catch {
     return true;
   }
 }
 
-function writeDismissed(): void {
+function writeDismissed(storageKey: string): void {
   try {
-    localStorage.setItem(getAuthScopedStorageKey(TOUR_STORAGE_KEY), "1");
+    localStorage.setItem(getAuthScopedStorageKey(storageKey), "1");
   } catch {
     // Ignore storage failures in restricted browser contexts.
   }
@@ -83,13 +82,22 @@ export const OnboardingCoach: React.FC<{
   activePanel: OnboardingPanelId;
   onPanelChange: (panel: OnboardingPanelId) => void;
   replayNonce: number;
+  scope?: "account" | "launch";
   status: OnboardingStatusResponse | null;
-}> = ({ activePanel, onPanelChange, replayNonce, status }) => {
+}> = ({
+  activePanel,
+  onPanelChange,
+  replayNonce,
+  scope = "launch",
+  status,
+}) => {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const storageKey =
+    scope === "account" ? ACCOUNT_TOUR_STORAGE_KEY : TOUR_STORAGE_KEY;
 
   const stopTour = () => {
-    writeDismissed();
+    writeDismissed(storageKey);
     setRun(false);
     setStepIndex(0);
     removeJoyridePortal();
@@ -101,9 +109,16 @@ export const OnboardingCoach: React.FC<{
         target: '[data-onboarding-target="launch-rail"]',
         title: "Load the command centre",
         content:
-          "Complete the setup checks that let Job Ops work for you: an LLM for reasoning and a resume for matching.",
+          "Complete the setup checks that let Job Ops work for you: a workspace account, an LLM for reasoning, and a resume for matching.",
         disableBeacon: true,
         data: { panel: activePanel },
+      },
+      {
+        target: '[data-onboarding-target="account-form"]',
+        title: "Workspace account",
+        content:
+          "Create the private account that owns this Job Ops workspace before connecting the model and resume.",
+        data: { panel: "account" },
       },
       {
         target: '[data-onboarding-target="model-form"]',
@@ -123,14 +138,16 @@ export const OnboardingCoach: React.FC<{
         target: '[data-onboarding-target="first-run"]',
         title: "Ready queue",
         content:
-          "After setup, Job Ops prepares search terms from your resume and sends you into the ready queue with the core inputs loaded.",
+          "After setup, Job Ops prepares search terms from your resume before sending you into the ready queue.",
         data: { panel: "first-run" },
       },
       {
         target: '[data-onboarding-target="primary-action"]',
         title: "One next action",
         content:
-          "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
+          activePanel === "account"
+            ? "Use this button to create the workspace account and continue to the model check."
+            : "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
         data: { panel: status?.nextRequirementId ?? activePanel },
       },
     ],
@@ -138,16 +155,16 @@ export const OnboardingCoach: React.FC<{
   );
 
   useEffect(() => {
-    if (!status || readDismissed()) return;
+    if ((scope === "launch" && !status) || readDismissed(storageKey)) return;
     setStepIndex(0);
     setRun(true);
-  }, [status]);
+  }, [scope, status, storageKey]);
 
   useEffect(() => {
-    if (!status || replayNonce === 0) return;
+    if ((scope === "launch" && !status) || replayNonce === 0) return;
     setStepIndex(0);
     setRun(true);
-  }, [replayNonce, status]);
+  }, [replayNonce, scope, status]);
 
   useEffect(() => {
     if (!run) return;
