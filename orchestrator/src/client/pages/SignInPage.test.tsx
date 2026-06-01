@@ -117,4 +117,22 @@ describe("SignInPage", () => {
     );
     expect(signInWithCredentials).not.toHaveBeenCalled();
   });
+
+  it("sends first-run setup into onboarding", async () => {
+    vi.mocked(getAuthBootstrapStatus).mockResolvedValueOnce({
+      setupRequired: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/sign-in"]}>
+        <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/onboarding" element={<div>onboarding</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("onboarding")).toBeInTheDocument();
+    expect(setupFirstAdmin).not.toHaveBeenCalled();
+  });
 });

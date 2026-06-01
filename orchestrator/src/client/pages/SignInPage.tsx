@@ -65,7 +65,10 @@ export function SignInPage() {
         const bootstrap = await getAuthBootstrapStatus();
         if (cancelled) return;
         setSetupRequired(bootstrap.setupRequired);
-        if (bootstrap.setupRequired) return;
+        if (bootstrap.setupRequired) {
+          navigate("/onboarding", { replace: true });
+          return;
+        }
 
         const restored = await restoreAuthSessionFromLegacyCredentials();
         if (cancelled) return;

@@ -1,5 +1,5 @@
 import type { OnboardingRequirement } from "@shared/types";
-import { Check, Circle, Play, TriangleAlert } from "lucide-react";
+import { Check, Circle, Play, TriangleAlert, UserPlus } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 import type { OnboardingPanelId } from "../types";
@@ -9,6 +9,11 @@ const RAIL_ITEMS: Array<{
   label: string;
   subtitle: string;
 }> = [
+  {
+    id: "account",
+    label: "Account",
+    subtitle: "Workspace",
+  },
   {
     id: "model",
     label: "Model",
@@ -40,6 +45,9 @@ function RailIcon({
   panelId: OnboardingPanelId;
   requirement?: OnboardingRequirement;
 }) {
+  if (panelId === "account") {
+    return <UserPlus className="h-4 w-4" />;
+  }
   if (panelId === "first-run") {
     return <Play className="h-4 w-4" />;
   }
@@ -68,11 +76,12 @@ export const OnboardingStepRail: React.FC<{
   onPanelSelect,
   requirements,
 }) => {
-  const completedCount = requirements.filter(
-    (requirement) => requirement.status === "ready",
-  ).length;
+  const completedCount =
+    requirements.filter((requirement) => requirement.status === "ready")
+      .length + 1;
+  const requirementCount = requirements.length + 1;
   const progressValue = Math.round(
-    (completedCount / Math.max(requirements.length, 1)) * 100,
+    (completedCount / Math.max(requirementCount, 1)) * 100,
   );
 
   return (
@@ -85,16 +94,22 @@ export const OnboardingStepRail: React.FC<{
       <div className="space-y-1">
         {RAIL_ITEMS.map((item) => {
           const requirement =
-            item.id === "first-run"
+            item.id === "account" || item.id === "first-run"
               ? undefined
               : getRequirement(requirements, item.id);
           const active = activePanel === item.id;
           const blocked =
-            item.id === "first-run" ? !complete : nextRequirementId === item.id;
+            item.id === "account"
+              ? false
+              : item.id === "first-run"
+                ? !complete
+                : nextRequirementId === item.id;
           const ready =
-            item.id === "first-run"
-              ? complete
-              : requirement?.status === "ready";
+            item.id === "account"
+              ? true
+              : item.id === "first-run"
+                ? complete
+                : requirement?.status === "ready";
 
           return (
             <button

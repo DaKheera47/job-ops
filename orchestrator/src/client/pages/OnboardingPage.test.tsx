@@ -11,9 +11,11 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OnboardingPage } from "./OnboardingPage";
 
 vi.mock("@client/api", () => ({
+  getAuthBootstrapStatus: vi.fn(async () => ({ setupRequired: false })),
   importDesignResumeFromFile: vi.fn(),
   saveOnboardingModel: vi.fn(),
   saveOnboardingRxResume: vi.fn(),
+  setupFirstAdmin: vi.fn(),
   updateSettings: vi.fn(),
 }));
 
@@ -88,6 +90,18 @@ const baseSettings = {
   rxresumeBaseResumeId: "resume-1",
 };
 
+const authUser = {
+  id: "user-1",
+  username: "admin",
+  displayName: "Admin User",
+  isSystemAdmin: true,
+  isDisabled: false,
+  workspaceId: "tenant_default",
+  workspaceName: "JobOps",
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-01T00:00:00.000Z",
+};
+
 const incompleteModelStatus: OnboardingStatusResponse = {
   complete: false,
   nextRequirementId: "model",
@@ -133,8 +147,8 @@ const resumeBlockedStatus: OnboardingStatusResponse = {
   ],
 };
 
-function renderPage() {
-  return renderWithQueryClient(
+async function renderPage() {
+  const rendered = renderWithQueryClient(
     <MemoryRouter initialEntries={["/onboarding"]}>
       <Routes>
         <Route path="/onboarding" element={<OnboardingPage />} />
@@ -142,6 +156,10 @@ function renderPage() {
       </Routes>
     </MemoryRouter>,
   );
+  await waitFor(() => {
+    expect(api.getAuthBootstrapStatus).toHaveBeenCalled();
+  });
+  return rendered;
 }
 
 describe("OnboardingPage", () => {
@@ -190,9 +208,10 @@ describe("OnboardingPage", () => {
       id: "doc-1",
       updatedAt: "2026-06-01T00:00:00.000Z",
     } as any);
+    vi.mocked(api.setupFirstAdmin).mockResolvedValue(authUser);
   });
 
-  it("shows one active server requirement and collapses completed checks", () => {
+  it("shows one active server requirement and collapses completed checks", async () => {
     vi.mocked(useOnboardingStatus).mockReturnValue({
       status: resumeBlockedStatus,
       complete: false,
@@ -203,16 +222,20 @@ describe("OnboardingPage", () => {
       refetch: vi.fn(),
     } as any);
 
-    renderPage();
+    await renderPage();
 
+    expect(await screen.findByText("content:resume")).toBeInTheDocument();
     expect(screen.getByText("Launch Console")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /account workspace/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("2/3")).toBeInTheDocument();
     expect(screen.getByText("Model connected")).toBeInTheDocument();
     expect(screen.getAllByText("Load your resume").length).toBeGreaterThan(0);
-    expect(screen.getByText("content:resume")).toBeInTheDocument();
   });
 
   it("calls the focused model action from the active requirement", async () => {
-    renderPage();
+    await renderPage();
 
     fireEvent.click(
       screen.getByRole("button", { name: /verify llm connection/i }),
@@ -227,7 +250,7 @@ describe("OnboardingPage", () => {
     });
   });
 
-  it("keeps Reactive Resume blocked when the server requires template selection", () => {
+  it("keeps Reactive Resume blocked when the server requires template selection", async () => {
     const templateBlockedStatus: OnboardingStatusResponse = {
       ...resumeBlockedStatus,
       requirements: [
@@ -252,7 +275,7 @@ describe("OnboardingPage", () => {
       refetch: vi.fn(),
     } as any);
 
-    renderPage();
+    await renderPage();
 
     expect(
       screen.getAllByText("Choose a Reactive Resume template").length,
@@ -273,7 +296,7 @@ describe("OnboardingPage", () => {
       refetch: vi.fn(),
     } as any);
 
-    renderPage();
+    await renderPage();
     fireEvent.click(screen.getByRole("button", { name: /mock upload/i }));
 
     await waitFor(() => {
@@ -286,7 +309,7 @@ describe("OnboardingPage", () => {
     });
   });
 
-  it("redirects once the server status is complete", () => {
+  it("redirects once the server status is complete", async () => {
     const completeStatus: OnboardingStatusResponse = {
       complete: true,
       nextRequirementId: null,
@@ -306,16 +329,52 @@ describe("OnboardingPage", () => {
       refetch: vi.fn(),
     } as any);
 
-    renderPage();
+    await renderPage();
 
-    expect(screen.getByText("ready page")).toBeInTheDocument();
+    expect(await screen.findByText("ready page")).toBeInTheDocument();
   });
 
-  it("can replay the coach tour", () => {
-    renderPage();
+  it("can replay the coach tour", async () => {
+    await renderPage();
 
     expect(screen.getByTestId("coach")).toHaveTextContent("coach:0");
     fireEvent.click(screen.getByRole("button", { name: /replay guide/i }));
     expect(screen.getByTestId("coach")).toHaveTextContent("coach:1");
+  });
+
+  it("creates the first account inside onboarding before launch checks", async () => {
+    vi.mocked(api.getAuthBootstrapStatus).mockResolvedValueOnce({
+      setupRequired: true,
+    });
+
+    await renderPage();
+
+    expect(
+      screen.getByText("Create your workspace account"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Admin User" },
+    });
+    fireEvent.change(screen.getByLabelText(/^username$/i), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: "supersecret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(api.setupFirstAdmin).toHaveBeenCalledWith({
+        username: "admin",
+        password: "supersecret",
+        displayName: "Admin User",
+      });
+    });
+    expect(await screen.findByText("content:model")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /account workspace/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1/3")).toBeInTheDocument();
   });
 });

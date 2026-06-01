@@ -21,7 +21,7 @@ export type OnboardingFormData = {
 };
 
 export type StepId = OnboardingRequirementId;
-export type OnboardingPanelId = StepId | "first-run";
+export type OnboardingPanelId = "account" | StepId | "first-run";
 export type ResumeSetupMode = "upload" | "rxresume";
 
 export type OnboardingStep = {

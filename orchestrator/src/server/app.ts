@@ -170,6 +170,7 @@ export function createAuthGuard() {
     const normalizedPath = path.split("?")[0] || path;
 
     // Explicitly allowed public API routes
+    if (normalizedPath === "/api/demo/info") return true;
     if (normalizedPath === "/api/profile/status") return true;
     if (
       normalizedMethod === "POST" &&

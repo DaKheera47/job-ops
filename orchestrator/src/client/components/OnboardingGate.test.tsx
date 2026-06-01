@@ -1,10 +1,14 @@
 import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingGate } from "./OnboardingGate";
+
+vi.mock("@client/api", () => ({
+  getAuthBootstrapStatus: vi.fn(async () => ({ setupRequired: false })),
+}));
 
 vi.mock("@client/hooks/useOnboardingStatus", () => ({
   useOnboardingStatus: vi.fn(),
@@ -31,7 +35,7 @@ describe("OnboardingGate", () => {
     vi.clearAllMocks();
   });
 
-  it("redirects incomplete users to the onboarding page", () => {
+  it("redirects incomplete users to the onboarding page", async () => {
     vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,
       complete: false,
@@ -48,7 +52,7 @@ describe("OnboardingGate", () => {
       { wrapper: createWrapper() },
     );
 
-    expect(screen.getByText("onboarding")).toBeInTheDocument();
+    expect(await screen.findByText("onboarding")).toBeInTheDocument();
   });
 
   it("does not redirect when the user is already on onboarding", () => {
@@ -85,7 +89,7 @@ describe("OnboardingGate", () => {
     expect(useOnboardingStatus).not.toHaveBeenCalled();
   });
 
-  it("does not redirect once onboarding is complete", () => {
+  it("does not redirect once onboarding is complete", async () => {
     vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,
       complete: true,
@@ -102,7 +106,31 @@ describe("OnboardingGate", () => {
       { wrapper: createWrapper() },
     );
 
+    await waitFor(() => {
+      expect(useOnboardingStatus).toHaveBeenCalled();
+    });
     expect(screen.getByText("overview")).toBeInTheDocument();
     expect(screen.queryByText("onboarding")).not.toBeInTheDocument();
+  });
+
+  it("sends brand-new installs to onboarding before auth redirects", async () => {
+    const { getAuthBootstrapStatus } = await import("@client/api");
+    vi.mocked(getAuthBootstrapStatus).mockResolvedValueOnce({
+      setupRequired: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/overview"]}>
+        <OnboardingGate />
+        <Routes>
+          <Route path="/overview" element={<div>overview</div>} />
+          <Route path="/onboarding" element={<div>onboarding</div>} />
+        </Routes>
+      </MemoryRouter>,
+      { wrapper: createWrapper() },
+    );
+
+    expect(await screen.findByText("onboarding")).toBeInTheDocument();
+    expect(useOnboardingStatus).not.toHaveBeenCalled();
   });
 });

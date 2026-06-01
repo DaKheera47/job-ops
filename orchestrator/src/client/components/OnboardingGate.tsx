@@ -1,12 +1,14 @@
 import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { getAuthBootstrapStatus } from "@/client/api";
 import { useSettings } from "@/client/hooks/useSettings";
 
 export const OnboardingGate: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
 
   useEffect(() => {
     const handleOffline = () => {
@@ -15,6 +17,33 @@ export const OnboardingGate: React.FC = () => {
     window.addEventListener("offline", handleOffline);
     return () => window.removeEventListener("offline", handleOffline);
   }, [navigate]);
+
+  useEffect(() => {
+    if (
+      location.pathname === "/onboarding" ||
+      location.pathname === "/sign-in" ||
+      location.pathname === "/offline"
+    ) {
+      setSetupRequired(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSetupRequired(null);
+
+    void (async () => {
+      try {
+        const bootstrap = await getAuthBootstrapStatus();
+        if (!cancelled) setSetupRequired(bootstrap.setupRequired);
+      } catch {
+        if (!cancelled) setSetupRequired(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
   if (location.pathname === "/onboarding" && !navigator.onLine) {
     return <Navigate to="/offline" replace />;
@@ -26,6 +55,14 @@ export const OnboardingGate: React.FC = () => {
     location.pathname === "/offline"
   ) {
     return null;
+  }
+
+  if (setupRequired === null) {
+    return null;
+  }
+
+  if (setupRequired) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <OnboardingRedirect />;
