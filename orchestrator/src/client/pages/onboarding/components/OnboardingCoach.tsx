@@ -2,6 +2,8 @@ import type { OnboardingStatusResponse } from "@shared/types";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ACTIONS,
+  EVENTS,
   type EventData,
   Joyride,
   STATUS,
@@ -35,6 +37,14 @@ function writeDismissed(): void {
     localStorage.setItem(getAuthScopedStorageKey(TOUR_STORAGE_KEY), "1");
   } catch {
     // Ignore storage failures in restricted browser contexts.
+  }
+}
+
+function removeJoyridePortal(): void {
+  try {
+    document.getElementById("react-joyride-portal")?.remove();
+  } catch {
+    // Ignore DOM cleanup failures; unmounting Joyride is the primary cleanup.
   }
 }
 
@@ -77,6 +87,13 @@ export const OnboardingCoach: React.FC<{
 }> = ({ activePanel, onPanelChange, replayNonce, status }) => {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+
+  const stopTour = () => {
+    writeDismissed();
+    setRun(false);
+    setStepIndex(0);
+    removeJoyridePortal();
+  };
 
   const steps = useMemo<CoachStep[]>(
     () => [
@@ -143,24 +160,32 @@ export const OnboardingCoach: React.FC<{
   const handleEvent = (data: EventData) => {
     const finished = data.status === STATUS.FINISHED;
     const skipped = data.status === STATUS.SKIPPED;
-    if (finished || skipped) {
-      writeDismissed();
-      setRun(false);
+    const closed = data.action === ACTIONS.CLOSE;
+    const completedLastStep =
+      data.type === EVENTS.STEP_AFTER &&
+      data.action !== ACTIONS.PREV &&
+      data.index >= steps.length - 1;
+    if (finished || skipped || closed || completedLastStep) {
+      stopTour();
       return;
     }
 
-    if (data.type === "error:target_not_found") {
+    if (data.type === EVENTS.TARGET_NOT_FOUND) {
       setStepIndex((current) => Math.min(current + 1, steps.length - 1));
       return;
     }
 
-    if (data.type === "step:after") {
-      const direction = data.action === "prev" ? -1 : 1;
+    if (data.type === EVENTS.STEP_AFTER) {
+      const direction = data.action === ACTIONS.PREV ? -1 : 1;
       setStepIndex((current) =>
         Math.max(0, Math.min(current + direction, steps.length - 1)),
       );
     }
   };
+
+  if (!run) {
+    return null;
+  }
 
   return (
     <Joyride

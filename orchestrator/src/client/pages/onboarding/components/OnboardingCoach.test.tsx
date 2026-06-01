@@ -9,6 +9,15 @@ const joyrideState = vi.hoisted(() => ({
 }));
 
 vi.mock("react-joyride", () => ({
+  ACTIONS: {
+    CLOSE: "close",
+    NEXT: "next",
+    PREV: "prev",
+  },
+  EVENTS: {
+    STEP_AFTER: "step:after",
+    TARGET_NOT_FOUND: "error:target_not_found",
+  },
   Joyride: (props: Record<string, unknown>) => {
     joyrideState.props = props;
     return <div data-testid="joyride" />;
@@ -61,7 +70,7 @@ describe("OnboardingCoach", () => {
   });
 
   it("starts when not dismissed and stores dismissed state when skipped", async () => {
-    renderCoach();
+    const view = renderCoach();
 
     await waitFor(() => {
       expect(joyrideState.props?.run).toBe(true);
@@ -79,13 +88,16 @@ describe("OnboardingCoach", () => {
     expect(localStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
       "1",
     );
+    await waitFor(() => {
+      expect(view.queryByTestId("joyride")).toBeNull();
+    });
   });
 
   it("can be replayed after dismissal", async () => {
     localStorage.setItem("jobops.onboarding.coach.dismissed.v1", "1");
 
     const { rerender } = renderCoach();
-    expect(joyrideState.props?.run).toBe(false);
+    expect(joyrideState.props).toBeNull();
 
     rerender(
       <OnboardingCoach
@@ -119,6 +131,35 @@ describe("OnboardingCoach", () => {
 
     await waitFor(() => {
       expect(joyrideState.props?.stepIndex).toBe(1);
+    });
+  });
+
+  it("clears the overlay when the last step advances", async () => {
+    const portal = document.createElement("div");
+    portal.id = "react-joyride-portal";
+    document.body.appendChild(portal);
+
+    const view = renderCoach();
+
+    await waitFor(() => {
+      expect(joyrideState.props?.run).toBe(true);
+    });
+
+    act(() => {
+      (joyrideState.props?.onEvent as (data: unknown) => void)({
+        action: "next",
+        index: 4,
+        status: "running",
+        type: "step:after",
+      });
+    });
+
+    expect(localStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
+      "1",
+    );
+    expect(document.getElementById("react-joyride-portal")).toBeNull();
+    await waitFor(() => {
+      expect(view.queryByTestId("joyride")).toBeNull();
     });
   });
 });
