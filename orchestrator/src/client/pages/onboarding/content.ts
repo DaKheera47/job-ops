@@ -15,22 +15,16 @@ export const STEP_COPY: Record<
     description: string;
   }
 > = {
-  llm: {
-    eyebrow: "Step 1",
-    title: "Choose the LLM connection Job Ops should use.",
+  model: {
+    eyebrow: "System check 1",
+    title: "Connect the model that will read and rank jobs.",
     description:
-      "Pick the provider, confirm the endpoint, and validate the credentials this workspace will use for scoring and tailoring.",
+      "Pick the provider, confirm the endpoint, and verify the credentials once. Job Ops uses this connection for scoring, tailoring, and first-run setup.",
   },
-  baseresume: {
-    eyebrow: "Step 2",
-    title: "Import your current resume.",
+  resume: {
+    eyebrow: "System check 2",
+    title: "Load the resume Job Ops should optimize from.",
     description:
-      "Choose how to bring your base resume into Job Ops. Upload a PDF, DOCX, or Reactive Resume JSON to create a local Resume Studio document, or connect Reactive Resume with a v5 API key and select an existing resume there.",
-  },
-  searchterms: {
-    eyebrow: "Step 3",
-    title: "Choose the job titles to search for.",
-    description:
-      "Start from titles generated from your current resume, then edit the list so Job Ops searches for the roles you actually want next.",
+      "Upload a PDF, DOCX, or Reactive Resume JSON, or connect Reactive Resume and select a template. Search terms are derived automatically before the first pipeline run.",
   },
 };

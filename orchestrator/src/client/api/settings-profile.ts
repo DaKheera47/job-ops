@@ -9,6 +9,7 @@ import type {
   DesignResumePatchRequest,
   DesignResumePdfResponse,
   DesignResumeStatusResponse,
+  OnboardingStatusResponse,
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
@@ -168,6 +169,33 @@ export async function validateLlm(input: {
   apiKey?: string;
 }): Promise<ValidationResult> {
   return fetchApi<ValidationResult>("/onboarding/validate/llm", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
+  return fetchApi<OnboardingStatusResponse>("/onboarding/status");
+}
+
+export async function saveOnboardingModel(input: {
+  provider?: string | null;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  model?: string | null;
+}): Promise<OnboardingStatusResponse> {
+  return fetchApi<OnboardingStatusResponse>("/onboarding/actions/model", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function saveOnboardingRxResume(input: {
+  apiKey?: string | null;
+  baseUrl?: string | null;
+  rxresumeBaseResumeId?: string | null;
+}): Promise<OnboardingStatusResponse> {
+  return fetchApi<OnboardingStatusResponse>("/onboarding/actions/rxresume", {
     method: "POST",
     body: JSON.stringify(input),
   });

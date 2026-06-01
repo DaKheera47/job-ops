@@ -43,37 +43,39 @@ export const LlmConnectionStep: React.FC<{
   const providerConfig = getLlmProviderConfig(selectedProvider);
 
   return (
-    <LlmModelConfiguration
-      mode="compact"
-      disabled={isBusy}
-      selectedProvider={selectedProvider}
-      savedProvider={savedProvider}
-      savedBaseUrl={savedBaseUrl}
-      apiKeyHint={llmKeyHint}
-      effectiveModel={effectiveModel}
-      defaultModel={defaultModel}
-      provider={{
-        value: selectedProvider,
-        onChange: onProviderChange,
-      }}
-      baseUrl={{
-        value: baseUrl,
-        onChange: onBaseUrlChange,
-      }}
-      apiKey={{
-        value: apiKey,
-        onChange: onApiKeyChange,
-      }}
-      model={{
-        value: model,
-        onChange: onModelChange,
-      }}
-      validationSlot={
-        <InlineValidation
-          state={validation}
-          successMessage={`${providerConfig.label} connection verified.`}
-        />
-      }
-    />
+    <div data-onboarding-target="model-form">
+      <LlmModelConfiguration
+        mode="compact"
+        disabled={isBusy}
+        selectedProvider={selectedProvider}
+        savedProvider={savedProvider}
+        savedBaseUrl={savedBaseUrl}
+        apiKeyHint={llmKeyHint}
+        effectiveModel={effectiveModel}
+        defaultModel={defaultModel}
+        provider={{
+          value: selectedProvider,
+          onChange: onProviderChange,
+        }}
+        baseUrl={{
+          value: baseUrl,
+          onChange: onBaseUrlChange,
+        }}
+        apiKey={{
+          value: apiKey,
+          onChange: onApiKeyChange,
+        }}
+        model={{
+          value: model,
+          onChange: onModelChange,
+        }}
+        validationSlot={
+          <InlineValidation
+            state={validation}
+            successMessage={`${providerConfig.label} connection verified.`}
+          />
+        }
+      />
+    </div>
   );
 };

@@ -36,6 +36,7 @@ import {
   ensureChallengeViewer,
 } from "@server/services/challenge-viewer";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
+import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
   createLocationIntent,
@@ -482,6 +483,10 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
       return okWithMeta(res, simulated, { simulated: true });
     }
 
+    const searchTermsState = await ensurePipelineSearchTerms({
+      requestedSearchTerms: config.searchTerms,
+    });
+
     // Start pipeline in background
     runWithRequestContext({}, () => {
       runPipeline({
@@ -504,7 +509,8 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         has_city_locations: Array.isArray(config.cityLocations)
           ? config.cityLocations.length > 0
           : false,
-        search_terms_count: config.searchTerms?.length,
+        search_terms_count: searchTermsState.searchTermsCount,
+        search_terms_source: searchTermsState.source,
       },
       {
         requestOrigin: resolveRequestOrigin(req),

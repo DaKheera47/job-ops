@@ -33,6 +33,10 @@ export const queryKeys = {
     all: ["demo"] as const,
     info: () => [...queryKeys.demo.all, "info"] as const,
   },
+  onboarding: {
+    all: ["onboarding"] as const,
+    status: () => [...queryKeys.onboarding.all, "status"] as const,
+  },
   jobs: {
     all: ["jobs"] as const,
     inProgressBoard: () =>

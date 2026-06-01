@@ -187,6 +187,37 @@ export interface SearchTermsSuggestionResponse {
   source: "ai" | "fallback";
 }
 
+export type OnboardingRequirementId = "model" | "resume";
+
+export type OnboardingRequirementStatus =
+  | "ready"
+  | "needs_action"
+  | "invalid"
+  | "checking_unavailable";
+
+export type OnboardingRequirementPrimaryAction =
+  | "connect_model"
+  | "upload_resume"
+  | "connect_rxresume"
+  | "select_rxresume_template"
+  | "recheck"
+  | "none";
+
+export type OnboardingRequirement = {
+  id: OnboardingRequirementId;
+  status: OnboardingRequirementStatus;
+  title: string;
+  message: string;
+  primaryAction: OnboardingRequirementPrimaryAction;
+  details?: Record<string, unknown>;
+};
+
+export type OnboardingStatusResponse = {
+  complete: boolean;
+  nextRequirementId: OnboardingRequirementId | null;
+  requirements: OnboardingRequirement[];
+};
+
 export interface DemoInfoResponse {
   demoMode: boolean;
   resetCadenceHours: number;

@@ -1,4 +1,4 @@
-import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement";
+import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import type React from "react";
 import { useEffect } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -33,7 +33,7 @@ export const OnboardingGate: React.FC = () => {
 
 const OnboardingRedirect: React.FC = () => {
   const { error } = useSettings();
-  const { checking, complete } = useOnboardingRequirement();
+  const { checking, complete } = useOnboardingStatus();
 
   if (error) {
     if (!navigator.onLine) {

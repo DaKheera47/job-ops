@@ -50,7 +50,7 @@ export const BaseResumeStep: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-onboarding-target="resume-options">
       <input
         ref={fileInputRef}
         type="file"
@@ -125,7 +125,8 @@ export const BaseResumeStep: React.FC<{
               <p className="text-sm text-muted-foreground">
                 Job Ops imports Reactive Resume JSON directly. PDF and DOCX
                 files are sent to your configured AI model and stored as a local
-                Design Resume.
+                Design Resume. First-run search terms are generated from the
+                loaded resume automatically.
               </p>
             </div>
 
@@ -146,42 +147,27 @@ export const BaseResumeStep: React.FC<{
             </div>
           </div>
 
-          {(baseResumeValidation.checked || rxresumeValidation.checked) &&
-          !hasRxResumeAccess &&
-          !baseResumeValidation.valid ? (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
-              Upload a resume here, or switch to the Reactive Resume option if
-              you want to import from an existing template resume instead.
-            </div>
-          ) : null}
-
           <InlineValidation
             state={baseResumeValidation}
             successMessage="Your base resume is loaded and ready."
           />
         </>
       ) : (
-        <>
-          <RxResumeStep
-            baseResumeValue={baseResumeValue}
-            hasRxResumeAccess={hasRxResumeAccess}
-            isBusy={isBusy}
-            isResumeReady={isResumeReady}
-            isSelfHosted={isRxResumeSelfHosted}
-            rxresumeApiKey={rxresumeApiKey}
-            rxresumeApiKeyHint={rxresumeApiKeyHint}
-            rxresumeUrl={rxresumeUrl}
-            rxresumeValidation={rxresumeValidation}
-            onRxresumeApiKeyChange={onRxresumeApiKeyChange}
-            onRxresumeUrlChange={onRxresumeUrlChange}
-            onSelfHostedChange={onRxresumeSelfHostedChange}
-            onTemplateResumeChange={onTemplateResumeChange}
-          />
-          <InlineValidation
-            state={baseResumeValidation}
-            successMessage="Your base resume is loaded and ready."
-          />
-        </>
+        <RxResumeStep
+          baseResumeValue={baseResumeValue}
+          hasRxResumeAccess={hasRxResumeAccess}
+          isBusy={isBusy}
+          isResumeReady={isResumeReady}
+          isSelfHosted={isRxResumeSelfHosted}
+          rxresumeApiKey={rxresumeApiKey}
+          rxresumeApiKeyHint={rxresumeApiKeyHint}
+          rxresumeUrl={rxresumeUrl}
+          rxresumeValidation={rxresumeValidation}
+          onRxresumeApiKeyChange={onRxresumeApiKeyChange}
+          onRxresumeUrlChange={onRxresumeUrlChange}
+          onSelfHostedChange={onRxresumeSelfHostedChange}
+          onTemplateResumeChange={onTemplateResumeChange}
+        />
       )}
     </div>
   );

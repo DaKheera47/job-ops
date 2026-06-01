@@ -36,7 +36,7 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding page to connect your LLM provider, configure Reactive Resume if you want import support, select or import your resume, review the generated job-title search terms, and decide whether to enable basic auth.
+   After the server starts, use the onboarding launch console to connect your LLM provider and select or import your resume. Search terms are prepared automatically from that resume before the first pipeline run; advanced search controls remain available in the run modal and settings.
 
    Then open **Resume Studio** in the app and import your base resume once. JobOps will use that local Resume Studio document as the primary resume context for tailoring, scoring, and PDF generation.
 

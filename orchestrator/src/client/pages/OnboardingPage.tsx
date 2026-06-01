@@ -1,193 +1,348 @@
 import { PageHeader, PageMain } from "@client/components/layout";
-import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement";
-import { isOnboardingComplete } from "@client/lib/onboarding";
-import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
-import type React from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
+import type {
+  OnboardingRequirement,
+  OnboardingRequirementPrimaryAction,
+} from "@shared/types";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ArrowRight,
+  CheckCircle2,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OnboardingCoach } from "./onboarding/components/OnboardingCoach";
 import { OnboardingStepContent } from "./onboarding/components/OnboardingStepContent";
 import { OnboardingStepRail } from "./onboarding/components/OnboardingStepRail";
+import type {
+  OnboardingPanelId,
+  StepId,
+  ValidationState,
+} from "./onboarding/types";
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
+
+function getRequirement(
+  requirements: OnboardingRequirement[],
+  id: OnboardingRequirement["id"],
+) {
+  return requirements.find((requirement) => requirement.id === id) ?? null;
+}
+
+function toValidationState(
+  requirement: OnboardingRequirement | null,
+): ValidationState {
+  return {
+    valid: requirement?.status === "ready",
+    message:
+      requirement?.status === "ready" ? null : (requirement?.message ?? null),
+    status: null,
+    checked: Boolean(requirement),
+    hydrated: Boolean(requirement),
+  };
+}
+
+function getActionLabel(action: OnboardingRequirementPrimaryAction): string {
+  switch (action) {
+    case "connect_model":
+      return "Verify model";
+    case "connect_rxresume":
+      return "Connect Reactive Resume";
+    case "select_rxresume_template":
+      return "Save template";
+    case "upload_resume":
+      return "Upload or recheck";
+    case "recheck":
+      return "Recheck";
+    case "none":
+      return "Continue";
+  }
+}
 
 export const OnboardingPage: React.FC = () => {
   const flow = useOnboardingFlow();
-  const onboardingRequirement = useOnboardingRequirement();
+  const onboarding = useOnboardingStatus();
   const navigate = useNavigate();
+  const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
+  const [coachReplayNonce, setCoachReplayNonce] = useState(0);
+
+  const modelRequirement = useMemo(
+    () => getRequirement(onboarding.requirements, "model"),
+    [onboarding.requirements],
+  );
+  const resumeRequirement = useMemo(
+    () => getRequirement(onboarding.requirements, "resume"),
+    [onboarding.requirements],
+  );
+  const activeRequirement =
+    activePanel === "first-run"
+      ? null
+      : getRequirement(onboarding.requirements, activePanel);
+
+  useEffect(() => {
+    if (onboarding.nextRequirementId) {
+      setActivePanel(onboarding.nextRequirementId);
+      return;
+    }
+    if (onboarding.complete) {
+      setActivePanel("first-run");
+    }
+  }, [onboarding.complete, onboarding.nextRequirementId]);
 
   if (flow.demoMode) {
     return <Navigate to="/jobs/ready" replace />;
   }
 
-  if (!onboardingRequirement.checking && onboardingRequirement.complete) {
+  if (!onboarding.checking && onboarding.complete) {
     return <Navigate to="/jobs/ready" replace />;
   }
+
+  const llmValidation = toValidationState(modelRequirement);
+  const baseResumeValidation = toValidationState(resumeRequirement);
+  const rxresumeValidation: ValidationState = {
+    ...baseResumeValidation,
+    valid:
+      resumeRequirement?.primaryAction === "select_rxresume_template" ||
+      Boolean(flow.rxresumeApiKeyHint) ||
+      baseResumeValidation.valid,
+  };
+  const completedCount = onboarding.requirements.filter(
+    (requirement) => requirement.status === "ready",
+  ).length;
+
+  const submitActivePanel = async () => {
+    if (activePanel === "model") {
+      const status = await flow.handleSaveModel();
+      if (status?.complete) navigate("/jobs/ready", { replace: true });
+      return;
+    }
+    if (activePanel === "resume") {
+      if (flow.resumeSetupMode === "rxresume") {
+        const status = await flow.handleSaveRxresume();
+        if (status?.complete) navigate("/jobs/ready", { replace: true });
+        return;
+      }
+      await onboarding.refetch();
+      return;
+    }
+    navigate("/jobs/ready", { replace: true });
+  };
 
   return (
     <>
       <PageHeader
         icon={Sparkles}
-        title="Onboarding"
-        subtitle="Connect your workspace before the pipeline starts running."
+        title="Launch Console"
+        subtitle="Job Ops verifies one required setup task at a time."
       />
 
       <PageMain className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <Card className="border-border/60 bg-card/40 shadow-none">
-            <CardHeader className="space-y-3">
-              <CardTitle>Getting started</CardTitle>
+        <OnboardingCoach
+          activePanel={activePanel}
+          onPanelChange={setActivePanel}
+          replayNonce={coachReplayNonce}
+          status={onboarding.status}
+        />
+
+        <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
+          <Card className="border-border/60 bg-card shadow-none">
+            <CardHeader className="space-y-1.5 pb-4">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-base">Launch checks</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {completedCount}/{onboarding.requirements.length || 2}
+                </span>
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Search terms are automatic on first run.
+              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <OnboardingStepRail
-                currentStep={flow.currentStep}
-                onStepSelect={flow.setCurrentStep}
-                progressValue={flow.progressValue}
-                steps={flow.steps}
+                activePanel={activePanel}
+                complete={onboarding.complete}
+                nextRequirementId={onboarding.nextRequirementId}
+                onPanelSelect={setActivePanel}
+                requirements={onboarding.requirements}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-muted-foreground"
+                onClick={() => setCoachReplayNonce((value) => value + 1)}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Replay guide
+              </Button>
             </CardContent>
           </Card>
 
-          <Card className="border-border/60 bg-card/40 shadow-none">
-            {flow.settingsLoading || !flow.currentStep ? (
+          <Card className="border-border/60 bg-card shadow-none">
+            {onboarding.checking || flow.settingsLoading ? (
               <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
-                Loading onboarding...
+                Loading launch console...
               </CardContent>
             ) : (
               <form
-                className="flex min-h-[32rem] flex-col"
-                onSubmit={async (event) => {
+                className="flex min-h-[30rem] flex-col"
+                onSubmit={(event) => {
                   event.preventDefault();
-                  const savedSettings = await flow.handlePrimaryAction();
-
-                  if (
-                    savedSettings &&
-                    isOnboardingComplete({
-                      demoMode: flow.demoMode,
-                      settings: savedSettings,
-                      llmValid: flow.llmValidated,
-                      baseResumeValid: flow.baseResumeValidation.valid,
-                      searchTermsValid: flow.searchTermsComplete,
-                      completedStepId: flow.currentStep,
-                    })
-                  ) {
-                    navigate("/jobs/ready", { replace: true });
-                  }
+                  void submitActivePanel();
                 }}
               >
-                <CardHeader className="space-y-4 border-b border-border/60">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <Badge variant="secondary">
-                      {flow.currentCopy.eyebrow}
-                    </Badge>
+                <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <span>
-                      {flow.steps.filter((step) => step.complete).length} of{" "}
-                      {flow.steps.length} complete
+                      {activePanel === "first-run"
+                        ? "Ready"
+                        : `Step ${activePanel === "model" ? 1 : 2} of 2`}
                     </span>
+                    {activeRequirement?.status === "ready" ? (
+                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Complete
+                      </span>
+                    ) : null}
                   </div>
-                  <div className="space-y-2">
-                    <CardTitle className="text-2xl leading-tight sm:text-3xl">
-                      {flow.currentCopy.title}
+                  <div className="space-y-1.5">
+                    <CardTitle className="text-2xl leading-tight">
+                      {activePanel === "first-run"
+                        ? "Ready for the first run"
+                        : activeRequirement?.title}
                     </CardTitle>
-                    <CardDescription className="max-w-2xl leading-6">
-                      {flow.currentCopy.description}
-                    </CardDescription>
+                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                      {activePanel === "first-run"
+                        ? "Search terms will be prepared from your resume automatically."
+                        : activeRequirement?.status === "ready"
+                          ? activeRequirement.message
+                          : "Complete this check to unlock the pipeline."}
+                    </p>
                   </div>
                 </CardHeader>
 
-                <CardContent className="flex flex-1 flex-col gap-6 pt-6">
-                  <OnboardingStepContent
-                    baseResumeValidation={flow.baseResumeValidation}
-                    baseResumeValue={flow.baseResumeValue}
-                    currentStep={flow.currentStep}
-                    defaultModel={flow.settings?.model?.default}
-                    effectiveModel={flow.settings?.model?.value}
-                    hasSavedSearchTermsInSession={
-                      flow.hasSavedSearchTermsInSession
-                    }
-                    isBusy={flow.isBusy}
-                    isGeneratingSearchTerms={flow.isGeneratingSearchTerms}
-                    isImportingResume={flow.isImportingResume}
-                    isResumeReady={flow.baseResumeValidation.valid}
-                    isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
-                    llmApiKey={flow.watch("llmApiKey")}
-                    llmBaseUrl={flow.watch("llmBaseUrl")}
-                    llmKeyHint={flow.llmKeyHint}
-                    llmValidation={flow.llmValidation}
-                    model={flow.watch("model")}
-                    resumeSetupMode={flow.resumeSetupMode}
-                    rxresumeApiKey={flow.watch("rxresumeApiKey")}
-                    rxresumeApiKeyHint={flow.settings?.rxresumeApiKeyHint}
-                    rxresumeUrl={flow.watch("rxresumeUrl")}
-                    rxresumeValidation={flow.rxresumeValidation}
-                    searchTermDraft={flow.watch("searchTermDraft")}
-                    searchTerms={flow.watch("searchTerms")}
-                    searchTermsSource={flow.searchTermsSource}
-                    searchTermsStale={flow.searchTermsStale}
-                    savedBaseUrl={flow.settings?.llmBaseUrl?.value}
-                    savedProvider={flow.settings?.llmProvider?.value}
-                    selectedProvider={flow.selectedProvider}
-                    onLlmApiKeyChange={(value) =>
-                      flow.setValue("llmApiKey", value, { shouldDirty: true })
-                    }
-                    onLlmBaseUrlChange={(value) =>
-                      flow.setValue("llmBaseUrl", value, { shouldDirty: true })
-                    }
-                    onLlmModelChange={(value) =>
-                      flow.setValue("model", value, { shouldDirty: true })
-                    }
-                    onLlmProviderChange={(value) =>
-                      flow.setValue("llmProvider", value, {
-                        shouldDirty: true,
-                      })
-                    }
-                    onImportResumeFile={flow.handleImportResumeFile}
-                    onRegenerateSearchTerms={flow.handleRegenerateSearchTerms}
-                    onResumeSetupModeChange={flow.setResumeSetupMode}
-                    onRxresumeApiKeyChange={(value) =>
-                      flow.setValue("rxresumeApiKey", value)
-                    }
-                    onRxresumeSelfHostedChange={
-                      flow.handleRxresumeSelfHostedChange
-                    }
-                    onRxresumeUrlChange={(value) =>
-                      flow.setValue("rxresumeUrl", value)
-                    }
-                    onSearchTermDraftChange={(value) =>
-                      flow.setValue("searchTermDraft", value)
-                    }
-                    onSearchTermsChange={(values) =>
-                      flow.setValue("searchTerms", values, {
-                        shouldDirty: true,
-                      })
-                    }
-                    onTemplateResumeChange={flow.handleTemplateResumeChange}
-                  />
+                <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
+                  {modelRequirement?.status === "ready" &&
+                  activePanel !== "model" ? (
+                    <div className="flex items-center gap-2 text-sm text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>{modelRequirement.title}</span>
+                    </div>
+                  ) : null}
+
+                  {resumeRequirement?.status === "ready" &&
+                  activePanel !== "resume" ? (
+                    <div className="flex items-center gap-2 text-sm text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>{resumeRequirement.title}</span>
+                    </div>
+                  ) : null}
+
+                  {activePanel === "model" || activePanel === "resume" ? (
+                    <OnboardingStepContent
+                      baseResumeValidation={baseResumeValidation}
+                      baseResumeValue={flow.watch("rxresumeBaseResumeId")}
+                      currentStep={activePanel as StepId}
+                      defaultModel={flow.settings?.model?.default}
+                      effectiveModel={flow.settings?.model?.value}
+                      isBusy={flow.isBusy}
+                      isImportingResume={flow.isImportingResume}
+                      isResumeReady={baseResumeValidation.valid}
+                      isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
+                      llmApiKey={flow.watch("llmApiKey")}
+                      llmBaseUrl={flow.watch("llmBaseUrl")}
+                      llmKeyHint={flow.llmKeyHint}
+                      llmValidation={llmValidation}
+                      model={flow.watch("model")}
+                      resumeSetupMode={flow.resumeSetupMode}
+                      rxresumeApiKey={flow.watch("rxresumeApiKey")}
+                      rxresumeApiKeyHint={flow.rxresumeApiKeyHint}
+                      rxresumeUrl={flow.watch("rxresumeUrl")}
+                      rxresumeValidation={rxresumeValidation}
+                      savedBaseUrl={flow.settings?.llmBaseUrl?.value}
+                      savedProvider={flow.settings?.llmProvider?.value}
+                      selectedProvider={flow.selectedProvider}
+                      onLlmApiKeyChange={(value) =>
+                        flow.setValue("llmApiKey", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      onLlmBaseUrlChange={(value) =>
+                        flow.setValue("llmBaseUrl", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      onLlmModelChange={(value) =>
+                        flow.setValue("model", value, { shouldDirty: true })
+                      }
+                      onLlmProviderChange={(value) =>
+                        flow.setValue("llmProvider", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      onImportResumeFile={flow.handleImportResumeFile}
+                      onResumeSetupModeChange={flow.setResumeSetupMode}
+                      onRxresumeApiKeyChange={(value) =>
+                        flow.setValue("rxresumeApiKey", value)
+                      }
+                      onRxresumeSelfHostedChange={
+                        flow.handleRxresumeSelfHostedChange
+                      }
+                      onRxresumeUrlChange={(value) =>
+                        flow.setValue("rxresumeUrl", value)
+                      }
+                      onTemplateResumeChange={flow.handleTemplateResumeChange}
+                    />
+                  ) : (
+                    <div
+                      className="rounded-lg border border-border/60 bg-muted/10 p-4"
+                      data-onboarding-target="first-run"
+                    >
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">
+                          First run is almost hands-free
+                        </div>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Job Ops will prepare search terms from your resume
+                          automatically before launching the pipeline. You can
+                          still tune advanced search controls later from the run
+                          modal or Settings.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
 
                 <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={flow.handleBack}
-                    disabled={!flow.canGoBack || flow.isBusy}
+                    onClick={() => void onboarding.refetch()}
+                    disabled={flow.isBusy || onboarding.checking}
                   >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
+                    <RefreshCw className="h-4 w-4" />
+                    Recheck
                   </Button>
 
-                  <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <Button type="submit" disabled={flow.isBusy}>
-                      {flow.primaryLabel}
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    type="submit"
+                    disabled={
+                      flow.isBusy ||
+                      (activePanel === "first-run" && !onboarding.complete)
+                    }
+                    data-onboarding-target="primary-action"
+                  >
+                    {activePanel === "first-run"
+                      ? "Open ready queue"
+                      : getActionLabel(
+                          activeRequirement?.primaryAction ?? "none",
+                        )}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </form>
             )}

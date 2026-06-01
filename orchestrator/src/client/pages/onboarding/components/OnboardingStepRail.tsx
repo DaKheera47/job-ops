@@ -1,84 +1,133 @@
+import type { OnboardingRequirement } from "@shared/types";
+import { Check, Circle, Play, TriangleAlert } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
-import type { OnboardingStep, StepId } from "../types";
+import type { OnboardingPanelId } from "../types";
 
-function StepStatusBadge({
-  active,
-  complete,
-  index,
+const RAIL_ITEMS: Array<{
+  id: OnboardingPanelId;
+  label: string;
+  subtitle: string;
+}> = [
+  {
+    id: "model",
+    label: "Model",
+    subtitle: "Connection",
+  },
+  {
+    id: "resume",
+    label: "Resume",
+    subtitle: "Source",
+  },
+  {
+    id: "first-run",
+    label: "First run",
+    subtitle: "Launch",
+  },
+];
+
+function getRequirement(
+  requirements: OnboardingRequirement[],
+  id: OnboardingRequirement["id"],
+) {
+  return requirements.find((requirement) => requirement.id === id);
+}
+
+function RailIcon({
+  panelId,
+  requirement,
 }: {
-  active: boolean;
-  complete: boolean;
-  index: number;
+  panelId: OnboardingPanelId;
+  requirement?: OnboardingRequirement;
 }) {
-  return (
-    <span
-      className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-md border text-xs font-medium transition-colors",
-        complete
-          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-700"
-          : active
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border/60 bg-muted/40 text-muted-foreground",
-      )}
-    >
-      {complete ? "✓" : index + 1}
-    </span>
-  );
+  if (panelId === "first-run") {
+    return <Play className="h-4 w-4" />;
+  }
+  if (requirement?.status === "ready") {
+    return <Check className="h-4 w-4" />;
+  }
+  if (
+    requirement?.status === "invalid" ||
+    requirement?.status === "checking_unavailable"
+  ) {
+    return <TriangleAlert className="h-4 w-4" />;
+  }
+  return <Circle className="h-3 w-3" />;
 }
 
 export const OnboardingStepRail: React.FC<{
-  currentStep: StepId | null;
-  onStepSelect: (step: StepId) => void;
-  progressValue: number;
-  steps: OnboardingStep[];
-}> = ({ currentStep, onStepSelect, progressValue, steps }) => (
-  <>
-    <div className="space-y-2">
+  activePanel: OnboardingPanelId;
+  complete: boolean;
+  nextRequirementId: OnboardingRequirement["id"] | null;
+  onPanelSelect: (panel: OnboardingPanelId) => void;
+  requirements: OnboardingRequirement[];
+}> = ({
+  activePanel,
+  complete,
+  nextRequirementId,
+  onPanelSelect,
+  requirements,
+}) => {
+  const completedCount = requirements.filter(
+    (requirement) => requirement.status === "ready",
+  ).length;
+  const progressValue = Math.round(
+    (completedCount / Math.max(requirements.length, 1)) * 100,
+  );
+
+  return (
+    <div className="space-y-3" data-onboarding-target="launch-rail">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Progress</span>
         <span>{progressValue}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full bg-primary transition-all"
-          style={{ width: `${progressValue}%` }}
-        />
+
+      <div className="space-y-1">
+        {RAIL_ITEMS.map((item) => {
+          const requirement =
+            item.id === "first-run"
+              ? undefined
+              : getRequirement(requirements, item.id);
+          const active = activePanel === item.id;
+          const blocked =
+            item.id === "first-run" ? !complete : nextRequirementId === item.id;
+          const ready =
+            item.id === "first-run"
+              ? complete
+              : requirement?.status === "ready";
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onPanelSelect(item.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors",
+                active ? "bg-muted/40" : "hover:bg-muted/25",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs transition-colors",
+                  ready
+                    ? "border-emerald-500/50 bg-transparent text-emerald-600"
+                    : blocked
+                      ? "border-primary/70 bg-transparent text-primary"
+                      : "border-border/60 bg-muted/40 text-muted-foreground",
+                )}
+              >
+                <RailIcon panelId={item.id} requirement={requirement} />
+              </span>
+              <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+                <span className="block text-sm font-medium">{item.label}</span>
+                <span className="block text-xs leading-5 text-muted-foreground">
+                  {item.subtitle}
+                </span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
-
-    <div className="space-y-2">
-      {steps.map((step, index) => {
-        const active = step.id === currentStep;
-        return (
-          <button
-            key={step.id}
-            type="button"
-            disabled={step.disabled}
-            onClick={() => onStepSelect(step.id)}
-            className={cn(
-              "flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors",
-              step.disabled
-                ? "cursor-not-allowed opacity-50"
-                : active
-                  ? "bg-muted/50"
-                  : "hover:bg-muted/30",
-            )}
-          >
-            <StepStatusBadge
-              active={active}
-              complete={step.complete}
-              index={index}
-            />
-            <div className="min-w-0 space-y-0.5">
-              <div className="text-sm font-medium">{step.label}</div>
-              <div className="text-xs text-muted-foreground">
-                {step.subtitle}
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  </>
-);
+  );
+};

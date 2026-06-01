@@ -45,11 +45,11 @@ Open:
 
 - **Dashboard**: `http://localhost:3005`
 
-The onboarding wizard helps you validate and save:
+The onboarding launch console helps you validate and save:
 
 1. **LLM Provider**: OpenRouter by default (or OpenAI/GLM/Gemini/local URL).
 2. **Import your current resume**: Either upload a PDF/DOCX into JobOps or choose the Reactive Resume option and connect with your v5 API key.
-3. **Search terms**: JobOps generates a first list of job-title search terms from your selected resume. Edit or regenerate them before saving.
+3. **First run readiness**: JobOps prepares search terms from the loaded resume automatically before the first pipeline run. You can still edit advanced search controls later from the run modal or Settings.
 
 Create the first username/password account from the sign-in screen before opening private APIs. This first account becomes the system admin and owns the initial private workspace.
 

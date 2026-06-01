@@ -1,4 +1,4 @@
-import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement";
+import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type React from "react";
@@ -6,8 +6,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingGate } from "./OnboardingGate";
 
-vi.mock("@client/hooks/useOnboardingRequirement", () => ({
-  useOnboardingRequirement: vi.fn(),
+vi.mock("@client/hooks/useOnboardingStatus", () => ({
+  useOnboardingStatus: vi.fn(),
 }));
 
 vi.mock("@client/hooks/useSettings", () => ({
@@ -32,10 +32,10 @@ describe("OnboardingGate", () => {
   });
 
   it("redirects incomplete users to the onboarding page", () => {
-    vi.mocked(useOnboardingRequirement).mockReturnValue({
+    vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,
       complete: false,
-    });
+    } as any);
 
     render(
       <MemoryRouter initialEntries={["/overview"]}>
@@ -52,10 +52,10 @@ describe("OnboardingGate", () => {
   });
 
   it("does not redirect when the user is already on onboarding", () => {
-    vi.mocked(useOnboardingRequirement).mockReturnValue({
+    vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,
       complete: false,
-    });
+    } as any);
 
     render(
       <MemoryRouter initialEntries={["/onboarding"]}>
@@ -82,14 +82,14 @@ describe("OnboardingGate", () => {
     );
 
     expect(screen.getByText("sign-in")).toBeInTheDocument();
-    expect(useOnboardingRequirement).not.toHaveBeenCalled();
+    expect(useOnboardingStatus).not.toHaveBeenCalled();
   });
 
   it("does not redirect once onboarding is complete", () => {
-    vi.mocked(useOnboardingRequirement).mockReturnValue({
+    vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,
       complete: true,
-    });
+    } as any);
 
     render(
       <MemoryRouter initialEntries={["/overview"]}>

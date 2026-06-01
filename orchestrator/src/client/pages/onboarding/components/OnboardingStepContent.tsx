@@ -1,10 +1,8 @@
 import type { LlmProviderId } from "@client/pages/settings/utils";
-import type { SearchTermsSuggestionResponse } from "@shared/types.js";
 import type React from "react";
 import type { ResumeSetupMode, StepId, ValidationState } from "../types";
 import { BaseResumeStep } from "./BaseResumeStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
-import { SearchTermsStep } from "./SearchTermsStep";
 
 export const OnboardingStepContent: React.FC<{
   baseResumeValidation: ValidationState;
@@ -14,10 +12,8 @@ export const OnboardingStepContent: React.FC<{
   effectiveModel: string | null | undefined;
   isBusy: boolean;
   isImportingResume: boolean;
-  isGeneratingSearchTerms: boolean;
   isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
-  hasSavedSearchTermsInSession: boolean;
   llmApiKey: string;
   llmBaseUrl: string;
   llmKeyHint: string | null;
@@ -28,10 +24,6 @@ export const OnboardingStepContent: React.FC<{
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
-  searchTermDraft: string;
-  searchTerms: string[];
-  searchTermsSource: SearchTermsSuggestionResponse["source"] | null;
-  searchTermsStale: boolean;
   savedBaseUrl: string | null | undefined;
   savedProvider: string | null | undefined;
   selectedProvider: LlmProviderId;
@@ -40,16 +32,13 @@ export const OnboardingStepContent: React.FC<{
   onLlmModelChange: (value: string) => void;
   onLlmProviderChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
-  onRegenerateSearchTerms: () => Promise<void>;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
   onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
-  onSearchTermDraftChange: (value: string) => void;
-  onSearchTermsChange: (values: string[]) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = (props) => {
-  if (props.currentStep === "llm") {
+  if (props.currentStep === "model") {
     return (
       <LlmConnectionStep
         apiKey={props.llmApiKey}
@@ -71,7 +60,7 @@ export const OnboardingStepContent: React.FC<{
     );
   }
 
-  if (props.currentStep === "baseresume") {
+  if (props.currentStep === "resume") {
     const hasSavedRxResumeAccess = Boolean(props.rxresumeApiKeyHint);
     const hasRxResumeAccess =
       props.rxresumeValidation.valid || hasSavedRxResumeAccess;
@@ -96,23 +85,6 @@ export const OnboardingStepContent: React.FC<{
         onRxresumeSelfHostedChange={props.onRxresumeSelfHostedChange}
         onRxresumeUrlChange={props.onRxresumeUrlChange}
         onTemplateResumeChange={props.onTemplateResumeChange}
-      />
-    );
-  }
-
-  if (props.currentStep === "searchterms") {
-    return (
-      <SearchTermsStep
-        hasSavedSearchTermsInSession={props.hasSavedSearchTermsInSession}
-        isBusy={props.isBusy}
-        isGeneratingSearchTerms={props.isGeneratingSearchTerms}
-        searchTermDraft={props.searchTermDraft}
-        searchTerms={props.searchTerms}
-        searchTermsSource={props.searchTermsSource}
-        searchTermsStale={props.searchTermsStale}
-        onRegenerate={props.onRegenerateSearchTerms}
-        onSearchTermDraftChange={props.onSearchTermDraftChange}
-        onSearchTermsChange={props.onSearchTermsChange}
       />
     );
   }
