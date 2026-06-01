@@ -49,7 +49,7 @@ function toValidationState(
 function getActionLabel(action: OnboardingRequirementPrimaryAction): string {
   switch (action) {
     case "connect_model":
-      return "Verify model";
+      return "Verify LLM connection";
     case "connect_rxresume":
       return "Connect Reactive Resume";
     case "select_rxresume_template":
@@ -137,7 +137,7 @@ export const OnboardingPage: React.FC = () => {
       <PageHeader
         icon={Sparkles}
         title="Launch Console"
-        subtitle="Job Ops verifies one required setup task at a time."
+        subtitle="Load the LLM and resume Job Ops needs before it can work your search."
       />
 
       <PageMain className="space-y-4">
@@ -158,7 +158,8 @@ export const OnboardingPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
-                Search terms are automatic on first run.
+                These checks unlock scoring, matching, tailoring, and email
+                classification.
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -217,10 +218,10 @@ export const OnboardingPage: React.FC = () => {
                     </CardTitle>
                     <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                       {activePanel === "first-run"
-                        ? "Search terms will be prepared from your resume automatically."
+                        ? "Your model and resume are loaded. Job Ops can start turning job leads into ranked, actionable work."
                         : activeRequirement?.status === "ready"
                           ? activeRequirement.message
-                          : "Complete this check to unlock the pipeline."}
+                          : "Complete this setup check to unlock the next part of your job-search workflow."}
                     </p>
                   </div>
                 </CardHeader>
@@ -304,13 +305,14 @@ export const OnboardingPage: React.FC = () => {
                     >
                       <div className="space-y-2">
                         <div className="text-sm font-medium">
-                          First run is almost hands-free
+                          Command centre is loaded
                         </div>
                         <p className="text-sm leading-6 text-muted-foreground">
                           Job Ops will prepare search terms from your resume
-                          automatically before launching the pipeline. You can
-                          still tune advanced search controls later from the run
-                          modal or Settings.
+                          automatically, then open the ready queue where jobs
+                          can be scored, matched, tailored, and worked through.
+                          You can still tune advanced search controls later from
+                          the run modal or Settings.
                         </p>
                       </div>
                     </div>

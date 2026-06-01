@@ -71,7 +71,7 @@ const LLM_PURPOSES: Array<{
   {
     id: "tailoring",
     label: "Tailoring",
-    description: "Ghostwriter, Resume content tailoring.",
+    description: "Ghostwriter and resume content tailoring.",
   },
   {
     id: "projectSelection",

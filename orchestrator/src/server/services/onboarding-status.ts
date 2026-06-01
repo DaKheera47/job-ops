@@ -317,7 +317,7 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
       status: "ready",
       title: "Model connected",
       message:
-        "The model connection is ready for scoring, tailoring, and first-run setup.",
+        "The LLM is ready to power scoring, tailoring, ghostwriting, and email classification.",
       primaryAction: "none",
       details: {
         provider: normalizedProvider ?? null,
@@ -335,7 +335,7 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
         ? "Model check is unavailable"
         : status === "invalid"
           ? "Model connection needs attention"
-          : "Connect your model",
+          : "Connect your LLM",
     message:
       validation.message ||
       `Job Ops could not verify ${providerLabel}. Check the connection and try again.`,
@@ -356,7 +356,7 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
       status: "ready",
       title: "Resume loaded",
       message:
-        "A local Resume Studio document is ready. First-run search terms will be prepared from it automatically.",
+        "Your resume is ready to drive job matching, fit assessment, search terms, and application workflows.",
       primaryAction: "none",
       details: {
         source: "local",
@@ -375,7 +375,7 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
         status: "needs_action",
         title: "Choose a Reactive Resume template",
         message:
-          "Reactive Resume is connected. Select the resume Job Ops should use as the starting point.",
+          "Reactive Resume is connected. Select the resume Job Ops should use for matching, fit assessment, and applications.",
         primaryAction: "select_rxresume_template",
         details: { source: "rxresume" },
       });
@@ -386,7 +386,7 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
       status: "needs_action",
       title: "Load your resume",
       message:
-        "Upload a resume file, or connect Reactive Resume and choose a template. Search terms are prepared from the resume automatically before the first run.",
+        "Upload a resume file, or connect Reactive Resume and choose a template. This gives Job Ops the baseline it needs for matching, fit assessment, and better application workflows.",
       primaryAction: "upload_resume",
       details: {
         source: "none",
@@ -402,7 +402,7 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
       status: "ready",
       title: "Resume loaded",
       message:
-        "The selected Reactive Resume template is valid. First-run search terms will be prepared from it automatically.",
+        "The selected Reactive Resume template is ready to drive matching, fit assessment, search terms, and application workflows.",
       primaryAction: "none",
       details: { source: "rxresume", resumeId },
     });

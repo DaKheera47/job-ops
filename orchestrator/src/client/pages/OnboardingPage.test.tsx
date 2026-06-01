@@ -95,7 +95,7 @@ const incompleteModelStatus: OnboardingStatusResponse = {
     {
       id: "model",
       status: "needs_action",
-      title: "Connect your model",
+      title: "Connect your LLM",
       message: "LLM API key is missing.",
       primaryAction: "connect_model",
     },
@@ -103,7 +103,8 @@ const incompleteModelStatus: OnboardingStatusResponse = {
       id: "resume",
       status: "needs_action",
       title: "Load your resume",
-      message: "Upload a resume before the first run.",
+      message:
+        "Upload a resume file, or connect Reactive Resume and choose a template. This gives Job Ops the baseline it needs for matching, fit assessment, and better application workflows.",
       primaryAction: "upload_resume",
     },
   ],
@@ -117,7 +118,8 @@ const resumeBlockedStatus: OnboardingStatusResponse = {
       id: "model",
       status: "ready",
       title: "Model connected",
-      message: "The model connection is ready.",
+      message:
+        "The LLM is ready to power scoring, tailoring, ghostwriting, and email classification.",
       primaryAction: "none",
     },
     {
@@ -125,7 +127,7 @@ const resumeBlockedStatus: OnboardingStatusResponse = {
       status: "needs_action",
       title: "Load your resume",
       message:
-        "Upload a resume file, or connect Reactive Resume and choose a template.",
+        "Upload a resume file, or connect Reactive Resume and choose a template. This gives Job Ops the baseline it needs for matching, fit assessment, and better application workflows.",
       primaryAction: "upload_resume",
     },
   ],
@@ -212,7 +214,9 @@ describe("OnboardingPage", () => {
   it("calls the focused model action from the active requirement", async () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: /verify model/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /verify llm connection/i }),
+    );
 
     await waitFor(() => {
       expect(api.saveOnboardingModel).toHaveBeenCalledWith(
@@ -232,7 +236,8 @@ describe("OnboardingPage", () => {
           id: "resume",
           status: "needs_action",
           title: "Choose a Reactive Resume template",
-          message: "Reactive Resume is connected. Select a template resume.",
+          message:
+            "Reactive Resume is connected. Select the resume Job Ops should use for matching, fit assessment, and applications.",
           primaryAction: "select_rxresume_template",
         },
       ],

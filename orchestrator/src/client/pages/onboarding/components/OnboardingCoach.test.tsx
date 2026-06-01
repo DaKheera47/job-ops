@@ -35,7 +35,7 @@ const status: OnboardingStatusResponse = {
     {
       id: "model",
       status: "needs_action",
-      title: "Connect your model",
+      title: "Connect your LLM",
       message: "LLM API key is missing.",
       primaryAction: "connect_model",
     },
@@ -43,7 +43,8 @@ const status: OnboardingStatusResponse = {
       id: "resume",
       status: "needs_action",
       title: "Load your resume",
-      message: "Upload a resume.",
+      message:
+        "Upload a resume file, or connect Reactive Resume and choose a template. This gives Job Ops the baseline it needs for matching, fit assessment, and better application workflows.",
       primaryAction: "upload_resume",
     },
   ],

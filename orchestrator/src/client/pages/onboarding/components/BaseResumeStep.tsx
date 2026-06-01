@@ -77,13 +77,13 @@ export const BaseResumeStep: React.FC<{
             value: "upload",
             title: "Upload a file",
             description:
-              "Create a local Resume Studio document from a resume PDF, DOCX, or Reactive Resume JSON.",
+              "Turn a PDF, DOCX, or Reactive Resume JSON into the baseline Job Ops uses for matching and tailoring.",
           },
           {
             value: "rxresume",
             title: "Use Reactive Resume",
             description:
-              "Connect with a v5 API key and select a resume you already maintain there.",
+              "Connect an existing Reactive Resume so Job Ops can assess fit and build applications from it.",
           },
         ].map((option) => {
           const checked = resumeSetupMode === option.value;
@@ -125,8 +125,8 @@ export const BaseResumeStep: React.FC<{
               <p className="text-sm text-muted-foreground">
                 Job Ops imports Reactive Resume JSON directly. PDF and DOCX
                 files are sent to your configured AI model and stored as a local
-                Design Resume. First-run search terms are generated from the
-                loaded resume automatically.
+                Design Resume. That resume drives job matching, fit assessment,
+                search terms, and application workflows.
               </p>
             </div>
 

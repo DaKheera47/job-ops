@@ -286,7 +286,8 @@ export function LlmModelConfiguration({
               ) : null}
               {mode === "settings" ? (
                 <p className="text-xs text-muted-foreground">
-                  Used for scoring, tailoring, and extraction.
+                  Used for scoring, tailoring, ghostwriting, and email
+                  classification.
                 </p>
               ) : null}
               <p className={providerHintClass}>{providerConfig.providerHint}</p>

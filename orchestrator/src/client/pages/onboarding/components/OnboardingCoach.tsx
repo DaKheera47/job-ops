@@ -99,38 +99,38 @@ export const OnboardingCoach: React.FC<{
     () => [
       {
         target: '[data-onboarding-target="launch-rail"]',
-        title: "Launch console",
+        title: "Load the command centre",
         content:
-          "Work left to right: model, resume, then first run. The highlighted row is the next requirement Job Ops needs.",
+          "Complete the setup checks that let Job Ops work for you: an LLM for reasoning and a resume for matching.",
         disableBeacon: true,
         data: { panel: activePanel },
       },
       {
         target: '[data-onboarding-target="model-form"]',
-        title: "Model check",
+        title: "LLM engine",
         content:
-          "Save the provider, endpoint, key, and model here. Job Ops verifies the connection before it lets the pipeline launch.",
+          "This model powers scoring, tailoring, ghostwriting, and email classification. Verify it once so Job Ops can read opportunities for you.",
         data: { panel: "model" },
       },
       {
         target: '[data-onboarding-target="resume-options"]',
-        title: "Resume check",
+        title: "Resume baseline",
         content:
-          "Upload a file or connect Reactive Resume. Search terms stay out of setup and are prepared from this resume automatically.",
+          "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume.",
         data: { panel: "resume" },
       },
       {
         target: '[data-onboarding-target="first-run"]',
-        title: "First run",
+        title: "Ready queue",
         content:
-          "Once both checks pass, jump to the ready queue. Your first run will prepare search terms from the loaded resume.",
+          "After setup, Job Ops prepares search terms from your resume and sends you into the ready queue with the core inputs loaded.",
         data: { panel: "first-run" },
       },
       {
         target: '[data-onboarding-target="primary-action"]',
         title: "One next action",
         content:
-          "The primary button always fixes the current blocker. If the server finds a problem, the recovery step stays inline.",
+          "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
         data: { panel: status?.nextRequirementId ?? activePanel },
       },
     ],
