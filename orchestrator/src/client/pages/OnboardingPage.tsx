@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   Circle,
   KeyRound,
+  LockKeyhole,
+  type LucideIcon,
   RefreshCw,
   RotateCcw,
   Sparkles,
@@ -38,6 +40,17 @@ import type {
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
 const TOTAL_ONBOARDING_STEPS = 4;
+const ACCOUNT_PREVIEW_RAIL_ITEMS: Array<{
+  id: OnboardingPanelId;
+  label: string;
+  subtitle: string;
+  icon: LucideIcon;
+}> = [
+  { id: "account", label: "Account", subtitle: "Workspace", icon: UserPlus },
+  { id: "model", label: "Model", subtitle: "Connection", icon: Circle },
+  { id: "resume", label: "Resume", subtitle: "Source", icon: Circle },
+  { id: "first-run", label: "First run", subtitle: "Launch", icon: Circle },
+];
 
 function getRequirement(
   requirements: OnboardingRequirement[],
@@ -197,6 +210,7 @@ export const OnboardingPage: React.FC = () => {
 const AccountSetupOnboarding: React.FC<{
   onAccountCreated: (user: AuthUser) => void;
 }> = ({ onAccountCreated }) => {
+  const [activePanel, setActivePanel] = useState<OnboardingPanelId>("account");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -206,6 +220,11 @@ const AccountSetupOnboarding: React.FC<{
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (activePanel !== "account") {
+      setActivePanel("account");
+      return;
+    }
+
     const normalizedUsername = username.trim();
     if (!normalizedUsername || !password) {
       setErrorMessage("Enter both username and password.");
@@ -240,8 +259,8 @@ const AccountSetupOnboarding: React.FC<{
 
       <PageMain className="space-y-4">
         <OnboardingCoach
-          activePanel="account"
-          onPanelChange={() => undefined}
+          activePanel={activePanel}
+          onPanelChange={setActivePanel}
           replayNonce={coachReplayNonce}
           scope="account"
           status={null}
@@ -268,41 +287,42 @@ const AccountSetupOnboarding: React.FC<{
                   <span>0%</span>
                 </div>
                 <div className="space-y-1">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-md bg-muted/40 px-2 py-2.5 text-left transition-colors"
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/70 bg-transparent text-primary">
-                      <UserPlus className="h-4 w-4" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-                      <span className="block text-sm font-medium">Account</span>
-                      <span className="block text-xs leading-5 text-muted-foreground">
-                        Workspace
-                      </span>
-                    </span>
-                  </button>
-                  {[
-                    ["Model", "Connection"],
-                    ["Resume", "Source"],
-                    ["First run", "Launch"],
-                  ].map(([label, subtitle]) => (
-                    <div
-                      key={label}
-                      className="flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left text-muted-foreground"
+                  {ACCOUNT_PREVIEW_RAIL_ITEMS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActivePanel(item.id)}
+                      data-onboarding-target={`account-rail-${item.id}`}
+                      className={`flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors ${
+                        activePanel === item.id
+                          ? "bg-muted/40"
+                          : "text-muted-foreground hover:bg-muted/25"
+                      }`}
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40">
-                        <Circle className="h-3 w-3" />
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
+                          activePanel === item.id
+                            ? "border-primary/70 bg-transparent text-primary"
+                            : "border-border/60 bg-muted/40 text-muted-foreground"
+                        }`}
+                      >
+                        <item.icon
+                          className={
+                            item.id === "account" || activePanel === item.id
+                              ? "h-4 w-4"
+                              : "h-3 w-3"
+                          }
+                        />
                       </span>
                       <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
                         <span className="block text-sm font-medium">
-                          {label}
+                          {item.label}
                         </span>
                         <span className="block text-xs leading-5">
-                          {subtitle}
+                          {item.subtitle}
                         </span>
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -326,96 +346,144 @@ const AccountSetupOnboarding: React.FC<{
             >
               <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span>{getPanelStepLabel("account")}</span>
+                  <span>{getPanelStepLabel(activePanel)}</span>
                 </div>
                 <div className="space-y-1.5">
                   <CardTitle className="text-2xl leading-tight">
-                    Create your workspace account
+                    {activePanel === "account"
+                      ? "Create your workspace account"
+                      : activePanel === "model"
+                        ? "Connect your model"
+                        : activePanel === "resume"
+                          ? "Load your resume"
+                          : "Prepare the first run"}
                   </CardTitle>
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    This account owns the first private Job Ops workspace and
-                    can manage users later from Settings.
+                    {activePanel === "account"
+                      ? "This account owns the first private Job Ops workspace and can manage users later from Settings."
+                      : "This step unlocks after the workspace account exists, but you can preview how the setup will continue."}
                   </p>
                 </div>
               </CardHeader>
 
-              <CardContent
-                className="flex flex-1 flex-col gap-5 px-6 pt-5"
-                data-onboarding-target="account-form"
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium"
-                      htmlFor="onboarding-display-name"
-                    >
-                      Name
-                    </label>
-                    <Input
-                      id="onboarding-display-name"
-                      autoComplete="name"
-                      value={displayName}
-                      onChange={(event) =>
-                        setDisplayName(event.currentTarget.value)
-                      }
-                      placeholder="Your name"
-                      disabled={isBusy}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium"
-                      htmlFor="onboarding-username"
-                    >
-                      Username
-                    </label>
-                    <Input
-                      id="onboarding-username"
-                      autoComplete="username"
-                      value={username}
-                      onChange={(event) =>
-                        setUsername(event.currentTarget.value)
-                      }
-                      placeholder="admin"
-                      disabled={isBusy}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="onboarding-password"
+              <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
+                {activePanel === "account" ? (
+                  <div
+                    className="space-y-5"
+                    data-onboarding-target="account-form"
                   >
-                    Password
-                  </label>
-                  <Input
-                    id="onboarding-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.currentTarget.value)}
-                    placeholder="At least 8 characters"
-                    disabled={isBusy}
-                  />
-                </div>
-                {errorMessage ? (
-                  <p className="text-sm text-destructive" role="alert">
-                    {errorMessage}
-                  </p>
-                ) : null}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="onboarding-display-name"
+                        >
+                          Name
+                        </label>
+                        <Input
+                          id="onboarding-display-name"
+                          autoComplete="name"
+                          value={displayName}
+                          onChange={(event) =>
+                            setDisplayName(event.currentTarget.value)
+                          }
+                          placeholder="Your name"
+                          disabled={isBusy}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="onboarding-username"
+                        >
+                          Username
+                        </label>
+                        <Input
+                          id="onboarding-username"
+                          autoComplete="username"
+                          value={username}
+                          onChange={(event) =>
+                            setUsername(event.currentTarget.value)
+                          }
+                          placeholder="admin"
+                          disabled={isBusy}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor="onboarding-password"
+                      >
+                        Password
+                      </label>
+                      <Input
+                        id="onboarding-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) =>
+                          setPassword(event.currentTarget.value)
+                        }
+                        placeholder="At least 8 characters"
+                        disabled={isBusy}
+                      />
+                    </div>
+                    {errorMessage ? (
+                      <p className="text-sm text-destructive" role="alert">
+                        {errorMessage}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-lg border border-border/60 bg-muted/10 p-4"
+                    data-onboarding-target={
+                      activePanel === "model"
+                        ? "model-form"
+                        : activePanel === "resume"
+                          ? "resume-options"
+                          : "first-run"
+                    }
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground">
+                        <LockKeyhole className="h-4 w-4" />
+                      </span>
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">
+                          Account required first
+                        </div>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          {activePanel === "model"
+                            ? "After account creation, this panel will verify the LLM provider, base URL, API key, and model Job Ops should use."
+                            : activePanel === "resume"
+                              ? "After account creation, this panel will let you upload a resume or connect Reactive Resume as the matching baseline."
+                              : "After model and resume checks pass, Job Ops will prepare search terms and open the ready queue."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
 
               <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <KeyRound className="h-4 w-4" />
-                  Passwords stay in this Job Ops instance.
+                  {activePanel === "account"
+                    ? "Passwords stay in this Job Ops instance."
+                    : "Create the workspace account to unlock this setup step."}
                 </div>
                 <Button
                   type="submit"
                   disabled={isBusy}
                   data-onboarding-target="primary-action"
                 >
-                  {isBusy ? "Creating account..." : "Create account"}
+                  {activePanel === "account"
+                    ? isBusy
+                      ? "Creating account..."
+                      : "Create account"
+                    : "Create account first"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

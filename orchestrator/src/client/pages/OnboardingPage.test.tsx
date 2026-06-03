@@ -396,6 +396,20 @@ describe("OnboardingPage", () => {
     expect(screen.getByText("0/4")).toBeInTheDocument();
     expect(screen.getByTestId("coach")).toHaveTextContent("coach:0");
 
+    fireEvent.click(screen.getByRole("button", { name: /model connection/i }));
+    expect(screen.getByText("Connect your model")).toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create account first/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /create account first/i }),
+    );
+    expect(
+      screen.getByText("Create your workspace account"),
+    ).toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText(/^name$/i), {
       target: { value: "Admin User" },
     });

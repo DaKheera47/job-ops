@@ -25,7 +25,7 @@ type CoachStep = Step & {
 
 function readDismissed(storageKey: string): boolean {
   try {
-    return localStorage.getItem(getAuthScopedStorageKey(storageKey)) === "1";
+    return sessionStorage.getItem(getAuthScopedStorageKey(storageKey)) === "1";
   } catch {
     return true;
   }
@@ -33,7 +33,7 @@ function readDismissed(storageKey: string): boolean {
 
 function writeDismissed(storageKey: string): void {
   try {
-    localStorage.setItem(getAuthScopedStorageKey(storageKey), "1");
+    sessionStorage.setItem(getAuthScopedStorageKey(storageKey), "1");
   } catch {
     // Ignore storage failures in restricted browser contexts.
   }
@@ -103,23 +103,64 @@ export const OnboardingCoach: React.FC<{
     removeJoyridePortal();
   };
 
-  const steps = useMemo<CoachStep[]>(
-    () => [
-      {
-        target: '[data-onboarding-target="launch-rail"]',
-        title: "Load the command centre",
-        content:
-          "Complete the setup checks that let Job Ops work for you: a workspace account, an LLM for reasoning, and a resume for matching.",
-        disableBeacon: true,
-        data: { panel: activePanel },
-      },
-      {
-        target: '[data-onboarding-target="account-form"]',
-        title: "Workspace account",
-        content:
-          "Create the private account that owns this Job Ops workspace before connecting the model and resume.",
-        data: { panel: "account" },
-      },
+  useEffect(() => () => removeJoyridePortal(), []);
+
+  const steps = useMemo<CoachStep[]>(() => {
+    const introStep: CoachStep = {
+      target: '[data-onboarding-target="launch-rail"]',
+      title: "Load the command centre",
+      content:
+        "Complete the setup checks that let Job Ops work for you: a workspace account, an LLM for reasoning, and a resume for matching.",
+      data: { panel: activePanel },
+    };
+
+    const primaryActionStep: CoachStep = {
+      target: '[data-onboarding-target="primary-action"]',
+      title: "One next action",
+      content:
+        activePanel === "account"
+          ? "Use this button to create the workspace account and continue to the model check."
+          : "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
+      data: { panel: status?.nextRequirementId ?? activePanel },
+    };
+
+    if (scope === "account") {
+      return [
+        introStep,
+        {
+          target: '[data-onboarding-target="account-form"]',
+          title: "Workspace account",
+          content:
+            "Create the private account that owns this Job Ops workspace before connecting the model and resume.",
+          data: { panel: "account" },
+        },
+        {
+          target: '[data-onboarding-target="account-rail-model"]',
+          title: "Then connect the model",
+          content:
+            "Model setup comes next. It unlocks scoring, tailoring, ghostwriting, and email classification after the account exists.",
+          data: { panel: "account" },
+        },
+        {
+          target: '[data-onboarding-target="account-rail-resume"]',
+          title: "Then load your resume",
+          content:
+            "Resume setup follows the model check and becomes the baseline for matching and applications.",
+          data: { panel: "account" },
+        },
+        {
+          target: '[data-onboarding-target="account-rail-first-run"]',
+          title: "Then open the queue",
+          content:
+            "After setup, Job Ops prepares search terms from your resume before sending you into the ready queue.",
+          data: { panel: "account" },
+        },
+        primaryActionStep,
+      ];
+    }
+
+    const launchSteps: CoachStep[] = [
+      introStep,
       {
         target: '[data-onboarding-target="model-form"]',
         title: "LLM engine",
@@ -134,25 +175,21 @@ export const OnboardingCoach: React.FC<{
           "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume.",
         data: { panel: "resume" },
       },
-      {
+    ];
+
+    if (status?.complete) {
+      launchSteps.push({
         target: '[data-onboarding-target="first-run"]',
         title: "Ready queue",
         content:
           "After setup, Job Ops prepares search terms from your resume before sending you into the ready queue.",
         data: { panel: "first-run" },
-      },
-      {
-        target: '[data-onboarding-target="primary-action"]',
-        title: "One next action",
-        content:
-          activePanel === "account"
-            ? "Use this button to create the workspace account and continue to the model check."
-            : "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
-        data: { panel: status?.nextRequirementId ?? activePanel },
-      },
-    ],
-    [activePanel, status?.nextRequirementId],
-  );
+      });
+    }
+
+    launchSteps.push(primaryActionStep);
+    return launchSteps;
+  }, [activePanel, scope, status?.complete, status?.nextRequirementId]);
 
   useEffect(() => {
     if ((scope === "launch" && !status) || readDismissed(storageKey)) return;

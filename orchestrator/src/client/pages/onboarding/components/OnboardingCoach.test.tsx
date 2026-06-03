@@ -67,6 +67,7 @@ function renderCoach(
 describe("OnboardingCoach", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     joyrideState.props = null;
   });
 
@@ -86,7 +87,7 @@ describe("OnboardingCoach", () => {
       });
     });
 
-    expect(localStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
+    expect(sessionStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
       "1",
     );
     await waitFor(() => {
@@ -95,7 +96,7 @@ describe("OnboardingCoach", () => {
   });
 
   it("can be replayed after dismissal", async () => {
-    localStorage.setItem("jobops.onboarding.coach.dismissed.v1", "1");
+    sessionStorage.setItem("jobops.onboarding.coach.dismissed.v1", "1");
 
     const { rerender } = renderCoach();
     expect(joyrideState.props).toBeNull();
@@ -149,13 +150,13 @@ describe("OnboardingCoach", () => {
     act(() => {
       (joyrideState.props?.onEvent as (data: unknown) => void)({
         action: "next",
-        index: 5,
+        index: 3,
         status: "running",
         type: "step:after",
       });
     });
 
-    expect(localStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
+    expect(sessionStorage.getItem("jobops.onboarding.coach.dismissed.v1")).toBe(
       "1",
     );
     expect(document.getElementById("react-joyride-portal")).toBeNull();
@@ -178,6 +179,67 @@ describe("OnboardingCoach", () => {
       expect.arrayContaining([
         expect.objectContaining({
           target: '[data-onboarding-target="account-form"]',
+        }),
+      ]),
+    );
+    expect(joyrideState.props?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: '[data-onboarding-target="account-rail-model"]',
+        }),
+        expect.objectContaining({
+          target: '[data-onboarding-target="account-rail-resume"]',
+        }),
+        expect.objectContaining({
+          target: '[data-onboarding-target="account-rail-first-run"]',
+        }),
+      ]),
+    );
+    expect(joyrideState.props?.steps).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: '[data-onboarding-target="model-form"]',
+        }),
+      ]),
+    );
+  });
+
+  it("does not include the locked first-run target until onboarding is complete", async () => {
+    renderCoach();
+
+    await waitFor(() => {
+      expect(joyrideState.props?.run).toBe(true);
+    });
+    expect(joyrideState.props?.steps).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: '[data-onboarding-target="first-run"]',
+        }),
+      ]),
+    );
+  });
+
+  it("includes first-run once onboarding is complete", async () => {
+    renderCoach({
+      activePanel: "first-run",
+      status: {
+        ...status,
+        complete: true,
+        nextRequirementId: null,
+        requirements: status.requirements.map((requirement) => ({
+          ...requirement,
+          status: "ready",
+        })),
+      },
+    });
+
+    await waitFor(() => {
+      expect(joyrideState.props?.run).toBe(true);
+    });
+    expect(joyrideState.props?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: '[data-onboarding-target="first-run"]',
         }),
       ]),
     );
