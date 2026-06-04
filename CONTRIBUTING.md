@@ -4,6 +4,16 @@ Thanks for helping improve JobOps.
 
 This guide is intentionally short and GitHub-friendly. It focuses on contributor workflow and links to the existing docs for setup, style, and troubleshooting so we do not duplicate documentation.
 
+## Contributor Terms
+
+By submitting a pull request, patch, issue comment, documentation change, or other contribution to JobOps, you confirm that you have the right to contribute it and that you license your contribution to the JobOps maintainers and users under the project's current license terms.
+
+You also grant the JobOps maintainers a perpetual, worldwide, non-exclusive, royalty-free license to use, copy, modify, distribute, sublicense, relicense, and commercially offer your contribution as part of JobOps, including official hosted JobOps services and other commercial offerings.
+
+You keep ownership of your own contributions. This grant exists so JobOps can remain free for self-hosting while the maintainers can operate and sell official JobOps Cloud services under separate commercial terms.
+
+Do not submit code, docs, assets, generated output, or other material that you do not have permission to contribute.
+
 ## What You Can Contribute
 
 - Bug fixes and reliability improvements
