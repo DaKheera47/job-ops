@@ -268,6 +268,140 @@ type ProductEventMap = {
     normalized_source_key: string;
     host: string;
   };
+  onboarding_started: {
+    entry_state: "account_required" | "launch";
+    next_step: "account" | "model" | "resume" | "first_run" | "none";
+    has_session: boolean;
+    demo_mode: boolean;
+  };
+  onboarding_step_viewed: {
+    step: "account" | "model" | "resume" | "first_run";
+    step_index: number;
+    requirement_status:
+      | "ready"
+      | "needs_action"
+      | "invalid"
+      | "checking_unavailable"
+      | "complete"
+      | "not_applicable";
+  };
+  onboarding_account_create_submitted: {
+    has_display_name: boolean;
+    username_length_bucket: string;
+  };
+  onboarding_account_create_completed: {
+    result: "success" | "error";
+    error_category?: string;
+    credential_length_bucket: string;
+  };
+  onboarding_model_config_changed: {
+    provider: string;
+    changed_field: "provider" | "endpoint" | "api_key" | "model";
+    endpoint_mode: "default" | "custom" | "blank";
+    has_saved_key: boolean;
+    model_source: "default" | "custom" | "blank";
+  };
+  onboarding_model_verify_submitted: {
+    provider: string;
+    endpoint_mode: "default" | "custom" | "blank";
+    has_key_input: boolean;
+    has_model_input: boolean;
+  };
+  onboarding_model_verify_completed: {
+    result: "success" | "error";
+    provider: string;
+    http_status_bucket?: string;
+    error_category?: string;
+  };
+  onboarding_resume_mode_selected: {
+    mode: "upload" | "rxresume";
+    had_existing_resume: boolean;
+  };
+  onboarding_resume_upload_submitted: {
+    file_type: "pdf" | "docx" | "json" | "unknown";
+    file_size_bucket: string;
+    was_reimport: boolean;
+  };
+  onboarding_resume_upload_completed: {
+    result: "success" | "error";
+    file_type: "pdf" | "docx" | "json" | "unknown";
+    duration_bucket: string;
+    section_count_bucket?: string;
+    error_category?: string;
+  };
+  onboarding_rxresume_verify_submitted: {
+    self_hosted: boolean;
+    has_key_input: boolean;
+    endpoint_mode: "default" | "custom" | "blank";
+  };
+  onboarding_rxresume_verify_completed: {
+    result: "success" | "error";
+    self_hosted: boolean;
+    http_status_bucket?: string;
+    error_category?: string;
+  };
+  onboarding_rxresume_template_selected: {
+    had_previous_template: boolean;
+    selection_result: "selected" | "cleared";
+  };
+  onboarding_status_checked: {
+    complete: boolean;
+    next_step: "model" | "resume" | "first_run" | "none";
+    model_status:
+      | "ready"
+      | "needs_action"
+      | "invalid"
+      | "checking_unavailable"
+      | "missing";
+    resume_status:
+      | "ready"
+      | "needs_action"
+      | "invalid"
+      | "checking_unavailable"
+      | "missing";
+  };
+  onboarding_search_terms_started: {
+    trigger: "auto" | "manual";
+    had_existing_terms: boolean;
+  };
+  onboarding_search_terms_completed: {
+    result: "success" | "error";
+    source?: "ai" | "fallback";
+    terms_count?: number;
+    error_category?: string;
+  };
+  onboarding_completed: {
+    duration_bucket: string;
+    completed_steps: number;
+    search_terms_source: "ai" | "fallback" | "existing" | "unknown";
+  };
+  onboarding_exited: {
+    last_step: "account" | "model" | "resume" | "first_run";
+    last_requirement_status:
+      | "ready"
+      | "needs_action"
+      | "invalid"
+      | "checking_unavailable"
+      | "complete"
+      | "not_applicable";
+    duration_bucket: string;
+    exit_type: "route_change" | "tab_hidden" | "unload";
+  };
+  onboarding_inactive: {
+    last_step: "account" | "model" | "resume" | "first_run";
+    idle_bucket: "2m" | "5m" | "10m";
+    had_error_visible: boolean;
+  };
+  onboarding_error_shown: {
+    step: "account" | "model" | "resume" | "first_run";
+    error_category: string;
+    http_status_bucket?: string;
+  };
+  onboarding_coach_interacted: {
+    action: "replay" | "skip" | "done" | "start";
+    scope: "account" | "launch";
+    step: "account" | "model" | "resume" | "first_run";
+  };
 };
 
 type ProductEventName = keyof ProductEventMap;
@@ -510,6 +644,29 @@ export function bucketQueryLength(value: string | number): string {
   if (length <= 30) return "11_30";
   if (length <= 100) return "31_100";
   return "101_plus";
+}
+
+export function bucketDurationMs(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "unknown";
+  if (value < 1_000) return "lt_1s";
+  if (value < 5_000) return "1_5s";
+  if (value < 15_000) return "5_15s";
+  if (value < 30_000) return "15_30s";
+  if (value < 60_000) return "30_60s";
+  if (value < 120_000) return "1_2m";
+  if (value < 300_000) return "2_5m";
+  if (value < 600_000) return "5_10m";
+  return "10m_plus";
+}
+
+export function bucketFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0";
+  if (bytes < 100_000) return "lt_100kb";
+  if (bytes < 500_000) return "100_500kb";
+  if (bytes < 1_000_000) return "500kb_1mb";
+  if (bytes < 5_000_000) return "1_5mb";
+  if (bytes < 10_000_000) return "5_10mb";
+  return "10mb_plus";
 }
 
 export function __resetAnalyticsTestState() {

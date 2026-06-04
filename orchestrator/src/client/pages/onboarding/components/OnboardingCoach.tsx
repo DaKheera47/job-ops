@@ -12,6 +12,8 @@ import {
 } from "react-joyride";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 import { Button } from "@/components/ui/button";
+import { trackProductEvent } from "@/lib/analytics";
+import { toAnalyticsStep } from "../analytics";
 import type { OnboardingPanelId } from "../types";
 
 const TOUR_STORAGE_KEY = "jobops.onboarding.coach.dismissed.v1";
@@ -96,7 +98,12 @@ export const OnboardingCoach: React.FC<{
   const storageKey =
     scope === "account" ? ACCOUNT_TOUR_STORAGE_KEY : TOUR_STORAGE_KEY;
 
-  const stopTour = () => {
+  const stopTour = (action: "skip" | "done" = "done") => {
+    trackProductEvent("onboarding_coach_interacted", {
+      action,
+      scope,
+      step: toAnalyticsStep(activePanel),
+    });
     writeDismissed(storageKey);
     setRun(false);
     setStepIndex(0);
@@ -194,13 +201,23 @@ export const OnboardingCoach: React.FC<{
     if ((scope === "launch" && !status) || readDismissed(storageKey)) return;
     setStepIndex(0);
     setRun(true);
-  }, [scope, status, storageKey]);
+    trackProductEvent("onboarding_coach_interacted", {
+      action: "start",
+      scope,
+      step: toAnalyticsStep(activePanel),
+    });
+  }, [activePanel, scope, status, storageKey]);
 
   useEffect(() => {
     if ((scope === "launch" && !status) || replayNonce === 0) return;
     setStepIndex(0);
     setRun(true);
-  }, [replayNonce, scope, status]);
+    trackProductEvent("onboarding_coach_interacted", {
+      action: "start",
+      scope,
+      step: toAnalyticsStep(activePanel),
+    });
+  }, [activePanel, replayNonce, scope, status]);
 
   useEffect(() => {
     if (!run) return;
@@ -219,7 +236,7 @@ export const OnboardingCoach: React.FC<{
       data.action !== ACTIONS.PREV &&
       data.index >= steps.length - 1;
     if (finished || skipped || closed || completedLastStep) {
-      stopTour();
+      stopTour(skipped ? "skip" : "done");
       return;
     }
 

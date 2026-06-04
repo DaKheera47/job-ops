@@ -16,6 +16,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
+import { bucketCount, trackProductEvent } from "@/lib/analytics";
+import {
+  getDurationBucket,
+  getEndpointMode,
+  getErrorCategory,
+  getFileSizeBucket,
+  getFileType,
+  getHttpStatusBucket,
+} from "./analytics";
 import type { OnboardingFormData, ResumeSetupMode } from "./types";
 
 export function useOnboardingFlow() {
@@ -102,19 +111,37 @@ export function useOnboardingFlow() {
 
   const handleSaveModel = useCallback(async () => {
     const values = getValues();
+    const provider = selectedProvider;
+
+    trackProductEvent("onboarding_model_verify_submitted", {
+      provider,
+      endpoint_mode: getEndpointMode(values.llmBaseUrl),
+      has_key_input: Boolean(values.llmApiKey.trim()),
+      has_model_input: Boolean(values.model.trim()),
+    });
 
     try {
       setIsSaving(true);
       const status = await api.saveOnboardingModel({
-        provider: selectedProvider,
+        provider,
         baseUrl: values.llmBaseUrl.trim() || null,
         apiKey: values.llmApiKey.trim() || null,
         model: values.model.trim() || null,
       });
       await refreshOnboardingState(status);
+      trackProductEvent("onboarding_model_verify_completed", {
+        result: "success",
+        provider,
+      });
       toast.success("Model connection verified");
       return status;
     } catch (error) {
+      trackProductEvent("onboarding_model_verify_completed", {
+        result: "error",
+        provider,
+        error_category: getErrorCategory(error),
+        http_status_bucket: getHttpStatusBucket(error),
+      });
       showErrorToast(error, "Failed to verify model connection");
       return null;
     } finally {
@@ -124,23 +151,40 @@ export function useOnboardingFlow() {
 
   const handleSaveRxresume = useCallback(async () => {
     const values = getValues();
+    const selfHosted = isRxResumeSelfHosted;
+
+    trackProductEvent("onboarding_rxresume_verify_submitted", {
+      self_hosted: selfHosted,
+      has_key_input: Boolean(values.rxresumeApiKey.trim()),
+      endpoint_mode: selfHosted
+        ? getEndpointMode(values.rxresumeUrl)
+        : "default",
+    });
 
     try {
       setIsSaving(true);
       const status = await api.saveOnboardingRxResume({
         apiKey: values.rxresumeApiKey.trim() || null,
-        baseUrl: isRxResumeSelfHosted
-          ? values.rxresumeUrl.trim() || null
-          : null,
+        baseUrl: selfHosted ? values.rxresumeUrl.trim() || null : null,
         rxresumeBaseResumeId: values.rxresumeBaseResumeId,
       });
       setValue("rxresumeApiKey", "");
       await refreshOnboardingState(status);
+      trackProductEvent("onboarding_rxresume_verify_completed", {
+        result: "success",
+        self_hosted: selfHosted,
+      });
       toast.success(
         status.complete ? "Resume source verified" : "Reactive Resume saved",
       );
       return status;
     } catch (error) {
+      trackProductEvent("onboarding_rxresume_verify_completed", {
+        result: "error",
+        self_hosted: selfHosted,
+        error_category: getErrorCategory(error),
+        http_status_bucket: getHttpStatusBucket(error),
+      });
       showErrorToast(error, "Failed to save Reactive Resume");
       return null;
     } finally {
@@ -158,13 +202,28 @@ export function useOnboardingFlow() {
     [setValue],
   );
 
-  const handleResumeSetupModeChange = useCallback((mode: ResumeSetupMode) => {
-    resumeSetupModeTouchedRef.current = true;
-    setResumeSetupMode(mode);
-  }, []);
+  const handleResumeSetupModeChange = useCallback(
+    (mode: ResumeSetupMode) => {
+      resumeSetupModeTouchedRef.current = true;
+      trackProductEvent("onboarding_resume_mode_selected", {
+        mode,
+        had_existing_resume: Boolean(getValues().rxresumeBaseResumeId),
+      });
+      setResumeSetupMode(mode);
+    },
+    [getValues],
+  );
 
   const handleImportResumeFile = useCallback(
     async (file: File) => {
+      const startedAt = Date.now();
+      const fileType = getFileType(file);
+      trackProductEvent("onboarding_resume_upload_submitted", {
+        file_type: fileType,
+        file_size_bucket: getFileSizeBucket(file),
+        was_reimport: Boolean(settings?.pdfRenderer?.value),
+      });
+
       try {
         setImportingResumeFileName(file.name);
         setIsImportingResume(true);
@@ -197,6 +256,17 @@ export function useOnboardingFlow() {
         }
 
         await refreshOnboardingState();
+        trackProductEvent("onboarding_resume_upload_completed", {
+          result: "success",
+          file_type: fileType,
+          duration_bucket: getDurationBucket(startedAt),
+          section_count_bucket: bucketCount(
+            Object.keys(
+              ((document as { sections?: Record<string, unknown> }).sections ??
+                {}) as Record<string, unknown>,
+            ).length,
+          ),
+        });
         toast.success("Resume uploaded", {
           description:
             settings?.pdfRenderer?.value === "latex"
@@ -204,6 +274,12 @@ export function useOnboardingFlow() {
               : "Your local Resume Studio document is ready and PDF rendering was switched to LaTeX.",
         });
       } catch (error) {
+        trackProductEvent("onboarding_resume_upload_completed", {
+          result: "error",
+          file_type: fileType,
+          duration_bucket: getDurationBucket(startedAt),
+          error_category: getErrorCategory(error),
+        });
         showErrorToast(error, "Failed to import resume file");
       } finally {
         setIsImportingResume(false);
@@ -224,6 +300,10 @@ export function useOnboardingFlow() {
       const currentValue = getValues().rxresumeBaseResumeId;
       if (currentValue === value) return;
 
+      trackProductEvent("onboarding_rxresume_template_selected", {
+        had_previous_template: Boolean(currentValue),
+        selection_result: value ? "selected" : "cleared",
+      });
       setBaseResumeId(value);
       setValue("rxresumeBaseResumeId", value);
 
@@ -257,12 +337,16 @@ export function useOnboardingFlow() {
   const hasSavedSearchTerms = savedSearchTerms.length > 0;
 
   const ensureSearchTerms = useCallback(
-    async (options?: { force?: boolean }) => {
+    async (options?: { force?: boolean; trigger?: "auto" | "manual" }) => {
       if (!options?.force && hasSavedSearchTerms) {
         return true;
       }
 
       try {
+        trackProductEvent("onboarding_search_terms_started", {
+          trigger: options?.trigger ?? "manual",
+          had_existing_terms: hasSavedSearchTerms,
+        });
         setIsGeneratingSearchTerms(true);
         const suggestion = await api.suggestOnboardingSearchTerms();
         const terms = normalizeSearchTerms(suggestion.terms);
@@ -274,6 +358,11 @@ export function useOnboardingFlow() {
         syncSettingsCache(nextSettings);
         setPreparedSearchTerms(terms);
         setSearchTermsSource(suggestion.source);
+        trackProductEvent("onboarding_search_terms_completed", {
+          result: "success",
+          source: suggestion.source,
+          terms_count: terms.length,
+        });
         toast.success("Search terms prepared", {
           description: `${terms.length} resume-based title${
             terms.length === 1 ? "" : "s"
@@ -281,6 +370,10 @@ export function useOnboardingFlow() {
         });
         return true;
       } catch (error) {
+        trackProductEvent("onboarding_search_terms_completed", {
+          result: "error",
+          error_category: getErrorCategory(error),
+        });
         showErrorToast(error, "Failed to prepare search terms");
         return false;
       } finally {

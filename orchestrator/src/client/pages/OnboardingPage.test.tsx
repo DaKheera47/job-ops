@@ -12,6 +12,7 @@ import { OnboardingPage } from "./OnboardingPage";
 
 vi.mock("@client/api", () => ({
   getAuthBootstrapStatus: vi.fn(async () => ({ setupRequired: false })),
+  hasAuthenticatedSession: vi.fn(() => true),
   importDesignResumeFromFile: vi.fn(),
   saveOnboardingModel: vi.fn(),
   saveOnboardingRxResume: vi.fn(),
@@ -108,6 +109,12 @@ const authUser = {
   updatedAt: "2026-06-01T00:00:00.000Z",
 };
 
+const analyticsTrack = vi.fn();
+
+function getTrackedEvent(name: string) {
+  return analyticsTrack.mock.calls.find((call) => call[0] === name);
+}
+
 const incompleteModelStatus: OnboardingStatusResponse = {
   complete: false,
   nextRequirementId: "model",
@@ -172,6 +179,11 @@ describe("OnboardingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
+    Object.defineProperty(window, "umami", {
+      configurable: true,
+      value: { track: analyticsTrack },
+    });
 
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: false,
@@ -275,6 +287,20 @@ describe("OnboardingPage", () => {
         }),
       );
     });
+    expect(getTrackedEvent("onboarding_model_verify_submitted")).toEqual([
+      "onboarding_model_verify_submitted",
+      expect.objectContaining({
+        provider: "openrouter",
+        has_key_input: false,
+      }),
+    ]);
+    expect(getTrackedEvent("onboarding_model_verify_completed")).toEqual([
+      "onboarding_model_verify_completed",
+      expect.objectContaining({
+        result: "success",
+        provider: "openrouter",
+      }),
+    ]);
   });
 
   it("keeps Reactive Resume blocked when the server requires template selection", async () => {
@@ -334,6 +360,20 @@ describe("OnboardingPage", () => {
         }),
       );
     });
+    expect(getTrackedEvent("onboarding_resume_upload_submitted")).toEqual([
+      "onboarding_resume_upload_submitted",
+      expect.objectContaining({
+        file_type: "json",
+        file_size_bucket: "lt_100kb",
+      }),
+    ]);
+    expect(getTrackedEvent("onboarding_resume_upload_completed")).toEqual([
+      "onboarding_resume_upload_completed",
+      expect.objectContaining({
+        result: "success",
+        file_type: "json",
+      }),
+    ]);
   });
 
   it("prepares search terms before opening the ready queue", async () => {
@@ -372,6 +412,21 @@ describe("OnboardingPage", () => {
     expect(screen.queryByText("ready page")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /open ready queue/i }));
     expect(await screen.findByText("ready page")).toBeInTheDocument();
+    expect(getTrackedEvent("onboarding_search_terms_completed")).toEqual([
+      "onboarding_search_terms_completed",
+      expect.objectContaining({
+        result: "success",
+        source: "fallback",
+        terms_count: 2,
+      }),
+    ]);
+    expect(getTrackedEvent("onboarding_completed")).toEqual([
+      "onboarding_completed",
+      expect.objectContaining({
+        completed_steps: 4,
+        search_terms_source: "fallback",
+      }),
+    ]);
   });
 
   it("can replay the coach tour", async () => {
@@ -428,6 +483,20 @@ describe("OnboardingPage", () => {
         displayName: "Admin User",
       });
     });
+    expect(getTrackedEvent("onboarding_account_create_submitted")).toEqual([
+      "onboarding_account_create_submitted",
+      expect.objectContaining({
+        has_display_name: true,
+        username_length_bucket: "4_10",
+      }),
+    ]);
+    expect(getTrackedEvent("onboarding_account_create_completed")).toEqual([
+      "onboarding_account_create_completed",
+      expect.objectContaining({
+        result: "success",
+        credential_length_bucket: "11_30",
+      }),
+    ]);
     expect(await screen.findByText("content:model")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /account workspace/i }),

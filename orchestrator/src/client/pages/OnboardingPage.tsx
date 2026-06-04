@@ -18,17 +18,30 @@ import {
 } from "lucide-react";
 import type React from "react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   type AuthUser,
   getAuthBootstrapStatus,
+  hasAuthenticatedSession,
   setupFirstAdmin,
 } from "@/client/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { bucketDurationMs, trackProductEvent } from "@/lib/analytics";
 import { rememberAuthUser } from "../lib/remembered-auth-users";
+import {
+  getEndpointMode,
+  getErrorCategory,
+  getModelSource,
+  getNextStep,
+  getRequirementAnalyticsStatus,
+  getRequirementStatusOrMissing,
+  getStepIndex,
+  getTextLengthBucket,
+  toAnalyticsStep,
+} from "./onboarding/analytics";
 import { OnboardingCoach } from "./onboarding/components/OnboardingCoach";
 import { OnboardingStepContent } from "./onboarding/components/OnboardingStepContent";
 import { OnboardingStepRail } from "./onboarding/components/OnboardingStepRail";
@@ -102,6 +115,119 @@ function getPanelStepLabel(panel: OnboardingPanelId): string {
   }
 }
 
+function useOnboardingDropoffAnalytics(args: {
+  activePanel: OnboardingPanelId;
+  complete: boolean;
+  getRequirementStatus: () => ReturnType<typeof getRequirementAnalyticsStatus>;
+  hadErrorVisible: boolean;
+}) {
+  const startedAtRef = useRef(Date.now());
+  const activePanelRef = useRef(args.activePanel);
+  const completeRef = useRef(args.complete);
+  const getRequirementStatusRef = useRef(args.getRequirementStatus);
+  const hadErrorVisibleRef = useRef(args.hadErrorVisible);
+  const finishedRef = useRef(false);
+  const exitTrackedRef = useRef(false);
+  const inactiveTrackedRef = useRef(new Set<"2m" | "5m" | "10m">());
+
+  useEffect(() => {
+    activePanelRef.current = args.activePanel;
+    completeRef.current = args.complete;
+    getRequirementStatusRef.current = args.getRequirementStatus;
+    hadErrorVisibleRef.current = args.hadErrorVisible;
+  }, [
+    args.activePanel,
+    args.complete,
+    args.getRequirementStatus,
+    args.hadErrorVisible,
+  ]);
+
+  const markCompleted = useCallback(() => {
+    finishedRef.current = true;
+  }, []);
+
+  const trackExit = useCallback(
+    (exitType: "route_change" | "tab_hidden" | "unload") => {
+      if (
+        finishedRef.current ||
+        completeRef.current ||
+        exitTrackedRef.current
+      ) {
+        return;
+      }
+      exitTrackedRef.current = true;
+      trackProductEvent("onboarding_exited", {
+        last_step: toAnalyticsStep(activePanelRef.current),
+        last_requirement_status: getRequirementStatusRef.current(),
+        duration_bucket: bucketDurationMs(Date.now() - startedAtRef.current),
+        exit_type: exitType,
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        trackExit("tab_hidden");
+      }
+    };
+    const handleBeforeUnload = () => trackExit("unload");
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      trackExit("route_change");
+    };
+  }, [trackExit]);
+
+  useEffect(() => {
+    const thresholds: Array<{ bucket: "2m" | "5m" | "10m"; ms: number }> = [
+      { bucket: "2m", ms: 120_000 },
+      { bucket: "5m", ms: 300_000 },
+      { bucket: "10m", ms: 600_000 },
+    ];
+    let timeouts: number[] = [];
+
+    const schedule = () => {
+      for (const timeout of timeouts) window.clearTimeout(timeout);
+      timeouts = thresholds.map(({ bucket, ms }) =>
+        window.setTimeout(() => {
+          if (
+            finishedRef.current ||
+            completeRef.current ||
+            inactiveTrackedRef.current.has(bucket)
+          ) {
+            return;
+          }
+          inactiveTrackedRef.current.add(bucket);
+          trackProductEvent("onboarding_inactive", {
+            last_step: toAnalyticsStep(activePanelRef.current),
+            idle_bucket: bucket,
+            had_error_visible: hadErrorVisibleRef.current,
+          });
+        }, ms),
+      );
+    };
+
+    const reset = () => schedule();
+    schedule();
+    window.addEventListener("click", reset);
+    window.addEventListener("keydown", reset);
+    window.addEventListener("input", reset);
+    return () => {
+      for (const timeout of timeouts) window.clearTimeout(timeout);
+      window.removeEventListener("click", reset);
+      window.removeEventListener("keydown", reset);
+      window.removeEventListener("input", reset);
+    };
+  }, []);
+
+  return markCompleted;
+}
+
 export const OnboardingPage: React.FC = () => {
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [bootstrapState, setBootstrapState] = useState<
@@ -110,6 +236,7 @@ export const OnboardingPage: React.FC = () => {
     | { status: "launch" }
     | { status: "error"; message: string }
   >({ status: "checking" });
+  const startedTrackedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +265,25 @@ export const OnboardingPage: React.FC = () => {
       cancelled = true;
     };
   }, [bootstrapAttempt]);
+
+  useEffect(() => {
+    if (
+      startedTrackedRef.current ||
+      (bootstrapState.status !== "account_required" &&
+        bootstrapState.status !== "launch")
+    ) {
+      return;
+    }
+
+    startedTrackedRef.current = true;
+    trackProductEvent("onboarding_started", {
+      entry_state: bootstrapState.status,
+      next_step:
+        bootstrapState.status === "account_required" ? "account" : "none",
+      has_session: hasAuthenticatedSession(),
+      demo_mode: false,
+    });
+  }, [bootstrapState.status]);
 
   if (bootstrapState.status === "checking") {
     return (
@@ -217,6 +363,37 @@ const AccountSetupOnboarding: React.FC<{
   const [isBusy, setIsBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
+  const getActiveRequirementStatus = useCallback(
+    () =>
+      getRequirementAnalyticsStatus({
+        panel: activePanel,
+        complete: false,
+        requirement: null,
+      }),
+    [activePanel],
+  );
+  const markOnboardingCompleted = useOnboardingDropoffAnalytics({
+    activePanel,
+    complete: false,
+    getRequirementStatus: getActiveRequirementStatus,
+    hadErrorVisible: Boolean(errorMessage),
+  });
+
+  useEffect(() => {
+    trackProductEvent("onboarding_step_viewed", {
+      step: toAnalyticsStep(activePanel),
+      step_index: getStepIndex(activePanel),
+      requirement_status: getActiveRequirementStatus(),
+    });
+  }, [activePanel, getActiveRequirementStatus]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    trackProductEvent("onboarding_error_shown", {
+      step: toAnalyticsStep(activePanel),
+      error_category: "account",
+    });
+  }, [activePanel, errorMessage]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -233,6 +410,10 @@ const AccountSetupOnboarding: React.FC<{
 
     setIsBusy(true);
     setErrorMessage(null);
+    trackProductEvent("onboarding_account_create_submitted", {
+      has_display_name: Boolean(displayName.trim()),
+      username_length_bucket: getTextLengthBucket(normalizedUsername),
+    });
 
     try {
       const user = await setupFirstAdmin({
@@ -240,8 +421,18 @@ const AccountSetupOnboarding: React.FC<{
         password,
         displayName: displayName.trim() || normalizedUsername,
       });
+      trackProductEvent("onboarding_account_create_completed", {
+        result: "success",
+        credential_length_bucket: getTextLengthBucket(password),
+      });
+      markOnboardingCompleted();
       onAccountCreated(user);
     } catch (error) {
+      trackProductEvent("onboarding_account_create_completed", {
+        result: "error",
+        credential_length_bucket: getTextLengthBucket(password),
+        error_category: getErrorCategory(error),
+      });
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to create account",
       );
@@ -331,7 +522,14 @@ const AccountSetupOnboarding: React.FC<{
                 variant="ghost"
                 size="sm"
                 className="w-full justify-start text-muted-foreground"
-                onClick={() => setCoachReplayNonce((value) => value + 1)}
+                onClick={() => {
+                  trackProductEvent("onboarding_coach_interacted", {
+                    action: "replay",
+                    scope: "account",
+                    step: toAnalyticsStep(activePanel),
+                  });
+                  setCoachReplayNonce((value) => value + 1);
+                }}
               >
                 <RotateCcw className="h-4 w-4" />
                 Replay guide
@@ -501,7 +699,11 @@ const LaunchOnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
+  const launchStartedAtRef = useRef(Date.now());
   const searchTermsAttemptedRef = useRef(false);
+  const trackedModelConfigFieldsRef = useRef(
+    new Set<"provider" | "endpoint" | "api_key" | "model">(),
+  );
 
   const modelRequirement = useMemo(
     () => getRequirement(onboarding.requirements, "model"),
@@ -515,6 +717,92 @@ const LaunchOnboardingPage: React.FC = () => {
     activePanel === "account" || activePanel === "first-run"
       ? null
       : getRequirement(onboarding.requirements, activePanel);
+  const getActiveRequirementStatus = useCallback(
+    () =>
+      getRequirementAnalyticsStatus({
+        panel: activePanel,
+        complete: onboarding.complete,
+        requirement: activeRequirement,
+      }),
+    [activePanel, activeRequirement, onboarding.complete],
+  );
+  const markOnboardingCompleted = useOnboardingDropoffAnalytics({
+    activePanel,
+    complete: onboarding.complete,
+    getRequirementStatus: getActiveRequirementStatus,
+    hadErrorVisible:
+      activeRequirement?.status === "invalid" ||
+      activeRequirement?.status === "checking_unavailable" ||
+      Boolean(onboarding.error),
+  });
+
+  useEffect(() => {
+    trackProductEvent("onboarding_step_viewed", {
+      step: toAnalyticsStep(activePanel),
+      step_index: getStepIndex(activePanel),
+      requirement_status: getActiveRequirementStatus(),
+    });
+  }, [activePanel, getActiveRequirementStatus]);
+
+  useEffect(() => {
+    if (!onboarding.status || onboarding.checking) return;
+    trackProductEvent("onboarding_status_checked", {
+      complete: onboarding.complete,
+      next_step: getNextStep(onboarding.nextRequirementId, onboarding.complete),
+      model_status: getRequirementStatusOrMissing(modelRequirement),
+      resume_status: getRequirementStatusOrMissing(resumeRequirement),
+    });
+  }, [
+    modelRequirement,
+    onboarding.checking,
+    onboarding.complete,
+    onboarding.nextRequirementId,
+    onboarding.status,
+    resumeRequirement,
+  ]);
+
+  useEffect(() => {
+    if (
+      activePanel === "account" ||
+      activePanel === "first-run" ||
+      !activeRequirement ||
+      (activeRequirement.status !== "invalid" &&
+        activeRequirement.status !== "checking_unavailable")
+    ) {
+      return;
+    }
+    trackProductEvent("onboarding_error_shown", {
+      step: toAnalyticsStep(activePanel),
+      error_category:
+        activeRequirement.status === "checking_unavailable"
+          ? "unavailable"
+          : "validation",
+    });
+  }, [activePanel, activeRequirement]);
+
+  const trackModelConfigChanged = useCallback(
+    (
+      changedField: "provider" | "endpoint" | "api_key" | "model",
+      next?: {
+        provider?: string;
+        endpoint?: string;
+        model?: string;
+      },
+    ) => {
+      if (trackedModelConfigFieldsRef.current.has(changedField)) return;
+      trackedModelConfigFieldsRef.current.add(changedField);
+      trackProductEvent("onboarding_model_config_changed", {
+        provider: next?.provider ?? flow.selectedProvider,
+        changed_field: changedField,
+        endpoint_mode: getEndpointMode(
+          next?.endpoint ?? flow.watch("llmBaseUrl"),
+        ),
+        has_saved_key: Boolean(flow.llmKeyHint),
+        model_source: getModelSource(next?.model ?? flow.watch("model")),
+      });
+    },
+    [flow],
+  );
 
   useEffect(() => {
     if (onboarding.nextRequirementId) {
@@ -540,7 +828,7 @@ const LaunchOnboardingPage: React.FC = () => {
     }
 
     searchTermsAttemptedRef.current = true;
-    void flow.ensureSearchTerms();
+    void flow.ensureSearchTerms({ trigger: "auto" });
   }, [
     activePanel,
     flow.demoMode,
@@ -591,9 +879,19 @@ const LaunchOnboardingPage: React.FC = () => {
       return;
     }
     if (activePanel === "first-run") {
-      const ready = await flow.ensureSearchTerms();
+      const ready = await flow.ensureSearchTerms({ trigger: "manual" });
       if (!ready) return;
     }
+    markOnboardingCompleted();
+    trackProductEvent("onboarding_completed", {
+      duration_bucket: bucketDurationMs(
+        Date.now() - launchStartedAtRef.current,
+      ),
+      completed_steps: completedCount,
+      search_terms_source:
+        flow.searchTermsSource ??
+        (flow.hasSavedSearchTerms ? "existing" : "unknown"),
+    });
     navigate("/jobs/ready", { replace: true });
   };
 
@@ -640,7 +938,14 @@ const LaunchOnboardingPage: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 className="w-full justify-start text-muted-foreground"
-                onClick={() => setCoachReplayNonce((value) => value + 1)}
+                onClick={() => {
+                  trackProductEvent("onboarding_coach_interacted", {
+                    action: "replay",
+                    scope: "launch",
+                    step: toAnalyticsStep(activePanel),
+                  });
+                  setCoachReplayNonce((value) => value + 1);
+                }}
               >
                 <RotateCcw className="h-4 w-4" />
                 Replay guide
@@ -759,24 +1064,32 @@ const LaunchOnboardingPage: React.FC = () => {
                       savedBaseUrl={flow.settings?.llmBaseUrl?.value}
                       savedProvider={flow.settings?.llmProvider?.value}
                       selectedProvider={flow.selectedProvider}
-                      onLlmApiKeyChange={(value) =>
+                      onLlmApiKeyChange={(value) => {
+                        trackModelConfigChanged("api_key");
                         flow.setValue("llmApiKey", value, {
                           shouldDirty: true,
-                        })
-                      }
-                      onLlmBaseUrlChange={(value) =>
+                        });
+                      }}
+                      onLlmBaseUrlChange={(value) => {
+                        trackModelConfigChanged("endpoint", {
+                          endpoint: value,
+                        });
                         flow.setValue("llmBaseUrl", value, {
                           shouldDirty: true,
-                        })
-                      }
-                      onLlmModelChange={(value) =>
-                        flow.setValue("model", value, { shouldDirty: true })
-                      }
-                      onLlmProviderChange={(value) =>
+                        });
+                      }}
+                      onLlmModelChange={(value) => {
+                        trackModelConfigChanged("model", { model: value });
+                        flow.setValue("model", value, { shouldDirty: true });
+                      }}
+                      onLlmProviderChange={(value) => {
+                        trackModelConfigChanged("provider", {
+                          provider: value,
+                        });
                         flow.setValue("llmProvider", value, {
                           shouldDirty: true,
-                        })
-                      }
+                        });
+                      }}
                       onImportResumeFile={flow.handleImportResumeFile}
                       onResumeSetupModeChange={flow.setResumeSetupMode}
                       onRxresumeApiKeyChange={(value) =>
@@ -827,7 +1140,10 @@ const LaunchOnboardingPage: React.FC = () => {
                             variant="outline"
                             disabled={flow.isBusy}
                             onClick={() =>
-                              void flow.ensureSearchTerms({ force: true })
+                              void flow.ensureSearchTerms({
+                                force: true,
+                                trigger: "manual",
+                              })
                             }
                           >
                             <RefreshCw className="h-4 w-4" />
