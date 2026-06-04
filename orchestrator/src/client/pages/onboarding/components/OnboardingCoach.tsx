@@ -119,7 +119,7 @@ export const OnboardingCoach: React.FC<{
       title: "One next action",
       content:
         activePanel === "account"
-          ? "Use this button to create the workspace account and continue to the model check."
+          ? "Use this button to create the workspace account and continue to the next steps."
           : "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
       data: { panel: status?.nextRequirementId ?? activePanel },
     };
@@ -187,7 +187,6 @@ export const OnboardingCoach: React.FC<{
       });
     }
 
-    launchSteps.push(primaryActionStep);
     return launchSteps;
   }, [activePanel, scope, status?.complete, status?.nextRequirementId]);
 

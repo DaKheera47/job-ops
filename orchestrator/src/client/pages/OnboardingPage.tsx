@@ -693,7 +693,7 @@ const LaunchOnboardingPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
-                  {activePanel !== "account" ? (
+                  {activePanel !== "account" && activePanel !== "first-run" ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
                       <span>Workspace account created</span>
@@ -701,7 +701,8 @@ const LaunchOnboardingPage: React.FC = () => {
                   ) : null}
 
                   {modelRequirement?.status === "ready" &&
-                  activePanel !== "model" ? (
+                  activePanel !== "model" &&
+                  activePanel !== "first-run" ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
                       <span>{modelRequirement.title}</span>
@@ -709,7 +710,8 @@ const LaunchOnboardingPage: React.FC = () => {
                   ) : null}
 
                   {resumeRequirement?.status === "ready" &&
-                  activePanel !== "resume" ? (
+                  activePanel !== "resume" &&
+                  activePanel !== "first-run" ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
                       <span>{resumeRequirement.title}</span>
