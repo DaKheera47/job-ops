@@ -10,7 +10,7 @@ const baseProps = {
   },
   baseResumeValue: null,
   hasRxResumeAccess: false,
-  importingResumeFileName: "Manal_Aamir_BlueVoyant (1).pdf",
+  importingResumeFileName: "resume.pdf",
   isBusy: true,
   isImportingResume: true,
   isResumeReady: false,

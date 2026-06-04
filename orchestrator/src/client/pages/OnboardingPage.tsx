@@ -407,6 +407,10 @@ const AccountSetupOnboarding: React.FC<{
       setErrorMessage("Enter both username and password.");
       return;
     }
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.");
+      return;
+    }
 
     setIsBusy(true);
     setErrorMessage(null);
