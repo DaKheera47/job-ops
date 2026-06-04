@@ -67,7 +67,7 @@ JOBOPS_APP_MODE=hosted
 JOBOPS_HOSTED_TENANT_ID=tenant_hosted
 ```
 
-`JOBOPS_HOSTED_TENANT_ID` is required in hosted mode. JobOps fails startup if `JOBOPS_APP_MODE=hosted` is set without a hosted tenant ID.
+`JOBOPS_HOSTED_TENANT_ID` is required in hosted mode. JobOps fails startup if `JOBOPS_APP_MODE=hosted` is set without a hosted tenant ID. The tenant must already exist in the database before hosted signup can create users for it; hosted signup does not create tenants.
 
 Optional hosted capabilities default to disabled:
 
@@ -78,6 +78,8 @@ JOBOPS_HOSTED_QUOTAS_ENABLED=false
 ```
 
 These flags only affect hosted mode. Leaving `JOBOPS_APP_MODE` unset keeps the current first-run setup, private-workspace user creation, settings, and local behavior unchanged.
+
+When hosted mode is active, first-run setup is disabled. Hosted users must be created through hosted signup when `JOBOPS_HOSTED_SIGNUPS_ENABLED=true`, or by a later tenant-owner/admin user-management flow.
 
 ## Codex sign-in
 

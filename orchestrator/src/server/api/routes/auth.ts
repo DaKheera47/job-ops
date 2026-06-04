@@ -1,7 +1,14 @@
-import { badRequest, serviceUnavailable, unauthorized } from "@infra/errors";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  serviceUnavailable,
+  unauthorized,
+} from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import { verifyPassword } from "@server/auth/password";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-analytics";
 import * as usersRepo from "@server/repositories/users";
@@ -18,6 +25,11 @@ const setupSchema = loginSchema.extend({
   password: z.string().min(8).max(500),
   displayName: z.string().trim().min(1).max(120).optional(),
 });
+
+function isUsernameConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /UNIQUE constraint failed: users\.username/i.test(error.message);
+}
 
 function toSetupValidationMessage(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -45,6 +57,76 @@ function toSetupValidationMessage(error: z.ZodError): string {
 }
 
 export const authRouter = Router();
+
+authRouter.post(
+  "/signup",
+  asyncRoute(async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      fail(res, serviceUnavailable("Signup is disabled in the public demo."));
+      return;
+    }
+
+    const appConfig = getJobOpsAppConfig();
+    if (appConfig.appMode !== "hosted") {
+      fail(res, forbidden("Signup is available only in hosted mode"));
+      return;
+    }
+    if (!appConfig.capabilities.hostedSignups) {
+      fail(res, forbidden("Hosted signups are disabled"));
+      return;
+    }
+    if (!appConfig.hostedTenantId) {
+      fail(res, serviceUnavailable("Hosted tenant is not configured"));
+      return;
+    }
+
+    const parsed = setupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      fail(
+        res,
+        badRequest(
+          toSetupValidationMessage(parsed.error),
+          parsed.error.flatten(),
+        ),
+      );
+      return;
+    }
+
+    let user: usersRepo.PublicUser | null;
+    try {
+      user = await usersRepo.createHostedTenantUser({
+        username: parsed.data.username,
+        password: parsed.data.password,
+        displayName: parsed.data.displayName ?? parsed.data.username,
+        tenantId: appConfig.hostedTenantId,
+      });
+    } catch (error) {
+      if (isUsernameConflictError(error)) {
+        fail(res, conflict("Username already exists"));
+        return;
+      }
+      throw error;
+    }
+
+    if (!user) {
+      fail(
+        res,
+        serviceUnavailable("Configured hosted tenant is not available"),
+      );
+      return;
+    }
+
+    const { token, expiresIn } = await signToken({
+      sub: user.id,
+      userId: user.id,
+      tenantId: user.workspaceId,
+      username: user.username,
+      isSystemAdmin: user.isSystemAdmin,
+    });
+
+    ok(res, { token, expiresIn, user }, 201);
+  }),
+);
 
 authRouter.post(
   "/login",
@@ -118,6 +200,11 @@ authRouter.get(
 authRouter.post(
   "/setup",
   asyncRoute(async (req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      fail(res, forbidden("First-run setup is disabled in hosted mode"));
+      return;
+    }
+
     if (isDemoMode()) {
       fail(
         res,

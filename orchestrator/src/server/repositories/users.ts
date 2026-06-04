@@ -212,6 +212,59 @@ export async function createPrivateWorkspaceUser(input: {
   return user;
 }
 
+export async function createHostedTenantUser(input: {
+  username: string;
+  password: string;
+  tenantId: string;
+  displayName?: string | null;
+}): Promise<PublicUser | null> {
+  const now = new Date().toISOString();
+  const username = normalizeUsername(input.username);
+  const userId = randomUUID();
+  const { passwordHash, passwordSalt } = await hashPassword(input.password);
+
+  const created = db.transaction((tx) => {
+    const tenant = tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .get();
+    if (!tenant) return false;
+
+    tx.insert(users)
+      .values({
+        id: userId,
+        username,
+        displayName: input.displayName?.trim() || null,
+        passwordHash,
+        passwordSalt,
+        isSystemAdmin: false,
+        isDisabled: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    tx.insert(tenantMemberships)
+      .values({
+        id: randomUUID(),
+        userId,
+        tenantId: input.tenantId,
+        role: "member",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return true;
+  });
+
+  if (!created) return null;
+  const user = await getUserById(userId);
+  if (!user) throw new Error("Failed to load created user");
+  return user;
+}
+
 export async function createInitialSystemAdmin(input: {
   username: string;
   password: string;

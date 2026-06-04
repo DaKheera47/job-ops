@@ -212,6 +212,7 @@ export function createAuthGuard() {
       normalizedMethod === "POST" &&
       (normalizedPath === "/api/auth/login" ||
         normalizedPath === "/api/auth/logout" ||
+        normalizedPath === "/api/auth/signup" ||
         normalizedPath === "/api/auth/setup")
     )
       return true;

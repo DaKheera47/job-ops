@@ -90,6 +90,37 @@ export async function setupFirstAdmin(input: {
   return data.user;
 }
 
+export async function signupWithCredentials(input: {
+  username: string;
+  password: string;
+  displayName?: string;
+}): Promise<AuthUser> {
+  const res = await fetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const parsed = await readAuthResponse<{
+    token: string;
+    user: AuthUser;
+  }>(res);
+  if ("ok" in parsed) {
+    if (!parsed.ok) throw toApiError(res, parsed);
+    if (!parsed.data?.token || !parsed.data.user) {
+      throw new Error("Signup response was incomplete");
+    }
+    setAuthenticatedSession(parsed.data.token);
+    return parsed.data.user;
+  }
+  if (!parsed.success) throw toApiError(res, parsed);
+  const data = parsed.data as { token?: string; user?: AuthUser } | undefined;
+  if (!data?.token || !data.user) {
+    throw new Error("Signup response was incomplete");
+  }
+  setAuthenticatedSession(data.token);
+  return data.user;
+}
+
 export async function getCurrentAuthContext(): Promise<CurrentAuthContext> {
   const result = await fetchApi<{
     user: AuthUser;
