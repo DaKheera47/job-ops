@@ -3,6 +3,7 @@ import {
   matchesRequestedCountry,
   shouldApplyStrictCityFilter,
 } from "./search-cities.js";
+import type { CreateJobInput } from "./types/jobs.js";
 import type { LocationIntent } from "./types/location";
 import { normalizeWhitespace } from "./utils/string";
 
@@ -186,4 +187,132 @@ export function matchJobLocationIntent(
   }
 
   return { matched: false, reasonCode: "no_match", priority: 0 };
+}
+
+const FUZZY_DEDUP_TITLE_THRESHOLD = 90;
+const FUZZY_DEDUP_EMPLOYER_THRESHOLD = 85;
+
+/**
+ * Merge two CreateJobInput objects, preferring the first non-null/non-undefined
+ * value for each optional field. Required fields (source, title, employer,
+ * jobUrl) are taken from `base`.
+ */
+function mergeJobInputs(
+  base: CreateJobInput,
+  incoming: CreateJobInput,
+): CreateJobInput {
+  return {
+    // Required — always from base
+    source: base.source,
+    title: base.title,
+    employer: base.employer,
+    jobUrl: base.jobUrl,
+    // Optional — first non-null wins
+    employerUrl: base.employerUrl ?? incoming.employerUrl,
+    applicationLink: base.applicationLink ?? incoming.applicationLink,
+    disciplines: base.disciplines ?? incoming.disciplines,
+    deadline: base.deadline ?? incoming.deadline,
+    salary: base.salary ?? incoming.salary,
+    location: base.location ?? incoming.location,
+    locationEvidence: base.locationEvidence ?? incoming.locationEvidence,
+    degreeRequired: base.degreeRequired ?? incoming.degreeRequired,
+    starting: base.starting ?? incoming.starting,
+    jobDescription: base.jobDescription ?? incoming.jobDescription,
+    sourceJobId: base.sourceJobId ?? incoming.sourceJobId,
+    jobUrlDirect: base.jobUrlDirect ?? incoming.jobUrlDirect,
+    datePosted: base.datePosted ?? incoming.datePosted,
+    jobType: base.jobType ?? incoming.jobType,
+    salarySource: base.salarySource ?? incoming.salarySource,
+    salaryInterval: base.salaryInterval ?? incoming.salaryInterval,
+    salaryMinAmount: base.salaryMinAmount ?? incoming.salaryMinAmount,
+    salaryMaxAmount: base.salaryMaxAmount ?? incoming.salaryMaxAmount,
+    salaryCurrency: base.salaryCurrency ?? incoming.salaryCurrency,
+    isRemote: base.isRemote ?? incoming.isRemote,
+    jobLevel: base.jobLevel ?? incoming.jobLevel,
+    jobFunction: base.jobFunction ?? incoming.jobFunction,
+    listingType: base.listingType ?? incoming.listingType,
+    emails: base.emails ?? incoming.emails,
+    companyIndustry: base.companyIndustry ?? incoming.companyIndustry,
+    companyLogo: base.companyLogo ?? incoming.companyLogo,
+    companyUrlDirect: base.companyUrlDirect ?? incoming.companyUrlDirect,
+    companyAddresses: base.companyAddresses ?? incoming.companyAddresses,
+    companyNumEmployees:
+      base.companyNumEmployees ?? incoming.companyNumEmployees,
+    companyRevenue: base.companyRevenue ?? incoming.companyRevenue,
+    companyDescription: base.companyDescription ?? incoming.companyDescription,
+    skills: base.skills ?? incoming.skills,
+    experienceRange: base.experienceRange ?? incoming.experienceRange,
+    companyRating: base.companyRating ?? incoming.companyRating,
+    companyReviewsCount:
+      base.companyReviewsCount ?? incoming.companyReviewsCount,
+    vacancyCount: base.vacancyCount ?? incoming.vacancyCount,
+    workFromHomeType: base.workFromHomeType ?? incoming.workFromHomeType,
+  };
+}
+
+/**
+ * Deduplicate a batch of discovered job listings by fuzzy-matching job title
+ * and employer name. Near-duplicate entries (same role at the same company
+ * scraped from different boards) are **merged** into a single enriched listing:
+ * for each optional field, the first non-null value across all duplicates is
+ * kept, so one listing's `location` and another's `salary` both survive.
+ *
+ * Reuses the existing `normalizeJobTitle`, `normalizeCompanyName`, and
+ * `calculateSimilarity` helpers — no new normalization logic.
+ *
+ * @param jobs - Freshly discovered job inputs from the current scrape run.
+ * @param opts - Optional threshold overrides.
+ * @returns Deduplicated (and field-merged) list.
+ */
+export function deduplicateJobsByTitleAndEmployer(
+  jobs: CreateJobInput[],
+  opts?: {
+    titleThreshold?: number;
+    employerThreshold?: number;
+  },
+): CreateJobInput[] {
+  const titleThreshold = opts?.titleThreshold ?? FUZZY_DEDUP_TITLE_THRESHOLD;
+  const employerThreshold =
+    opts?.employerThreshold ?? FUZZY_DEDUP_EMPLOYER_THRESHOLD;
+
+  type PreparedEntry = {
+    job: CreateJobInput;
+    normalizedTitle: string;
+    normalizedEmployer: string;
+  };
+
+  const merged: PreparedEntry[] = [];
+
+  for (const incoming of jobs) {
+    const normalizedTitle = normalizeJobTitle(incoming.title);
+    const normalizedEmployer = normalizeCompanyName(incoming.employer);
+
+    if (!normalizedTitle || !normalizedEmployer) {
+      merged.push({ job: incoming, normalizedTitle, normalizedEmployer });
+      continue;
+    }
+
+    const match = merged.find((entry) => {
+      if (!entry.normalizedTitle || !entry.normalizedEmployer) return false;
+      const titleScore = calculateSimilarity(
+        normalizedTitle,
+        entry.normalizedTitle,
+      );
+      if (titleScore <= titleThreshold) return false;
+      const employerScore = calculateSimilarity(
+        normalizedEmployer,
+        entry.normalizedEmployer,
+      );
+      return employerScore > employerThreshold;
+    });
+
+    if (match) {
+      // Merge incoming fields into the existing entry (first non-null wins).
+      match.job = mergeJobInputs(match.job, incoming);
+    } else {
+      merged.push({ job: incoming, normalizedTitle, normalizedEmployer });
+    }
+  }
+
+  return merged.map((entry) => entry.job);
 }
