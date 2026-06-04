@@ -33,6 +33,9 @@ export function useOnboardingFlow() {
     SearchTermsSuggestionResponse["source"] | null
   >(null);
   const [isImportingResume, setIsImportingResume] = useState(false);
+  const [importingResumeFileName, setImportingResumeFileName] = useState<
+    string | null
+  >(null);
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [resumeSetupMode, setResumeSetupMode] =
     useState<ResumeSetupMode>("upload");
@@ -163,6 +166,7 @@ export function useOnboardingFlow() {
   const handleImportResumeFile = useCallback(
     async (file: File) => {
       try {
+        setImportingResumeFileName(file.name);
         setIsImportingResume(true);
         const dataUrl = await fileToDataUrl(file);
         const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl.trim());
@@ -203,6 +207,7 @@ export function useOnboardingFlow() {
         showErrorToast(error, "Failed to import resume file");
       } finally {
         setIsImportingResume(false);
+        setImportingResumeFileName(null);
       }
     },
     [
@@ -298,6 +303,7 @@ export function useOnboardingFlow() {
     isBusy,
     isGeneratingSearchTerms,
     isImportingResume,
+    importingResumeFileName,
     isRxResumeSelfHosted,
     llmKeyHint: settings?.llmApiKeyHint ?? null,
     resumeSetupMode,

@@ -742,6 +742,7 @@ const LaunchOnboardingPage: React.FC = () => {
                       defaultModel={flow.settings?.model?.default}
                       effectiveModel={flow.settings?.model?.value}
                       isBusy={flow.isBusy}
+                      importingResumeFileName={flow.importingResumeFileName}
                       isImportingResume={flow.isImportingResume}
                       isResumeReady={baseResumeValidation.valid}
                       isRxResumeSelfHosted={flow.isRxResumeSelfHosted}

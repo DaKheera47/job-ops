@@ -10,6 +10,7 @@ export const OnboardingStepContent: React.FC<{
   currentStep: StepId;
   defaultModel: string | null | undefined;
   effectiveModel: string | null | undefined;
+  importingResumeFileName: string | null;
   isBusy: boolean;
   isImportingResume: boolean;
   isResumeReady: boolean;
@@ -70,6 +71,7 @@ export const OnboardingStepContent: React.FC<{
         baseResumeValidation={props.baseResumeValidation}
         baseResumeValue={props.baseResumeValue}
         hasRxResumeAccess={hasRxResumeAccess}
+        importingResumeFileName={props.importingResumeFileName}
         isBusy={props.isBusy}
         isImportingResume={props.isImportingResume}
         isResumeReady={props.isResumeReady}
