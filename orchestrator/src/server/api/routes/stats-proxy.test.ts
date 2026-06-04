@@ -105,31 +105,6 @@ describe.sequential("Stats proxy routes", () => {
     );
   });
 
-  it("does not proxy stats routes when analytics is disabled", async () => {
-    await stopServer({ server, closeDb, tempDir });
-    ({ server, baseUrl, closeDb, tempDir } = await startServer({
-      env: {
-        JOBOPS_DISABLE_ANALYTICS: "1",
-      },
-    }));
-
-    const realFetch = global.fetch;
-    const mockFetch = vi.fn(
-      async (input: URL | RequestInfo, init?: RequestInit) =>
-        realFetch(input, init),
-    );
-    vi.stubGlobal("fetch", mockFetch);
-
-    const response = await fetch(`${baseUrl}/stats/script.js`);
-
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe("Not found");
-    expect(mockFetch).not.toHaveBeenCalledWith(
-      "https://umami.dakheera47.com/script.js",
-      expect.anything(),
-    );
-  });
-
   it("returns 405 for unsupported methods on allowlisted stats routes", async () => {
     const realFetch = global.fetch;
     const mockFetch = vi.fn(

@@ -26,7 +26,6 @@ export default function Root({ children }: RootProps) {
 
   useEffect(() => {
     if (!umamiConfig) return;
-    if (window.__JOBOPS_ANALYTICS_DISABLED__ === true) return;
 
     const cleanupTracking = installDocsUmamiClickTracking({
       document,

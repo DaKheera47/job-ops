@@ -25,42 +25,14 @@ function readAppVersion(): string {
 }
 
 const appVersion = readAppVersion();
-const ANALYTICS_DISABLED_TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
-
-function isEnvFlagEnabled(value: string | undefined): boolean {
-  const normalized = value?.trim().toLowerCase();
-  return normalized ? ANALYTICS_DISABLED_TRUTHY_VALUES.has(normalized) : false;
-}
-
-const analyticsDisabled =
-  isEnvFlagEnabled(process.env.JOBOPS_DISABLE_ANALYTICS) ||
-  isEnvFlagEnabled(process.env.VITE_JOBOPS_DISABLE_ANALYTICS);
-const ANALYTICS_HTML_BLOCK_PATTERN =
-  /\s*<!-- jobops-analytics:start -->[\s\S]*?<!-- jobops-analytics:end -->/;
-
-function analyticsHtmlGatePlugin() {
-  return {
-    name: "jobops-analytics-html-gate",
-    transformIndexHtml(html: string) {
-      if (!analyticsDisabled) return html;
-      const withoutAnalytics = html.replace(ANALYTICS_HTML_BLOCK_PATTERN, "");
-      return withoutAnalytics.replace(
-        "</head>",
-        "    <script>window.__JOBOPS_ANALYTICS_DISABLED__=true;</script>\n  </head>",
-      );
-    },
-  };
-}
 
 declare global {
   // eslint-disable-next-line no-var
   var __APP_VERSION__: string;
-  // eslint-disable-next-line no-var
-  var __JOBOPS_ANALYTICS_DISABLED__: boolean;
 }
 
 export default defineConfig({
-  plugins: [analyticsHtmlGatePlugin(), react(), tailwindcss()],
+  plugins: [react(), tailwindcss()],
   test: {
     globals: true,
     environment: "jsdom",
@@ -121,6 +93,5 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
-    __JOBOPS_ANALYTICS_DISABLED__: JSON.stringify(analyticsDisabled),
   },
 });

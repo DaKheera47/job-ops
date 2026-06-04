@@ -34,16 +34,9 @@ declare global {
   }
 }
 
-export function isAnalyticsDisabled(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.__JOBOPS_ANALYTICS_DISABLED__ === true
-  );
-}
-
 export function trackEvent(event: string, data?: Record<string, unknown>) {
-  if (isAnalyticsDisabled()) return;
   if (typeof window === "undefined") return;
+  if (window.__JOBOPS_ANALYTICS_DISABLED__ === true) return;
   const payload = withAnalyticsMetadata(data as AnalyticsPayload | undefined, {
     analyticsUserId: getEventAnalyticsUserId(),
     appVersion: getAnalyticsAppVersion(),
@@ -304,7 +297,6 @@ function generateAnalyticsSessionId() {
 }
 
 function getAnalyticsUserId(): string | null {
-  if (isAnalyticsDisabled()) return null;
   if (typeof window === "undefined") return null;
   if (cachedAnalyticsUserId) return cachedAnalyticsUserId;
 
@@ -337,7 +329,6 @@ function getAnalyticsAppVersion(): string | null {
 }
 
 export function getAnalyticsSessionId(): string | null {
-  if (isAnalyticsDisabled()) return null;
   if (typeof window === "undefined") return null;
   if (cachedAnalyticsSessionId) return cachedAnalyticsSessionId;
 
@@ -360,7 +351,6 @@ export function getAnalyticsSessionId(): string | null {
 }
 
 export function getAnalyticsRequestHeaders(): Record<string, string> {
-  if (isAnalyticsDisabled()) return {};
   const sessionId = getAnalyticsSessionId();
   return sessionId
     ? {
@@ -442,7 +432,6 @@ export function trackProductEvent<T extends ProductEventName>(
   event: T,
   data: ProductEventMap[T],
 ) {
-  if (isAnalyticsDisabled()) return;
   const sanitized = sanitizeEventPayload(data as Record<string, unknown>);
   if (shouldDedupe(event, sanitized)) return;
   trackEvent(event, sanitized);
@@ -457,7 +446,6 @@ function normalizeDistinctId(id: string | null | undefined): string | null {
 export function identifyAnalyticsUser(
   distinctId: string | null | undefined,
 ): void {
-  if (isAnalyticsDisabled()) return;
   if (typeof window === "undefined") return;
   const umamiIdentify = window.umami?.identify;
   const openPanel = window.op;

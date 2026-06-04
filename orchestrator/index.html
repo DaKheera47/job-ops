@@ -8,60 +8,45 @@
     <title>Job Ops | Orchestrator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- jobops-analytics:start -->
+    <script
+      defer
+      src="https://umami.dakheera47.com/script.js"
+      data-website-id="0dc42ed1-87c3-4ac0-9409-5a9b9588fe66"
+    ></script>
     <script>
-      (() => {
-        const disabled = window.__JOBOPS_ANALYTICS_DISABLED__ === true;
+      window.op =
+        window.op ||
+        (() => {
+          const queue = [];
+          const track = (...args) => {
+            if (args.length > 0) {
+              queue.push(args);
+            }
+          };
 
-        window.__JOBOPS_ANALYTICS_DISABLED__ = disabled;
-        if (disabled) return;
-
-        const umamiScript = document.createElement("script");
-        umamiScript.defer = true;
-        umamiScript.src = "https://umami.dakheera47.com/script.js";
-        umamiScript.dataset.websiteId = "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66";
-        document.head.appendChild(umamiScript);
-
-        window.op =
-          window.op ||
-          (() => {
-            const queue = [];
-            const track = (...args) => {
-              if (args.length > 0) {
-                queue.push(args);
+          return new Proxy(track, {
+            get: (_target, property) => {
+              if (property === "q") {
+                return queue;
               }
-            };
 
-            return new Proxy(track, {
-              get: (_target, property) => {
-                if (property === "q") {
-                  return queue;
-                }
+              return (...args) => {
+                queue.push([property, ...args]);
+              };
+            },
+            has: (_target, property) => property === "q",
+          });
+        })();
 
-                return (...args) => {
-                  queue.push([property, ...args]);
-                };
-              },
-              has: (_target, property) => property === "q",
-            });
-          })();
-
-        window.op("init", {
-          apiUrl: "https://openpanel.dakheera47.com/api",
-          clientId: "6a953241-309b-4e5a-be1b-412c5d7b6544",
-          trackScreenViews: true,
-          trackOutgoingLinks: true,
-          trackAttributes: true,
-        });
-
-        const openPanelScript = document.createElement("script");
-        openPanelScript.src = "https://openpanel.dev/op1.js";
-        openPanelScript.defer = true;
-        openPanelScript.async = true;
-        document.head.appendChild(openPanelScript);
-      })();
+      window.op("init", {
+        apiUrl: "https://openpanel.dakheera47.com/api",
+        clientId: "6a953241-309b-4e5a-be1b-412c5d7b6544",
+        trackScreenViews: true,
+        trackOutgoingLinks: true,
+        trackAttributes: true,
+      });
     </script>
-    <!-- jobops-analytics:end -->
+    <script src="https://openpanel.dev/op1.js" defer async></script>
   </head>
   <body>
     <div id="root"></div>

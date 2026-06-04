@@ -30,12 +30,10 @@ describe("analytics", () => {
       configurable: true,
       value: op,
     });
-    window.__JOBOPS_ANALYTICS_DISABLED__ = false;
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    delete window.__JOBOPS_ANALYTICS_DISABLED__;
   });
 
   it("dedupes identical product events within the dedupe window", () => {
@@ -48,25 +46,6 @@ describe("analytics", () => {
     trackProductEvent("tracer_drilldown_mode_changed", { mode: "human" });
 
     expect(track).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not emit or persist analytics data when analytics is disabled", () => {
-    window.__JOBOPS_ANALYTICS_DISABLED__ = true;
-
-    trackEvent("star_repo_click", { location: "demo_mode_banner" });
-    trackProductEvent("tracer_drilldown_mode_changed", { mode: "human" });
-    identifyAnalyticsUser("user-123");
-
-    expect(getAnalyticsRequestHeaders()).toEqual({});
-    expect(track).not.toHaveBeenCalled();
-    expect(identify).not.toHaveBeenCalled();
-    expect(op).not.toHaveBeenCalled();
-    expect(window.localStorage.getItem("jobops.analytics.user_id.v1")).toBe(
-      null,
-    );
-    expect(
-      window.sessionStorage.getItem("jobops.analytics.session_id.v1"),
-    ).toBe(null);
   });
 
   it("attaches stable analytics metadata to every event", () => {
