@@ -30,6 +30,7 @@ describe("server product analytics", () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
   const originalAppVersion = process.env.JOBOPS_APP_VERSION;
+  const originalDisableAnalytics = process.env.JOBOPS_DISABLE_ANALYTICS;
   const fetchMock = vi.fn<typeof fetch>();
   const getMockUmami = () =>
     (typeof umamiModule === "object" &&
@@ -45,6 +46,7 @@ describe("server product analytics", () => {
     process.env.NODE_ENV = "development";
     process.env.JOBOPS_PUBLIC_BASE_URL = "https://jobops.example";
     process.env.JOBOPS_APP_VERSION = "v0.test";
+    delete process.env.JOBOPS_DISABLE_ANALYTICS;
     process.env.JOBOPS_OPENPANEL_API_URL =
       "https://openpanel.dakheera47.com/api";
     process.env.JOBOPS_OPENPANEL_CLIENT_ID =
@@ -69,6 +71,11 @@ describe("server product analytics", () => {
       delete process.env.JOBOPS_APP_VERSION;
     } else {
       process.env.JOBOPS_APP_VERSION = originalAppVersion;
+    }
+    if (originalDisableAnalytics === undefined) {
+      delete process.env.JOBOPS_DISABLE_ANALYTICS;
+    } else {
+      process.env.JOBOPS_DISABLE_ANALYTICS = originalDisableAnalytics;
     }
   });
 
@@ -146,6 +153,19 @@ describe("server product analytics", () => {
 
   it("does not emit analytics during test runs", async () => {
     process.env.NODE_ENV = "test";
+
+    const delivered = await trackServerProductEvent("resume_generated", {
+      origin: "move_to_ready",
+    });
+
+    expect(delivered).toBe(false);
+    expect(getMockUmami().init).not.toHaveBeenCalled();
+    expect(getMockUmami().track).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not emit analytics when disabled by environment", async () => {
+    process.env.JOBOPS_DISABLE_ANALYTICS = "1";
 
     const delivered = await trackServerProductEvent("resume_generated", {
       origin: "move_to_ready",

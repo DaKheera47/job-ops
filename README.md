@@ -181,7 +181,7 @@ Open-source tools and communities that make JobOps possible:
 
 ## Analytics
 
-JobOps includes anonymous usage analytics (Umami) to help improve the product. To opt out, block `umami.dakheera47.com` in your firewall or DNS.
+JobOps includes anonymous usage analytics to help improve the product. To disable analytics for a self-hosted deployment, set `JOBOPS_DISABLE_ANALYTICS=1`.
 
 ## License
 

@@ -9,6 +9,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
+import { isProductAnalyticsDisabled } from "@infra/analytics-config";
 import { unauthorized } from "@infra/errors";
 import {
   apiErrorHandler,
@@ -61,9 +62,28 @@ const ALLOWED_UMAMI_PROXY_METHODS = new Map<string, string[]>([
   ["/script.js", ["GET", "HEAD"]],
   ["/api/send", ["POST"]],
 ]);
+const ANALYTICS_HTML_BLOCK_PATTERN =
+  /\s*<!-- jobops-analytics:start -->[\s\S]*?<!-- jobops-analytics:end -->/;
 
 function isStatsRoute(path: string): boolean {
   return path === "/stats" || path.startsWith("/stats/");
+}
+
+function renderRuntimeConfigScript(): string {
+  return `<script>window.__JOBOPS_ANALYTICS_DISABLED__=${JSON.stringify(isProductAnalyticsDisabled())};</script>`;
+}
+
+function renderHtmlWithRuntimeConfig(html: string): string {
+  const runtimeConfigScript = renderRuntimeConfigScript();
+  const withAnalyticsGate = isProductAnalyticsDisabled()
+    ? html.replace(ANALYTICS_HTML_BLOCK_PATTERN, "")
+    : html;
+
+  if (!withAnalyticsGate.includes("</head>")) return withAnalyticsGate;
+  return withAnalyticsGate.replace(
+    "</head>",
+    `    ${runtimeConfigScript}\n  </head>`,
+  );
 }
 
 function getUmamiUpstreamUrl(originalUrl: string): URL {
@@ -425,6 +445,11 @@ export function createApp() {
   });
 
   app.all(/^\/stats(?:\/.*)?$/, async (req, res) => {
+    if (isProductAnalyticsDisabled()) {
+      res.status(404).type("text/plain; charset=utf-8").send("Not found");
+      return;
+    }
+
     const upstreamUrl = getUmamiUpstreamUrl(req.originalUrl);
     if (!isAllowedUmamiProxyPath(upstreamUrl.pathname)) {
       res.status(404).type("text/plain; charset=utf-8").send("Not found");
@@ -511,7 +536,19 @@ export function createApp() {
     let cachedDocsIndexHtml: string | null = null;
 
     if (existsSync(docsIndexPath)) {
-      app.use("/docs", express.static(docsDir));
+      const sendDocsIndex = async (
+        _req: express.Request,
+        res: express.Response,
+      ) => {
+        if (!cachedDocsIndexHtml) {
+          cachedDocsIndexHtml = await readFile(docsIndexPath, "utf-8");
+        }
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(renderHtmlWithRuntimeConfig(cachedDocsIndexHtml));
+      };
+
+      app.use("/docs", express.static(docsDir, { index: false }));
+      app.get(["/docs", "/docs/"], sendDocsIndex);
       app.get("/docs/*", async (req, res, next) => {
         if (!req.accepts("html")) {
           next();
@@ -521,30 +558,34 @@ export function createApp() {
           next();
           return;
         }
-        if (!cachedDocsIndexHtml) {
-          cachedDocsIndexHtml = await readFile(docsIndexPath, "utf-8");
-        }
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.send(cachedDocsIndexHtml);
+        await sendDocsIndex(req, res);
       });
     }
 
     const clientDir = join(__dirname, "../../dist/client");
-    app.use(express.static(clientDir));
 
     // SPA fallback
     const indexPath = join(clientDir, "index.html");
     let cachedIndexHtml: string | null = null;
+    const sendClientIndex = async (
+      _req: express.Request,
+      res: express.Response,
+    ) => {
+      if (!cachedIndexHtml) {
+        cachedIndexHtml = await readFile(indexPath, "utf-8");
+      }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(renderHtmlWithRuntimeConfig(cachedIndexHtml));
+    };
+
+    app.get(["/", "/index.html"], sendClientIndex);
+    app.use(express.static(clientDir, { index: false }));
     app.get("*", async (req, res) => {
       if (!req.accepts("html")) {
         res.status(404).end();
         return;
       }
-      if (!cachedIndexHtml) {
-        cachedIndexHtml = await readFile(indexPath, "utf-8");
-      }
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.send(cachedIndexHtml);
+      await sendClientIndex(req, res);
     });
   }
 

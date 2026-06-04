@@ -10,6 +10,11 @@ describe("docs umami", () => {
   beforeEach(() => {
     document.head.innerHTML = "";
     document.body.innerHTML = "";
+    window.__JOBOPS_ANALYTICS_DISABLED__ = false;
+  });
+
+  afterEach(() => {
+    delete window.__JOBOPS_ANALYTICS_DISABLED__;
   });
 
   it("uses the direct umami script for standalone docs dev", () => {
@@ -88,6 +93,27 @@ describe("docs umami", () => {
       "docs_intro_self_hosting_click",
       undefined,
     );
+
+    cleanup();
+    delete window.umami;
+  });
+
+  it("does not track docs clicks when analytics is disabled", () => {
+    const track = vi.fn();
+    window.__JOBOPS_ANALYTICS_DISABLED__ = true;
+    window.umami = { track };
+    const cleanup = installDocsUmamiClickTracking({
+      document,
+      windowObject: window,
+    });
+
+    const anchor = document.createElement("a");
+    anchor.dataset.umamiEvent = "docs_intro_self_hosting_click";
+    document.body.appendChild(anchor);
+
+    anchor.click();
+
+    expect(track).not.toHaveBeenCalled();
 
     cleanup();
     delete window.umami;

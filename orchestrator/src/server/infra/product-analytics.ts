@@ -2,6 +2,7 @@ import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-a
 import umamiModule from "@umami/node";
 import { withAnalyticsMetadata } from "@/lib/analytics-metadata";
 
+import { isProductAnalyticsDisabled } from "./analytics-config";
 import { logger } from "./logger";
 import { getRequestContext } from "./request-context";
 import { sanitizeUnknown } from "./sanitize";
@@ -267,6 +268,7 @@ export async function trackServerProductEvent(
   },
 ): Promise<boolean> {
   if (process.env.NODE_ENV === "test") return false;
+  if (isProductAnalyticsDisabled()) return false;
   if (typeof fetch !== "function") return false;
 
   const requestContext = getRequestContext();

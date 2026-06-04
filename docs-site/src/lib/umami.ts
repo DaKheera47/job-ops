@@ -28,10 +28,15 @@ type LocationLike = Pick<Location, "hostname" | "port">;
 type DocumentLike = Pick<Document, "createElement" | "head" | "querySelector">;
 
 type WindowLike = Window & {
+  __JOBOPS_ANALYTICS_DISABLED__?: boolean;
   umami?: {
     track: (eventName: string, payload?: Record<string, unknown>) => void;
   };
 };
+
+export function isJobOpsAnalyticsDisabled(windowObject: WindowLike): boolean {
+  return windowObject.__JOBOPS_ANALYTICS_DISABLED__ === true;
+}
 
 export function isStandaloneDocsDev(
   location: LocationLike,
@@ -113,6 +118,7 @@ export function trackDocsUmamiEvent(
   eventName: string,
   payload?: Record<string, unknown>,
 ): void {
+  if (isJobOpsAnalyticsDisabled(windowObject)) return;
   windowObject.umami?.track(eventName, payload);
 }
 
@@ -120,6 +126,8 @@ export function installDocsUmamiClickTracking(args: {
   document: Document;
   windowObject: WindowLike;
 }): () => void {
+  if (isJobOpsAnalyticsDisabled(args.windowObject)) return () => {};
+
   const handleClick = (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;

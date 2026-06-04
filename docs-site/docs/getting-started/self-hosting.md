@@ -136,6 +136,18 @@ Behavior in demo mode:
 - Disabled: first-run account setup
 - Auto-reset: every 6 hours
 
+## Usage analytics
+
+JobOps includes product and docs usage analytics by default.
+
+To disable analytics for a self-hosted deployment, add this to `.env` and restart:
+
+```bash
+JOBOPS_DISABLE_ANALYTICS=1
+```
+
+When disabled, JobOps does not load browser analytics scripts, does not send server product analytics events, does not attach analytics session headers to API calls, and does not proxy `/stats` requests.
+
 ## Updating
 
 ```bash

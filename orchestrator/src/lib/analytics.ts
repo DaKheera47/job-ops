@@ -5,6 +5,7 @@ import {
 } from "@/lib/analytics-metadata";
 
 declare const __APP_VERSION__: string;
+declare const __JOBOPS_ANALYTICS_DISABLED__: boolean;
 
 type UmamiTracker = {
   track: (event: string, data?: Record<string, unknown>) => void;
@@ -28,12 +29,37 @@ type OpenPanelTracker = {
 
 declare global {
   interface Window {
+    __JOBOPS_ANALYTICS_DISABLED__?: boolean;
     umami?: UmamiTracker;
     op?: OpenPanelTracker;
   }
 }
 
+const ANALYTICS_DISABLED_TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
+
+function isTruthyEnvFlag(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    ANALYTICS_DISABLED_TRUTHY_VALUES.has(value.trim().toLowerCase())
+  );
+}
+
+export function isAnalyticsDisabled(): boolean {
+  if (typeof window !== "undefined" && window.__JOBOPS_ANALYTICS_DISABLED__) {
+    return true;
+  }
+
+  try {
+    if (__JOBOPS_ANALYTICS_DISABLED__ === true) return true;
+  } catch {
+    // The compile-time flag is provided by Vite.
+  }
+
+  return isTruthyEnvFlag(import.meta.env?.VITE_JOBOPS_DISABLE_ANALYTICS);
+}
+
 export function trackEvent(event: string, data?: Record<string, unknown>) {
+  if (isAnalyticsDisabled()) return;
   if (typeof window === "undefined") return;
   const payload = withAnalyticsMetadata(data as AnalyticsPayload | undefined, {
     analyticsUserId: getEventAnalyticsUserId(),
@@ -295,6 +321,7 @@ function generateAnalyticsSessionId() {
 }
 
 function getAnalyticsUserId(): string | null {
+  if (isAnalyticsDisabled()) return null;
   if (typeof window === "undefined") return null;
   if (cachedAnalyticsUserId) return cachedAnalyticsUserId;
 
@@ -327,6 +354,7 @@ function getAnalyticsAppVersion(): string | null {
 }
 
 export function getAnalyticsSessionId(): string | null {
+  if (isAnalyticsDisabled()) return null;
   if (typeof window === "undefined") return null;
   if (cachedAnalyticsSessionId) return cachedAnalyticsSessionId;
 
@@ -349,6 +377,7 @@ export function getAnalyticsSessionId(): string | null {
 }
 
 export function getAnalyticsRequestHeaders(): Record<string, string> {
+  if (isAnalyticsDisabled()) return {};
   const sessionId = getAnalyticsSessionId();
   return sessionId
     ? {
@@ -430,6 +459,7 @@ export function trackProductEvent<T extends ProductEventName>(
   event: T,
   data: ProductEventMap[T],
 ) {
+  if (isAnalyticsDisabled()) return;
   const sanitized = sanitizeEventPayload(data as Record<string, unknown>);
   if (shouldDedupe(event, sanitized)) return;
   trackEvent(event, sanitized);
@@ -444,6 +474,7 @@ function normalizeDistinctId(id: string | null | undefined): string | null {
 export function identifyAnalyticsUser(
   distinctId: string | null | undefined,
 ): void {
+  if (isAnalyticsDisabled()) return;
   if (typeof window === "undefined") return;
   const umamiIdentify = window.umami?.identify;
   const openPanel = window.op;
