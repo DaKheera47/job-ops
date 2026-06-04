@@ -6,6 +6,7 @@
  */
 
 export * from "./types/api";
+export * from "./types/app";
 export * from "./types/chat";
 export * from "./types/design-resume";
 export * from "./types/design-resume-jake";

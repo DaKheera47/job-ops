@@ -3,6 +3,7 @@
  */
 
 import { Router } from "express";
+import { appStatusRouter } from "./routes/app-status";
 import { authRouter } from "./routes/auth";
 import { backupRouter } from "./routes/backup";
 import { databaseRouter } from "./routes/database";
@@ -27,6 +28,7 @@ import { workspacesRouter } from "./routes/workspaces";
 
 export const apiRouter = Router();
 
+apiRouter.use("/app", appStatusRouter);
 apiRouter.use("/jobs", jobsRouter);
 apiRouter.use("/jobs/:id/chat", ghostwriterRouter);
 apiRouter.use("/demo", demoRouter);

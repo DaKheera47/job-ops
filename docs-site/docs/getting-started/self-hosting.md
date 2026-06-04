@@ -56,6 +56,29 @@ Settings and user accounts are saved to the local database. If you are upgrading
 
 System admins can create more users from **Settings → Environment & Workspaces**. Each created user receives a separate private workspace with isolated jobs, settings, resumes, integrations, PDFs, pipeline runs, chat, analytics, and post-application data.
 
+## Hosted single-tenant mode
+
+JobOps defaults to local/self-hosted mode when hosted flags are unset. Hosted mode is an env-gated deployment mode for running one configured tenant with multiple users in that tenant.
+
+To enable hosted mode, set:
+
+```bash
+JOBOPS_APP_MODE=hosted
+JOBOPS_HOSTED_TENANT_ID=tenant_hosted
+```
+
+`JOBOPS_HOSTED_TENANT_ID` is required in hosted mode. JobOps fails startup if `JOBOPS_APP_MODE=hosted` is set without a hosted tenant ID.
+
+Optional hosted capabilities default to disabled:
+
+```bash
+JOBOPS_HOSTED_SIGNUPS_ENABLED=false
+JOBOPS_HOSTED_PLATFORM_LLM_ENABLED=false
+JOBOPS_HOSTED_QUOTAS_ENABLED=false
+```
+
+These flags only affect hosted mode. Leaving `JOBOPS_APP_MODE` unset keeps the current first-run setup, private-workspace user creation, settings, and local behavior unchanged.
+
 ## Codex sign-in
 
 For full Codex auth troubleshooting (including device-code authorization errors), see:

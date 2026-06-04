@@ -20,6 +20,7 @@ import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { verifyToken } from "@server/auth/jwt";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import * as usersRepo from "@server/repositories/users";
 import { proxyChallengeViewerRequest } from "@server/services/challenge-viewer";
@@ -193,6 +194,7 @@ export function createAuthGuard() {
 
     // Explicitly allowed public API routes
     if (normalizedPath === "/api/demo/info") return true;
+    if (normalizedPath === "/api/app/status") return true;
     if (normalizedPath === "/api/profile/status") return true;
     if (
       normalizedMethod === "POST" &&
@@ -334,6 +336,8 @@ export function createAuthGuard() {
 }
 
 export function createApp() {
+  getJobOpsAppConfig();
+
   const app = express();
   const authGuard = createAuthGuard();
   const corsMiddleware = cors();
