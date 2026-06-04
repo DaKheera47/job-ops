@@ -5,7 +5,6 @@ import {
 } from "@/lib/analytics-metadata";
 
 declare const __APP_VERSION__: string;
-declare const __JOBOPS_ANALYTICS_DISABLED__: boolean;
 
 type UmamiTracker = {
   track: (event: string, data?: Record<string, unknown>) => void;
@@ -35,27 +34,11 @@ declare global {
   }
 }
 
-const ANALYTICS_DISABLED_TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
-
-function isTruthyEnvFlag(value: unknown): boolean {
-  return (
-    typeof value === "string" &&
-    ANALYTICS_DISABLED_TRUTHY_VALUES.has(value.trim().toLowerCase())
-  );
-}
-
 export function isAnalyticsDisabled(): boolean {
-  if (typeof window !== "undefined" && window.__JOBOPS_ANALYTICS_DISABLED__) {
-    return true;
-  }
-
-  try {
-    if (__JOBOPS_ANALYTICS_DISABLED__ === true) return true;
-  } catch {
-    // The compile-time flag is provided by Vite.
-  }
-
-  return isTruthyEnvFlag(import.meta.env?.VITE_JOBOPS_DISABLE_ANALYTICS);
+  return (
+    typeof window !== "undefined" &&
+    window.__JOBOPS_ANALYTICS_DISABLED__ === true
+  );
 }
 
 export function trackEvent(event: string, data?: Record<string, unknown>) {

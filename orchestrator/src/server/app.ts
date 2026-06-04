@@ -69,20 +69,11 @@ function isStatsRoute(path: string): boolean {
   return path === "/stats" || path.startsWith("/stats/");
 }
 
-function renderRuntimeConfigScript(): string {
-  return `<script>window.__JOBOPS_ANALYTICS_DISABLED__=${JSON.stringify(isProductAnalyticsDisabled())};</script>`;
-}
-
 function renderHtmlWithRuntimeConfig(html: string): string {
-  const runtimeConfigScript = renderRuntimeConfigScript();
-  const withAnalyticsGate = isProductAnalyticsDisabled()
-    ? html.replace(ANALYTICS_HTML_BLOCK_PATTERN, "")
-    : html;
-
-  if (!withAnalyticsGate.includes("</head>")) return withAnalyticsGate;
-  return withAnalyticsGate.replace(
-    "</head>",
-    `    ${runtimeConfigScript}\n  </head>`,
+  if (!isProductAnalyticsDisabled()) return html;
+  return html.replace(
+    ANALYTICS_HTML_BLOCK_PATTERN,
+    "\n    <script>window.__JOBOPS_ANALYTICS_DISABLED__=true;</script>",
   );
 }
 
