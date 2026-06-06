@@ -889,7 +889,7 @@ describe("importDesignResumeFromFile", () => {
 
   it("returns a capability error when the configured provider is unsupported", async () => {
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
-      provider: "codex",
+      provider: "anthropic",
       model: "gpt-5",
       baseUrl: null,
       apiKey: null,

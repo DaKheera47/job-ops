@@ -75,7 +75,7 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
 export const DEFAULT_GLM_MODEL = "glm-5.1";
-export const DEFAULT_CODEX_MODEL = "";
+export const DEFAULT_CODEX_MODEL = "gpt-5.4";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,

@@ -13,6 +13,7 @@ import {
   extractPdfText,
   PdfTextExtractionError,
 } from "@server/services/document-text-extraction";
+import { CodexClient } from "@server/services/llm/codex/client";
 import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
@@ -40,6 +41,7 @@ type SupportedRuntimeProvider =
   | "glm"
   | "gemini"
   | "gemini_cli"
+  | "codex"
   | "openai_compatible"
   | "ollama"
   | "lmstudio";
@@ -65,6 +67,22 @@ const DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA: JsonSchemaDefinition = {
       "customSections",
     ],
     additionalProperties: true,
+  },
+};
+
+const DESIGN_RESUME_IMPORT_CODEX_WRAPPER_JSON_SCHEMA: JsonSchemaDefinition = {
+  name: "design_resume_import_codex_wrapper",
+  schema: {
+    type: "object",
+    properties: {
+      resumeJson: {
+        type: "string",
+        description:
+          "The complete extracted resume document as a JSON string matching the requested target shape.",
+      },
+    },
+    required: ["resumeJson"],
+    additionalProperties: false,
   },
 };
 
@@ -138,6 +156,7 @@ function normalizeRuntimeProvider(
   if (mapped === "glm") return "glm";
   if (mapped === "gemini") return "gemini";
   if (mapped === "gemini_cli") return "gemini_cli";
+  if (normalized === "codex") return "codex";
   if (mapped === "openai_compatible") return "openai_compatible";
   if (mapped === "ollama") return "ollama";
   if (mapped === "lmstudio") return "lmstudio";
@@ -637,6 +656,21 @@ ${buildUserPrompt()}
 `.trim();
 }
 
+function buildCodexTextExtractPrompt(
+  documentText: string,
+  fileName: string,
+  source: "DOCX" | "PDF",
+): string {
+  return `
+${buildTextExtractPrompt(documentText, fileName, source)}
+
+Codex structured-output requirement:
+- Return a wrapper object with exactly one key: resumeJson.
+- The resumeJson value must be a JSON string containing the final target-shaped resume object.
+- The resumeJson string must be parseable by JSON.parse.
+`.trim();
+}
+
 function buildDocumentTextPrompt(
   documentText: string,
   fileName: string,
@@ -733,6 +767,24 @@ function parseImportedResumeJson(content: string): unknown {
       );
     }
   }
+}
+
+function parseCodexResumeJsonWrapper(content: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(extractProbablyJsonObject(content)) as unknown;
+  } catch (error) {
+    throw new Error(
+      `Codex returned an invalid resume import wrapper. ${error instanceof Error ? error.message : "Unknown parsing error."}`,
+    );
+  }
+
+  const resumeJson = asRecord(parsed)?.resumeJson;
+  if (typeof resumeJson !== "string" || !resumeJson.trim()) {
+    throw new Error("Codex resume import wrapper did not include resumeJson.");
+  }
+
+  return resumeJson;
 }
 
 function filterRequiredItems(items: unknown, requiredField: string): unknown[] {
@@ -863,7 +915,7 @@ function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, Gemini (CLI), OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect Codex, OpenAI, OpenRouter, Gemini, Gemini (CLI), OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -943,6 +995,7 @@ async function extractInitialDocumentText(input: {
   if (
     input.mediaType === "application/pdf" &&
     (input.provider === "gemini_cli" ||
+      input.provider === "codex" ||
       isTextOnlyImportProvider(input.provider))
   ) {
     return extractResumePdfText(input.decoded);
@@ -1331,7 +1384,7 @@ async function extractWithGeminiCli(args: {
 }): Promise<string> {
   const source: "DOCX" | "PDF" =
     args.mediaType === "application/pdf" ? "PDF" : "DOCX";
-  const userContent = buildTextExtractPrompt(
+  const userContent = buildCodexTextExtractPrompt(
     args.documentText,
     args.fileName,
     source,
@@ -1370,6 +1423,54 @@ async function extractWithGeminiCli(args: {
   }
 }
 
+async function extractWithCodex(args: {
+  model: string;
+  mediaType: SupportedImportMediaType;
+  fileName: string;
+  documentText: string;
+  requestId: string | undefined;
+}): Promise<string> {
+  const source: "DOCX" | "PDF" =
+    args.mediaType === "application/pdf" ? "PDF" : "DOCX";
+  const userContent = buildTextExtractPrompt(
+    args.documentText,
+    args.fileName,
+    source,
+  );
+  const client = new CodexClient();
+  try {
+    const { text } = await client.callJson({
+      model: args.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userContent },
+      ],
+      jsonSchema: DESIGN_RESUME_IMPORT_CODEX_WRAPPER_JSON_SCHEMA,
+    });
+    if (!text?.trim()) {
+      throw upstreamError(
+        "Codex returned an empty response for resume import.",
+      );
+    }
+    return parseCodexResumeJsonWrapper(text);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    throw upstreamError(
+      truncate(message, 500),
+      args.requestId
+        ? {
+            provider: "codex",
+            model: args.model,
+            requestId: args.requestId,
+          }
+        : { provider: "codex", model: args.model },
+    );
+  }
+}
+
 async function extractResumeFromProvider(args: {
   provider: SupportedRuntimeProvider;
   apiKey: string;
@@ -1389,6 +1490,21 @@ async function extractResumeFromProvider(args: {
       );
     }
     return extractWithGeminiCli({
+      model: args.model,
+      mediaType: args.mediaType,
+      fileName: args.fileName,
+      documentText: text,
+      requestId: args.requestId,
+    });
+  }
+  if (args.provider === "codex") {
+    const text = args.documentText?.trim();
+    if (!text) {
+      throw badRequest(
+        "Codex resume import requires plain-text resume content (DOCX or extracted PDF text).",
+      );
+    }
+    return extractWithCodex({
       model: args.model,
       mediaType: args.mediaType,
       fileName: args.fileName,
