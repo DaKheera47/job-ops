@@ -45,5 +45,8 @@ describe("LlmModelConfiguration", () => {
     expect(
       screen.queryByText("No API key is required for this provider."),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "find out what model name to use" }),
+    ).toHaveAttribute("href", "https://developers.openai.com/codex/models");
   });
 });

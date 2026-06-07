@@ -356,7 +356,7 @@ describe("settingsRegistry helpers", () => {
       expect(getDefaultModelForProvider("gemini_cli")).toBe(
         "google/gemini-3-flash-preview",
       );
-      expect(getDefaultModelForProvider("codex")).toBe("");
+      expect(getDefaultModelForProvider("codex")).toBe("gpt-5.4-mini");
       expect(getDefaultModelForProvider("openrouter")).toBe(
         "google/gemini-3-flash-preview",
       );

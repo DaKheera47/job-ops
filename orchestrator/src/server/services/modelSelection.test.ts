@@ -370,7 +370,7 @@ describe("Model Selection Logic", () => {
       );
     });
 
-    it("should not inherit the global model when tailoring uses Codex with no model override", async () => {
+    it("uses the Codex default model when tailoring uses Codex with no model override", async () => {
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
       vi.mocked(getEffectiveSettings).mockResolvedValue({
         model: {
@@ -402,12 +402,12 @@ describe("Model Selection Logic", () => {
         },
       } as any);
 
-      await expect(resolveLlmModel("tailoring")).resolves.toBe("");
+      await expect(resolveLlmModel("tailoring")).resolves.toBe("gpt-5.4-mini");
       await expect(
         resolveLlmRuntimeSettings("tailoring"),
       ).resolves.toMatchObject({
         provider: "codex",
-        model: "",
+        model: "gpt-5.4-mini",
       });
     });
 

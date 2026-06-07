@@ -70,6 +70,22 @@ const DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA: JsonSchemaDefinition = {
   },
 };
 
+const DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA: JsonSchemaDefinition = {
+  name: "codex_output_schema",
+  schema: {
+    type: "object",
+    properties: {
+      json: {
+        type: "string",
+        description:
+          "The extracted Resume Studio JSON document serialized as a JSON string.",
+      },
+    },
+    required: ["json"],
+    additionalProperties: false,
+  },
+};
+
 type ResumeImportFileInput = {
   fileName: string;
   mediaType?: string | null;
@@ -738,6 +754,23 @@ function parseImportedResumeJson(content: string): unknown {
   }
 }
 
+function parseCodexResumeImportResponse(content: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    throw upstreamError(
+      `Codex returned malformed resume import JSON. ${error instanceof Error ? error.message : "Unknown parsing error."}`,
+    );
+  }
+
+  const json = asRecord(parsed)?.json;
+  if (typeof json !== "string" || !json.trim()) {
+    throw upstreamError("Codex returned an empty resume import JSON payload.");
+  }
+  return json.trim();
+}
+
 function filterRequiredItems(items: unknown, requiredField: string): unknown[] {
   return asArray(items).filter((item) =>
     trimText(asRecord(item)?.[requiredField]),
@@ -1388,22 +1421,25 @@ async function extractWithCodex(args: {
     args.fileName,
     source,
   );
+  const codexUserContent = `${userContent}
+
+Return an object with exactly one property named "json". The "json" value must be a string containing the extracted Resume Studio JSON document.`;
   const client = new CodexClient();
   try {
     const { text } = await client.callJson({
       model: args.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
+        { role: "user", content: codexUserContent },
       ],
-      jsonSchema: DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA,
+      jsonSchema: DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA,
     });
     if (!text?.trim()) {
       throw upstreamError(
         "Codex returned an empty response for resume import.",
       );
     }
-    return text;
+    return parseCodexResumeImportResponse(text);
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
