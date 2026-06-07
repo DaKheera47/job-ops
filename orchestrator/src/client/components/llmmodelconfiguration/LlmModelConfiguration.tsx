@@ -77,6 +77,9 @@ type LlmModelConfigurationProps = {
   modelProjectSelection?: TextFieldBinding;
   purposeOverrides?: PurposeOverrideBinding;
   validationSlot?: React.ReactNode;
+  onCodexAuthStatusChange?: React.ComponentProps<
+    typeof CodexAuthPanel
+  >["onStatusChange"];
 };
 
 export function LlmModelConfiguration({
@@ -97,6 +100,7 @@ export function LlmModelConfiguration({
   modelProjectSelection,
   purposeOverrides,
   validationSlot,
+  onCodexAuthStatusChange,
 }: LlmModelConfigurationProps) {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -292,7 +296,12 @@ export function LlmModelConfiguration({
               ) : null}
               <p className={providerHintClass}>{providerConfig.providerHint}</p>
             </div>
-            {isCodexProvider ? <CodexAuthPanel isBusy={disabled} /> : null}
+            {isCodexProvider ? (
+              <CodexAuthPanel
+                isBusy={disabled}
+                onStatusChange={onCodexAuthStatusChange}
+              />
+            ) : null}
             {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
             {showBaseUrl ? (
               <SettingsInput

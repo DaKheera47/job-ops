@@ -46,6 +46,10 @@ vi.mock("./onboarding/components/OnboardingCoach", () => ({
 vi.mock("./onboarding/components/OnboardingStepContent", () => ({
   OnboardingStepContent: (props: {
     currentStep: string;
+    onCodexAuthStatusChange?: (status: {
+      authenticated: boolean;
+      loginInProgress: boolean;
+    }) => void;
     onImportResumeFile: (file: File) => Promise<void>;
     onTemplateResumeChange: (value: string | null) => void;
   }) => (
@@ -68,6 +72,17 @@ vi.mock("./onboarding/components/OnboardingStepContent", () => ({
         onClick={() => props.onTemplateResumeChange("resume-2")}
       >
         Choose alternate resume
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onCodexAuthStatusChange?.({
+            authenticated: true,
+            loginInProgress: false,
+          })
+        }
+      >
+        Mock Codex authenticated
       </button>
     </div>
   ),
@@ -301,6 +316,41 @@ describe("OnboardingPage", () => {
         provider: "openrouter",
       }),
     ]);
+  });
+
+  it("verifies and persists the Codex provider when Codex auth completes", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      settings: {
+        ...baseSettings,
+        llmProvider: {
+          value: "codex",
+          default: "codex",
+          override: "codex",
+        },
+      } as any,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+      autoTailorOnManualImport: true,
+    });
+
+    await renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /mock codex authenticated/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.saveOnboardingModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "codex",
+          apiKey: null,
+          baseUrl: null,
+        }),
+      );
+    });
   });
 
   it("keeps Reactive Resume blocked when the server requires template selection", async () => {

@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   type AuthUser,
+  type CodexAuthStatusResponse,
   getAuthBootstrapStatus,
   hasAuthenticatedSession,
   setupFirstAdmin,
@@ -704,6 +705,7 @@ const LaunchOnboardingPage: React.FC = () => {
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
   const launchStartedAtRef = useRef(Date.now());
+  const codexAutoSaveAttemptedRef = useRef(false);
   const searchTermsAttemptedRef = useRef(false);
   const trackedModelConfigFieldsRef = useRef(
     new Set<"provider" | "endpoint" | "api_key" | "model">(),
@@ -842,6 +844,38 @@ const LaunchOnboardingPage: React.FC = () => {
     flow.settingsLoading,
     onboarding.complete,
   ]);
+
+  const handleCodexAuthStatusChange = useCallback(
+    (status: CodexAuthStatusResponse) => {
+      if (flow.selectedProvider !== "codex") {
+        codexAutoSaveAttemptedRef.current = false;
+        return;
+      }
+
+      if (!status.authenticated) {
+        if (!status.loginInProgress) codexAutoSaveAttemptedRef.current = false;
+        return;
+      }
+
+      if (
+        codexAutoSaveAttemptedRef.current ||
+        flow.isBusy ||
+        modelRequirement?.status === "ready"
+      ) {
+        return;
+      }
+
+      codexAutoSaveAttemptedRef.current = true;
+      void flow.handleSaveModel().then((nextStatus) => {
+        if (!nextStatus) {
+          codexAutoSaveAttemptedRef.current = false;
+          return;
+        }
+        if (nextStatus.complete) setActivePanel("first-run");
+      });
+    },
+    [flow, modelRequirement?.status],
+  );
 
   if (flow.demoMode) {
     return <Navigate to="/jobs/ready" replace />;
@@ -1086,6 +1120,7 @@ const LaunchOnboardingPage: React.FC = () => {
                         trackModelConfigChanged("model", { model: value });
                         flow.setValue("model", value, { shouldDirty: true });
                       }}
+                      onCodexAuthStatusChange={handleCodexAuthStatusChange}
                       onLlmProviderChange={(value) => {
                         trackModelConfigChanged("provider", {
                           provider: value,

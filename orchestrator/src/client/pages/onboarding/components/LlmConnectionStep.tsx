@@ -1,3 +1,4 @@
+import type * as api from "@client/api";
 import { LlmModelConfiguration } from "@client/components/llmmodelconfiguration/LlmModelConfiguration";
 import {
   getLlmProviderConfig,
@@ -21,6 +22,9 @@ export const LlmConnectionStep: React.FC<{
   validation: ValidationState;
   onApiKeyChange: (value: string) => void;
   onBaseUrlChange: (value: string) => void;
+  onCodexAuthStatusChange?: (
+    status: Awaited<ReturnType<typeof api.getCodexAuthStatus>>,
+  ) => void;
   onModelChange: (value: string) => void;
   onProviderChange: (value: string) => void;
 }> = ({
@@ -37,6 +41,7 @@ export const LlmConnectionStep: React.FC<{
   validation,
   onApiKeyChange,
   onBaseUrlChange,
+  onCodexAuthStatusChange,
   onModelChange,
   onProviderChange,
 }) => {
@@ -75,6 +80,7 @@ export const LlmConnectionStep: React.FC<{
             successMessage={`${providerConfig.label} connection verified.`}
           />
         }
+        onCodexAuthStatusChange={onCodexAuthStatusChange}
       />
     </div>
   );

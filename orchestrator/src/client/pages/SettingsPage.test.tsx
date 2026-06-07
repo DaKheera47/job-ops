@@ -285,8 +285,13 @@ describe("SettingsPage", () => {
     await openModelSection();
 
     expect(
-      await screen.findByText("Codex login completed."),
+      await screen.findByText(
+        "Codex is not authenticated in this container. Run `codex login` and try again.",
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Codex login completed."),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/ABCD-EFGH/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /check status/i }),

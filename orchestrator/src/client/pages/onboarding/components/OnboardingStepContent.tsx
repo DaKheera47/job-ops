@@ -1,3 +1,4 @@
+import type * as api from "@client/api";
 import type { LlmProviderId } from "@client/pages/settings/utils";
 import type React from "react";
 import type { ResumeSetupMode, StepId, ValidationState } from "../types";
@@ -30,6 +31,9 @@ export const OnboardingStepContent: React.FC<{
   selectedProvider: LlmProviderId;
   onLlmApiKeyChange: (value: string) => void;
   onLlmBaseUrlChange: (value: string) => void;
+  onCodexAuthStatusChange?: (
+    status: Awaited<ReturnType<typeof api.getCodexAuthStatus>>,
+  ) => void;
   onLlmModelChange: (value: string) => void;
   onLlmProviderChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
@@ -55,6 +59,7 @@ export const OnboardingStepContent: React.FC<{
         validation={props.llmValidation}
         onApiKeyChange={props.onLlmApiKeyChange}
         onBaseUrlChange={props.onLlmBaseUrlChange}
+        onCodexAuthStatusChange={props.onCodexAuthStatusChange}
         onModelChange={props.onLlmModelChange}
         onProviderChange={props.onLlmProviderChange}
       />
