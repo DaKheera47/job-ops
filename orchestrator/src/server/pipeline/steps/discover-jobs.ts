@@ -1,9 +1,11 @@
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getExtractorRegistry } from "@server/extractors/registry";
+import { getUserId } from "@server/infra/request-context";
 import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { asyncPool } from "@server/utils/async-pool";
+import { listHydratedWatchlistSelectedSources } from "@server/watchlist/results";
 import type { ExtractorSourceId } from "@shared/extractors";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import {
@@ -21,6 +23,7 @@ import {
   progressHelpers,
   updateProgress,
 } from "../progress";
+import { discoverWatchlistJobsForPipeline } from "./watchlist-jobs";
 
 const DISCOVERY_CONCURRENCY = 3;
 
@@ -306,7 +309,23 @@ export async function discoverJobsStep(args: {
     });
   }
 
-  const totalSources = sourceTasks.length;
+  let watchlistSelectedSources: Awaited<
+    ReturnType<typeof listHydratedWatchlistSelectedSources>
+  > = [];
+  if (getUserId()) {
+    try {
+      watchlistSelectedSources = await listHydratedWatchlistSelectedSources();
+    } catch (error) {
+      logger.warn("Failed to load Watchlist sources for pipeline discovery", {
+        step: "discover-jobs",
+        error: sanitizeUnknown(error),
+      });
+      sourceErrors.push("Watchlist: failed to load selected sources");
+    }
+  }
+
+  const totalSources =
+    sourceTasks.length + (watchlistSelectedSources.length > 0 ? 1 : 0);
   let completedSources = 0;
 
   progressHelpers.startCrawling(totalSources);
@@ -363,6 +382,29 @@ export async function discoverJobsStep(args: {
     sourceErrors.push(...sourceResult.sourceErrors);
     if (sourceResult.challenge) {
       pendingChallenges.push(sourceResult.challenge);
+    }
+  }
+
+  if (watchlistSelectedSources.length > 0 && !args.shouldCancel?.()) {
+    progressHelpers.startSource("watchlist", completedSources, totalSources, {
+      detail: "Watchlist: fetching saved sources...",
+    });
+    const watchlistResult = await discoverWatchlistJobsForPipeline({
+      selectedSources: watchlistSelectedSources,
+      shouldCancel: args.shouldCancel,
+    });
+    completedSources += 1;
+    progressHelpers.completeSource(completedSources, totalSources);
+
+    discoveredJobs.push(...watchlistResult.discoveredJobs);
+    sourceErrors.push(...watchlistResult.sourceErrors);
+
+    if (
+      sourceTasks.length === 0 &&
+      watchlistResult.selectedSourceCount > 0 &&
+      watchlistResult.failedSourceCount === watchlistResult.selectedSourceCount
+    ) {
+      throw new Error(`All sources failed: ${sourceErrors.join("; ")}`);
     }
   }
 

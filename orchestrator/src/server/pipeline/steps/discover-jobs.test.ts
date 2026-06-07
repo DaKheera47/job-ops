@@ -1,3 +1,4 @@
+import { runWithRequestContext } from "@infra/request-context";
 import type { PipelineConfig } from "@shared/types";
 import type { ExtractorRuntimeContext } from "@shared/types/extractors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +15,19 @@ vi.mock("@server/repositories/jobs", () => ({
 
 vi.mock("@server/extractors/registry", () => ({
   getExtractorRegistry: vi.fn(),
+}));
+
+vi.mock("@server/watchlist/results", () => ({
+  listHydratedWatchlistSelectedSources: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("./watchlist-jobs", () => ({
+  discoverWatchlistJobsForPipeline: vi.fn().mockResolvedValue({
+    discoveredJobs: [],
+    sourceErrors: [],
+    selectedSourceCount: 0,
+    failedSourceCount: 0,
+  }),
 }));
 
 const baseConfig: PipelineConfig = {
@@ -288,6 +302,202 @@ describe("discoverJobsStep", () => {
 
     expect(result.discoveredJobs).toEqual([]);
     expect(result.sourceErrors).toEqual([]);
+  });
+
+  it("adds watchlist jobs to normal extractor discovery for the active user", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const watchlistResults = await import("@server/watchlist/results");
+    const watchlistStep = await import("./watchlist-jobs");
+
+    const selectedWatchlistSource = {
+      id: "watchlist-source",
+      catalogSourceId: "acme",
+      label: "Acme",
+      careersUrl: "https://acme.wd1.myworkdayjobs.com/acme",
+      cxsJobsUrl: null,
+      sourceType: "workday",
+      isCustom: false,
+      sortOrder: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    const jobspyManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["linkedin"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Extractor Engineer",
+            employer: "Extractor Co",
+            jobUrl: "https://example.com/extractor",
+            location: "London, United Kingdom",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", jobspyManifest as any]]),
+      manifestBySource: new Map([["linkedin", jobspyManifest as any]]),
+      availableSources: ["linkedin"],
+    } as any);
+    vi.mocked(
+      watchlistResults.listHydratedWatchlistSelectedSources,
+    ).mockResolvedValue([selectedWatchlistSource as any]);
+    vi.mocked(watchlistStep.discoverWatchlistJobsForPipeline).mockResolvedValue(
+      {
+        discoveredJobs: [
+          {
+            source: "workday:acme",
+            sourceJobId: "watchlist-job",
+            title: "Watchlist Engineer",
+            employer: "Acme",
+            jobUrl: "https://example.com/watchlist",
+            applicationLink: "https://example.com/watchlist",
+            location: "London, United Kingdom",
+            jobDescription: "Build product systems.",
+          },
+        ],
+        sourceErrors: [],
+        selectedSourceCount: 1,
+        failedSourceCount: 0,
+      },
+    );
+
+    const result = await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverJobsStep({
+          mergedConfig: {
+            ...baseConfig,
+            sources: ["linkedin"],
+          },
+        }),
+    );
+
+    expect(result.discoveredJobs.map((job) => job.title)).toEqual([
+      "Extractor Engineer",
+      "Watchlist Engineer",
+    ]);
+    expect(watchlistStep.discoverWatchlistJobsForPipeline).toHaveBeenCalledWith(
+      {
+        selectedSources: [selectedWatchlistSource],
+        shouldCancel: undefined,
+      },
+    );
+  });
+
+  it("does not touch watchlist discovery when no user context exists", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const watchlistResults = await import("@server/watchlist/results");
+    const watchlistStep = await import("./watchlist-jobs");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map(),
+      manifestBySource: new Map(),
+      availableSources: [],
+    } as any);
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: [],
+      },
+    });
+
+    expect(
+      watchlistResults.listHydratedWatchlistSelectedSources,
+    ).not.toHaveBeenCalled();
+    expect(
+      watchlistStep.discoverWatchlistJobsForPipeline,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("keeps watchlist source failures non-fatal when extractors succeed", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const watchlistResults = await import("@server/watchlist/results");
+    const watchlistStep = await import("./watchlist-jobs");
+
+    const selectedWatchlistSource = {
+      id: "watchlist-source",
+      catalogSourceId: null,
+      label: "Acme",
+      careersUrl: "https://acme.wd1.myworkdayjobs.com/acme",
+      cxsJobsUrl: null,
+      sourceType: "workday",
+      isCustom: true,
+      sortOrder: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const linkedinManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["linkedin"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Engineer",
+            employer: "Contoso",
+            jobUrl: "https://example.com/job",
+            location: "London, United Kingdom",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", linkedinManifest as any]]),
+      manifestBySource: new Map([["linkedin", linkedinManifest as any]]),
+      availableSources: ["linkedin"],
+    } as any);
+    vi.mocked(
+      watchlistResults.listHydratedWatchlistSelectedSources,
+    ).mockResolvedValue([selectedWatchlistSource as any]);
+    vi.mocked(watchlistStep.discoverWatchlistJobsForPipeline).mockResolvedValue(
+      {
+        discoveredJobs: [],
+        sourceErrors: ["Watchlist Acme: failed to fetch jobs"],
+        selectedSourceCount: 1,
+        failedSourceCount: 1,
+      },
+    );
+
+    const result = await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverJobsStep({
+          mergedConfig: {
+            ...baseConfig,
+            sources: ["linkedin"],
+          },
+        }),
+    );
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.sourceErrors).toContain(
+      "Watchlist Acme: failed to fetch jobs",
+    );
   });
 
   it("drops discovered jobs when employer matches blocked company keywords", async () => {

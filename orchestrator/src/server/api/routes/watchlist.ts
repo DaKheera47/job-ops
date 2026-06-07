@@ -1,31 +1,20 @@
-import {
-  badRequest,
-  notFound,
-  toAppError,
-  unprocessableEntity,
-} from "@infra/errors";
+import { badRequest, toAppError, unprocessableEntity } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { listCareerBoardSources } from "@server/config/career-boards";
-import * as jobsRepo from "@server/repositories/jobs";
 import * as watchlistRepo from "@server/repositories/watchlist";
+import { getWatchlistSourceAdapter } from "@server/watchlist/adapters";
 import {
-  getWatchlistSourceAdapter,
-  listWatchlistSourceAdapters,
-} from "@server/watchlist/adapters";
-import type {
-  JobListItem,
-  WatchlistCheckResponse,
-  WatchlistJobResult,
-  WatchlistResultsResponse,
-  WatchlistSelectedSource,
-  WatchlistSourceResult,
-} from "@shared/types";
+  getCurrentWatchlistResults,
+  getWatchlistSelectedSourceById,
+  getWatchlistSourceTypeDescriptors,
+  hydrateWatchlistSelectedSources,
+  withWatchlistSourceTimeout,
+} from "@server/watchlist/results";
+import type { WatchlistResultsResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const watchlistRouter = Router();
-
-const WATCHLIST_SOURCE_TIMEOUT_MS = 30000;
 
 const watchlistStateParamsSchema = z.object({
   source: z.string().trim().min(1).max(120),
@@ -73,25 +62,6 @@ const watchlistSourceBrandingSchema = z.object({
   careersUrl: z.string().trim().url().max(2000),
 });
 
-function getSourceTypeDescriptors() {
-  return listWatchlistSourceAdapters().map((adapter) => adapter.descriptor);
-}
-
-function hydrateSelectedSource(
-  source: WatchlistSelectedSource,
-): WatchlistSelectedSource {
-  const adapter = getWatchlistSourceAdapter(source.sourceType);
-  return adapter?.hydrateSelectedSource(source) ?? source;
-}
-
-function hydrateSelectedSources(
-  selectedSources: Awaited<
-    ReturnType<typeof watchlistRepo.listWatchlistSelectedSources>
-  >,
-) {
-  return selectedSources.map(hydrateSelectedSource);
-}
-
 function getWatchlistSourcesPayload(
   catalogSources: Awaited<ReturnType<typeof listCareerBoardSources>>,
   selectedSources: Awaited<
@@ -100,8 +70,8 @@ function getWatchlistSourcesPayload(
 ) {
   return {
     catalogSources,
-    selectedSources: hydrateSelectedSources(selectedSources),
-    availableSourceTypes: getSourceTypeDescriptors(),
+    selectedSources: hydrateWatchlistSelectedSources(selectedSources),
+    availableSourceTypes: getWatchlistSourceTypeDescriptors(),
   };
 }
 
@@ -127,57 +97,10 @@ watchlistRouter.get(
 watchlistRouter.post(
   "/results",
   asyncRoute(async (_req: Request, res: Response) => {
-    const selectedSources = hydrateSelectedSources(
-      await watchlistRepo.listWatchlistSelectedSources(),
+    ok(
+      res,
+      (await getCurrentWatchlistResults()) satisfies WatchlistResultsResponse,
     );
-
-    if (selectedSources.length === 0) {
-      return ok(res, {
-        checkedAt: null,
-        previousLastCheckedAt: null,
-        sources: [],
-      } satisfies WatchlistResultsResponse);
-    }
-
-    const fetchedSources = await Promise.all(
-      selectedSources.map((source) => fetchWatchlistSource(source)),
-    );
-    const successfulSources = fetchedSources.filter(
-      (item): item is Extract<WatchlistSourceResult, { status: "success" }> =>
-        item.status === "success",
-    );
-    const checksBySource = new Map<string, Set<string>>();
-
-    for (const item of successfulSources) {
-      for (const job of item.jobs) {
-        const sourceJobIds =
-          checksBySource.get(job.source) ?? new Set<string>();
-        sourceJobIds.add(job.sourceJobId);
-        checksBySource.set(job.source, sourceJobIds);
-      }
-    }
-
-    const check = await watchlistRepo.recordWatchlistCheck({
-      checks: Array.from(checksBySource, ([source, sourceJobIds]) => ({
-        source,
-        sourceJobIds: Array.from(sourceJobIds),
-      })),
-    });
-    const [states, workspaceJobs] = await Promise.all([
-      watchlistRepo.listWatchlistJobStates(),
-      jobsRepo.getJobListItems(),
-    ]);
-
-    ok(res, {
-      checkedAt: check.checkedAt,
-      previousLastCheckedAt: check.previousLastCheckedAt,
-      sources: annotateSourceResults({
-        sourceResults: fetchedSources,
-        check,
-        states,
-        workspaceJobs,
-      }),
-    } satisfies WatchlistResultsResponse);
   }),
 );
 
@@ -196,7 +119,7 @@ watchlistRouter.post(
     }
 
     try {
-      const source = await getSelectedSourceById(
+      const source = await getWatchlistSelectedSourceById(
         parsedBody.data.selectedSourceId,
       );
       const adapter = getWatchlistSourceAdapter(source.sourceType);
@@ -210,7 +133,7 @@ watchlistRouter.post(
       }
       ok(
         res,
-        await withSourceTimeout((signal) =>
+        await withWatchlistSourceTimeout((signal) =>
           adapter.fetchJobDetails({
             source,
             jobRef: parsedBody.data.jobRef,
@@ -239,7 +162,7 @@ watchlistRouter.post(
     }
 
     try {
-      const source = await getSelectedSourceById(
+      const source = await getWatchlistSelectedSourceById(
         parsedBody.data.selectedSourceId,
       );
       const adapter = getWatchlistSourceAdapter(source.sourceType);
@@ -251,7 +174,7 @@ watchlistRouter.post(
           }),
         );
       }
-      const result = await withSourceTimeout((signal) =>
+      const result = await withWatchlistSourceTimeout((signal) =>
         adapter.prepareImportDraft({
           source,
           jobRef: parsedBody.data.jobRef,
@@ -287,7 +210,7 @@ watchlistRouter.post(
 
     try {
       const selectedSource = parsedBody.data.selectedSourceId
-        ? await getSelectedSourceById(parsedBody.data.selectedSourceId)
+        ? await getWatchlistSelectedSourceById(parsedBody.data.selectedSourceId)
         : null;
       const source = selectedSource ?? {
         sourceType: parsedBody.data.sourceType,
@@ -306,7 +229,7 @@ watchlistRouter.post(
 
       ok(
         res,
-        await withSourceTimeout((signal) =>
+        await withWatchlistSourceTimeout((signal) =>
           fetchBranding({
             source,
             signal,
@@ -501,126 +424,3 @@ watchlistRouter.delete(
     ok(res, { cleared: true });
   }),
 );
-
-async function getSelectedSourceById(
-  selectedSourceId: string,
-): Promise<WatchlistSelectedSource> {
-  const selectedSources = hydrateSelectedSources(
-    await watchlistRepo.listWatchlistSelectedSources(),
-  );
-  const source = selectedSources.find((item) => item.id === selectedSourceId);
-  if (!source) {
-    throw notFound("Watchlist source was not found");
-  }
-  return source;
-}
-
-async function fetchWatchlistSource(
-  source: WatchlistSelectedSource,
-): Promise<WatchlistSourceResult> {
-  const adapter = getWatchlistSourceAdapter(source.sourceType);
-  if (!adapter) {
-    return {
-      status: "error",
-      source,
-      error: `Unsupported watchlist source type: ${source.sourceType}`,
-    };
-  }
-
-  try {
-    const result = await withSourceTimeout((signal) =>
-      adapter.fetchJobs({ source, signal }),
-    );
-    return {
-      status: "success",
-      source,
-      jobs: result.jobs.map((job) => ({
-        ...job,
-        rowState: "new",
-        isNewSinceLastCheck: false,
-        workspaceJob: null,
-      })),
-      total: result.total,
-      fetched: result.fetched,
-    };
-  } catch (error) {
-    return {
-      status: "error",
-      source,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function annotateSourceResults(input: {
-  sourceResults: WatchlistSourceResult[];
-  check: WatchlistCheckResponse;
-  states: Awaited<ReturnType<typeof watchlistRepo.listWatchlistJobStates>>;
-  workspaceJobs: JobListItem[];
-}): WatchlistSourceResult[] {
-  const ignoredKeys = new Set(
-    input.states
-      .filter((state) => state.state === "ignored")
-      .map((state) => getJobKey(state.source, state.sourceJobId)),
-  );
-  const newJobKeys = new Set(
-    input.check.jobs
-      .filter((job) => job.isNewSinceLastCheck)
-      .map((job) => getJobKey(String(job.source), job.sourceJobId)),
-  );
-  const importedByKey = new Map<string, JobListItem>();
-  const importedByUrl = new Map<string, JobListItem>();
-  for (const job of input.workspaceJobs) {
-    if (job.sourceJobId) {
-      importedByKey.set(getJobKey(String(job.source), job.sourceJobId), job);
-    }
-    importedByUrl.set(job.jobUrl, job);
-  }
-
-  return input.sourceResults.map((result) => {
-    if (result.status === "error") return result;
-
-    return {
-      ...result,
-      jobs: result.jobs.map((job): WatchlistJobResult => {
-        const jobKey = getJobKey(String(job.source), job.sourceJobId);
-        const workspaceJob =
-          importedByKey.get(jobKey) ?? importedByUrl.get(job.jobUrl) ?? null;
-        const rowState = workspaceJob
-          ? "moved_to_workspace"
-          : ignoredKeys.has(jobKey)
-            ? "ignored"
-            : "new";
-
-        return {
-          ...job,
-          rowState,
-          isNewSinceLastCheck: rowState === "new" && newJobKeys.has(jobKey),
-          workspaceJob: workspaceJob
-            ? { id: workspaceJob.id, status: workspaceJob.status }
-            : null,
-        };
-      }),
-    };
-  });
-}
-
-async function withSourceTimeout<T>(
-  callback: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    WATCHLIST_SOURCE_TIMEOUT_MS,
-  );
-
-  try {
-    return await callback(controller.signal);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function getJobKey(source: string, sourceJobId: string): string {
-  return `${source}:${sourceJobId}`;
-}
