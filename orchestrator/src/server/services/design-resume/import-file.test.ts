@@ -101,9 +101,7 @@ describe("importDesignResumeFromFile", () => {
       makePdfParseResult("Taylor Quinn\nSenior Engineer"),
     );
     codexCallJsonMock.mockResolvedValue({
-      text: JSON.stringify({
-        json: JSON.stringify(buildDefaultReactiveResumeDocument()),
-      }),
+      text: JSON.stringify(buildDefaultReactiveResumeDocument()),
       turnId: "turn-1",
     });
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValue({
@@ -926,13 +924,28 @@ describe("importDesignResumeFromFile", () => {
           schema: expect.objectContaining({
             additionalProperties: false,
             properties: expect.objectContaining({
-              json: expect.objectContaining({ type: "string" }),
+              basics: expect.objectContaining({
+                additionalProperties: false,
+              }),
+              sections: expect.objectContaining({
+                additionalProperties: false,
+              }),
             }),
-            required: ["json"],
+            required: [
+              "picture",
+              "basics",
+              "summary",
+              "sections",
+              "customSections",
+              "metadata",
+            ],
           }),
         }),
       }),
     );
+    expect(
+      codexCallJsonMock.mock.calls[0]?.[0].messages[1]?.content,
+    ).not.toContain('property named "json"');
     expect(pdfParse).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
   });

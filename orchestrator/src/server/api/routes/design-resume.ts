@@ -1,6 +1,7 @@
 import { badRequest, conflict, notFound, toAppError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { getRequestId } from "@server/infra/request-context";
 import { enqueueAutoPdfRegenerationForReadyJobs } from "@server/services/auto-pdf-regeneration";
 import {
   deleteDesignResumePicture,
@@ -25,6 +26,10 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const designResumeRouter = Router();
+
+function elapsedMs(startedAt: number): number {
+  return Date.now() - startedAt;
+}
 
 const jsonPointerSchema = z
   .string()
@@ -283,11 +288,46 @@ designResumeRouter.post(
 designResumeRouter.post(
   "/import/file",
   asyncRoute(async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const requestId = getRequestId();
     const input = importFileSchema.parse(req.body);
+    logger.info("Design resume file import route started", {
+      requestId: requestId ?? null,
+      fileName: input.fileName,
+      mediaType: input.mediaType ?? null,
+    });
     const document = await importDesignResumeFromFile(input);
+    logger.info("Design resume file import route service completed", {
+      requestId: requestId ?? null,
+      fileName: input.fileName,
+      mediaType: input.mediaType ?? null,
+      documentId: document.id,
+      durationMs: elapsedMs(startedAt),
+    });
     clearProfileCache();
+    logger.info("Design resume file import route profile cache cleared", {
+      requestId: requestId ?? null,
+      fileName: input.fileName,
+      mediaType: input.mediaType ?? null,
+      documentId: document.id,
+      durationMs: elapsedMs(startedAt),
+    });
     ok(res, document, 201);
+    logger.info("Design resume file import route response sent", {
+      requestId: requestId ?? null,
+      fileName: input.fileName,
+      mediaType: input.mediaType ?? null,
+      documentId: document.id,
+      durationMs: elapsedMs(startedAt),
+    });
     queueDesignResumeAutoPdfRegeneration("POST /api/design-resume/import/file");
+    logger.info("Design resume file import auto-PDF regeneration queued", {
+      requestId: requestId ?? null,
+      fileName: input.fileName,
+      mediaType: input.mediaType ?? null,
+      documentId: document.id,
+      durationMs: elapsedMs(startedAt),
+    });
   }),
 );
 

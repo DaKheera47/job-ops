@@ -70,18 +70,181 @@ const DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA: JsonSchemaDefinition = {
   },
 };
 
+function strictSchemaObject(properties: Record<string, unknown>) {
+  return {
+    type: "object",
+    properties,
+    required: Object.keys(properties),
+    additionalProperties: false,
+  };
+}
+
+function schemaArrayOf(items: unknown) {
+  return { type: "array", items };
+}
+
+const STRING_SCHEMA = { type: "string" };
+const NUMBER_SCHEMA = { type: "number" };
+const URL_SCHEMA = strictSchemaObject({
+  url: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+});
+
+function sectionSchema(itemSchema: unknown) {
+  return strictSchemaObject({
+    items: schemaArrayOf(itemSchema),
+  });
+}
+
 const DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA: JsonSchemaDefinition = {
   name: "codex_output_schema",
   schema: {
     type: "object",
     properties: {
-      json: {
-        type: "string",
-        description:
-          "The extracted Resume Studio JSON document serialized as a JSON string.",
-      },
+      picture: strictSchemaObject({}),
+      basics: strictSchemaObject({
+        name: STRING_SCHEMA,
+        headline: STRING_SCHEMA,
+        email: STRING_SCHEMA,
+        phone: STRING_SCHEMA,
+        location: STRING_SCHEMA,
+        website: URL_SCHEMA,
+        customFields: schemaArrayOf(
+          strictSchemaObject({
+            icon: STRING_SCHEMA,
+            text: STRING_SCHEMA,
+            link: STRING_SCHEMA,
+          }),
+        ),
+      }),
+      summary: strictSchemaObject({
+        content: STRING_SCHEMA,
+      }),
+      sections: strictSchemaObject({
+        profiles: sectionSchema(
+          strictSchemaObject({
+            network: STRING_SCHEMA,
+            username: STRING_SCHEMA,
+            website: URL_SCHEMA,
+          }),
+        ),
+        experience: sectionSchema(
+          strictSchemaObject({
+            company: STRING_SCHEMA,
+            position: STRING_SCHEMA,
+            location: STRING_SCHEMA,
+            period: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+            roles: schemaArrayOf(
+              strictSchemaObject({
+                position: STRING_SCHEMA,
+                period: STRING_SCHEMA,
+                description: STRING_SCHEMA,
+              }),
+            ),
+          }),
+        ),
+        education: sectionSchema(
+          strictSchemaObject({
+            school: STRING_SCHEMA,
+            degree: STRING_SCHEMA,
+            area: STRING_SCHEMA,
+            grade: STRING_SCHEMA,
+            location: STRING_SCHEMA,
+            period: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        projects: sectionSchema(
+          strictSchemaObject({
+            name: STRING_SCHEMA,
+            period: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        skills: sectionSchema(
+          strictSchemaObject({
+            icon: STRING_SCHEMA,
+            name: STRING_SCHEMA,
+            proficiency: STRING_SCHEMA,
+            level: NUMBER_SCHEMA,
+            keywords: schemaArrayOf(STRING_SCHEMA),
+          }),
+        ),
+        languages: sectionSchema(
+          strictSchemaObject({
+            language: STRING_SCHEMA,
+            fluency: STRING_SCHEMA,
+            level: NUMBER_SCHEMA,
+          }),
+        ),
+        interests: sectionSchema(
+          strictSchemaObject({
+            icon: STRING_SCHEMA,
+            name: STRING_SCHEMA,
+            keywords: schemaArrayOf(STRING_SCHEMA),
+          }),
+        ),
+        awards: sectionSchema(
+          strictSchemaObject({
+            title: STRING_SCHEMA,
+            awarder: STRING_SCHEMA,
+            date: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        certifications: sectionSchema(
+          strictSchemaObject({
+            title: STRING_SCHEMA,
+            issuer: STRING_SCHEMA,
+            date: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        publications: sectionSchema(
+          strictSchemaObject({
+            title: STRING_SCHEMA,
+            publisher: STRING_SCHEMA,
+            date: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        volunteer: sectionSchema(
+          strictSchemaObject({
+            organization: STRING_SCHEMA,
+            location: STRING_SCHEMA,
+            period: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+        references: sectionSchema(
+          strictSchemaObject({
+            name: STRING_SCHEMA,
+            position: STRING_SCHEMA,
+            website: URL_SCHEMA,
+            phone: STRING_SCHEMA,
+            description: STRING_SCHEMA,
+          }),
+        ),
+      }),
+      customSections: schemaArrayOf(strictSchemaObject({})),
+      metadata: strictSchemaObject({}),
     },
-    required: ["json"],
+    required: [
+      "picture",
+      "basics",
+      "summary",
+      "sections",
+      "customSections",
+      "metadata",
+    ],
     additionalProperties: false,
   },
 };
@@ -142,6 +305,10 @@ function toText(value: unknown, fallback = ""): string {
 
 function trimText(value: unknown): string {
   return toText(value).trim();
+}
+
+function elapsedMs(startedAt: number): number {
+  return Date.now() - startedAt;
 }
 
 function normalizeRuntimeProvider(
@@ -656,6 +823,29 @@ ${buildUserPrompt()}
 `.trim();
 }
 
+function buildCodexTextExtractPrompt(
+  documentText: string,
+  fileName: string,
+  source: "DOCX" | "PDF",
+): string {
+  const sourceLine =
+    source === "DOCX"
+      ? "The resume file was uploaded as DOCX and converted locally to plain text before extraction."
+      : "The resume file was uploaded as PDF and converted locally to plain text before extraction.";
+  return `
+${sourceLine}
+File name: ${fileName}
+
+Extracted resume text:
+${documentText}
+
+Extract the resume into the provided structured output schema.
+Use empty strings, empty arrays, or empty objects for missing values.
+For rich text descriptions and summaries, use simple HTML tags only: <p>, <ul>, <li>, <strong>, <em>.
+Return normal JSON matching the schema, not JSON serialized inside a string.
+`.trim();
+}
+
 function buildDocumentTextPrompt(
   documentText: string,
   fileName: string,
@@ -764,11 +954,10 @@ function parseCodexResumeImportResponse(content: string): string {
     );
   }
 
-  const json = asRecord(parsed)?.json;
-  if (typeof json !== "string" || !json.trim()) {
-    throw upstreamError("Codex returned an empty resume import JSON payload.");
+  if (!asRecord(parsed)) {
+    throw upstreamError("Codex returned an invalid resume import payload.");
   }
-  return json.trim();
+  return JSON.stringify(parsed);
 }
 
 function filterRequiredItems(items: unknown, requiredField: string): unknown[] {
@@ -1416,21 +1605,27 @@ async function extractWithCodex(args: {
 }): Promise<string> {
   const source: "DOCX" | "PDF" =
     args.mediaType === "application/pdf" ? "PDF" : "DOCX";
-  const userContent = buildTextExtractPrompt(
+  const startedAt = Date.now();
+  const userContent = buildCodexTextExtractPrompt(
     args.documentText,
     args.fileName,
     source,
   );
-  const codexUserContent = `${userContent}
-
-Return an object with exactly one property named "json". The "json" value must be a string containing the extracted Resume Studio JSON document.`;
   const client = new CodexClient();
   try {
+    logger.info("Codex resume import extraction started", {
+      requestId: args.requestId ?? null,
+      provider: "codex",
+      model: args.model,
+      fileName: args.fileName,
+      mediaType: args.mediaType,
+      documentTextChars: args.documentText.length,
+    });
     const { text } = await client.callJson({
       model: args.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: codexUserContent },
+        { role: "user", content: userContent },
       ],
       jsonSchema: DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA,
     });
@@ -1439,7 +1634,18 @@ Return an object with exactly one property named "json". The "json" value must b
         "Codex returned an empty response for resume import.",
       );
     }
-    return parseCodexResumeImportResponse(text);
+    const parsedText = parseCodexResumeImportResponse(text);
+    logger.info("Codex resume import extraction completed", {
+      requestId: args.requestId ?? null,
+      provider: "codex",
+      model: args.model,
+      fileName: args.fileName,
+      mediaType: args.mediaType,
+      durationMs: elapsedMs(startedAt),
+      responseChars: text.length,
+      resumeJsonChars: parsedText.length,
+    });
+    return parsedText;
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -1534,6 +1740,7 @@ async function extractResumeFromProvider(args: {
 export async function importDesignResumeFromFile(
   input: ResumeImportFileInput,
 ): Promise<DesignResumeDocument> {
+  const importStartedAt = Date.now();
   const fileName = normalizeFileName(input.fileName);
   const mediaType = normalizeImportMediaType({
     fileName,
@@ -1587,8 +1794,19 @@ export async function importDesignResumeFromFile(
     }
   }
 
+  const runtimeStartedAt = Date.now();
   const runtime = await resolveLlmRuntimeSettings();
   const provider = normalizeRuntimeProvider(runtime.provider);
+  logger.info("Design resume file import runtime resolved", {
+    requestId: requestId ?? null,
+    provider: runtime.provider ?? null,
+    normalizedProvider: provider,
+    model: runtime.model,
+    fileName,
+    mediaType,
+    durationMs: elapsedMs(runtimeStartedAt),
+    totalElapsedMs: elapsedMs(importStartedAt),
+  });
 
   logger.info("Design resume file import started", {
     requestId: requestId ?? null,
@@ -1612,13 +1830,27 @@ export async function importDesignResumeFromFile(
   }
 
   try {
+    const textExtractionStartedAt = Date.now();
     let documentText = await extractInitialDocumentText({
       provider,
       mediaType,
       decoded,
     });
+    logger.info("Design resume file import text extraction completed", {
+      requestId: requestId ?? null,
+      provider,
+      model: runtime.model,
+      fileName,
+      mediaType,
+      durationMs: elapsedMs(textExtractionStartedAt),
+      totalElapsedMs: elapsedMs(importStartedAt),
+      documentTextChars: documentText?.length ?? 0,
+      usedLocalTextExtraction: Boolean(documentText),
+    });
+
     let rawText: string;
     try {
+      const providerExtractionStartedAt = Date.now();
       rawText = await extractResumeFromProvider({
         provider,
         apiKey: runtime.apiKey ?? "",
@@ -1629,6 +1861,16 @@ export async function importDesignResumeFromFile(
         dataBase64: normalizedBase64,
         documentText,
         requestId,
+      });
+      logger.info("Design resume file import provider extraction completed", {
+        requestId: requestId ?? null,
+        provider,
+        model: runtime.model,
+        fileName,
+        mediaType,
+        durationMs: elapsedMs(providerExtractionStartedAt),
+        totalElapsedMs: elapsedMs(importStartedAt),
+        outputChars: rawText.length,
       });
     } catch (error) {
       if (
@@ -1650,10 +1892,26 @@ export async function importDesignResumeFromFile(
           model: runtime.model,
           fileName,
           mediaType,
+          totalElapsedMs: elapsedMs(importStartedAt),
         },
       );
 
+      const fallbackTextExtractionStartedAt = Date.now();
       documentText = await extractResumePdfText(decoded);
+      logger.info(
+        "Design resume file import fallback text extraction completed",
+        {
+          requestId: requestId ?? null,
+          provider,
+          model: runtime.model,
+          fileName,
+          mediaType,
+          durationMs: elapsedMs(fallbackTextExtractionStartedAt),
+          totalElapsedMs: elapsedMs(importStartedAt),
+          documentTextChars: documentText.length,
+        },
+      );
+      const fallbackProviderExtractionStartedAt = Date.now();
       rawText = await extractResumeFromProvider({
         provider,
         apiKey: runtime.apiKey ?? "",
@@ -1665,14 +1923,59 @@ export async function importDesignResumeFromFile(
         documentText,
         requestId,
       });
+      logger.info(
+        "Design resume file import fallback provider extraction completed",
+        {
+          requestId: requestId ?? null,
+          provider,
+          model: runtime.model,
+          fileName,
+          mediaType,
+          durationMs: elapsedMs(fallbackProviderExtractionStartedAt),
+          totalElapsedMs: elapsedMs(importStartedAt),
+          outputChars: rawText.length,
+        },
+      );
     }
+    const parseStartedAt = Date.now();
     const parsed = parseImportedResumeJson(rawText);
+    logger.info("Design resume file import JSON parsed", {
+      requestId: requestId ?? null,
+      provider,
+      model: runtime.model,
+      fileName,
+      mediaType,
+      durationMs: elapsedMs(parseStartedAt),
+      totalElapsedMs: elapsedMs(importStartedAt),
+    });
+    const normalizeStartedAt = Date.now();
     const normalized = sanitizeNormalizedResume(parsed);
+    logger.info("Design resume file import normalized", {
+      requestId: requestId ?? null,
+      provider,
+      model: runtime.model,
+      fileName,
+      mediaType,
+      durationMs: elapsedMs(normalizeStartedAt),
+      totalElapsedMs: elapsedMs(importStartedAt),
+      sectionCount: Object.keys(asRecord(normalized.sections) ?? {}).length,
+    });
+    const saveStartedAt = Date.now();
     const saved = await replaceCurrentDesignResumeDocument({
       importedAt: new Date().toISOString(),
       resumeJson: normalized,
       sourceMode: null,
       sourceResumeId: null,
+    });
+    logger.info("Design resume file import document saved", {
+      requestId: requestId ?? null,
+      provider,
+      model: runtime.model,
+      fileName,
+      mediaType,
+      durationMs: elapsedMs(saveStartedAt),
+      totalElapsedMs: elapsedMs(importStartedAt),
+      documentId: saved.id,
     });
 
     logger.info("Design resume file import completed", {
@@ -1682,6 +1985,7 @@ export async function importDesignResumeFromFile(
       fileName,
       mediaType,
       documentId: saved.id,
+      durationMs: elapsedMs(importStartedAt),
     });
 
     return saved;
@@ -1692,6 +1996,7 @@ export async function importDesignResumeFromFile(
       model: runtime.model,
       fileName,
       mediaType,
+      durationMs: elapsedMs(importStartedAt),
       error: sanitizeUnknown(error),
     });
 
