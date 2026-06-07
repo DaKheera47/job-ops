@@ -86,6 +86,7 @@ export const OnboardingStepContent: React.FC<{
         rxresumeApiKeyHint={props.rxresumeApiKeyHint}
         rxresumeUrl={props.rxresumeUrl}
         rxresumeValidation={props.rxresumeValidation}
+        selectedProvider={props.selectedProvider}
         onImportResumeFile={props.onImportResumeFile}
         onResumeSetupModeChange={props.onResumeSetupModeChange}
         onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}

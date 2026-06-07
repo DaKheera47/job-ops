@@ -1,6 +1,7 @@
 import { FileText, Upload } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import type { LlmProviderId } from "@/client/pages/settings/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -10,6 +11,7 @@ import { InlineValidation } from "./InlineValidation";
 import { RxResumeStep } from "./RxResumeStep";
 
 const RESUME_IMPORT_TOTAL_MS = 25_000;
+const CODEX_RESUME_IMPORT_TOTAL_MS = 60_000;
 const RESUME_IMPORT_TICK_MS = 250;
 const RESUME_IMPORT_STEPS = [
   "Reading file",
@@ -19,9 +21,34 @@ const RESUME_IMPORT_STEPS = [
   "Saving baseline",
   "Finalizing setup",
 ] as const;
+const DEFAULT_LONG_RUNNING_MESSAGE =
+  "Still working. Larger PDFs and DOCX files can take a little longer.";
+const CODEX_LONG_RUNNING_MESSAGE =
+  "Still working. Codex imports can take around a minute for larger resumes.";
 
-function ResumeImportProgress({ fileName }: { fileName: string | null }) {
+function getResumeImportProgressProfile(selectedProvider?: LlmProviderId) {
+  if (selectedProvider === "codex") {
+    return {
+      totalMs: CODEX_RESUME_IMPORT_TOTAL_MS,
+      longRunningMessage: CODEX_LONG_RUNNING_MESSAGE,
+    };
+  }
+
+  return {
+    totalMs: RESUME_IMPORT_TOTAL_MS,
+    longRunningMessage: DEFAULT_LONG_RUNNING_MESSAGE,
+  };
+}
+
+function ResumeImportProgress({
+  fileName,
+  selectedProvider,
+}: {
+  fileName: string | null;
+  selectedProvider?: LlmProviderId;
+}) {
   const [elapsedMs, setElapsedMs] = useState(0);
+  const progressProfile = getResumeImportProgressProfile(selectedProvider);
 
   useEffect(() => {
     setElapsedMs(0);
@@ -33,18 +60,18 @@ function ResumeImportProgress({ fileName }: { fileName: string | null }) {
     return () => window.clearInterval(interval);
   }, []);
 
-  const cappedElapsedMs = Math.min(elapsedMs, RESUME_IMPORT_TOTAL_MS);
+  const cappedElapsedMs = Math.min(elapsedMs, progressProfile.totalMs);
   const activeStepIndex = Math.min(
     RESUME_IMPORT_STEPS.length - 1,
     Math.floor(
-      (cappedElapsedMs / RESUME_IMPORT_TOTAL_MS) * RESUME_IMPORT_STEPS.length,
+      (cappedElapsedMs / progressProfile.totalMs) * RESUME_IMPORT_STEPS.length,
     ),
   );
   const progressValue = Math.min(
     96,
-    Math.max(6, Math.round((cappedElapsedMs / RESUME_IMPORT_TOTAL_MS) * 96)),
+    Math.max(6, Math.round((cappedElapsedMs / progressProfile.totalMs) * 96)),
   );
-  const isLongRunning = elapsedMs >= RESUME_IMPORT_TOTAL_MS;
+  const isLongRunning = elapsedMs >= progressProfile.totalMs;
 
   return (
     <output
@@ -74,7 +101,7 @@ function ResumeImportProgress({ fileName }: { fileName: string | null }) {
           />
           <p className="bg-gradient-to-r from-muted-foreground via-foreground to-muted-foreground bg-clip-text text-sm leading-6 text-transparent motion-safe:animate-pulse">
             {isLongRunning
-              ? "Still working. Larger PDFs and DOCX files can take a little longer."
+              ? progressProfile.longRunningMessage
               : RESUME_IMPORT_STEPS[activeStepIndex]}
           </p>
         </div>
@@ -97,6 +124,7 @@ export const BaseResumeStep: React.FC<{
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
+  selectedProvider?: LlmProviderId;
   onImportResumeFile: (file: File) => Promise<void>;
   onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
   onRxresumeApiKeyChange: (value: string) => void;
@@ -117,6 +145,7 @@ export const BaseResumeStep: React.FC<{
   rxresumeApiKeyHint,
   rxresumeUrl,
   rxresumeValidation,
+  selectedProvider,
   onImportResumeFile,
   onResumeSetupModeChange,
   onRxresumeApiKeyChange,
@@ -197,7 +226,10 @@ export const BaseResumeStep: React.FC<{
       {resumeSetupMode === "upload" ? (
         <>
           {isImportingResume ? (
-            <ResumeImportProgress fileName={importingResumeFileName} />
+            <ResumeImportProgress
+              fileName={importingResumeFileName}
+              selectedProvider={selectedProvider}
+            />
           ) : (
             <div className="rounded-lg border border-border/60 bg-muted/10 p-5">
               <div className="space-y-2">

@@ -73,4 +73,40 @@ describe("BaseResumeStep", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("uses a longer optimistic import profile for Codex", () => {
+    vi.useFakeTimers();
+
+    render(
+      <BaseResumeStep
+        {...defaultProps}
+        importingResumeFileName="resume.pdf"
+        isBusy
+        isImportingResume
+        selectedProvider="codex"
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(25_000);
+    });
+
+    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Still working. Larger PDFs and DOCX files can take a little longer.",
+      ),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(35_000);
+    });
+
+    expect(screen.getByText("96%")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Still working. Codex imports can take around a minute for larger resumes.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
