@@ -339,7 +339,7 @@ export function LlmModelConfiguration({
                 )}
                 current={mode === "settings" ? formattedKeyHint : undefined}
               />
-            ) : mode === "compact" ? (
+            ) : mode === "compact" && !isCodexProvider ? (
               <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
                 No API key is required for this provider.
               </div>
