@@ -190,8 +190,9 @@ export const jobs = sqliteTable(
     tenantUserJobUrlUnique: uniqueIndex(
       "idx_jobs_tenant_user_job_url_unique",
     ).on(table.tenantId, table.userId, table.jobUrl),
-    tenantStatusIndex: index("idx_jobs_tenant_status").on(
+    tenantStatusIndex: index("idx_jobs_tenant_user_status").on(
       table.tenantId,
+      table.userId,
       table.status,
     ),
     tenantDiscoveredAtIndex: index("idx_jobs_tenant_discovered_at").on(

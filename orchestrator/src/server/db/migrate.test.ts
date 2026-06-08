@@ -191,7 +191,7 @@ describe.sequential("database migrations", () => {
 
       const migratedDb = new Database(dbPath, { readonly: true });
       const indexes = migratedDb.prepare("PRAGMA index_list(tracer_links)").all();
-      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_job_source_destination_unique");
+      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_user_job_source_destination_unique");
       if (!uniqueIndex || !uniqueIndex.unique) {
         throw new Error("tracer_links composite unique index missing after migration");
       }

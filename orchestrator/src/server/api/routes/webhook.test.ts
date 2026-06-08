@@ -76,4 +76,29 @@ describe.sequential("Webhook API routes", () => {
       await stopServer(demoServer);
     }
   });
+
+  it("rejects secret-only pipeline triggers in hosted mode", async () => {
+    const hostedServer = await startServer({
+      env: {
+        JOBOPS_APP_MODE: "hosted",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+        WEBHOOK_SECRET: "secret",
+      },
+    });
+
+    try {
+      const res = await fetch(`${hostedServer.baseUrl}/api/webhook/trigger`, {
+        method: "POST",
+        headers: { Authorization: "Bearer secret" },
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(403);
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("FORBIDDEN");
+      expect(body.error.message).toContain("unavailable in hosted mode");
+    } finally {
+      await stopServer(hostedServer);
+    }
+  });
 });

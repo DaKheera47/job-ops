@@ -47,6 +47,14 @@ vi.mock("@server/services/tracer-links", () => ({
 vi.mock("@server/tenancy/context", () => ({
   getActiveTenantId: vi.fn(() => "tenant-test-2"),
 }));
+vi.mock("@server/tenancy/private-scope", () => ({
+  getPrivateDataScope: vi.fn(() => ({
+    tenantId: "tenant-test-2",
+    userId: null,
+    enforceUserIsolation: false,
+    scopeKey: "tenant-test-2",
+  })),
+}));
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
   default: {
@@ -62,6 +70,7 @@ import { getSetting } from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import {
   deleteDesignResumePicture,
   getCurrentDesignResume,
@@ -108,6 +117,12 @@ describe("design resume service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-test-2",
+      userId: null,
+      enforceUserIsolation: false,
+      scopeKey: "tenant-test-2",
+    });
     repo.getLatestDesignResumeDocument.mockResolvedValue(makeDocumentRow());
     repo.listDesignResumeAssets.mockResolvedValue([]);
     repo.getDesignResumeAssetById.mockResolvedValue(null);
@@ -161,6 +176,29 @@ describe("design resume service", () => {
     expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "primary_tenant-test-2",
+      }),
+    );
+  });
+
+  it("uses a user-scoped design resume id in hosted mode", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(null);
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-test-2",
+      userId: "user-2",
+      enforceUserIsolation: true,
+      scopeKey: "tenant-test-2:user-2",
+    });
+
+    await replaceCurrentDesignResumeDocument({
+      importedAt: "2026-04-11T00:00:00.000Z",
+      resumeJson: makeValidResumeJson(),
+      sourceResumeId: null,
+      sourceMode: null,
+    });
+
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "primary_tenant-test-2_user-2",
       }),
     );
   });

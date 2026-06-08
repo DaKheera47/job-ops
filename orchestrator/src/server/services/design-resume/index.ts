@@ -18,6 +18,7 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema/v5";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type {
   DesignResumeAsset,
   DesignResumeDocument,
@@ -39,7 +40,21 @@ const LEGACY_REIMPORT_MESSAGE =
 const INVALID_V5_PREFIX =
   "Resume Studio must be a valid Reactive Resume v5 document.";
 
+function getDesignResumeAssetDir(): string {
+  const scope = getPrivateDataScope();
+  if (scope.enforceUserIsolation && scope.userId) {
+    return join(DESIGN_RESUME_ASSET_DIR, scope.tenantId, "users", scope.userId);
+  }
+  return DESIGN_RESUME_ASSET_DIR;
+}
+
 function buildTenantScopedDesignResumeDocumentId(): string {
+  const scope = getPrivateDataScope();
+  if (scope.enforceUserIsolation && scope.userId) {
+    return [DESIGN_RESUME_DEFAULT_ID, scope.tenantId, scope.userId]
+      .map((part) => part.replace(/[^a-zA-Z0-9_-]/g, "_"))
+      .join("_");
+  }
   return `${DESIGN_RESUME_DEFAULT_ID}_${getActiveTenantId()}`;
 }
 
@@ -265,12 +280,13 @@ async function storeDesignResumePictureAsset(input: {
   data: Buffer;
   updatedAt: string;
 }) {
-  await ensureStorageDirs();
+  const assetDir = getDesignResumeAssetDir();
+  await ensureStorageDirs(assetDir);
   assertImageByteSize(input.data.byteLength);
 
   const assetId = createId();
   const storagePath = join(
-    DESIGN_RESUME_ASSET_DIR,
+    assetDir,
     `${assetId}${extensionForMimeType(input.mimeType)}`,
   );
 
@@ -574,9 +590,11 @@ function isMissingDesignResumeTableError(error: unknown): boolean {
   );
 }
 
-async function ensureStorageDirs(): Promise<void> {
-  if (!existsSync(DESIGN_RESUME_ASSET_DIR)) {
-    await mkdir(DESIGN_RESUME_ASSET_DIR, { recursive: true });
+async function ensureStorageDirs(
+  assetDir = DESIGN_RESUME_ASSET_DIR,
+): Promise<void> {
+  if (!existsSync(assetDir)) {
+    await mkdir(assetDir, { recursive: true });
   }
 }
 

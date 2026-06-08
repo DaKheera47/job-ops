@@ -21,7 +21,7 @@ import {
   resolveStageTransitionForTarget,
   stageTargetFromMessageType,
 } from "@server/services/post-application/stage-target";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { privateDataScopeFilter } from "@server/tenancy/private-scope";
 import type {
   ApplicationStage,
   PostApplicationActionRequest,
@@ -36,6 +36,14 @@ import type {
 import { and, eq, sql } from "drizzle-orm";
 
 const { postApplicationMessages, postApplicationSyncRuns } = schema;
+
+function messagesScopeFilter() {
+  return privateDataScopeFilter(postApplicationMessages);
+}
+
+function syncRunsScopeFilter() {
+  return privateDataScopeFilter(postApplicationSyncRuns);
+}
 
 function buildMatchedJobMap(
   items: PostApplicationMessage[],
@@ -109,7 +117,6 @@ export async function approvePostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
-  const tenantId = getActiveTenantId();
   const updated = db.transaction((tx) => {
     let stageEventId: string | null = null;
     const decidedAtIso = new Date(decidedAt).toISOString();
@@ -125,8 +132,8 @@ export async function approvePostApplicationInboxItem(args: {
       })
       .where(
         and(
+          messagesScopeFilter(),
           eq(postApplicationMessages.id, message.id),
-          eq(postApplicationMessages.tenantId, tenantId),
           eq(postApplicationMessages.processingStatus, "pending_user"),
         ),
       )
@@ -173,8 +180,8 @@ export async function approvePostApplicationInboxItem(args: {
         })
         .where(
           and(
+            syncRunsScopeFilter(),
             eq(postApplicationSyncRuns.id, message.syncRunId),
-            eq(postApplicationSyncRuns.tenantId, tenantId),
           ),
         )
         .run();
@@ -228,7 +235,6 @@ export async function denyPostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
-  const tenantId = getActiveTenantId();
   db.transaction((tx) => {
     const decidedAtIso = new Date(decidedAt).toISOString();
     const messageUpdateResult = tx
@@ -242,8 +248,8 @@ export async function denyPostApplicationInboxItem(args: {
       })
       .where(
         and(
+          messagesScopeFilter(),
           eq(postApplicationMessages.id, message.id),
-          eq(postApplicationMessages.tenantId, tenantId),
           eq(postApplicationMessages.processingStatus, "pending_user"),
         ),
       )
@@ -262,8 +268,8 @@ export async function denyPostApplicationInboxItem(args: {
         })
         .where(
           and(
+            syncRunsScopeFilter(),
             eq(postApplicationSyncRuns.id, message.syncRunId),
-            eq(postApplicationSyncRuns.tenantId, tenantId),
           ),
         )
         .run();
