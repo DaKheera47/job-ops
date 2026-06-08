@@ -121,6 +121,7 @@ function buildLocationEvidence(args: {
 
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
+  includeWatchlist?: boolean;
   shouldCancel?: () => boolean;
 }): Promise<{
   discoveredJobs: CreateJobInput[];
@@ -131,6 +132,7 @@ export async function discoverJobsStep(args: {
 
   const discoveredJobs: CreateJobInput[] = [];
   const sourceErrors: string[] = [];
+  const includeWatchlist = args.includeWatchlist !== false;
 
   const settings = await settingsRepo.getAllSettings();
   const registry = await getExtractorRegistry();
@@ -312,7 +314,7 @@ export async function discoverJobsStep(args: {
   let watchlistSelectedSources: Awaited<
     ReturnType<typeof listHydratedWatchlistSelectedSources>
   > = [];
-  if (getUserId()) {
+  if (includeWatchlist && getUserId()) {
     try {
       watchlistSelectedSources = await listHydratedWatchlistSelectedSources();
     } catch (error) {

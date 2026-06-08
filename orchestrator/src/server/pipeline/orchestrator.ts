@@ -351,6 +351,7 @@ export async function runPipeline(
         const retryConfig = { ...mergedConfig, sources: challengedSources };
         const retryResult = await discoverJobsStep({
           mergedConfig: retryConfig,
+          includeWatchlist: false,
           shouldCancel: () =>
             getPipelineState(tenantId).cancelRequestedAt !== null,
         });

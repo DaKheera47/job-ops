@@ -429,6 +429,41 @@ describe("discoverJobsStep", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("skips watchlist discovery when disabled for a retry pass", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const watchlistResults = await import("@server/watchlist/results");
+    const watchlistStep = await import("./watchlist-jobs");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map(),
+      manifestBySource: new Map(),
+      availableSources: [],
+    } as any);
+
+    await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverJobsStep({
+          mergedConfig: {
+            ...baseConfig,
+            sources: [],
+          },
+          includeWatchlist: false,
+        }),
+    );
+
+    expect(
+      watchlistResults.listHydratedWatchlistSelectedSources,
+    ).not.toHaveBeenCalled();
+    expect(
+      watchlistStep.discoverWatchlistJobsForPipeline,
+    ).not.toHaveBeenCalled();
+  });
+
   it("keeps watchlist source failures non-fatal when extractors succeed", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const registryModule = await import("@server/extractors/registry");
