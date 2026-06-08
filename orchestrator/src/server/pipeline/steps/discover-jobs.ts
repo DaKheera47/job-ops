@@ -391,6 +391,7 @@ export async function discoverJobsStep(args: {
     });
     const watchlistResult = await discoverWatchlistJobsForPipeline({
       selectedSources: watchlistSelectedSources,
+      searchTerms,
       shouldCancel: args.shouldCancel,
     });
     completedSources += 1;

@@ -27,6 +27,7 @@ vi.mock("./watchlist-jobs", () => ({
     sourceErrors: [],
     selectedSourceCount: 0,
     failedSourceCount: 0,
+    searchFilteredCount: 0,
   }),
 }));
 
@@ -370,6 +371,7 @@ describe("discoverJobsStep", () => {
         sourceErrors: [],
         selectedSourceCount: 1,
         failedSourceCount: 0,
+        searchFilteredCount: 0,
       },
     );
 
@@ -391,6 +393,7 @@ describe("discoverJobsStep", () => {
     expect(watchlistStep.discoverWatchlistJobsForPipeline).toHaveBeenCalledWith(
       {
         selectedSources: [selectedWatchlistSource],
+        searchTerms: ["engineer"],
         shouldCancel: undefined,
       },
     );
@@ -480,6 +483,7 @@ describe("discoverJobsStep", () => {
         sourceErrors: ["Watchlist Acme: failed to fetch jobs"],
         selectedSourceCount: 1,
         failedSourceCount: 1,
+        searchFilteredCount: 0,
       },
     );
 

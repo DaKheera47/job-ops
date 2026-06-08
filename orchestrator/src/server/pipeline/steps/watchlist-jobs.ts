@@ -8,12 +8,14 @@ import {
   listHydratedWatchlistSelectedSources,
   withWatchlistSourceTimeout,
 } from "@server/watchlist/results";
+import { normalizeJobTitle } from "@shared/job-matching.js";
 import type {
   CreateJobInput,
   ManualJobDraft,
   WatchlistJobResult,
   WatchlistSelectedSource,
 } from "@shared/types";
+import { normalizeSearchTerms } from "@shared/utils/search-terms";
 
 const WATCHLIST_DETAIL_CONCURRENCY = 3;
 
@@ -22,6 +24,7 @@ export type PipelineWatchlistDiscoveryResult = {
   sourceErrors: string[];
   selectedSourceCount: number;
   failedSourceCount: number;
+  searchFilteredCount: number;
 };
 
 function optionalString(value: string | null | undefined): string | undefined {
@@ -64,9 +67,40 @@ function createJobInputFromWatchlistJob(
   };
 }
 
+function getWatchlistSearchText(job: CreateJobInput): string {
+  return normalizeJobTitle(
+    [
+      job.title,
+      job.jobDescription,
+      job.jobFunction,
+      job.jobType,
+      job.disciplines,
+      job.skills,
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .join(" "),
+  );
+}
+
+function matchesWatchlistSearchTerms(
+  job: CreateJobInput,
+  searchTerms: readonly string[],
+): boolean {
+  const normalizedTerms = normalizeSearchTerms([...searchTerms])
+    .map((term) => normalizeJobTitle(term))
+    .filter(Boolean);
+  if (normalizedTerms.length === 0) return true;
+
+  const searchableText = getWatchlistSearchText(job);
+  if (!searchableText) return false;
+
+  return normalizedTerms.some((term) => searchableText.includes(term));
+}
+
 export async function discoverWatchlistJobsForPipeline(
   args: {
     selectedSources?: WatchlistSelectedSource[];
+    searchTerms?: string[];
     shouldCancel?: () => boolean;
   } = {},
 ): Promise<PipelineWatchlistDiscoveryResult> {
@@ -79,29 +113,34 @@ export async function discoverWatchlistJobsForPipeline(
       sourceErrors: [],
       selectedSourceCount: 0,
       failedSourceCount: 0,
+      searchFilteredCount: 0,
     };
   }
 
   const selectedSources =
     args.selectedSources ?? (await listHydratedWatchlistSelectedSources());
+  const searchTerms = normalizeSearchTerms(args.searchTerms ?? []);
   if (selectedSources.length === 0 || args.shouldCancel?.()) {
     return {
       discoveredJobs: [],
       sourceErrors: [],
       selectedSourceCount: selectedSources.length,
       failedSourceCount: 0,
+      searchFilteredCount: 0,
     };
   }
 
   logger.info("Fetching Watchlist jobs for pipeline discovery", {
     step: "discover-watchlist-jobs",
     selectedSourceCount: selectedSources.length,
+    searchTermCount: searchTerms.length,
   });
 
   const results = await getWatchlistResultsForSources(selectedSources);
   const discoveredJobs: CreateJobInput[] = [];
   const sourceErrors: string[] = [];
   let failedSourceCount = 0;
+  let searchFilteredCount = 0;
 
   for (const result of results.sources) {
     if (result.status === "error") {
@@ -165,7 +204,12 @@ export async function discoverWatchlistJobsForPipeline(
     });
 
     for (const job of detailResults) {
-      if (job) discoveredJobs.push(job);
+      if (!job) continue;
+      if (matchesWatchlistSearchTerms(job, searchTerms)) {
+        discoveredJobs.push(job);
+      } else {
+        searchFilteredCount += 1;
+      }
     }
   }
 
@@ -173,7 +217,9 @@ export async function discoverWatchlistJobsForPipeline(
     step: "discover-watchlist-jobs",
     selectedSourceCount: selectedSources.length,
     failedSourceCount,
-    discovered: discoveredJobs.length,
+    matchedCount: discoveredJobs.length,
+    searchFilteredCount,
+    searchTermCount: searchTerms.length,
     sourceErrorCount: sourceErrors.length,
   });
 
@@ -182,5 +228,6 @@ export async function discoverWatchlistJobsForPipeline(
     sourceErrors,
     selectedSourceCount: selectedSources.length,
     failedSourceCount,
+    searchFilteredCount,
   };
 }

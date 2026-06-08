@@ -158,7 +158,131 @@ describe("discoverWatchlistJobsForPipeline", () => {
       jobDescription: "Build reliable systems.",
       datePosted: "2026-01-02",
     });
+    expect(result.searchFilteredCount).toBe(0);
     expect(withWatchlistSourceTimeout).toHaveBeenCalledTimes(2);
+  });
+
+  it("imports watchlist jobs when the title matches a search term", async () => {
+    vi.mocked(getWatchlistResultsForSources).mockResolvedValue({
+      checkedAt: "2026-01-03T00:00:00.000Z",
+      previousLastCheckedAt: null,
+      sources: [
+        {
+          status: "success",
+          source: workdaySource,
+          jobs: [watchlistJob({ title: "Senior Platform Engineer" })],
+          total: 1,
+          fetched: 1,
+        },
+      ],
+    });
+
+    const result = await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverWatchlistJobsForPipeline({
+          selectedSources: [workdaySource],
+          searchTerms: ["platform engineer"],
+        }),
+    );
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.discoveredJobs[0]?.title).toBe("Platform Engineer");
+    expect(result.searchFilteredCount).toBe(0);
+  });
+
+  it("imports watchlist jobs when the description matches a search term", async () => {
+    const adapters = await import("@server/watchlist/adapters");
+    vi.mocked(adapters.getWatchlistSourceAdapter).mockReturnValue({
+      prepareImportDraft: vi.fn().mockResolvedValue({
+        draft: {
+          source: "workday:acme",
+          sourceJobId: "job-1",
+          title: "Product Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/job",
+          applicationLink: "https://example.com/apply",
+          location: "London, United Kingdom",
+          jobDescription: "Build backend services for customer workflows.",
+        },
+        source: "workday:acme",
+        sourceHost: "example.com",
+      }),
+    } as any);
+    vi.mocked(getWatchlistResultsForSources).mockResolvedValue({
+      checkedAt: "2026-01-03T00:00:00.000Z",
+      previousLastCheckedAt: null,
+      sources: [
+        {
+          status: "success",
+          source: workdaySource,
+          jobs: [watchlistJob({ title: "Product Engineer" })],
+          total: 1,
+          fetched: 1,
+        },
+      ],
+    });
+
+    const result = await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverWatchlistJobsForPipeline({
+          selectedSources: [workdaySource],
+          searchTerms: ["backend services"],
+        }),
+    );
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.discoveredJobs[0]?.jobDescription).toContain(
+      "backend services",
+    );
+    expect(result.searchFilteredCount).toBe(0);
+  });
+
+  it("skips watchlist jobs that do not match any search term", async () => {
+    const adapters = await import("@server/watchlist/adapters");
+    vi.mocked(adapters.getWatchlistSourceAdapter).mockReturnValue({
+      prepareImportDraft: vi.fn().mockResolvedValue({
+        draft: {
+          source: "workday:acme",
+          sourceJobId: "job-1",
+          title: "Payroll Analyst",
+          employer: "Acme",
+          jobUrl: "https://example.com/job",
+          applicationLink: "https://example.com/apply",
+          location: "London, United Kingdom",
+          jobDescription: "Prepare monthly payroll reports.",
+        },
+        source: "workday:acme",
+        sourceHost: "example.com",
+      }),
+    } as any);
+    vi.mocked(getWatchlistResultsForSources).mockResolvedValue({
+      checkedAt: "2026-01-03T00:00:00.000Z",
+      previousLastCheckedAt: null,
+      sources: [
+        {
+          status: "success",
+          source: workdaySource,
+          jobs: [watchlistJob({ title: "Payroll Analyst" })],
+          total: 1,
+          fetched: 1,
+        },
+      ],
+    });
+
+    const result = await runWithRequestContext(
+      { requestId: "test", tenantId: "tenant-a", userId: "user-a" },
+      () =>
+        discoverWatchlistJobsForPipeline({
+          selectedSources: [workdaySource],
+          searchTerms: ["platform engineer"],
+        }),
+    );
+
+    expect(result.discoveredJobs).toEqual([]);
+    expect(result.searchFilteredCount).toBe(1);
+    expect(result.sourceErrors).toEqual([]);
   });
 
   it("skips ignored and already-imported watchlist jobs", async () => {
@@ -239,6 +363,7 @@ describe("discoverWatchlistJobsForPipeline", () => {
       sourceErrors: [],
       selectedSourceCount: 0,
       failedSourceCount: 0,
+      searchFilteredCount: 0,
     });
     expect(listHydratedWatchlistSelectedSources).not.toHaveBeenCalled();
   });
