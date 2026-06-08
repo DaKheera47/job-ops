@@ -11,6 +11,7 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OnboardingPage } from "./OnboardingPage";
 
 vi.mock("@client/api", () => ({
+  getAppStatus: vi.fn(),
   getAuthBootstrapStatus: vi.fn(async () => ({ setupRequired: false })),
   hasAuthenticatedSession: vi.fn(() => true),
   importDesignResumeFromFile: vi.fn(),
@@ -124,6 +125,28 @@ const authUser = {
   updatedAt: "2026-06-01T00:00:00.000Z",
 };
 
+const localAppStatus = {
+  appMode: "local" as const,
+  capabilities: {
+    hostedSignups: false,
+    platformLlm: false,
+    quotas: false,
+    userEditableLlmSettings: true,
+  },
+  hostedTenantConfigured: false,
+};
+
+const hostedPlatformLlmStatus = {
+  appMode: "hosted" as const,
+  capabilities: {
+    hostedSignups: true,
+    platformLlm: true,
+    quotas: true,
+    userEditableLlmSettings: false,
+  },
+  hostedTenantConfigured: true,
+};
+
 const analyticsTrack = vi.fn();
 
 function getTrackedEvent(name: string) {
@@ -186,6 +209,9 @@ async function renderPage() {
   );
   await waitFor(() => {
     expect(api.getAuthBootstrapStatus).toHaveBeenCalled();
+  });
+  await waitFor(() => {
+    expect(screen.queryAllByText("Loading launch console...")).toHaveLength(0);
   });
   return rendered;
 }
@@ -263,6 +289,7 @@ describe("OnboardingPage", () => {
         },
       } as any;
     });
+    vi.mocked(api.getAppStatus).mockResolvedValue(localAppStatus);
   });
 
   it("shows one active server requirement and collapses completed checks", async () => {
@@ -286,6 +313,48 @@ describe("OnboardingPage", () => {
     expect(screen.getByText("2/4")).toBeInTheDocument();
     expect(screen.getByText("Model connected")).toBeInTheDocument();
     expect(screen.getAllByText("Load your resume").length).toBeGreaterThan(0);
+  });
+
+  it("hides account and model launch steps in hosted platform LLM mode", async () => {
+    const hostedResumeStatus: OnboardingStatusResponse = {
+      complete: false,
+      nextRequirementId: "resume",
+      requirements: [
+        {
+          id: "resume",
+          status: "needs_action",
+          title: "Load your resume",
+          message:
+            "Upload a resume file, or connect Reactive Resume and choose a template.",
+          primaryAction: "upload_resume",
+        },
+      ],
+    };
+    vi.mocked(api.getAppStatus).mockResolvedValue(hostedPlatformLlmStatus);
+    vi.mocked(useOnboardingStatus).mockReturnValue({
+      status: hostedResumeStatus,
+      complete: false,
+      nextRequirementId: "resume",
+      requirements: hostedResumeStatus.requirements,
+      checking: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    await renderPage();
+
+    expect(await screen.findByText("content:resume")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /account workspace/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /model connection/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("0/2")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Workspace account created"),
+    ).not.toBeInTheDocument();
   });
 
   it("calls the focused model action from the active requirement", async () => {

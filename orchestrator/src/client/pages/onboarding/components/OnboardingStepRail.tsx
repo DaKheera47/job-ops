@@ -30,8 +30,6 @@ const RAIL_ITEMS: Array<{
     subtitle: "Launch",
   },
 ];
-const TOTAL_ONBOARDING_STEPS = RAIL_ITEMS.length;
-
 function getRequirement(
   requirements: OnboardingRequirement[],
   id: OnboardingRequirement["id"],
@@ -70,20 +68,32 @@ export const OnboardingStepRail: React.FC<{
   nextRequirementId: OnboardingRequirement["id"] | null;
   onPanelSelect: (panel: OnboardingPanelId) => void;
   requirements: OnboardingRequirement[];
+  showAccount?: boolean;
+  showModel?: boolean;
 }> = ({
   activePanel,
   complete,
   nextRequirementId,
   onPanelSelect,
   requirements,
+  showAccount = true,
+  showModel = true,
 }) => {
+  const railItems = RAIL_ITEMS.filter((item) => {
+    if (item.id === "account") return showAccount;
+    if (item.id === "model") return showModel;
+    return true;
+  });
+  const visibleRequirements = requirements.filter(
+    (requirement) => requirement.id !== "model" || showModel,
+  );
   const completedCount =
-    requirements.filter((requirement) => requirement.status === "ready")
+    visibleRequirements.filter((requirement) => requirement.status === "ready")
       .length +
-    1 +
+    (showAccount ? 1 : 0) +
     (complete ? 1 : 0);
   const progressValue = Math.round(
-    (completedCount / Math.max(TOTAL_ONBOARDING_STEPS, 1)) * 100,
+    (completedCount / Math.max(railItems.length, 1)) * 100,
   );
 
   return (
@@ -94,7 +104,7 @@ export const OnboardingStepRail: React.FC<{
       </div>
 
       <div className="space-y-1">
-        {RAIL_ITEMS.map((item) => {
+        {railItems.map((item) => {
           const requirement =
             item.id === "account" || item.id === "first-run"
               ? undefined

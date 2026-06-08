@@ -4,12 +4,17 @@ const mocks = vi.hoisted(() => ({
   applySettingsUpdates: vi.fn(),
   getConfiguredRxResumeBaseResumeId: vi.fn(),
   getDesignResumeStatus: vi.fn(),
+  getJobOpsAppStatus: vi.fn(),
   getResume: vi.fn(),
   getSetting: vi.fn(),
   isDemoMode: vi.fn(),
   validateLlmCredentials: vi.fn(),
   validateResumeSchema: vi.fn(),
   validateRxResumeCredentials: vi.fn(),
+}));
+
+vi.mock("@server/config/app-mode", () => ({
+  getJobOpsAppStatus: mocks.getJobOpsAppStatus,
 }));
 
 vi.mock("@server/config/demo", () => ({
@@ -85,6 +90,16 @@ import {
 describe("onboarding status engine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getJobOpsAppStatus.mockReturnValue({
+      appMode: "local",
+      capabilities: {
+        hostedSignups: false,
+        platformLlm: false,
+        quotas: false,
+        userEditableLlmSettings: true,
+      },
+      hostedTenantConfigured: false,
+    });
     mocks.isDemoMode.mockReturnValue(false);
     mocks.getSetting.mockImplementation(async (key: string) => {
       const values: Record<string, string | null> = {
@@ -157,6 +172,35 @@ describe("onboarding status engine", () => {
     expect(status).toMatchObject({
       complete: true,
       nextRequirementId: null,
+    });
+  });
+
+  it("omits model onboarding when hosted platform LLM manages model settings", async () => {
+    mocks.getJobOpsAppStatus.mockReturnValue({
+      appMode: "hosted",
+      capabilities: {
+        hostedSignups: true,
+        platformLlm: true,
+        quotas: true,
+        userEditableLlmSettings: false,
+      },
+      hostedTenantConfigured: true,
+    });
+    mocks.getDesignResumeStatus.mockResolvedValue({ exists: false });
+    mocks.validateLlmCredentials.mockResolvedValue({
+      valid: false,
+      message: "LLM API key is missing.",
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(mocks.validateLlmCredentials).not.toHaveBeenCalled();
+    expect(status.complete).toBe(false);
+    expect(status.nextRequirementId).toBe("resume");
+    expect(status.requirements).toHaveLength(1);
+    expect(status.requirements[0]).toMatchObject({
+      id: "resume",
+      status: "needs_action",
     });
   });
 

@@ -1,6 +1,7 @@
 import { unprocessableEntity } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
+import { getJobOpsAppStatus } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
@@ -433,15 +434,23 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
 }
 
 export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
+  const appStatus = getJobOpsAppStatus();
+  const userEditableLlmSettings =
+    appStatus.capabilities.userEditableLlmSettings;
+
   if (isDemoMode()) {
     const requirements: OnboardingRequirement[] = [
-      buildRequirement({
-        id: "model",
-        status: "ready",
-        title: "Model connected",
-        message: "Demo mode simulates the model connection.",
-        primaryAction: "none",
-      }),
+      ...(userEditableLlmSettings
+        ? [
+            buildRequirement({
+              id: "model",
+              status: "ready",
+              title: "Model connected",
+              message: "Demo mode simulates the model connection.",
+              primaryAction: "none",
+            }),
+          ]
+        : []),
       buildRequirement({
         id: "resume",
         status: "ready",
@@ -453,9 +462,9 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
     return { complete: true, nextRequirementId: null, requirements };
   }
 
-  const model = await buildModelRequirement();
-  const resume = await buildResumeRequirement();
-  const requirements = [model, resume];
+  const requirements = userEditableLlmSettings
+    ? [await buildModelRequirement(), await buildResumeRequirement()]
+    : [await buildResumeRequirement()];
   const nextRequirement = requirements.find(
     (requirement) => requirement.status !== "ready",
   );

@@ -4,6 +4,7 @@ import type {
   OnboardingRequirement,
   OnboardingRequirementPrimaryAction,
 } from "@shared/types";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,10 +24,12 @@ import { Navigate, useNavigate } from "react-router-dom";
 import {
   type AuthUser,
   type CodexAuthStatusResponse,
+  getAppStatus,
   getAuthBootstrapStatus,
   hasAuthenticatedSession,
   setupFirstAdmin,
 } from "@/client/api";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,6 +57,12 @@ import type {
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
 const TOTAL_ONBOARDING_STEPS = 4;
+const DEFAULT_ONBOARDING_PANELS: OnboardingPanelId[] = [
+  "account",
+  "model",
+  "resume",
+  "first-run",
+];
 const ACCOUNT_PREVIEW_RAIL_ITEMS: Array<{
   id: OnboardingPanelId;
   label: string;
@@ -103,17 +112,12 @@ function getActionLabel(action: OnboardingRequirementPrimaryAction): string {
   }
 }
 
-function getPanelStepLabel(panel: OnboardingPanelId): string {
-  switch (panel) {
-    case "account":
-      return "Step 1 of 4";
-    case "model":
-      return "Step 2 of 4";
-    case "resume":
-      return "Step 3 of 4";
-    case "first-run":
-      return "Step 4 of 4";
-  }
+function getPanelStepLabel(
+  panel: OnboardingPanelId,
+  panels = DEFAULT_ONBOARDING_PANELS,
+): string {
+  const stepIndex = panels.indexOf(panel);
+  return `Step ${Math.max(stepIndex, 0) + 1} of ${panels.length}`;
 }
 
 function useOnboardingDropoffAnalytics(args: {
@@ -701,6 +705,10 @@ const AccountSetupOnboarding: React.FC<{
 const LaunchOnboardingPage: React.FC = () => {
   const flow = useOnboardingFlow();
   const onboarding = useOnboardingStatus();
+  const appStatusQuery = useQuery({
+    queryKey: queryKeys.app.status(),
+    queryFn: getAppStatus,
+  });
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
@@ -710,14 +718,44 @@ const LaunchOnboardingPage: React.FC = () => {
   const trackedModelConfigFieldsRef = useRef(
     new Set<"provider" | "endpoint" | "api_key" | "model">(),
   );
+  const isAppStatusLoading = appStatusQuery.isLoading && !appStatusQuery.data;
+  const showAccountStep = appStatusQuery.data?.appMode !== "hosted";
+  const showModelStep =
+    appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true;
+  const visiblePanels = useMemo(
+    () =>
+      DEFAULT_ONBOARDING_PANELS.filter((panel) => {
+        if (panel === "account") return showAccountStep;
+        if (panel === "model") return showModelStep;
+        return true;
+      }),
+    [showAccountStep, showModelStep],
+  );
+  const visibleRequirements = useMemo(
+    () =>
+      onboarding.requirements.filter(
+        (requirement) => requirement.id !== "model" || showModelStep,
+      ),
+    [onboarding.requirements, showModelStep],
+  );
+  const fallbackPanel = useMemo<OnboardingPanelId>(() => {
+    if (
+      onboarding.nextRequirementId &&
+      visiblePanels.includes(onboarding.nextRequirementId)
+    ) {
+      return onboarding.nextRequirementId;
+    }
+    if (onboarding.complete) return "first-run";
+    return visiblePanels.includes("model") ? "model" : "resume";
+  }, [onboarding.complete, onboarding.nextRequirementId, visiblePanels]);
 
   const modelRequirement = useMemo(
-    () => getRequirement(onboarding.requirements, "model"),
-    [onboarding.requirements],
+    () => getRequirement(visibleRequirements, "model"),
+    [visibleRequirements],
   );
   const resumeRequirement = useMemo(
-    () => getRequirement(onboarding.requirements, "resume"),
-    [onboarding.requirements],
+    () => getRequirement(visibleRequirements, "resume"),
+    [visibleRequirements],
   );
   const activeRequirement =
     activePanel === "account" || activePanel === "first-run"
@@ -743,15 +781,16 @@ const LaunchOnboardingPage: React.FC = () => {
   });
 
   useEffect(() => {
+    if (isAppStatusLoading) return;
     trackProductEvent("onboarding_step_viewed", {
       step: toAnalyticsStep(activePanel),
       step_index: getStepIndex(activePanel),
       requirement_status: getActiveRequirementStatus(),
     });
-  }, [activePanel, getActiveRequirementStatus]);
+  }, [activePanel, getActiveRequirementStatus, isAppStatusLoading]);
 
   useEffect(() => {
-    if (!onboarding.status || onboarding.checking) return;
+    if (!onboarding.status || onboarding.checking || isAppStatusLoading) return;
     trackProductEvent("onboarding_status_checked", {
       complete: onboarding.complete,
       next_step: getNextStep(onboarding.nextRequirementId, onboarding.complete),
@@ -760,6 +799,7 @@ const LaunchOnboardingPage: React.FC = () => {
     });
   }, [
     modelRequirement,
+    isAppStatusLoading,
     onboarding.checking,
     onboarding.complete,
     onboarding.nextRequirementId,
@@ -811,14 +851,29 @@ const LaunchOnboardingPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (onboarding.nextRequirementId) {
+    if (isAppStatusLoading) return;
+    if (!visiblePanels.includes(activePanel)) {
+      setActivePanel(fallbackPanel);
+      return;
+    }
+    if (
+      onboarding.nextRequirementId &&
+      visiblePanels.includes(onboarding.nextRequirementId)
+    ) {
       setActivePanel(onboarding.nextRequirementId);
       return;
     }
     if (onboarding.complete) {
       setActivePanel("first-run");
     }
-  }, [onboarding.complete, onboarding.nextRequirementId]);
+  }, [
+    activePanel,
+    fallbackPanel,
+    isAppStatusLoading,
+    onboarding.complete,
+    onboarding.nextRequirementId,
+    visiblePanels,
+  ]);
 
   useEffect(() => {
     if (
@@ -881,6 +936,25 @@ const LaunchOnboardingPage: React.FC = () => {
     return <Navigate to="/jobs/ready" replace />;
   }
 
+  if (isAppStatusLoading) {
+    return (
+      <>
+        <PageHeader
+          icon={Sparkles}
+          title="Launch Console"
+          subtitle="Loading the launch checks Job Ops needs before it can work your search."
+        />
+        <PageMain>
+          <Card className="border-border/60 bg-card shadow-none">
+            <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
+              Loading launch console...
+            </CardContent>
+          </Card>
+        </PageMain>
+      </>
+    );
+  }
+
   const llmValidation = toValidationState(modelRequirement);
   const baseResumeValidation = toValidationState(resumeRequirement);
   const rxresumeValidation: ValidationState = {
@@ -891,18 +965,22 @@ const LaunchOnboardingPage: React.FC = () => {
       baseResumeValidation.valid,
   };
   const completedCount =
-    onboarding.requirements.filter(
-      (requirement) => requirement.status === "ready",
-    ).length +
-    1 +
+    visibleRequirements.filter((requirement) => requirement.status === "ready")
+      .length +
+    (showAccountStep ? 1 : 0) +
     (onboarding.complete ? 1 : 0);
+  const totalSteps = visiblePanels.length;
 
   const submitActivePanel = async () => {
     if (activePanel === "account") {
-      setActivePanel(onboarding.nextRequirementId ?? "model");
+      setActivePanel(fallbackPanel);
       return;
     }
     if (activePanel === "model") {
+      if (!showModelStep) {
+        setActivePanel(fallbackPanel);
+        return;
+      }
       const status = await flow.handleSaveModel();
       if (status?.complete) setActivePanel("first-run");
       return;
@@ -938,14 +1016,22 @@ const LaunchOnboardingPage: React.FC = () => {
       <PageHeader
         icon={Sparkles}
         title="Launch Console"
-        subtitle="Load the LLM and resume Job Ops needs before it can work your search."
+        subtitle={
+          showModelStep
+            ? "Load the LLM and resume Job Ops needs before it can work your search."
+            : "Load the resume Job Ops needs before it can work your search."
+        }
       />
 
       <PageMain className="space-y-4">
         <OnboardingCoach
           activePanel={activePanel}
-          onPanelChange={setActivePanel}
+          onPanelChange={(panel) => {
+            if (visiblePanels.includes(panel)) setActivePanel(panel);
+          }}
           replayNonce={coachReplayNonce}
+          showAccount={showAccountStep}
+          showModel={showModelStep}
           status={onboarding.status}
         />
 
@@ -955,7 +1041,7 @@ const LaunchOnboardingPage: React.FC = () => {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="text-base">Launch checks</CardTitle>
                 <span className="text-xs text-muted-foreground">
-                  {completedCount}/{TOTAL_ONBOARDING_STEPS}
+                  {completedCount}/{totalSteps}
                 </span>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
@@ -969,7 +1055,9 @@ const LaunchOnboardingPage: React.FC = () => {
                 complete={onboarding.complete}
                 nextRequirementId={onboarding.nextRequirementId}
                 onPanelSelect={setActivePanel}
-                requirements={onboarding.requirements}
+                requirements={visibleRequirements}
+                showAccount={showAccountStep}
+                showModel={showModelStep}
               />
               <Button
                 type="button"
@@ -992,7 +1080,9 @@ const LaunchOnboardingPage: React.FC = () => {
           </Card>
 
           <Card className="border-border/60 bg-card shadow-none">
-            {onboarding.checking || flow.settingsLoading ? (
+            {onboarding.checking ||
+            flow.settingsLoading ||
+            isAppStatusLoading ? (
               <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
                 Loading launch console...
               </CardContent>
@@ -1006,7 +1096,7 @@ const LaunchOnboardingPage: React.FC = () => {
               >
                 <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
                   <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                    <span>{getPanelStepLabel(activePanel)}</span>
+                    <span>{getPanelStepLabel(activePanel, visiblePanels)}</span>
                     {activePanel === "account" ||
                     activeRequirement?.status === "ready" ? (
                       <span className="inline-flex items-center gap-1.5 text-emerald-600">
@@ -1027,7 +1117,9 @@ const LaunchOnboardingPage: React.FC = () => {
                       {activePanel === "account"
                         ? "Your private workspace is ready. Finish the model and resume checks so Job Ops can work from the right account context."
                         : activePanel === "first-run"
-                          ? "Your model and resume are loaded. Job Ops can start turning job leads into ranked, actionable work."
+                          ? showModelStep
+                            ? "Your model and resume are loaded. Job Ops can start turning job leads into ranked, actionable work."
+                            : "Your resume is loaded. Job Ops can start turning job leads into ranked, actionable work."
                           : activeRequirement?.status === "ready"
                             ? activeRequirement.message
                             : "Complete this setup check to unlock the next part of your job-search workflow."}
@@ -1036,14 +1128,17 @@ const LaunchOnboardingPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
-                  {activePanel !== "account" && activePanel !== "first-run" ? (
+                  {showAccountStep &&
+                  activePanel !== "account" &&
+                  activePanel !== "first-run" ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
                       <span>Workspace account created</span>
                     </div>
                   ) : null}
 
-                  {modelRequirement?.status === "ready" &&
+                  {showModelStep &&
+                  modelRequirement?.status === "ready" &&
                   activePanel !== "model" &&
                   activePanel !== "first-run" ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600">

@@ -84,12 +84,16 @@ export const OnboardingCoach: React.FC<{
   activePanel: OnboardingPanelId;
   onPanelChange: (panel: OnboardingPanelId) => void;
   replayNonce: number;
+  showAccount?: boolean;
+  showModel?: boolean;
   scope?: "account" | "launch";
   status: OnboardingStatusResponse | null;
 }> = ({
   activePanel,
   onPanelChange,
   replayNonce,
+  showAccount = true,
+  showModel = true,
   scope = "launch",
   status,
 }) => {
@@ -113,11 +117,20 @@ export const OnboardingCoach: React.FC<{
   useEffect(() => () => removeJoyridePortal(), []);
 
   const steps = useMemo<CoachStep[]>(() => {
+    const introContent =
+      showAccount && showModel
+        ? "Complete the setup checks that let Job Ops work for you: a workspace account, an LLM for reasoning, and a resume for matching."
+        : showModel
+          ? "Complete the setup checks that let Job Ops work for you: an LLM for reasoning and a resume for matching."
+          : "Complete the resume setup check that lets Job Ops match jobs and prepare your search.";
+    const primaryPanel =
+      status?.nextRequirementId === "model" && !showModel
+        ? activePanel
+        : (status?.nextRequirementId ?? activePanel);
     const introStep: CoachStep = {
       target: '[data-onboarding-target="launch-rail"]',
       title: "Load the command centre",
-      content:
-        "Complete the setup checks that let Job Ops work for you: a workspace account, an LLM for reasoning, and a resume for matching.",
+      content: introContent,
       data: { panel: activePanel },
     };
 
@@ -128,7 +141,7 @@ export const OnboardingCoach: React.FC<{
         activePanel === "account"
           ? "Use this button to create the workspace account and continue to the next steps."
           : "Use this button to verify the current setup check. When both checks pass, it opens the ready queue.",
-      data: { panel: status?.nextRequirementId ?? activePanel },
+      data: { panel: primaryPanel },
     };
 
     if (scope === "account") {
@@ -166,23 +179,25 @@ export const OnboardingCoach: React.FC<{
       ];
     }
 
-    const launchSteps: CoachStep[] = [
-      introStep,
-      {
+    const launchSteps: CoachStep[] = [introStep];
+
+    if (showModel) {
+      launchSteps.push({
         target: '[data-onboarding-target="model-form"]',
         title: "LLM engine",
         content:
           "This model powers scoring, tailoring, ghostwriting, and email classification. Verify it once so Job Ops can read opportunities for you.",
         data: { panel: "model" },
-      },
-      {
-        target: '[data-onboarding-target="resume-options"]',
-        title: "Resume baseline",
-        content:
-          "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume.",
-        data: { panel: "resume" },
-      },
-    ];
+      });
+    }
+
+    launchSteps.push({
+      target: '[data-onboarding-target="resume-options"]',
+      title: "Resume baseline",
+      content:
+        "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume.",
+      data: { panel: "resume" },
+    });
 
     if (status?.complete) {
       launchSteps.push({
@@ -195,7 +210,14 @@ export const OnboardingCoach: React.FC<{
     }
 
     return launchSteps;
-  }, [activePanel, scope, status?.complete, status?.nextRequirementId]);
+  }, [
+    activePanel,
+    scope,
+    showAccount,
+    showModel,
+    status?.complete,
+    status?.nextRequirementId,
+  ]);
 
   useEffect(() => {
     if ((scope === "launch" && !status) || readDismissed(storageKey)) return;
