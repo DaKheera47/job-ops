@@ -15,6 +15,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
 
 vi.mock("../api", () => ({
+  getAppStatus: vi.fn(),
   getSettings: vi.fn(),
   getLlmModels: vi.fn().mockResolvedValue([]),
   getCodexAuthStatus: vi.fn().mockResolvedValue({
@@ -98,6 +99,28 @@ const baseSettings = createAppSettings({
   ],
 });
 
+const localAppStatus = {
+  appMode: "local" as const,
+  capabilities: {
+    hostedSignups: false,
+    platformLlm: false,
+    quotas: false,
+    userEditableLlmSettings: true,
+  },
+  hostedTenantConfigured: false,
+};
+
+const hostedPlatformLlmStatus = {
+  appMode: "hosted" as const,
+  capabilities: {
+    hostedSignups: true,
+    platformLlm: true,
+    quotas: true,
+    userEditableLlmSettings: false,
+  },
+  hostedTenantConfigured: true,
+};
+
 const renderPage = () => {
   return render(
     <MemoryRouter initialEntries={["/settings"]}>
@@ -169,6 +192,7 @@ describe("SettingsPage", () => {
       value: vi.fn(),
     });
     _resetTracerReadinessCache();
+    vi.mocked(api.getAppStatus).mockResolvedValue(localAppStatus);
     vi.mocked(api.getTracerReadiness).mockResolvedValue({
       status: "ready",
       isPubliclyAvailable: true,
@@ -573,6 +597,24 @@ describe("SettingsPage", () => {
 
     const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeDisabled());
+  });
+
+  it("hides model settings and defaults to writing style for hosted platform LLM", async () => {
+    vi.mocked(api.getAppStatus).mockResolvedValue(hostedPlatformLlmStatus);
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+
+    render(
+      <MemoryRouter initialEntries={["/settings#model"]}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await openNavGroup(/^ai$/i);
+
+    expect(screen.queryByRole("button", { name: /models/i })).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: /writing style/i }),
+    ).toBeInTheDocument();
   });
 
   it("does not mark Reactive Resume settings dirty when project catalog hydration finishes", async () => {

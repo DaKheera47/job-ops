@@ -444,6 +444,23 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   scoringPromptTemplate: null,
 };
 
+function getResetSettingsPayload(
+  canEditLlmSettings: boolean,
+): Partial<UpdateSettingsInput> {
+  if (canEditLlmSettings) return NULL_SETTINGS_PAYLOAD;
+  const payload: Partial<UpdateSettingsInput> = { ...NULL_SETTINGS_PAYLOAD };
+  delete payload.model;
+  delete payload.modelScorer;
+  delete payload.modelTailoring;
+  delete payload.modelProjectSelection;
+  delete payload.llmProvider;
+  delete payload.llmBaseUrl;
+  delete payload.llmApiKey;
+  delete payload.llmPurposeOverrides;
+  delete payload.llmPurposeApiKeys;
+  return payload;
+}
+
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   model: data.model.override ?? "",
   modelScorer: data.modelScorer.override ?? "",
@@ -758,24 +775,6 @@ export const SettingsPage: React.FC = () => {
     useState<SettingsSectionId>("model");
   const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([]);
 
-  useEffect(() => {
-    const hash = location.hash.replace(/^#/, "");
-    const allSectionIds = SETTINGS_NAV_GROUPS.flatMap((g) =>
-      g.items.map((i) => i.id),
-    );
-    if (hash && allSectionIds.includes(hash as SettingsSectionId)) {
-      setActiveSection(hash as SettingsSectionId);
-      const parentGroup = SETTINGS_NAV_GROUPS.find((g) =>
-        g.items.some((i) => i.id === hash),
-      );
-      if (parentGroup) {
-        setOpenGroups((prev) =>
-          prev.includes(parentGroup.id) ? prev : [...prev, parentGroup.id],
-        );
-      }
-    }
-  }, [location.hash]);
-
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [rxresumeValidationStatus, setRxresumeValidationStatus] =
@@ -829,6 +828,10 @@ export const SettingsPage: React.FC = () => {
     queryKey: queryKeys.settings.current(),
     queryFn: api.getSettings,
   });
+  const appStatusQuery = useQuery({
+    queryKey: queryKeys.app.status(),
+    queryFn: api.getAppStatus,
+  });
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups.list(),
     queryFn: api.getBackups,
@@ -838,6 +841,9 @@ export const SettingsPage: React.FC = () => {
   const backups = backupsQuery.data?.backups ?? [];
   const nextScheduled = backupsQuery.data?.nextScheduled ?? null;
   const isLoadingBackups = backupsQuery.isLoading;
+  const canEditLlmSettings =
+    appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true;
+  useQueryErrorToast(appStatusQuery.error, "Failed to load app status");
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
   const resumeProjectsValue = useWatch({
@@ -1100,15 +1106,15 @@ export const SettingsPage: React.FC = () => {
         envPayload.adzunaAppId = normalizeString(data.adzunaAppId);
       }
 
-      if (dirtyFields.llmProvider) {
+      if (canEditLlmSettings && dirtyFields.llmProvider) {
         envPayload.llmProvider = data.llmProvider ?? null;
       }
 
-      if (dirtyFields.llmBaseUrl) {
+      if (canEditLlmSettings && dirtyFields.llmBaseUrl) {
         envPayload.llmBaseUrl = normalizeString(data.llmBaseUrl);
       }
 
-      if (dirtyFields.llmApiKey) {
+      if (canEditLlmSettings && dirtyFields.llmApiKey) {
         const value = normalizePrivateInput(data.llmApiKey);
         if (value !== undefined) envPayload.llmApiKey = value;
       }
@@ -1133,40 +1139,46 @@ export const SettingsPage: React.FC = () => {
         if (value !== undefined) envPayload.webhookSecret = value;
       }
 
+      const llmPayload: Partial<UpdateSettingsInput> = canEditLlmSettings
+        ? {
+            model: dirtyFields.llmProvider
+              ? dirtyFields.model
+                ? normalizeString(data.model)
+                : null
+              : normalizeString(data.model),
+            ...(dirtyFields.llmProvider
+              ? {
+                  modelScorer: null,
+                  modelTailoring: null,
+                  modelProjectSelection: null,
+                  llmPurposeOverrides: normalizePurposeOverrides(
+                    data.llmPurposeOverrides,
+                    { dropInheritedProviderOverrides: true },
+                  ),
+                }
+              : {}),
+            ...(dirtyFields.llmPurposeOverrides
+              ? {
+                  llmPurposeOverrides: normalizePurposeOverrides(
+                    data.llmPurposeOverrides,
+                  ),
+                  modelScorer: null,
+                  modelTailoring: null,
+                  modelProjectSelection: null,
+                }
+              : {}),
+            ...(dirtyFields.llmPurposeApiKeys
+              ? {
+                  llmPurposeApiKeys: normalizePurposeApiKeys(
+                    data.llmPurposeApiKeys,
+                  ),
+                }
+              : {}),
+          }
+        : {};
+
       const payload: Partial<UpdateSettingsInput> = {
-        model: dirtyFields.llmProvider
-          ? dirtyFields.model
-            ? normalizeString(data.model)
-            : null
-          : normalizeString(data.model),
-        ...(dirtyFields.llmProvider
-          ? {
-              modelScorer: null,
-              modelTailoring: null,
-              modelProjectSelection: null,
-              llmPurposeOverrides: normalizePurposeOverrides(
-                data.llmPurposeOverrides,
-                { dropInheritedProviderOverrides: true },
-              ),
-            }
-          : {}),
-        ...(dirtyFields.llmPurposeOverrides
-          ? {
-              llmPurposeOverrides: normalizePurposeOverrides(
-                data.llmPurposeOverrides,
-              ),
-              modelScorer: null,
-              modelTailoring: null,
-              modelProjectSelection: null,
-            }
-          : {}),
-        ...(dirtyFields.llmPurposeApiKeys
-          ? {
-              llmPurposeApiKeys: normalizePurposeApiKeys(
-                data.llmPurposeApiKeys,
-              ),
-            }
-          : {}),
+        ...llmPayload,
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
@@ -1399,7 +1411,7 @@ export const SettingsPage: React.FC = () => {
     try {
       setIsSaving(true);
       const updated = await updateSettingsMutation.mutateAsync(
-        NULL_SETTINGS_PAYLOAD,
+        getResetSettingsPayload(canEditLlmSettings),
       );
       setSettings(updated);
       reset(mapSettingsToForm(updated));
@@ -1417,16 +1429,47 @@ export const SettingsPage: React.FC = () => {
     toast.success("Discarded unsaved changes");
   };
 
-  const filteredNavGroups = useMemo(
+  const visibleNavGroups = useMemo(
     () =>
       SETTINGS_NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter((item) =>
-          matchesSettingsSearch(settingsSearch, item),
+        items: group.items.filter(
+          (item) => canEditLlmSettings || item.id !== "model",
         ),
       })).filter((group) => group.items.length > 0),
-    [settingsSearch],
+    [canEditLlmSettings],
   );
+
+  const filteredNavGroups = useMemo(
+    () =>
+      visibleNavGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) =>
+            matchesSettingsSearch(settingsSearch, item),
+          ),
+        }))
+        .filter((group) => group.items.length > 0),
+    [settingsSearch, visibleNavGroups],
+  );
+
+  useEffect(() => {
+    const hash = location.hash.replace(/^#/, "");
+    const allSectionIds = visibleNavGroups.flatMap((g) =>
+      g.items.map((i) => i.id),
+    );
+    if (hash && allSectionIds.includes(hash as SettingsSectionId)) {
+      setActiveSection(hash as SettingsSectionId);
+      const parentGroup = visibleNavGroups.find((g) =>
+        g.items.some((i) => i.id === hash),
+      );
+      if (parentGroup) {
+        setOpenGroups((prev) =>
+          prev.includes(parentGroup.id) ? prev : [...prev, parentGroup.id],
+        );
+      }
+    }
+  }, [location.hash, visibleNavGroups]);
 
   const visibleSectionIds = useMemo(
     () =>
@@ -1441,14 +1484,16 @@ export const SettingsPage: React.FC = () => {
     }
   }, [activeSection, visibleSectionIds]);
 
+  const firstVisibleGroup = visibleNavGroups[0] ?? SETTINGS_NAV_GROUPS[0];
+  const firstVisibleSection = firstVisibleGroup.items[0];
   const activeSectionMeta =
-    SETTINGS_NAV_GROUPS.flatMap((group) => group.items).find(
-      (item) => item.id === activeSection,
-    ) ?? SETTINGS_NAV_GROUPS[0].items[0];
+    visibleNavGroups
+      .flatMap((group) => group.items)
+      .find((item) => item.id === activeSection) ?? firstVisibleSection;
   const activeGroup =
-    SETTINGS_NAV_GROUPS.find((group) =>
+    visibleNavGroups.find((group) =>
       group.items.some((item) => item.id === activeSection),
-    ) ?? SETTINGS_NAV_GROUPS[0];
+    ) ?? firstVisibleGroup;
 
   const sectionHasDirtyState = (sectionId: SettingsSectionId) =>
     SECTION_FIELD_MAP[sectionId].some((field) => Boolean(dirtyFields[field]));
@@ -1523,9 +1568,9 @@ export const SettingsPage: React.FC = () => {
   };
 
   const selectedSectionBadge = getSectionBadge(activeSection);
-  const dirtySectionCount = SETTINGS_NAV_GROUPS.flatMap(
-    (group) => group.items,
-  ).filter((item) => sectionHasDirtyState(item.id)).length;
+  const dirtySectionCount = visibleNavGroups
+    .flatMap((group) => group.items)
+    .filter((item) => sectionHasDirtyState(item.id)).length;
   const activeSectionIsDirty = sectionHasDirtyState(activeSection);
 
   let activeSectionContent: React.ReactNode;

@@ -188,7 +188,7 @@ authRouter.post(
 authRouter.get(
   "/bootstrap-status",
   asyncRoute(async (_req: Request, res: Response) => {
-    if (isDemoMode()) {
+    if (isDemoMode() || getJobOpsAppConfig().appMode === "hosted") {
       ok(res, { setupRequired: false });
       return;
     }

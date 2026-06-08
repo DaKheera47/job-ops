@@ -474,6 +474,24 @@ describe.sequential("Auth routes", () => {
         "First-run setup is disabled in hosted mode",
       );
     });
+
+    it("does not report first-run setup as required in hosted mode", async () => {
+      await stopServer({ server, closeDb, tempDir });
+      ({ server, baseUrl, closeDb, tempDir } = await startServer({
+        env: {
+          JOBOPS_TEST_AUTH_BYPASS: "0",
+          JOBOPS_APP_MODE: "hosted",
+          JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+        },
+      }));
+
+      const res = await fetch(`${baseUrl}/api/auth/bootstrap-status`);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.ok).toBe(true);
+      expect(body.data.setupRequired).toBe(false);
+    });
   });
 
   describe("public demo auth behavior", () => {
