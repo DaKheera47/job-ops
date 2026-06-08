@@ -82,6 +82,7 @@ function CoachTooltip({
 
 export const OnboardingCoach: React.FC<{
   activePanel: OnboardingPanelId;
+  allowReactiveResume?: boolean;
   onPanelChange: (panel: OnboardingPanelId) => void;
   replayNonce: number;
   showAccount?: boolean;
@@ -90,6 +91,7 @@ export const OnboardingCoach: React.FC<{
   status: OnboardingStatusResponse | null;
 }> = ({
   activePanel,
+  allowReactiveResume = true,
   onPanelChange,
   replayNonce,
   showAccount = true,
@@ -127,6 +129,9 @@ export const OnboardingCoach: React.FC<{
       status?.nextRequirementId === "model" && !showModel
         ? activePanel
         : (status?.nextRequirementId ?? activePanel);
+    const resumeContent = allowReactiveResume
+      ? "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume."
+      : "Upload your existing resume as a PDF or DOCX. Job Ops uses it as the baseline for matching, fit assessment, and application workflows.";
     const introStep: CoachStep = {
       target: '[data-onboarding-target="launch-rail"]',
       title: "Load the command centre",
@@ -194,8 +199,7 @@ export const OnboardingCoach: React.FC<{
     launchSteps.push({
       target: '[data-onboarding-target="resume-options"]',
       title: "Resume baseline",
-      content:
-        "Your resume becomes the baseline for job matching, fit assessment, and application workflows. Upload a file or connect Reactive Resume.",
+      content: resumeContent,
       data: { panel: "resume" },
     });
 
@@ -212,6 +216,7 @@ export const OnboardingCoach: React.FC<{
     return launchSteps;
   }, [
     activePanel,
+    allowReactiveResume,
     scope,
     showAccount,
     showModel,

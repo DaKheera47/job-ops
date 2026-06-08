@@ -6,6 +6,7 @@ import { BaseResumeStep } from "./BaseResumeStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
 
 export const OnboardingStepContent: React.FC<{
+  allowReactiveResume?: boolean;
   baseResumeValidation: ValidationState;
   baseResumeValue: string | null;
   currentStep: StepId;
@@ -73,6 +74,7 @@ export const OnboardingStepContent: React.FC<{
 
     return (
       <BaseResumeStep
+        allowReactiveResume={props.allowReactiveResume}
         baseResumeValidation={props.baseResumeValidation}
         baseResumeValue={props.baseResumeValue}
         hasRxResumeAccess={hasRxResumeAccess}

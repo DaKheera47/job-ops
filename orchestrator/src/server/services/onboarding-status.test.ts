@@ -195,12 +195,14 @@ describe("onboarding status engine", () => {
     const status = await getOnboardingStatus();
 
     expect(mocks.validateLlmCredentials).not.toHaveBeenCalled();
+    expect(mocks.validateRxResumeCredentials).not.toHaveBeenCalled();
     expect(status.complete).toBe(false);
     expect(status.nextRequirementId).toBe("resume");
     expect(status.requirements).toHaveLength(1);
     expect(status.requirements[0]).toMatchObject({
       id: "resume",
       status: "needs_action",
+      title: "Upload your existing resume, PDF or DOCX",
     });
   });
 

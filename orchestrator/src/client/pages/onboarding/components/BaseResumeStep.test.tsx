@@ -109,4 +109,19 @@ describe("BaseResumeStep", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("shows only document upload copy when Reactive Resume is disabled", () => {
+    render(<BaseResumeStep {...defaultProps} allowReactiveResume={false} />);
+
+    expect(
+      screen.getByText("Upload your existing resume, PDF or DOCX"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Supported formats: PDF and DOCX."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("radio", { name: /use reactive resume/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Reactive Resume JSON/i)).not.toBeInTheDocument();
+  });
 });

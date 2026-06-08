@@ -719,9 +719,11 @@ const LaunchOnboardingPage: React.FC = () => {
     new Set<"provider" | "endpoint" | "api_key" | "model">(),
   );
   const isAppStatusLoading = appStatusQuery.isLoading && !appStatusQuery.data;
-  const showAccountStep = appStatusQuery.data?.appMode !== "hosted";
+  const isHostedMode = appStatusQuery.data?.appMode === "hosted";
+  const showAccountStep = !isHostedMode;
   const showModelStep =
     appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true;
+  const allowReactiveResumeSetup = !isHostedMode;
   const visiblePanels = useMemo(
     () =>
       DEFAULT_ONBOARDING_PANELS.filter((panel) => {
@@ -970,6 +972,10 @@ const LaunchOnboardingPage: React.FC = () => {
     (showAccountStep ? 1 : 0) +
     (onboarding.complete ? 1 : 0);
   const totalSteps = visiblePanels.length;
+  const activePrimaryAction =
+    isHostedMode && activePanel === "resume"
+      ? "upload_resume"
+      : (activeRequirement?.primaryAction ?? "none");
 
   const submitActivePanel = async () => {
     if (activePanel === "account") {
@@ -986,7 +992,7 @@ const LaunchOnboardingPage: React.FC = () => {
       return;
     }
     if (activePanel === "resume") {
-      if (flow.resumeSetupMode === "rxresume") {
+      if (allowReactiveResumeSetup && flow.resumeSetupMode === "rxresume") {
         const status = await flow.handleSaveRxresume();
         if (status?.complete) setActivePanel("first-run");
         return;
@@ -1026,6 +1032,7 @@ const LaunchOnboardingPage: React.FC = () => {
       <PageMain className="space-y-4">
         <OnboardingCoach
           activePanel={activePanel}
+          allowReactiveResume={allowReactiveResumeSetup}
           onPanelChange={(panel) => {
             if (visiblePanels.includes(panel)) setActivePanel(panel);
           }}
@@ -1111,7 +1118,9 @@ const LaunchOnboardingPage: React.FC = () => {
                         ? "Workspace account created"
                         : activePanel === "first-run"
                           ? "Ready for the first run"
-                          : activeRequirement?.title}
+                          : isHostedMode && activePanel === "resume"
+                            ? "Upload your existing resume, PDF or DOCX"
+                            : activeRequirement?.title}
                     </CardTitle>
                     <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                       {activePanel === "account"
@@ -1120,9 +1129,11 @@ const LaunchOnboardingPage: React.FC = () => {
                           ? showModelStep
                             ? "Your model and resume are loaded. Job Ops can start turning job leads into ranked, actionable work."
                             : "Your resume is loaded. Job Ops can start turning job leads into ranked, actionable work."
-                          : activeRequirement?.status === "ready"
-                            ? activeRequirement.message
-                            : "Complete this setup check to unlock the next part of your job-search workflow."}
+                          : isHostedMode && activePanel === "resume"
+                            ? "Upload your existing resume as a PDF or DOCX. Job Ops will use it as the baseline for matching, fit assessment, search terms, and application workflows."
+                            : activeRequirement?.status === "ready"
+                              ? activeRequirement.message
+                              : "Complete this setup check to unlock the next part of your job-search workflow."}
                     </p>
                   </div>
                 </CardHeader>
@@ -1174,6 +1185,7 @@ const LaunchOnboardingPage: React.FC = () => {
                     </div>
                   ) : activePanel === "model" || activePanel === "resume" ? (
                     <OnboardingStepContent
+                      allowReactiveResume={allowReactiveResumeSetup}
                       baseResumeValidation={baseResumeValidation}
                       baseResumeValue={flow.watch("rxresumeBaseResumeId")}
                       currentStep={activePanel as StepId}
@@ -1315,9 +1327,7 @@ const LaunchOnboardingPage: React.FC = () => {
                         ? flow.isGeneratingSearchTerms
                           ? "Preparing search terms..."
                           : "Open ready queue"
-                        : getActionLabel(
-                            activeRequirement?.primaryAction ?? "none",
-                          )}
+                        : getActionLabel(activePrimaryAction)}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>

@@ -46,6 +46,7 @@ vi.mock("./onboarding/components/OnboardingCoach", () => ({
 
 vi.mock("./onboarding/components/OnboardingStepContent", () => ({
   OnboardingStepContent: (props: {
+    allowReactiveResume?: boolean;
     currentStep: string;
     onCodexAuthStatusChange?: (status: {
       authenticated: boolean;
@@ -56,6 +57,10 @@ vi.mock("./onboarding/components/OnboardingStepContent", () => ({
   }) => (
     <div>
       <div>content:{props.currentStep}</div>
+      <div>
+        reactive-resume:
+        {props.allowReactiveResume === false ? "off" : "on"}
+      </div>
       <button
         type="button"
         onClick={() =>
@@ -344,6 +349,7 @@ describe("OnboardingPage", () => {
     await renderPage();
 
     expect(await screen.findByText("content:resume")).toBeInTheDocument();
+    expect(screen.getByText("reactive-resume:off")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /account workspace/i }),
     ).not.toBeInTheDocument();
@@ -352,6 +358,9 @@ describe("OnboardingPage", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
     expect(screen.getByText("0/2")).toBeInTheDocument();
+    expect(
+      screen.getByText("Upload your existing resume, PDF or DOCX"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("Workspace account created"),
     ).not.toBeInTheDocument();

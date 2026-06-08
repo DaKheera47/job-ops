@@ -111,6 +111,7 @@ function ResumeImportProgress({
 }
 
 export const BaseResumeStep: React.FC<{
+  allowReactiveResume?: boolean;
   baseResumeValidation: ValidationState;
   baseResumeValue: string | null;
   hasRxResumeAccess: boolean;
@@ -132,6 +133,7 @@ export const BaseResumeStep: React.FC<{
   onRxresumeUrlChange: (value: string) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = ({
+  allowReactiveResume = true,
   baseResumeValidation,
   baseResumeValue,
   hasRxResumeAccess,
@@ -154,6 +156,18 @@ export const BaseResumeStep: React.FC<{
   onTemplateResumeChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const effectiveResumeSetupMode = allowReactiveResume
+    ? resumeSetupMode
+    : "upload";
+  const uploadTitle = allowReactiveResume
+    ? "Upload a resume file"
+    : "Upload your existing resume, PDF or DOCX";
+  const uploadDescription = allowReactiveResume
+    ? "Job Ops imports Reactive Resume JSON directly. PDF and DOCX files are sent to your configured AI model and stored as a local Design Resume. That resume drives job matching, fit assessment, search terms, and application workflows."
+    : "Upload your existing resume as a PDF or DOCX. Job Ops will import it and use it as the baseline for matching, fit assessment, search terms, and application workflows.";
+  const supportedFormats = allowReactiveResume
+    ? "Supported formats: PDF, DOCX, and Reactive Resume JSON."
+    : "Supported formats: PDF and DOCX.";
 
   return (
     <div className="space-y-6" data-onboarding-target="resume-options">
@@ -171,59 +185,63 @@ export const BaseResumeStep: React.FC<{
         }}
       />
 
-      <RadioGroup
-        value={resumeSetupMode}
-        onValueChange={(value) =>
-          onResumeSetupModeChange(value === "rxresume" ? "rxresume" : "upload")
-        }
-        className="grid gap-4 lg:grid-cols-2"
-      >
-        {[
-          {
-            value: "upload",
-            title: "Upload a file",
-            description:
-              "Turn a PDF, DOCX, or Reactive Resume JSON into the baseline Job Ops uses for matching and tailoring.",
-          },
-          {
-            value: "rxresume",
-            title: "Use Reactive Resume",
-            description:
-              "Connect an existing Reactive Resume so Job Ops can assess fit and build applications from it.",
-          },
-        ].map((option) => {
-          const checked = resumeSetupMode === option.value;
-          const radioId = `resume-setup-${option.value}`;
-          return (
-            <label
-              key={option.value}
-              htmlFor={radioId}
-              className={cn(
-                "flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition-colors",
-                checked
-                  ? "border-primary bg-muted/40"
-                  : "border-border/60 hover:bg-muted/20",
-              )}
-            >
-              <RadioGroupItem
-                id={radioId}
-                value={option.value}
-                className="mt-1"
-              />
-              <div className="space-y-1">
-                <div className="text-base font-medium text-foreground">
-                  {option.title}
+      {allowReactiveResume ? (
+        <RadioGroup
+          value={resumeSetupMode}
+          onValueChange={(value) =>
+            onResumeSetupModeChange(
+              value === "rxresume" ? "rxresume" : "upload",
+            )
+          }
+          className="grid gap-4 lg:grid-cols-2"
+        >
+          {[
+            {
+              value: "upload",
+              title: "Upload a file",
+              description:
+                "Turn a PDF, DOCX, or Reactive Resume JSON into the baseline Job Ops uses for matching and tailoring.",
+            },
+            {
+              value: "rxresume",
+              title: "Use Reactive Resume",
+              description:
+                "Connect an existing Reactive Resume so Job Ops can assess fit and build applications from it.",
+            },
+          ].map((option) => {
+            const checked = resumeSetupMode === option.value;
+            const radioId = `resume-setup-${option.value}`;
+            return (
+              <label
+                key={option.value}
+                htmlFor={radioId}
+                className={cn(
+                  "flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition-colors",
+                  checked
+                    ? "border-primary bg-muted/40"
+                    : "border-border/60 hover:bg-muted/20",
+                )}
+              >
+                <RadioGroupItem
+                  id={radioId}
+                  value={option.value}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <div className="text-base font-medium text-foreground">
+                    {option.title}
+                  </div>
+                  <div className="text-sm leading-6 text-muted-foreground">
+                    {option.description}
+                  </div>
                 </div>
-                <div className="text-sm leading-6 text-muted-foreground">
-                  {option.description}
-                </div>
-              </div>
-            </label>
-          );
-        })}
-      </RadioGroup>
+              </label>
+            );
+          })}
+        </RadioGroup>
+      ) : null}
 
-      {resumeSetupMode === "upload" ? (
+      {effectiveResumeSetupMode === "upload" ? (
         <>
           {isImportingResume ? (
             <ResumeImportProgress
@@ -233,12 +251,9 @@ export const BaseResumeStep: React.FC<{
           ) : (
             <div className="rounded-lg border border-border/60 bg-muted/10 p-5">
               <div className="space-y-2">
-                <div className="text-sm font-medium">Upload a resume file</div>
+                <div className="text-sm font-medium">{uploadTitle}</div>
                 <p className="text-sm text-muted-foreground">
-                  Job Ops imports Reactive Resume JSON directly. PDF and DOCX
-                  files are sent to your configured AI model and stored as a
-                  local Design Resume. That resume drives job matching, fit
-                  assessment, search terms, and application workflows.
+                  {uploadDescription}
                 </p>
               </div>
 
@@ -252,7 +267,7 @@ export const BaseResumeStep: React.FC<{
                   Upload resume file
                 </Button>
                 <div className="text-xs text-muted-foreground">
-                  Supported formats: PDF, DOCX, and Reactive Resume JSON.
+                  {supportedFormats}
                 </div>
               </div>
             </div>
