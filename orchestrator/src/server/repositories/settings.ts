@@ -5,9 +5,16 @@
 import type { settingsRegistry } from "@shared/settings-registry";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { settings } = schema;
+
+function settingsScopeFilter() {
+  return privateDataScopeFilter(settings);
+}
 
 export type SettingKey = Exclude<
   {
@@ -19,22 +26,17 @@ export type SettingKey = Exclude<
 >;
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(settings)
-    .where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)));
+    .where(and(settingsScopeFilter(), eq(settings.key, key)));
   return row?.value ?? null;
 }
 
 export async function getAllSettings(): Promise<
   Partial<Record<SettingKey, string>>
 > {
-  const tenantId = getActiveTenantId();
-  const rows = await db
-    .select()
-    .from(settings)
-    .where(eq(settings.tenantId, tenantId));
+  const rows = await db.select().from(settings).where(settingsScopeFilter());
   return rows.reduce(
     (acc, row) => {
       acc[row.key as SettingKey] = row.value;
@@ -49,30 +51,31 @@ export async function setSetting(
   value: string | null,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   if (value === null) {
     await db
       .delete(settings)
-      .where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)));
+      .where(and(settingsScopeFilter(), eq(settings.key, key)));
     return;
   }
 
   const [existing] = await db
     .select({ key: settings.key })
     .from(settings)
-    .where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)));
+    .where(and(settingsScopeFilter(), eq(settings.key, key)));
 
   if (existing) {
     await db
       .update(settings)
       .set({ value, updatedAt: now })
-      .where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)));
+      .where(and(settingsScopeFilter(), eq(settings.key, key)));
     return;
   }
 
   await db.insert(settings).values({
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     key,
     value,
     createdAt: now,

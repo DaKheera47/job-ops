@@ -6,9 +6,16 @@ import type {
 } from "@shared/types";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { postApplicationSyncRuns } = schema;
+
+function syncRunsScopeFilter() {
+  return privateDataScopeFilter(postApplicationSyncRuns);
+}
 
 type StartPostApplicationSyncRunInput = {
   provider: PostApplicationProvider;
@@ -61,11 +68,12 @@ export async function startPostApplicationSyncRun(
   const id = randomUUID();
   const nowEpoch = Date.now();
   const nowIso = new Date(nowEpoch).toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   await db.insert(postApplicationSyncRuns).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     provider: input.provider,
     accountKey: input.accountKey,
     integrationId: input.integrationId,
@@ -97,7 +105,6 @@ export async function completePostApplicationSyncRun(
 ): Promise<PostApplicationSyncRun | null> {
   const nowEpoch = Date.now();
   const nowIso = new Date(nowEpoch).toISOString();
-  const tenantId = getActiveTenantId();
 
   await db
     .update(postApplicationSyncRuns)
@@ -116,10 +123,7 @@ export async function completePostApplicationSyncRun(
       updatedAt: nowIso,
     })
     .where(
-      and(
-        eq(postApplicationSyncRuns.tenantId, tenantId),
-        eq(postApplicationSyncRuns.id, input.id),
-      ),
+      and(syncRunsScopeFilter(), eq(postApplicationSyncRuns.id, input.id)),
     );
 
   return getPostApplicationSyncRunById(input.id);
@@ -128,16 +132,10 @@ export async function completePostApplicationSyncRun(
 export async function getPostApplicationSyncRunById(
   id: string,
 ): Promise<PostApplicationSyncRun | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(postApplicationSyncRuns)
-    .where(
-      and(
-        eq(postApplicationSyncRuns.tenantId, tenantId),
-        eq(postApplicationSyncRuns.id, id),
-      ),
-    );
+    .where(and(syncRunsScopeFilter(), eq(postApplicationSyncRuns.id, id)));
   return row ? mapRowToSyncRun(row) : null;
 }
 
@@ -146,7 +144,6 @@ export async function listPostApplicationSyncRuns(
   accountKey: string,
   limit = 20,
 ): Promise<PostApplicationSyncRun[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(postApplicationSyncRuns)
@@ -154,7 +151,7 @@ export async function listPostApplicationSyncRuns(
       and(
         eq(postApplicationSyncRuns.provider, provider),
         eq(postApplicationSyncRuns.accountKey, accountKey),
-        eq(postApplicationSyncRuns.tenantId, tenantId),
+        syncRunsScopeFilter(),
       ),
     )
     .orderBy(desc(postApplicationSyncRuns.startedAt))

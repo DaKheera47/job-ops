@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     updateThreadContext: vi.fn(),
   },
   jobsRepo: {
+    getJobById: vi.fn(),
     listJobNotesByIds: vi.fn(),
   },
   jobDocumentsRepo: {
@@ -86,6 +87,7 @@ vi.mock("../repositories/ghostwriter", () => ({
 }));
 
 vi.mock("../repositories/jobs", () => ({
+  getJobById: mocks.jobsRepo.getJobById,
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
 }));
 
@@ -194,6 +196,7 @@ describe("ghostwriter service", () => {
     });
 
     mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
+    mocks.jobsRepo.getJobById.mockResolvedValue({ id: "job-1" });
     mocks.jobDocumentsRepo.listJobDocumentsByIds.mockResolvedValue([]);
     mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);

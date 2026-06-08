@@ -213,6 +213,46 @@ describe.sequential("Auth routes", () => {
       expect(body.error.message).toContain("Username already exists");
     });
 
+    it("scopes backend analytics identity by hosted user", async () => {
+      async function signup(username: string): Promise<string> {
+        const res = await fetch(`${baseUrl}/api/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username,
+            password: `${username}-secret`,
+          }),
+        });
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body.ok).toBe(true);
+        return body.data.token as string;
+      }
+
+      async function analyticsDistinctId(token: string): Promise<string> {
+        const res = await fetch(`${baseUrl}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.ok).toBe(true);
+        return body.data.analyticsDistinctId as string;
+      }
+
+      const aliceToken = await signup("analytics-alice");
+      const bobToken = await signup("analytics-bob");
+
+      const aliceFirst = await analyticsDistinctId(aliceToken);
+      const aliceSecond = await analyticsDistinctId(aliceToken);
+      const bob = await analyticsDistinctId(bobToken);
+
+      expect(aliceFirst).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(aliceSecond).toBe(aliceFirst);
+      expect(bob).not.toBe(aliceFirst);
+    });
+
     it("returns 400 for invalid signup input", async () => {
       const res = await fetch(`${baseUrl}/api/auth/signup`, {
         method: "POST",

@@ -1,5 +1,5 @@
 import { logger } from "@infra/logger";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type {
   PipelinePendingChallenge,
   PipelineProgressState,
@@ -50,6 +50,10 @@ const currentSourceStatsByTenant = new Map<
   string,
   Map<CrawlSource, SourceCrawlingStats>
 >();
+
+function getProgressScopeKey(): string {
+  return getPrivateDataScope().scopeKey;
+}
 
 function getCurrentProgressForTenant(tenantId: string): PipelineProgress {
   const current = currentProgressByTenant.get(tenantId);
@@ -125,7 +129,7 @@ const emptySourceCrawlingStats = (): SourceCrawlingStats => ({
   jobPagesProcessed: 0,
 });
 
-function aggregateCrawlingStats(tenantId = getActiveTenantId()) {
+function aggregateCrawlingStats(tenantId = getProgressScopeKey()) {
   const crawlingStatsBySource = getCurrentSourceStatsForTenant(tenantId);
   let termsProcessed = 0;
   let termsTotal = 0;
@@ -163,7 +167,7 @@ function aggregateCrawlingStats(tenantId = getActiveTenantId()) {
  * Update the current progress and notify all listeners.
  */
 export function updateProgress(update: Partial<PipelineProgress>): void {
-  const tenantId = getActiveTenantId();
+  const tenantId = getProgressScopeKey();
   currentProgress = { ...getCurrentProgressForTenant(tenantId), ...update };
   currentProgressByTenant.set(tenantId, currentProgress);
 
@@ -181,14 +185,14 @@ export function updateProgress(update: Partial<PipelineProgress>): void {
  * Get the current progress state.
  */
 export function getProgress(): PipelineProgress {
-  return { ...getCurrentProgressForTenant(getActiveTenantId()) };
+  return { ...getCurrentProgressForTenant(getProgressScopeKey()) };
 }
 
 /**
  * Subscribe to progress updates.
  */
 export function subscribeToProgress(listener: ProgressListener): () => void {
-  const tenantId = getActiveTenantId();
+  const tenantId = getProgressScopeKey();
   const listeners = listenersByTenant.get(tenantId) ?? new Set();
   listenersByTenant.set(tenantId, listeners);
   listeners.add(listener);
@@ -206,7 +210,7 @@ export function subscribeToProgress(listener: ProgressListener): () => void {
  * Reset progress to idle state.
  */
 export function resetProgress(): void {
-  const tenantId = getActiveTenantId();
+  const tenantId = getProgressScopeKey();
   currentSourceStatsByTenant.set(tenantId, new Map());
   currentProgress = createIdleProgress();
   currentProgressByTenant.set(tenantId, currentProgress);
@@ -218,7 +222,7 @@ export function resetProgress(): void {
 export const progressHelpers = {
   startCrawling: (sourcesTotal = 0) =>
     (() => {
-      const tenantId = getActiveTenantId();
+      const tenantId = getProgressScopeKey();
       const crawlingStatsBySource = getCurrentSourceStatsForTenant(tenantId);
       crawlingStatsBySource.clear();
       updateProgress({
@@ -243,7 +247,7 @@ export const progressHelpers = {
     sourcesTotal: number,
     options?: { termsTotal?: number; detail?: string },
   ) => {
-    const tenantId = getActiveTenantId();
+    const tenantId = getProgressScopeKey();
     const crawlingStatsBySource = getCurrentSourceStatsForTenant(tenantId);
     const existing =
       crawlingStatsBySource.get(source) ?? emptySourceCrawlingStats();
@@ -294,7 +298,7 @@ export const progressHelpers = {
     phase?: "list" | "job";
     currentUrl?: string;
   }) => {
-    const tenantId = getActiveTenantId();
+    const tenantId = getProgressScopeKey();
     const crawlingStatsBySource = getCurrentSourceStatsForTenant(tenantId);
     const current = getProgress();
     if (update.source) {

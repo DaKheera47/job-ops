@@ -20,6 +20,17 @@ async function login(baseUrl: string, username: string, password: string) {
   return body.data.token as string;
 }
 
+async function signup(baseUrl: string, username: string, password: string) {
+  const res = await fetch(`${baseUrl}/api/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const body = await res.json();
+  expect(res.status).toBe(201);
+  return body.data.token as string;
+}
+
 function authHeaders(token: string) {
   return {
     Authorization: `Bearer ${token}`,
@@ -198,5 +209,149 @@ describe.sequential("Tenant isolation", () => {
       headers: { Authorization: `Bearer ${newToken}` },
     });
     expect(newSessionRes.status).toBe(200);
+  });
+});
+
+describe.sequential("Hosted current-user isolation", () => {
+  let server: Server;
+  let baseUrl: string;
+  let closeDb: () => void;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+        JOBOPS_APP_MODE: "hosted",
+        JOBOPS_HOSTED_SIGNUPS_ENABLED: "true",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+      },
+    }));
+  });
+
+  afterEach(async () => {
+    await stopServer({ server, closeDb, tempDir });
+  });
+
+  it("isolates private data between two hosted users in the same tenant", async () => {
+    const aliceToken = await signup(baseUrl, "alice", "alice-secret");
+    const bobToken = await signup(baseUrl, "bob", "bob-secret");
+
+    const aliceJob = await importManualJob(baseUrl, aliceToken, "Alice Role");
+    const bobJob = await importManualJob(baseUrl, bobToken, "Bob Role");
+    expect(aliceJob.id).not.toBe(bobJob.id);
+
+    const aliceList = await fetch(`${baseUrl}/api/jobs`, {
+      headers: { Authorization: `Bearer ${aliceToken}` },
+    }).then((res) => res.json());
+    expect(aliceList.data.jobs.map((job: { id: string }) => job.id)).toEqual([
+      aliceJob.id,
+    ]);
+
+    const bobList = await fetch(`${baseUrl}/api/jobs`, {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    }).then((res) => res.json());
+    expect(bobList.data.jobs.map((job: { id: string }) => job.id)).toEqual([
+      bobJob.id,
+    ]);
+
+    const bobReadsAliceJob = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    });
+    expect(bobReadsAliceJob.status).toBe(404);
+
+    const bobMutatesAliceJob = await fetch(
+      `${baseUrl}/api/jobs/${aliceJob.id}`,
+      {
+        method: "PATCH",
+        headers: authHeaders(bobToken),
+        body: JSON.stringify({ status: "ready" }),
+      },
+    );
+    expect(bobMutatesAliceJob.status).toBe(404);
+
+    const pdfBytes = Buffer.from("%PDF-1.4\n%EOF\n").toString("base64");
+    const uploadPdfRes = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}/pdf`, {
+      method: "POST",
+      headers: authHeaders(aliceToken),
+      body: JSON.stringify({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: pdfBytes,
+      }),
+    });
+    expect(uploadPdfRes.status).toBe(201);
+
+    const bobReadsAlicePdf = await fetch(
+      `${baseUrl}/api/jobs/${aliceJob.id}/pdf`,
+      { headers: { Authorization: `Bearer ${bobToken}` } },
+    );
+    expect(bobReadsAlicePdf.status).toBe(404);
+
+    const uploadDocumentRes = await fetch(
+      `${baseUrl}/api/jobs/${aliceJob.id}/documents`,
+      {
+        method: "POST",
+        headers: authHeaders(aliceToken),
+        body: JSON.stringify({
+          fileName: "note.txt",
+          mediaType: "text/plain",
+          dataBase64: Buffer.from("private note").toString("base64"),
+        }),
+      },
+    );
+    expect(uploadDocumentRes.status).toBe(201);
+
+    const bobListsAliceDocuments = await fetch(
+      `${baseUrl}/api/jobs/${aliceJob.id}/documents`,
+      { headers: { Authorization: `Bearer ${bobToken}` } },
+    );
+    expect(bobListsAliceDocuments.status).toBe(404);
+
+    const bobReadsAliceChat = await fetch(
+      `${baseUrl}/api/jobs/${aliceJob.id}/chat/messages`,
+      { headers: { Authorization: `Bearer ${bobToken}` } },
+    );
+    expect(bobReadsAliceChat.status).toBe(404);
+
+    const savedSearchConfig = {
+      searchTerms: ["backend engineer"],
+      sources: ["linkedin"],
+      country: "united kingdom",
+      cityLocations: ["London"],
+      workplaceTypes: ["remote"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+      topN: 10,
+      minSuitabilityScore: 55,
+      runBudget: 250,
+      automaticPresetId: "custom",
+    };
+
+    for (const token of [aliceToken, bobToken]) {
+      const res = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          name: "Same name",
+          config: savedSearchConfig,
+        }),
+      });
+      expect(res.status).toBe(201);
+    }
+
+    const aliceSearches = await fetch(
+      `${baseUrl}/api/pipeline/search-presets`,
+      { headers: { Authorization: `Bearer ${aliceToken}` } },
+    ).then((res) => res.json());
+    const bobSearches = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    }).then((res) => res.json());
+
+    expect(aliceSearches.data.searches).toHaveLength(1);
+    expect(bobSearches.data.searches).toHaveLength(1);
+    expect(aliceSearches.data.searches[0].id).not.toBe(
+      bobSearches.data.searches[0].id,
+    );
   });
 });

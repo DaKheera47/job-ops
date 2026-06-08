@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
-import { getTenantId } from "@infra/request-context";
+import { getRequestContext } from "@infra/request-context";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type { ResumeProfile } from "@shared/types";
 import {
   designResumeToProfile,
@@ -18,34 +19,34 @@ type TenantProfileCache = {
 
 const PROFILE_CACHE_TTL_MS = 30 * 60 * 1000;
 const PROFILE_CACHE_MAX_TENANTS = 100;
-const profileCacheByTenant = new Map<string, TenantProfileCache>();
+const profileCacheByScope = new Map<string, TenantProfileCache>();
 
 function pruneProfileCache(now = Date.now()): void {
-  for (const [tenantId, cache] of profileCacheByTenant.entries()) {
+  for (const [tenantId, cache] of profileCacheByScope.entries()) {
     if (now - cache.lastAccessedAt > PROFILE_CACHE_TTL_MS) {
-      profileCacheByTenant.delete(tenantId);
+      profileCacheByScope.delete(tenantId);
     }
   }
 
-  while (profileCacheByTenant.size >= PROFILE_CACHE_MAX_TENANTS) {
+  while (profileCacheByScope.size >= PROFILE_CACHE_MAX_TENANTS) {
     let oldestTenantId: string | null = null;
     let oldestAccessedAt = Number.POSITIVE_INFINITY;
-    for (const [tenantId, cache] of profileCacheByTenant.entries()) {
+    for (const [tenantId, cache] of profileCacheByScope.entries()) {
       if (cache.lastAccessedAt < oldestAccessedAt) {
         oldestTenantId = tenantId;
         oldestAccessedAt = cache.lastAccessedAt;
       }
     }
     if (!oldestTenantId) return;
-    profileCacheByTenant.delete(oldestTenantId);
+    profileCacheByScope.delete(oldestTenantId);
   }
 }
 
 function getTenantProfileCache(): TenantProfileCache {
   const now = Date.now();
   pruneProfileCache(now);
-  const tenantId = getActiveTenantId();
-  let cache = profileCacheByTenant.get(tenantId);
+  const scopeKey = getPrivateDataScope().scopeKey;
+  let cache = profileCacheByScope.get(scopeKey);
   if (!cache) {
     cache = {
       profile: null,
@@ -53,7 +54,7 @@ function getTenantProfileCache(): TenantProfileCache {
       localProfile: null,
       lastAccessedAt: now,
     };
-    profileCacheByTenant.set(tenantId, cache);
+    profileCacheByScope.set(scopeKey, cache);
   }
   cache.lastAccessedAt = now;
   return cache;
@@ -153,14 +154,18 @@ export async function getPersonName(): Promise<string> {
  * Clear the profile cache.
  */
 export function clearProfileCache(): void {
-  const tenantId = getTenantId();
-  if (tenantId) {
-    profileCacheByTenant.delete(tenantId);
+  if (!getRequestContext()) {
+    profileCacheByScope.clear();
     return;
   }
-  profileCacheByTenant.clear();
+
+  try {
+    profileCacheByScope.delete(getPrivateDataScope().scopeKey);
+  } catch {
+    profileCacheByScope.delete(getActiveTenantId());
+  }
 }
 
 export function __getProfileCacheSizeForTests(): number {
-  return profileCacheByTenant.size;
+  return profileCacheByScope.size;
 }

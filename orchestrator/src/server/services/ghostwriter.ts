@@ -355,6 +355,11 @@ async function resolveAndValidateImageInput(
 }
 
 async function ensureJobThread(jobId: string) {
+  const job = await jobsRepo.getJobById(jobId);
+  if (!job) {
+    throw notFound("Job not found");
+  }
+
   return jobChatRepo.getOrCreateThreadForJob({
     jobId,
     title: null,

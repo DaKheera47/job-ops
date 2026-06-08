@@ -49,6 +49,76 @@ function addTenantColumn(tableName: string): void {
   );
 }
 
+function addUserColumn(tableName: string): void {
+  if (!tableExists(tableName) || tableHasColumn(tableName, "user_id")) {
+    return;
+  }
+  sqlite.exec(`ALTER TABLE ${tableName} ADD COLUMN user_id TEXT`);
+}
+
+function tenantOwnerFor(tableName: string): string {
+  return `(SELECT tenant_memberships.user_id
+    FROM tenant_memberships
+    WHERE tenant_memberships.tenant_id = ${tableName}.tenant_id
+    ORDER BY CASE tenant_memberships.role WHEN 'owner' THEN 0 ELSE 1 END,
+      tenant_memberships.created_at ASC,
+      tenant_memberships.user_id ASC
+    LIMIT 1)`;
+}
+
+function backfillUserFromTenantOwner(tableName: string): void {
+  if (
+    !tableExists(tableName) ||
+    !tableHasColumn(tableName, "tenant_id") ||
+    !tableHasColumn(tableName, "user_id")
+  ) {
+    return;
+  }
+
+  sqlite.exec(`
+    UPDATE ${tableName}
+    SET user_id = COALESCE(user_id, ${tenantOwnerFor(tableName)})
+    WHERE user_id IS NULL
+  `);
+}
+
+function backfillUserFromParent(args: {
+  tableName: string;
+  parentTableName: string;
+  localColumnName: string;
+  parentColumnName: string;
+}): void {
+  if (
+    !tableExists(args.tableName) ||
+    !tableExists(args.parentTableName) ||
+    !tableHasColumn(args.tableName, "user_id") ||
+    !tableHasColumn(args.parentTableName, "user_id") ||
+    !tableHasColumn(args.tableName, args.localColumnName) ||
+    !tableHasColumn(args.parentTableName, args.parentColumnName)
+  ) {
+    return;
+  }
+
+  sqlite.exec(`
+    UPDATE ${args.tableName}
+    SET user_id = (
+      SELECT ${args.parentTableName}.user_id
+      FROM ${args.parentTableName}
+      WHERE ${args.parentTableName}.${args.parentColumnName} =
+        ${args.tableName}.${args.localColumnName}
+      LIMIT 1
+    )
+    WHERE user_id IS NULL
+      AND EXISTS (
+        SELECT 1
+        FROM ${args.parentTableName}
+        WHERE ${args.parentTableName}.${args.parentColumnName} =
+          ${args.tableName}.${args.localColumnName}
+          AND ${args.parentTableName}.user_id IS NOT NULL
+      )
+  `);
+}
+
 function hashPasswordSync(password: string): {
   passwordHash: string;
   passwordSalt: string;
@@ -1163,22 +1233,144 @@ function ensureTenantColumns(): void {
   }
 }
 
+function ensurePrivateUserColumns(): void {
+  for (const tableName of [
+    "jobs",
+    "stage_events",
+    "tasks",
+    "job_notes",
+    "interviews",
+    "pipeline_runs",
+    "settings",
+    "job_chat_threads",
+    "job_chat_messages",
+    "job_chat_runs",
+    "design_resume_documents",
+    "design_resume_assets",
+    "job_documents",
+    "post_application_integrations",
+    "post_application_sync_runs",
+    "post_application_messages",
+    "tracer_links",
+    "tracer_click_events",
+  ]) {
+    addUserColumn(tableName);
+  }
+
+  for (const tableName of [
+    "jobs",
+    "pipeline_runs",
+    "settings",
+    "design_resume_documents",
+    "post_application_integrations",
+    "post_application_sync_runs",
+  ]) {
+    backfillUserFromTenantOwner(tableName);
+  }
+
+  for (const tableName of [
+    "stage_events",
+    "tasks",
+    "job_notes",
+    "interviews",
+  ]) {
+    backfillUserFromParent({
+      tableName,
+      parentTableName: "jobs",
+      localColumnName: "application_id",
+      parentColumnName: "id",
+    });
+    backfillUserFromTenantOwner(tableName);
+  }
+
+  for (const tableName of ["job_documents", "tracer_links"]) {
+    backfillUserFromParent({
+      tableName,
+      parentTableName: "jobs",
+      localColumnName: "job_id",
+      parentColumnName: "id",
+    });
+    backfillUserFromTenantOwner(tableName);
+  }
+
+  for (const tableName of [
+    "job_chat_threads",
+    "job_chat_messages",
+    "job_chat_runs",
+  ]) {
+    backfillUserFromParent({
+      tableName,
+      parentTableName: "jobs",
+      localColumnName: "job_id",
+      parentColumnName: "id",
+    });
+    backfillUserFromTenantOwner(tableName);
+  }
+
+  backfillUserFromParent({
+    tableName: "design_resume_assets",
+    parentTableName: "design_resume_documents",
+    localColumnName: "document_id",
+    parentColumnName: "id",
+  });
+  backfillUserFromTenantOwner("design_resume_assets");
+
+  for (const tableName of ["post_application_messages"]) {
+    backfillUserFromParent({
+      tableName,
+      parentTableName: "post_application_integrations",
+      localColumnName: "integration_id",
+      parentColumnName: "id",
+    });
+    backfillUserFromParent({
+      tableName,
+      parentTableName: "jobs",
+      localColumnName: "matched_job_id",
+      parentColumnName: "id",
+    });
+    backfillUserFromTenantOwner(tableName);
+  }
+
+  backfillUserFromParent({
+    tableName: "tracer_click_events",
+    parentTableName: "tracer_links",
+    localColumnName: "tracer_link_id",
+    parentColumnName: "id",
+  });
+  backfillUserFromTenantOwner("tracer_click_events");
+}
+
 function rebuildSettingsTable(): void {
   if (!tableExists("settings")) return;
 
   sqlite.exec(`CREATE TABLE IF NOT EXISTS settings_new (
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT,
     key TEXT NOT NULL,
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(tenant_id, key),
+    UNIQUE(tenant_id, user_id, key),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`);
 
   const hasTenantId = tableHasColumn("settings", "tenant_id");
-  sqlite.exec(`INSERT OR REPLACE INTO settings_new(tenant_id, key, value, created_at, updated_at)
-    SELECT ${hasTenantId ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, key, value, created_at, updated_at
+  const hasUserId = tableHasColumn("settings", "user_id");
+  const tenantExpression = hasTenantId
+    ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})`
+    : sqlString(DEFAULT_TENANT_ID);
+  const ownerExpression = `(SELECT tenant_memberships.user_id
+    FROM tenant_memberships
+    WHERE tenant_memberships.tenant_id = ${tenantExpression}
+    ORDER BY CASE tenant_memberships.role WHEN 'owner' THEN 0 ELSE 1 END,
+      tenant_memberships.created_at ASC,
+      tenant_memberships.user_id ASC
+    LIMIT 1)`;
+  const userExpression = hasUserId
+    ? `COALESCE(user_id, ${ownerExpression})`
+    : ownerExpression;
+  sqlite.exec(`INSERT OR REPLACE INTO settings_new(tenant_id, user_id, key, value, created_at, updated_at)
+    SELECT ${tenantExpression}, ${userExpression}, key, value, created_at, updated_at
     FROM settings`);
   sqlite.exec("DROP TABLE IF EXISTS settings");
   sqlite.exec("ALTER TABLE settings_new RENAME TO settings");
@@ -1287,18 +1479,24 @@ function seedLegacyOwnerFromBasicAuth(): void {
 
 console.log("🔐 Applying tenancy compatibility migrations...");
 ensureTenantColumns();
+seedLegacyOwnerFromBasicAuth();
+ensurePrivateUserColumns();
 rebuildSettingsTable();
 ensureTracerLinksUniqueIndex();
+sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_key_unique");
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key_unique ON settings(tenant_id, key)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_user_key_unique ON settings(tenant_id, user_id, key)",
+);
+sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_job_url_unique");
+sqlite.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_user_job_url_unique ON jobs(tenant_id, user_id, job_url)",
 );
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_job_url_unique ON jobs(tenant_id, job_url)",
+  "CREATE INDEX IF NOT EXISTS idx_jobs_tenant_user_status ON jobs(tenant_id, user_id, status)",
 );
 sqlite.exec(
   "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)",
 );
-seedLegacyOwnerFromBasicAuth();
 
 sqlite.close();
 console.log("🎉 Database migrations complete!");

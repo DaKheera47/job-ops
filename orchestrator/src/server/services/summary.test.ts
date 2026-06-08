@@ -4,9 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const callJsonMock = vi.fn();
 const getProviderMock = vi.fn();
 const getBaseUrlMock = vi.fn();
-
-vi.mock("../repositories/settings", () => ({
+const settingsMocks = vi.hoisted(() => ({
   getSetting: vi.fn(),
+  getEffectiveSettings: vi.fn(),
+}));
+
+vi.mock("../repositories/settings", () => settingsMocks);
+vi.mock("@server/repositories/settings", () => settingsMocks);
+vi.mock("@server/services/settings", () => ({
+  getEffectiveSettings: settingsMocks.getEffectiveSettings,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -35,6 +41,13 @@ describe("generateTailoring", () => {
     vi.clearAllMocks();
     getProviderMock.mockReturnValue("openrouter");
     getBaseUrlMock.mockReturnValue("https://openrouter.ai");
+    settingsMocks.getEffectiveSettings.mockResolvedValue({
+      model: { value: "gpt-4o-mini" },
+      llmProvider: { value: "openrouter" },
+      llmBaseUrl: { value: null },
+      llmPurposeOverrides: { value: {} },
+      modelTailoring: { value: null },
+    });
     callJsonMock.mockResolvedValue({
       success: true,
       data: {
