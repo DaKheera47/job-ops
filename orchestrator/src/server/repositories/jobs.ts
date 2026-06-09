@@ -532,7 +532,7 @@ async function insertJob(input: CreateJobInput): Promise<Job> {
 
 function isJobUrlUniqueViolation(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return /UNIQUE constraint failed: (jobs\.job_url|jobs\.tenant_id, jobs\.job_url|jobs\.tenant_id, jobs\.user_id, jobs\.job_url)/i.test(
+  return /UNIQUE constraint failed: (jobs\.job_url|jobs\.tenant_id, jobs\.job_url|jobs\.tenant_id, jobs\.user_id, jobs\.job_url|index ['"]idx_jobs_tenant_user_job_url_unique['"])/i.test(
     error.message,
   );
 }

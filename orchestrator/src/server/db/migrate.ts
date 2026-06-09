@@ -1395,7 +1395,7 @@ function ensureTracerLinksUniqueIndex(): void {
         SELECT
           id,
           first_value(id) OVER (
-            PARTITION BY tenant_id, user_id, job_id, source_path, destination_url_hash
+            PARTITION BY tenant_id, coalesce(user_id, ''), job_id, source_path, destination_url_hash
             ORDER BY created_at ASC, id ASC
           ) AS keep_id
         FROM tracer_links
@@ -1419,7 +1419,7 @@ function ensureTracerLinksUniqueIndex(): void {
       SELECT
         id,
         first_value(id) OVER (
-          PARTITION BY tenant_id, user_id, job_id, source_path, destination_url_hash
+          PARTITION BY tenant_id, coalesce(user_id, ''), job_id, source_path, destination_url_hash
           ORDER BY created_at ASC, id ASC
         ) AS keep_id
       FROM tracer_links
@@ -1436,7 +1436,10 @@ function ensureTracerLinksUniqueIndex(): void {
     "DROP INDEX IF EXISTS idx_tracer_links_tenant_job_source_destination_unique",
   );
   sqlite.exec(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracer_links_tenant_user_job_source_destination_unique ON tracer_links(tenant_id, user_id, job_id, source_path, destination_url_hash)",
+    "DROP INDEX IF EXISTS idx_tracer_links_tenant_user_job_source_destination_unique",
+  );
+  sqlite.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracer_links_tenant_user_job_source_destination_unique ON tracer_links(tenant_id, coalesce(user_id, ''), job_id, source_path, destination_url_hash)",
   );
 }
 
@@ -1641,22 +1644,33 @@ rebuildPostApplicationPrivateTables();
 rebuildSettingsTable();
 ensureTracerLinksUniqueIndex();
 sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_key_unique");
+sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_user_key_unique");
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_user_key_unique ON settings(tenant_id, user_id, key)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_user_key_unique ON settings(tenant_id, coalesce(user_id, ''), key)",
 );
 sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_job_url_unique");
+sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_user_job_url_unique");
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_user_job_url_unique ON jobs(tenant_id, user_id, job_url)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_user_job_url_unique ON jobs(tenant_id, coalesce(user_id, ''), job_url)",
 );
 sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_status");
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_integrations_tenant_user_provider_account_unique ON post_application_integrations(tenant_id, user_id, provider, account_key)",
+  "DROP INDEX IF EXISTS idx_post_app_integrations_tenant_user_provider_account_unique",
 );
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_messages_tenant_user_provider_account_external_unique ON post_application_messages(tenant_id, user_id, provider, account_key, external_message_id)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_integrations_tenant_user_provider_account_unique ON post_application_integrations(tenant_id, coalesce(user_id, ''), provider, account_key)",
 );
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracer_links_tenant_user_job_source_destination_unique ON tracer_links(tenant_id, user_id, job_id, source_path, destination_url_hash)",
+  "DROP INDEX IF EXISTS idx_post_app_messages_tenant_user_provider_account_external_unique",
+);
+sqlite.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_messages_tenant_user_provider_account_external_unique ON post_application_messages(tenant_id, coalesce(user_id, ''), provider, account_key, external_message_id)",
+);
+sqlite.exec(
+  "DROP INDEX IF EXISTS idx_tracer_links_tenant_user_job_source_destination_unique",
+);
+sqlite.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracer_links_tenant_user_job_source_destination_unique ON tracer_links(tenant_id, coalesce(user_id, ''), job_id, source_path, destination_url_hash)",
 );
 sqlite.exec(
   "CREATE INDEX IF NOT EXISTS idx_jobs_tenant_user_status ON jobs(tenant_id, user_id, status)",

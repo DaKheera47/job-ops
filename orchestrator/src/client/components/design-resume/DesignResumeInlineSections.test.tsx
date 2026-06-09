@@ -1,6 +1,18 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BasicsCustomFieldsSection } from "./DesignResumeInlineSections";
+
+const mocks = vi.hoisted(() => ({
+  getDesignResumeAssetContentBlob: vi.fn(),
+}));
+
+vi.mock("@client/api/settings-profile", () => ({
+  getDesignResumeAssetContentBlob: mocks.getDesignResumeAssetContentBlob,
+}));
+
+import {
+  BasicsCustomFieldsSection,
+  PictureSection,
+} from "./DesignResumeInlineSections";
 
 describe("BasicsCustomFieldsSection", () => {
   it("lets the custom fields section title be renamed", () => {
@@ -43,5 +55,44 @@ describe("BasicsCustomFieldsSection", () => {
     expect(onChange).toHaveBeenCalledWith([
       { id: "field-1", title: "Availability", icon: "", text: "", link: "" },
     ]);
+  });
+
+  it("loads JobOps asset picture previews through the authenticated blob API", async () => {
+    const createObjectUrl = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:preview");
+    const revokeObjectUrl = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => {});
+    mocks.getDesignResumeAssetContentBlob.mockResolvedValue(
+      new Blob(["image"], { type: "image/png" }),
+    );
+
+    const { unmount } = render(
+      <PictureSection
+        picture={{ url: "/api/design-resume/assets/asset-1/content" }}
+        pictureUploading={false}
+        pictureEnabled={true}
+        onUploadPicture={vi.fn()}
+        onDeletePicture={vi.fn()}
+        onUpdatePicture={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByAltText("Resume Studio profile").getAttribute("src"),
+      ).toBe("blob:preview");
+    });
+
+    expect(mocks.getDesignResumeAssetContentBlob).toHaveBeenCalledWith(
+      "/api/design-resume/assets/asset-1/content",
+    );
+
+    unmount();
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:preview");
+
+    createObjectUrl.mockRestore();
+    revokeObjectUrl.mockRestore();
   });
 });

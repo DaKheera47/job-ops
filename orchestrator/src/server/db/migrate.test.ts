@@ -221,4 +221,56 @@ describe.sequential("database migrations", () => {
       },
     );
   });
+
+  it("enforces private unique indexes when user_id is null", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath);
+      migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+        "job-null-owner-1",
+        "tenant_default",
+        "Role",
+        "Acme",
+        "https://example.com/null-owner",
+      );
+
+      let duplicateFailed = false;
+      try {
+        migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+          "job-null-owner-2",
+          "tenant_default",
+          "Role",
+          "Acme",
+          "https://example.com/null-owner",
+        );
+      } catch {
+        duplicateFailed = true;
+      }
+
+      if (!duplicateFailed) {
+        throw new Error("jobs unique index allowed duplicate NULL user_id rows");
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
 });

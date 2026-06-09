@@ -189,7 +189,7 @@ export const jobs = sqliteTable(
   (table) => ({
     tenantUserJobUrlUnique: uniqueIndex(
       "idx_jobs_tenant_user_job_url_unique",
-    ).on(table.tenantId, table.userId, table.jobUrl),
+    ).on(table.tenantId, sql`coalesce(${table.userId}, '')`, table.jobUrl),
     tenantStatusIndex: index("idx_jobs_tenant_user_status").on(
       table.tenantId,
       table.userId,
@@ -466,7 +466,7 @@ export const settings = sqliteTable(
   (table) => ({
     tenantUserKeyUnique: uniqueIndex("idx_settings_tenant_user_key_unique").on(
       table.tenantId,
-      table.userId,
+      sql`coalesce(${table.userId}, '')`,
       table.key,
     ),
   }),
@@ -757,7 +757,12 @@ export const postApplicationIntegrations = sqliteTable(
   (table) => ({
     providerAccountUnique: uniqueIndex(
       "idx_post_app_integrations_tenant_user_provider_account_unique",
-    ).on(table.tenantId, table.userId, table.provider, table.accountKey),
+    ).on(
+      table.tenantId,
+      sql`coalesce(${table.userId}, '')`,
+      table.provider,
+      table.accountKey,
+    ),
   }),
 );
 
@@ -869,7 +874,7 @@ export const postApplicationMessages = sqliteTable(
       "idx_post_app_messages_tenant_user_provider_account_external_unique",
     ).on(
       table.tenantId,
-      table.userId,
+      sql`coalesce(${table.userId}, '')`,
       table.provider,
       table.accountKey,
       table.externalMessageId,
@@ -908,7 +913,7 @@ export const tracerLinks = sqliteTable(
       "idx_tracer_links_tenant_user_job_source_destination_unique",
     ).on(
       table.tenantId,
-      table.userId,
+      sql`coalesce(${table.userId}, '')`,
       table.jobId,
       table.sourcePath,
       table.destinationUrlHash,
