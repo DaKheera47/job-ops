@@ -908,68 +908,82 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         </TabsList>
 
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <TabsContent value="describe" className="mt-0 space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Describe the search you want</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search-plan-prompt">Search brief</Label>
-                  <Textarea
-                    id="search-plan-prompt"
-                    value={searchPrompt}
-                    onChange={(event) => setSearchPrompt(event.target.value)}
-                    placeholder="e.g. Find senior backend roles in London, remote or hybrid, using LinkedIn and Adzuna."
-                    className="min-h-32 resize-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    AI fills the search settings for review. It will not start
-                    the search.
-                  </p>
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    disabled={
-                      isPlanningSearch || searchPrompt.trim().length === 0
-                    }
-                    onClick={() => void handleGenerateSearchPlan()}
-                  >
-                    {isPlanningSearch ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    {isPlanningSearch
-                      ? "Generating settings..."
-                      : "Generate search settings"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent
+            value="describe"
+            className="mt-0 flex min-h-0 flex-1 flex-col justify-center py-8"
+          >
+            <div className="mx-auto w-full max-w-4xl space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                  What do you want to search for?
+                </p>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Start with a plain-language brief. AI fills the settings for
+                  review, then you run the search.
+                </p>
+              </div>
 
-            {planSummary ? (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>
-                  {planSource === "fallback"
-                    ? "Current settings kept"
-                    : "Search settings ready"}
-                </AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <p>{planSummary}</p>
-                  {planWarnings.length > 0 ? (
-                    <ul className="list-disc space-y-1 pl-5">
-                      {planWarnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+              <Card className="border-border/70 bg-card/95 shadow-[0_20px_80px_-48px_rgba(0,0,0,0.85)]">
+                <CardContent className="space-y-4 p-5 sm:p-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="search-plan-prompt" className="sr-only">
+                      What do you want to search for?
+                    </Label>
+                    <Textarea
+                      id="search-plan-prompt"
+                      value={searchPrompt}
+                      onChange={(event) => setSearchPrompt(event.target.value)}
+                      placeholder="Find senior backend roles in London, remote or hybrid, using LinkedIn and Adzuna."
+                      className="min-h-44 resize-none rounded-2xl border-0 bg-background/50 px-4 py-4 text-base leading-7 shadow-none ring-0 placeholder:text-muted-foreground/70 focus-visible:ring-2 sm:text-lg"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      AI fills the search settings for review. It will not start
+                      the search.
+                    </p>
+                    <Button
+                      type="button"
+                      className="gap-2"
+                      disabled={
+                        isPlanningSearch || searchPrompt.trim().length === 0
+                      }
+                      onClick={() => void handleGenerateSearchPlan()}
+                    >
+                      {isPlanningSearch ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      {isPlanningSearch
+                        ? "Generating settings..."
+                        : "Generate search settings"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {planSummary ? (
+                <Alert className="border-border/70 bg-card/80">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>
+                    {planSource === "fallback"
+                      ? "Current settings kept"
+                      : "Search settings ready"}
+                  </AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>{planSummary}</p>
+                    {planWarnings.length > 0 ? (
+                      <ul className="list-disc space-y-1 pl-5">
+                        {planWarnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
           </TabsContent>
 
           <TabsContent value="details" className="mt-0 space-y-4">

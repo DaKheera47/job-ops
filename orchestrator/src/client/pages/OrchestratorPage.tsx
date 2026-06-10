@@ -162,6 +162,7 @@ export const OrchestratorPage: React.FC = () => {
     loadJobs,
     navigateWithContext,
   });
+  const isRunComposerOpen = isRunModeModalOpen;
 
   const savedSearchesQuery = useQuery({
     queryKey: queryKeys.pipeline.searchPresets(),
@@ -484,83 +485,123 @@ export const OrchestratorPage: React.FC = () => {
         isPipelineRunning={isPipelineRunning}
         isCancelling={isCancelling}
         pipelineSources={pipelineSources}
+        hideActions={isRunComposerOpen}
         onOpenAutomaticRun={() => openRunMode("automatic")}
         onCancelPipeline={handleCancelPipeline}
       />
 
       <main
-        className={`container mx-auto space-y-6 px-4 py-6 ${
-          selectedJobIds.size > 0 ? "pb-36 lg:pb-12" : "pb-12"
-        }`}
+        className={
+          isRunComposerOpen
+            ? "min-h-[calc(100dvh-6rem)]"
+            : `container mx-auto space-y-6 px-4 py-6 ${
+                selectedJobIds.size > 0 ? "pb-36 lg:pb-12" : "pb-12"
+              }`
+        }
       >
-        <OrchestratorSummary
-          stats={stats}
-          isPipelineRunning={isPipelineRunning}
-        />
-
-        {/* Main content: tabs/filters -> list/detail */}
-        <section className="space-y-4">
-          <JobCommandBar
-            jobs={jobs}
-            onSelectJob={handleCommandSelectJob}
-            open={isCommandBarOpen}
-            onOpenChange={setIsCommandBarOpen}
-            enabled={!isAnyModalOpenExcludingCommandBar}
+        {isRunComposerOpen ? (
+          <RunModeModal
+            open={isRunModeModalOpen}
+            mode={runMode}
+            settings={settings ?? null}
+            enabledSources={enabledSources}
+            pipelineSources={pipelineSources}
+            onToggleSource={toggleSource}
+            onSetPipelineSources={setPipelineSources}
+            isPipelineRunning={isPipelineRunning}
+            onOpenChange={setIsRunModeModalOpen}
+            onModeChange={setRunMode}
+            onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
+            onManualImported={handleManualImported}
+            savedSearches={savedSearchesQuery.data?.searches ?? []}
+            isSavedSearchesLoading={savedSearchesQuery.isFetching}
+            onCreateSavedSearch={(input) =>
+              createSavedSearchMutation.mutateAsync(input)
+            }
+            onUpdateSavedSearch={(id, input) =>
+              updateSavedSearchMutation.mutateAsync({ id, input })
+            }
+            onDeleteSavedSearch={(id) =>
+              deleteSavedSearchMutation.mutateAsync(id).then(() => undefined)
+            }
+            onApplySavedSearch={(preset) =>
+              markSavedSearchUsedMutation
+                .mutateAsync(preset.id)
+                .then(() => undefined)
+            }
           />
-          <OrchestratorFilters
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={displayedCounts}
-            onOpenCommandBar={() => setIsCommandBarOpen(true)}
-            isFiltersOpen={isFiltersOpen}
-            onFiltersOpenChange={setIsFiltersOpen}
-            sourceFilter={sourceFilter}
-            onSourceFilterChange={setSourceFilter}
-            sponsorFilter={sponsorFilter}
-            onSponsorFilterChange={setSponsorFilter}
-            salaryFilter={salaryFilter}
-            onSalaryFilterChange={setSalaryFilter}
-            dateFilter={dateFilter}
-            onDateFilterChange={setDateFilter}
-            sourcesWithJobs={sourcesWithJobs}
-            sort={sort}
-            onSortChange={setSort}
-            onResetFilters={resetFilters}
-            filteredCount={activeJobs.length}
-          />
-
-          {/* List/Detail grid - directly under tabs, no extra section */}
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
-            {/* Primary region: Job list with highest visual weight */}
-            <JobListPanel
-              ref={jobListHandleRef}
-              isLoading={isLoading}
-              jobs={jobs}
-              activeJobs={activeJobs}
-              selectedJobId={selectedJobId}
-              selectedJobIds={selectedJobIds}
-              activeTab={activeTab}
-              onSelectJob={handleSelectJob}
-              onToggleSelectJob={toggleSelectJob}
-              onToggleSelectAll={toggleSelectAll}
-              primaryEmptyStateAction={primaryEmptyStateAction}
-              secondaryEmptyStateAction={secondaryEmptyStateAction}
-              emptyStateMessage={emptyStateMessage}
+        ) : (
+          <>
+            <OrchestratorSummary
+              stats={stats}
+              isPipelineRunning={isPipelineRunning}
             />
 
-            {/* Inspector panel: visually subordinate to list */}
-            {isDesktop && (
-              <JobDetailPanel
-                activeTab={activeTab}
-                activeJobs={activeJobs}
-                selectedJob={visibleSelectedJob}
-                onSelectJobId={handleSelectJobId}
-                onJobUpdated={loadJobs}
-                onPauseRefreshChange={setIsRefreshPaused}
+            {/* Main content: tabs/filters -> list/detail */}
+            <section className="space-y-4">
+              <JobCommandBar
+                jobs={jobs}
+                onSelectJob={handleCommandSelectJob}
+                open={isCommandBarOpen}
+                onOpenChange={setIsCommandBarOpen}
+                enabled={!isAnyModalOpenExcludingCommandBar}
               />
-            )}
-          </div>
-        </section>
+              <OrchestratorFilters
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                counts={displayedCounts}
+                onOpenCommandBar={() => setIsCommandBarOpen(true)}
+                isFiltersOpen={isFiltersOpen}
+                onFiltersOpenChange={setIsFiltersOpen}
+                sourceFilter={sourceFilter}
+                onSourceFilterChange={setSourceFilter}
+                sponsorFilter={sponsorFilter}
+                onSponsorFilterChange={setSponsorFilter}
+                salaryFilter={salaryFilter}
+                onSalaryFilterChange={setSalaryFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
+                sourcesWithJobs={sourcesWithJobs}
+                sort={sort}
+                onSortChange={setSort}
+                onResetFilters={resetFilters}
+                filteredCount={activeJobs.length}
+              />
+
+              {/* List/Detail grid - directly under tabs, no extra section */}
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
+                {/* Primary region: Job list with highest visual weight */}
+                <JobListPanel
+                  ref={jobListHandleRef}
+                  isLoading={isLoading}
+                  jobs={jobs}
+                  activeJobs={activeJobs}
+                  selectedJobId={selectedJobId}
+                  selectedJobIds={selectedJobIds}
+                  activeTab={activeTab}
+                  onSelectJob={handleSelectJob}
+                  onToggleSelectJob={toggleSelectJob}
+                  onToggleSelectAll={toggleSelectAll}
+                  primaryEmptyStateAction={primaryEmptyStateAction}
+                  secondaryEmptyStateAction={secondaryEmptyStateAction}
+                  emptyStateMessage={emptyStateMessage}
+                />
+
+                {/* Inspector panel: visually subordinate to list */}
+                {isDesktop && (
+                  <JobDetailPanel
+                    activeTab={activeTab}
+                    activeJobs={activeJobs}
+                    selectedJob={visibleSelectedJob}
+                    onSelectJobId={handleSelectJobId}
+                    onJobUpdated={loadJobs}
+                    onPauseRefreshChange={setIsRefreshPaused}
+                  />
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </main>
 
       <FloatingJobActionsBar
@@ -573,37 +614,6 @@ export const OrchestratorPage: React.FC = () => {
         onSkipSelected={() => void runJobAction("skip")}
         onRescoreSelected={() => void runJobAction("rescore")}
         onClear={clearSelection}
-      />
-
-      <RunModeModal
-        open={isRunModeModalOpen}
-        mode={runMode}
-        settings={settings ?? null}
-        enabledSources={enabledSources}
-        pipelineSources={pipelineSources}
-        onToggleSource={toggleSource}
-        onSetPipelineSources={setPipelineSources}
-        isPipelineRunning={isPipelineRunning}
-        onOpenChange={setIsRunModeModalOpen}
-        onModeChange={setRunMode}
-        onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
-        onManualImported={handleManualImported}
-        savedSearches={savedSearchesQuery.data?.searches ?? []}
-        isSavedSearchesLoading={savedSearchesQuery.isFetching}
-        onCreateSavedSearch={(input) =>
-          createSavedSearchMutation.mutateAsync(input)
-        }
-        onUpdateSavedSearch={(id, input) =>
-          updateSavedSearchMutation.mutateAsync({ id, input })
-        }
-        onDeleteSavedSearch={(id) =>
-          deleteSavedSearchMutation.mutateAsync(id).then(() => undefined)
-        }
-        onApplySavedSearch={(preset) =>
-          markSavedSearchUsedMutation
-            .mutateAsync(preset.id)
-            .then(() => undefined)
-        }
       />
 
       {!isDesktop && (

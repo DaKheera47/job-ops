@@ -174,11 +174,20 @@ vi.mock("../hooks/useSettings", () => ({
 
 vi.mock("./orchestrator/OrchestratorHeader", () => ({
   OrchestratorHeader: ({
+    hideActions,
+    onOpenAutomaticRun,
     onCancelPipeline,
   }: {
+    hideActions?: boolean;
+    onOpenAutomaticRun?: () => void;
     onCancelPipeline: () => void;
   }) => (
     <div data-testid="header">
+      {!hideActions ? (
+        <button type="button" onClick={onOpenAutomaticRun}>
+          Run Search
+        </button>
+      ) : null}
       <button type="button" onClick={onCancelPipeline}>
         Cancel Pipeline
       </button>
@@ -394,17 +403,32 @@ vi.mock("./orchestrator/JobListPanel", () => ({
 
 vi.mock("./orchestrator/RunModeModal", () => ({
   RunModeModal: ({
+    open,
+    mode,
     onSaveAndRunAutomatic,
   }: {
+    open: boolean;
+    mode: "automatic" | "manual";
     onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   }) => (
-    <button
-      type="button"
-      data-testid="run-automatic"
-      onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
-    >
-      Run automatic
-    </button>
+    <div data-testid="run-mode-modal">
+      {open ? (
+        <>
+          <h1>
+            {mode === "automatic"
+              ? "What do you want to search for?"
+              : "Review job details"}
+          </h1>
+          <button
+            type="button"
+            data-testid="run-automatic"
+            onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
+          >
+            Run automatic
+          </button>
+        </>
+      ) : null}
+    </div>
   ),
 }));
 
@@ -435,6 +459,10 @@ const pressKeyOn = (
   options: Partial<KeyboardEventInit> = {},
 ) => {
   fireEvent.keyDown(target, { key, ...options });
+};
+
+const openAutomaticRunComposer = () => {
+  fireEvent.click(screen.getByRole("button", { name: /run search/i }));
 };
 
 describe("OrchestratorPage", () => {
@@ -939,6 +967,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -976,6 +1005,33 @@ describe("OrchestratorPage", () => {
     setIntervalSpy.mockRestore();
   });
 
+  it("swaps the dashboard for the full-screen search composer", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+
+    expect(
+      screen.getByRole("heading", {
+        name: /what do you want to search for\?/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
   it("stores multiple cities for JobSpy sources in automatic mode", async () => {
     window.matchMedia = createMatchMedia(
       true,
@@ -1002,6 +1058,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1039,6 +1096,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1076,6 +1134,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1185,6 +1244,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {

@@ -10,6 +10,7 @@ interface OrchestratorHeaderProps {
   isPipelineRunning: boolean;
   isCancelling: boolean;
   pipelineSources: JobSource[];
+  hideActions?: boolean;
   onOpenAutomaticRun: () => void;
   onCancelPipeline: () => void;
 }
@@ -20,10 +21,11 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   isPipelineRunning,
   isCancelling,
   pipelineSources,
+  hideActions = false,
   onOpenAutomaticRun,
   onCancelPipeline,
 }) => {
-  const actions = isPipelineRunning ? (
+  const actions = hideActions ? null : isPipelineRunning ? (
     <Button
       size="sm"
       onClick={onCancelPipeline}

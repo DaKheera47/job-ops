@@ -59,6 +59,13 @@ describe("OrchestratorHeader", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides the run action when requested", () => {
+    renderHeader({ hideActions: true });
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders cancel button while running and triggers cancel", () => {
     const { props } = renderHeader({ isPipelineRunning: true });
     fireEvent.click(screen.getByRole("button", { name: /cancel run/i }));

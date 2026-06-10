@@ -177,7 +177,9 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByRole("tab", { name: "Describe search" }),
     ).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByLabelText("Search brief")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("What do you want to search for?"),
+    ).toBeInTheDocument();
   });
 
   it("generates search settings without starting the search", async () => {
@@ -226,7 +228,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Search brief"), {
+    fireEvent.change(screen.getByLabelText("What do you want to search for?"), {
       target: { value: "Find platform jobs in London" },
     });
     fireEvent.click(
