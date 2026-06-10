@@ -449,7 +449,7 @@ export const OrchestratorPage: React.FC = () => {
 
     if (activeTab === "discovered" || activeTab === "all") {
       return {
-        label: "Run pipeline",
+        label: "Run search",
         onClick: () => openRunMode("automatic"),
       };
     }
@@ -460,7 +460,7 @@ export const OrchestratorPage: React.FC = () => {
   const secondaryEmptyStateAction = useMemo(() => {
     if (activeTab === "ready") {
       return {
-        label: "Run pipeline",
+        label: "Run search",
         onClick: () => openRunMode("automatic"),
       };
     }

@@ -158,10 +158,10 @@ export const tabs: Array<{
 ];
 
 export const emptyStateCopy: Record<FilterTab, string> = {
-  ready: "Run the pipeline to discover and process new jobs.",
+  ready: "Run a search to discover and process new jobs.",
   discovered: "All discovered jobs have been processed.",
   applied: "You have not applied to any jobs yet.",
-  all: "No jobs in the system yet. Run the pipeline to get started.",
+  all: "No jobs in the system yet. Run a search to get started.",
 };
 
 export const dateFilterDimensionLabels: Record<DateFilterDimension, string> = {

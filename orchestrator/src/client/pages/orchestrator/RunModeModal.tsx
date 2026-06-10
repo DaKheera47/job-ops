@@ -75,12 +75,12 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
         <div className="flex h-full flex-col">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              {isManualMode ? "Review job details" : "Run jobs"}
+              {isManualMode ? "Review job details" : "Run search"}
             </SheetTitle>
             <SheetDescription>
               {isManualMode
                 ? "Add a job description, review the extracted details, then import."
-                : "Configure an automatic pipeline run."}
+                : "Describe a job search, review the settings, then run it."}
             </SheetDescription>
           </SheetHeader>
 

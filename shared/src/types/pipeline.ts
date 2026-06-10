@@ -164,6 +164,18 @@ export interface UpdatePipelineSearchPresetInput {
   config?: PipelineSearchPresetConfig;
 }
 
+export interface PipelineSearchPlanRequest {
+  prompt: string;
+  currentConfig: PipelineSearchPresetConfig;
+}
+
+export interface PipelineSearchPlanResponse {
+  config: PipelineSearchPresetConfig;
+  summary: string;
+  warnings: string[];
+  source: "ai" | "fallback";
+}
+
 export type PipelineProgressStep =
   | "idle"
   | "crawling"

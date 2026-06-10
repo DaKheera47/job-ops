@@ -24,6 +24,7 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 vi.mock("../api", () => ({
   updateSettings: vi.fn().mockResolvedValue({}),
   runPipeline: vi.fn().mockResolvedValue({ message: "ok" }),
+  planPipelineSearch: vi.fn().mockResolvedValue({}),
   getPipelineSearchPresets: vi.fn().mockResolvedValue({ searches: [] }),
   createPipelineSearchPreset: vi.fn().mockResolvedValue({}),
   updatePipelineSearchPreset: vi.fn().mockResolvedValue({}),
@@ -1106,7 +1107,7 @@ describe("OrchestratorPage", () => {
     );
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Pipeline completed");
+      expect(toast.success).toHaveBeenCalledWith("Search completed");
     });
   });
 
@@ -1130,7 +1131,7 @@ describe("OrchestratorPage", () => {
     );
 
     await waitFor(() => {
-      expect(toast.message).toHaveBeenCalledWith("Pipeline cancelled");
+      expect(toast.message).toHaveBeenCalledWith("Search cancelled");
     });
   });
 

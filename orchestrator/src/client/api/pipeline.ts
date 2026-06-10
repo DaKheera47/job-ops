@@ -6,6 +6,8 @@ import type {
   PipelineProgressState,
   PipelineRun,
   PipelineRunInsights,
+  PipelineSearchPlanRequest,
+  PipelineSearchPlanResponse,
   PipelineSearchPreset,
   PipelineSearchPresetsResponse,
   PipelineStatusResponse,
@@ -116,6 +118,15 @@ export async function deletePipelineSearchPreset(
       method: "DELETE",
     },
   );
+}
+
+export async function planPipelineSearch(
+  input: PipelineSearchPlanRequest,
+): Promise<PipelineSearchPlanResponse> {
+  return fetchApi<PipelineSearchPlanResponse>("/pipeline/search-plan", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function runPipeline(config?: {

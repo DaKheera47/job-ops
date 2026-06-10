@@ -71,7 +71,7 @@ export function usePipelineControls(
         status: "cancelled",
         had_error_message: false,
       });
-      toast.message("Pipeline cancelled");
+      toast.message("Search cancelled");
       return;
     }
 
@@ -80,7 +80,7 @@ export function usePipelineControls(
         status: "failed",
         had_error_message: Boolean(pipelineTerminalEvent.errorMessage),
       });
-      toast.error(pipelineTerminalEvent.errorMessage || "Pipeline failed");
+      toast.error(pipelineTerminalEvent.errorMessage || "Search failed");
       return;
     }
 
@@ -88,7 +88,7 @@ export function usePipelineControls(
       status: "completed",
       had_error_message: false,
     });
-    toast.success("Pipeline completed");
+    toast.success("Search completed");
   }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
   const openRunMode = useCallback((mode: RunMode) => {
@@ -124,13 +124,13 @@ export function usePipelineControls(
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
         });
-        toast.message("Pipeline started", {
+        toast.message("Search started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
         });
       } catch (error) {
         setIsPipelineRunning(false);
         setIsCancelling(false);
-        showErrorToast(error, "Failed to start pipeline");
+        showErrorToast(error, "Failed to start search");
       }
     },
     [setIsPipelineRunning],
@@ -148,7 +148,7 @@ export function usePipelineControls(
       toast.message(result.message);
     } catch (error) {
       setIsCancelling(false);
-      showErrorToast(error, "Failed to cancel pipeline");
+      showErrorToast(error, "Failed to cancel search");
     }
   }, [isCancelling, isPipelineRunning]);
 

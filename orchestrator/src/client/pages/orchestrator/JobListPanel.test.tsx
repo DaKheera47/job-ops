@@ -64,7 +64,7 @@ describe("JobListPanel", () => {
           onClick: vi.fn(),
         }}
         secondaryEmptyStateAction={{
-          label: "Run pipeline",
+          label: "Run search",
           onClick: vi.fn(),
         }}
       />,
@@ -72,13 +72,13 @@ describe("JobListPanel", () => {
 
     expect(screen.getByText("No jobs found")).toBeInTheDocument();
     expect(
-      screen.getByText("Run the pipeline to discover and process new jobs."),
+      screen.getByText("Run a search to discover and process new jobs."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /tailor discovered jobs/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /run pipeline/i }),
+      screen.getByRole("button", { name: /run search/i }),
     ).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("JobListPanel", () => {
           onClick: onPrimary,
         }}
         secondaryEmptyStateAction={{
-          label: "Run pipeline",
+          label: "Run search",
           onClick: onSecondary,
         }}
       />,
@@ -111,7 +111,7 @@ describe("JobListPanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /tailor discovered jobs/i }),
     );
-    fireEvent.click(screen.getByRole("button", { name: /run pipeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /run search/i }));
 
     expect(onPrimary).toHaveBeenCalledTimes(1);
     expect(onSecondary).toHaveBeenCalledTimes(1);

@@ -1,3 +1,4 @@
+import * as api from "@client/api";
 import { createAppSettings } from "@shared/testing/factories.js";
 import type { JobSource, PipelineSearchPreset } from "@shared/types";
 import {
@@ -69,6 +70,10 @@ vi.mock("@/lib/user-location", () => ({
   getDetectedCountryKey: getDetectedCountryKeyMock,
 }));
 
+vi.mock("@client/api", () => ({
+  planPipelineSearch: vi.fn(),
+}));
+
 function ensureStorage(): Storage {
   const existing = globalThis.localStorage as Partial<Storage> | undefined;
   const hasStorageShape =
@@ -115,7 +120,18 @@ function ensureStorage(): Storage {
 }
 
 describe("AutomaticRunTab", () => {
+  const openConfigureDetails = () => {
+    const trigger = screen.getByRole("tab", { name: "Configure details" });
+    if (trigger.getAttribute("aria-selected") !== "true") {
+      fireEvent.pointerDown(trigger);
+      fireEvent.mouseDown(trigger);
+      fireEvent.click(trigger);
+      fireEvent.keyDown(trigger, { key: "Enter", code: "Enter" });
+    }
+  };
+
   const openLocationPreferences = () => {
+    openConfigureDetails();
     const trigger = screen.getByRole("button", {
       name: "Review and edit location intent",
     });
@@ -125,6 +141,7 @@ describe("AutomaticRunTab", () => {
   };
 
   const openSourcePicker = () => {
+    openConfigureDetails();
     const trigger = screen.getByRole("button", {
       name: "Review and edit sources",
     });
@@ -136,10 +153,111 @@ describe("AutomaticRunTab", () => {
   beforeEach(() => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
+    vi.mocked(api.planPipelineSearch).mockReset();
     ensureStorage().clear();
     Element.prototype.hasPointerCapture ??= vi.fn(() => false);
     Element.prototype.setPointerCapture ??= vi.fn();
     Element.prototype.releasePointerCapture ??= vi.fn();
+  });
+
+  it("opens with the describe search tab first", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("tab", { name: "Describe search" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("Search brief")).toBeInTheDocument();
+  });
+
+  it("generates search settings without starting the search", async () => {
+    const onSaveAndRun = vi.fn().mockResolvedValue(undefined);
+    const onSetPipelineSources = vi.fn();
+    vi.mocked(api.planPipelineSearch).mockResolvedValueOnce({
+      source: "ai",
+      summary: "Focused the search on platform roles.",
+      warnings: ["Assumed remote-friendly roles."],
+      config: {
+        searchTerms: ["Platform Engineer", "Backend Engineer"],
+        sources: ["linkedin"],
+        country: "united kingdom",
+        cityLocations: ["London"],
+        workplaceTypes: ["remote", "hybrid"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "flexible",
+        topN: 20,
+        minSuitabilityScore: 40,
+        runBudget: 500,
+        automaticPresetId: "custom",
+      },
+    });
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          searchTerms: {
+            value: ["backend engineer"],
+            default: ["backend engineer"],
+            override: null,
+          },
+          jobspyCountryIndeed: {
+            value: "united kingdom",
+            default: "",
+            override: "united kingdom",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={onSetPipelineSources}
+        isPipelineRunning={false}
+        onSaveAndRun={onSaveAndRun}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Search brief"), {
+      target: { value: "Find platform jobs in London" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate search settings" }),
+    );
+
+    await waitFor(() => {
+      expect(api.planPipelineSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: "Find platform jobs in London",
+          currentConfig: expect.objectContaining({
+            searchTerms: ["backend engineer"],
+            sources: ["linkedin"],
+          }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("tab", { name: "Configure details" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    expect(onSaveAndRun).not.toHaveBeenCalled();
+    expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
+    expect(screen.getByText("Review generated settings")).toBeInTheDocument();
+    expect(
+      screen.getByText("Focused the search on platform roles."),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Platform Engineer").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("London").length).toBeGreaterThan(0);
   });
 
   it("shows detected country as a suggestion when location settings are still defaults", () => {
@@ -157,6 +275,8 @@ describe("AutomaticRunTab", () => {
         onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
       />,
     );
+
+    openConfigureDetails();
 
     expect(
       screen.getByRole("button", { name: "Select country" }),
@@ -183,6 +303,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Use suggestion" }));
 
     expect(
@@ -207,12 +328,12 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
+
     expect(
       screen.getByRole("button", { name: "Select country" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Start run now" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
   it("loads persisted country from settings", () => {
@@ -240,6 +361,8 @@ describe("AutomaticRunTab", () => {
         onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
       />,
     );
+
+    openConfigureDetails();
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -271,6 +394,8 @@ describe("AutomaticRunTab", () => {
         onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
       />,
     );
+
+    openConfigureDetails();
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -558,6 +683,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.focus(screen.getByLabelText("Cities"));
 
     expect(
@@ -591,6 +717,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     const input = screen.getByPlaceholderText("Type and press Enter");
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: "Backspace" });
@@ -631,6 +758,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     const collapsedTokens = screen.getByTestId(
       "city-locations-input-collapsed-tokens",
     );
@@ -703,6 +831,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
 
     expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(50);
@@ -736,9 +865,7 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByText("Select at least one workplace type."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Start run now" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
   it("keeps source-specific warnings out of the location section", () => {
@@ -793,7 +920,7 @@ describe("AutomaticRunTab", () => {
     openLocationPreferences();
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
-    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
@@ -826,11 +953,12 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
     fireEvent.change(screen.getByLabelText("Max jobs discovered"), {
       target: { value: "10" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
@@ -868,8 +996,9 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalled();
@@ -910,6 +1039,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Balanced" })).toHaveAttribute(
         "aria-pressed",
@@ -951,9 +1081,10 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalled();
@@ -994,6 +1125,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Custom" })).toHaveAttribute(
         "aria-pressed",
@@ -1113,6 +1245,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.change(screen.getByRole("combobox", { name: "Saved searches" }), {
       target: { value: "search-1" },
     });
@@ -1169,6 +1302,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Save as" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Croatia frontend" },

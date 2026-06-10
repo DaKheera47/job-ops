@@ -1,7 +1,7 @@
 ---
 id: find-jobs-and-apply-workflow
 title: Find Jobs and Apply Workflow
-description: Recommended end-to-end pre-application workflow from pipeline run to marking jobs as applied.
+description: Recommended end-to-end pre-application workflow from running a job search to marking jobs as applied.
 sidebar_position: 1
 ---
 
@@ -13,9 +13,9 @@ If you follow this order, you get the strongest results from discovery, scoring,
 
 ## Recommended flow (in order)
 
-### 1) Run a pipeline first
+### 1) Run a search first
 
-From the **Jobs** page, use the top-right pipeline/run control.
+From the **Jobs** page, use the top-right **Run search** control.
 
 What this does:
 
@@ -27,11 +27,13 @@ Important:
 
 - Some scrapers are slower and can take significant time.
 - Larger scrape ranges and more sources increase run duration.
-- If you are returning after a few days, run the pipeline again before reviewing jobs. Existing results are not auto-refreshed, so older discovered jobs may be stale or expired.
+- If you are returning after a few days, run the search again before reviewing jobs. Existing results are not auto-refreshed, so older discovered jobs may be stale or expired.
 
-### 2) Configure pipeline advanced settings
+### 2) Configure search settings
 
-In pipeline advanced settings, configure:
+In Automatic mode, start with **Describe search** when you want AI to fill the options from a plain-language brief. Review the generated settings before running; AI does not start the search for you.
+
+In **Configure details**, review or edit:
 
 - how many jobs to discover (approximate target)
 - minimum score threshold for tailoring

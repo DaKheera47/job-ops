@@ -48,7 +48,7 @@ const renderHeader = (
 describe("OrchestratorHeader", () => {
   it("opens automatic run from the navbar button", () => {
     const { props } = renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: /run pipeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /run search/i }));
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 

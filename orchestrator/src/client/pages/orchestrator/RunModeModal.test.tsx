@@ -57,7 +57,7 @@ describe("RunModeModal", () => {
       screen.getByRole("heading", { name: /review job details/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/choose automatic pipeline run or manual import/i),
+      screen.queryByText(/describe a job search or import jobs manually/i),
     ).not.toBeInTheDocument();
   });
 });

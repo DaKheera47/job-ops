@@ -43,7 +43,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   ) : (
     <Button size="sm" onClick={onOpenAutomaticRun} className="gap-2">
       <Play className="h-4 w-4" />
-      <span className="hidden sm:inline">Run pipeline</span>
+      <span className="hidden sm:inline">Run search</span>
     </Button>
   );
 
@@ -58,7 +58,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
       onNavOpenChange={onNavOpenChange}
       statusIndicator={
         isPipelineRunning ? (
-          <StatusIndicator label="Pipeline running" variant="amber" />
+          <StatusIndicator label="Search running" variant="amber" />
         ) : undefined
       }
       actions={actions}
