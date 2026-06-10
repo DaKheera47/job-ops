@@ -229,6 +229,80 @@ describe("design resume service", () => {
     );
   });
 
+  it("generates missing project ids when importing from Reactive Resume", async () => {
+    const upstreamResume = makeValidResumeJson({
+      sections: {
+        ...(buildDefaultReactiveResumeDocument().sections as Record<
+          string,
+          unknown
+        >),
+        projects: {
+          title: "",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "",
+              hidden: false,
+              name: "Blank ID",
+              period: "2024",
+              website: { url: "", label: "" },
+              description: "Blank ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "   ",
+              hidden: false,
+              name: "Whitespace ID",
+              period: "2025",
+              website: { url: "", label: "" },
+              description: "Whitespace ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "project-keep",
+              hidden: false,
+              name: "Existing ID",
+              period: "2026",
+              website: { url: "", label: "" },
+              description: "Existing ID project",
+              options: { showLinkInTitle: false },
+            },
+          ],
+        },
+      },
+    });
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+    const projectIds = result.resumeJson.sections.projects.items.map(
+      (project) => project.id,
+    );
+
+    expect(projectIds[0]).toEqual(expect.any(String));
+    expect(projectIds[0]?.trim()).not.toBe("");
+    expect(projectIds[1]).toEqual(expect.any(String));
+    expect(projectIds[1]?.trim()).not.toBe("");
+    expect(projectIds[2]).toBe("project-keep");
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
+          sections: expect.objectContaining({
+            projects: expect.objectContaining({
+              items: expect.arrayContaining([
+                expect.objectContaining({ id: "project-keep" }),
+              ]),
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
   it("preserves custom field titles through stored document validation", async () => {
     const resumeJson = makeValidResumeJson({
       basics: {

@@ -84,6 +84,43 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+export function ensureImportedProjectIds(
+  resumeJson: DesignResumeJson,
+): DesignResumeJson {
+  const sections = asRecord(resumeJson.sections);
+  const projects = asRecord(sections?.projects);
+  const items = asArray(projects?.items);
+  if (!sections || !projects || items.length === 0) return resumeJson;
+
+  let changed = false;
+  const nextItems = items.map((item) => {
+    const record = asRecord(item);
+    if (!record) return item;
+
+    const id = toText(record.id).trim();
+    if (id) return item;
+
+    changed = true;
+    return {
+      ...record,
+      id: createId(),
+    };
+  });
+
+  if (!changed) return resumeJson;
+
+  return {
+    ...resumeJson,
+    sections: {
+      ...sections,
+      projects: {
+        ...projects,
+        items: nextItems,
+      },
+    } as DesignResumeJson["sections"],
+  };
+}
+
 function formatValidationMessage(prefix: string, error: unknown): string {
   const detail = getResumeSchemaValidationMessage(error);
   if (!detail || detail === "Resume schema validation failed.") {
@@ -714,12 +751,14 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
     throw badRequest("Reactive Resume base resume is empty or invalid.");
   }
 
-  const validated = withReactiveResumePictureUrl(
-    validateIncomingDesignResumeDocument(upstreamResume.data),
+  const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
+  const withResolvedPictureUrls = withReactiveResumePictureUrl(
+    validated,
     await resolveReactiveResumePublicBaseUrl(),
   );
+  const withProjectIds = ensureImportedProjectIds(withResolvedPictureUrls);
   const imported = await replaceCurrentDesignResumeDocument({
-    resumeJson: validated,
+    resumeJson: withProjectIds,
     sourceResumeId: resumeId,
     sourceMode: "v5",
     importedAt: new Date().toISOString(),
