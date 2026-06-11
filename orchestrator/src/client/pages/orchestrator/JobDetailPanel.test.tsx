@@ -1,7 +1,8 @@
 import * as api from "@client/api";
+import * as privatePdf from "@client/lib/private-pdf";
 import { renderWithQueryClient } from "@client/test/renderWithQueryClient";
-import { createJob } from "@shared/testing/factories.js";
-import type { Job } from "@shared/types.js";
+import { createAppSettings, createJob } from "@shared/testing/factories.js";
+import type { AppSettings, Job } from "@shared/types.js";
 import {
   act,
   fireEvent,
@@ -17,7 +18,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
 
 const mockSettings = {
-  settings: null,
+  settings: null as AppSettings | null,
   error: null,
   isLoading: false,
   showSponsorInfo: true,
@@ -137,6 +138,11 @@ vi.mock("@client/api", () => ({
   getResumeProjectsCatalog: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@client/lib/private-pdf", () => ({
+  downloadJobPdf: vi.fn().mockResolvedValue(undefined),
+  openJobPdf: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -160,7 +166,9 @@ const getApplyPanel = () => screen.getByRole("tabpanel", { name: /apply/i });
 describe("JobDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSettings.settings = null;
     mockSettings.renderMarkdownInJobDescriptions = true;
+    vi.mocked(api.getProfile).mockResolvedValue({});
   });
 
   it("renders discovered jobs in the unified inspector", async () => {
@@ -246,6 +254,49 @@ describe("JobDetailPanel", () => {
 
     expect(openListing).not.toHaveClass("bg-emerald-600");
     expect(markApplied).toHaveClass("bg-emerald-600");
+  });
+
+  it("downloads PDFs with language-aware German transliteration", async () => {
+    mockSettings.settings = createAppSettings({
+      chatStyleLanguageMode: {
+        value: "manual",
+        default: "manual",
+        override: null,
+      },
+      chatStyleManualLanguage: {
+        value: "german",
+        default: "english",
+        override: null,
+      },
+    });
+    vi.mocked(api.getProfile).mockResolvedValue({
+      basics: {
+        name: "Müller",
+      },
+    });
+    const job = createJob({
+      id: "job-1",
+      employer: "Büro Straße",
+      pdfPath: "data/pdfs/job-1.pdf",
+      status: "ready",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "ready",
+      activeJobs: [job],
+      selectedJob: job,
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /download pdf/i }));
+
+    await waitFor(() =>
+      expect(privatePdf.downloadJobPdf).toHaveBeenCalledWith(
+        "job-1",
+        "Mueller_Buero_Strasse.pdf",
+      ),
+    );
   });
 
   it("disables application-kit PDF actions while regeneration is active", async () => {

@@ -107,6 +107,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
 - Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
 - When using the local LaTeX PDF renderer, fixed resume section titles follow the resolved output language
+- Downloaded resume filenames are ASCII-transliterated using the resolved language. For German, umlauts use `ä -> ae`, `ö -> oe`, `ü -> ue`, and `ß -> ss`.
 - Summary max words: optional cap on AI-generated summary length (empty = no limit)
 - Max keywords per skill: optional cap on keywords per skill category in tailoring (empty = no limit)
 - These numeric limits override any similar constraints written in the Constraints text field

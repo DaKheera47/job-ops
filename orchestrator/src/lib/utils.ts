@@ -3,6 +3,7 @@ import {
   sourceLabel as getExtractorSourceLabel,
   isExtractorSourceId,
 } from "@shared/extractors";
+import { safeFilenamePart as sharedSafeFilenamePart } from "@shared/filename-sanitizer";
 import type { Job } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
 import { type ClassValue, clsx } from "clsx";
@@ -105,11 +106,7 @@ export async function copyTextToClipboard(text: string) {
 // --- Text Processing ---
 export const stripHtml = (value: string) => stripHtmlTags(value);
 
-export const safeFilenamePart = (value: string) => {
-  const cleaned = value.replace(/[^a-z0-9]/gi, "_");
-  if (cleaned.replace(/_/g, "") === "") return "Unknown";
-  return cleaned || "Unknown";
-};
+export const safeFilenamePart = sharedSafeFilenamePart;
 
 // --- Comparisons & Math ---
 export function arraysEqual(a: string[], b: string[]) {

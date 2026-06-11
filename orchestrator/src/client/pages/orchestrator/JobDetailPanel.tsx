@@ -16,7 +16,9 @@ import {
 } from "@client/hooks/queries/useJobMutations";
 import { useProfile } from "@client/hooks/useProfile";
 import { useRescoreJob } from "@client/hooks/useRescoreJob";
+import { useSettings } from "@client/hooks/useSettings";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
+import { resolveFilenameLanguage } from "@client/lib/pdf-filename";
 import {
   getPdfActionLabels,
   isPdfRegenerating,
@@ -262,13 +264,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const markAsAppliedMutation = useMarkAsAppliedMutation();
   const skipJobMutation = useSkipJobMutation();
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
-  const { personName } = useProfile();
+  const { settings } = useSettings();
+  const { personName, profile } = useProfile();
+  const filenameLanguage = resolveFilenameLanguage({ settings, profile });
 
   const jobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
     : "#";
   const selectedPdfFilename = selectedJob
-    ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`
+    ? `${safeFilenamePart(personName || "Unknown", {
+        language: filenameLanguage,
+      })}_${safeFilenamePart(selectedJob.employer || "Unknown", {
+        language: filenameLanguage,
+      })}.pdf`
     : "resume.pdf";
   const selectedProjectIds = useMemo(
     () => selectedJob?.selectedProjectIds?.split(",").filter(Boolean) ?? [],

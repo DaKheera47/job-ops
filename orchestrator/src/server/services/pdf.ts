@@ -9,6 +9,7 @@ import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
 import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
+import { safePdfFileName } from "@shared/filename-sanitizer";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResume } from "./design-resume";
@@ -60,15 +61,6 @@ async function ensureOutputDir(): Promise<void> {
   if (!existsSync(outputDir)) {
     await mkdir(outputDir, { recursive: true });
   }
-}
-
-function sanitizePdfFileName(value: string): string {
-  const base = value
-    .trim()
-    .replace(/\.pdf$/i, "")
-    .replace(/[^a-z0-9._-]+/gi, "_")
-    .replace(/^_+|_+$/g, "");
-  return `${base || "Design_Resume"}.pdf`;
 }
 
 async function resolvePdfRenderer(): Promise<PdfRenderer> {
@@ -434,6 +426,7 @@ export async function generateDesignResumePdf(options?: {
   };
 
   await ensureOutputDir();
+  const language = await resolveLocalResumeLanguage(designResume.data);
 
   logger.info("Generating Design Resume PDF", {
     renderer,
@@ -441,10 +434,8 @@ export async function generateDesignResumePdf(options?: {
   });
 
   if (renderer !== "rxresume") {
-    const [language, typstTheme] = await Promise.all([
-      resolveLocalResumeLanguage(designResume.data),
-      renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
-    ]);
+    const typstTheme =
+      renderer === "typst" ? await resolveTypstTheme() : undefined;
     await renderResumePdf({
       resumeJson: designResume.data,
       outputPath,
@@ -464,7 +455,10 @@ export async function generateDesignResumePdf(options?: {
   }
 
   return {
-    fileName: sanitizePdfFileName(designResume.title),
+    fileName: safePdfFileName(designResume.title, {
+      fallbackBase: "Design_Resume",
+      language,
+    }),
     pdfUrl: `/api/design-resume/pdf?v=${encodeURIComponent(generatedAt)}`,
     generatedAt,
   };

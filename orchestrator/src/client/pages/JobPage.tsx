@@ -39,11 +39,14 @@ import {
   useSkipJobMutation,
   useUpdateJobMutation,
 } from "@/client/hooks/queries/useJobMutations";
+import { useProfile } from "@/client/hooks/useProfile";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { useSettings } from "@/client/hooks/useSettings";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
 import { logJobStageEvent } from "@/client/lib/logJobStageEvent";
+import { resolveFilenameLanguage } from "@/client/lib/pdf-filename";
 import {
   getPdfActionLabels,
   isPdfRegenerating,
@@ -149,6 +152,9 @@ export const JobPage: React.FC = () => {
   const [catalog, setCatalog] = React.useState<ResumeProjectCatalogItem[]>([]);
   const pendingEventRef = React.useRef<StageEvent | null>(null);
   const uploadPdfInputRef = React.useRef<HTMLInputElement | null>(null);
+  const { settings } = useSettings();
+  const { profile } = useProfile();
+  const filenameLanguage = resolveFilenameLanguage({ settings, profile });
   const openEditDetails = React.useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
@@ -467,9 +473,11 @@ export const JobPage: React.FC = () => {
 
   const handleDownloadPdf = async () => {
     if (!job || !job.pdfPath || pdfActionsDisabled) return;
-    const filename = `${safeFilenamePart(job.employer)}-${safeFilenamePart(
-      job.title,
-    )}-resume.pdf`;
+    const filename = `${safeFilenamePart(job.employer, {
+      language: filenameLanguage,
+    })}-${safeFilenamePart(job.title, {
+      language: filenameLanguage,
+    })}-resume.pdf`;
     await downloadJobPdf(job.id, filename).catch((error) => {
       showErrorToast(error, "Could not download PDF");
     });
