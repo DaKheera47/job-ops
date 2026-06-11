@@ -127,6 +127,7 @@ export const OrchestratorPage: React.FC = () => {
     setIsRefreshPaused,
     loadJobs,
   } = useOrchestratorData(selectedJobId);
+  const isFirstRunWorkspace = !isLoading && jobs.length === 0;
 
   useEffect(() => {
     const state = location.state as { refreshJobsAt?: number } | null;
@@ -163,11 +164,12 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext,
   });
   const isRunComposerOpen = isRunModeModalOpen;
+  const isSearchComposerVisible = isRunComposerOpen || isFirstRunWorkspace;
 
   const savedSearchesQuery = useQuery({
     queryKey: queryKeys.pipeline.searchPresets(),
     queryFn: api.getPipelineSearchPresets,
-    enabled: isRunModeModalOpen && runMode === "automatic",
+    enabled: isSearchComposerVisible && runMode === "automatic",
     staleTime: 30_000,
   });
 
@@ -305,7 +307,7 @@ export const OrchestratorPage: React.FC = () => {
   });
 
   const isAnyModalOpen =
-    isRunModeModalOpen ||
+    isSearchComposerVisible ||
     isCommandBarOpen ||
     isFiltersOpen ||
     isHelpDialogOpen ||
@@ -313,14 +315,14 @@ export const OrchestratorPage: React.FC = () => {
     navOpen;
 
   const isAnyModalOpenExcludingCommandBar =
-    isRunModeModalOpen ||
+    isSearchComposerVisible ||
     isFiltersOpen ||
     isHelpDialogOpen ||
     isDetailDrawerOpen ||
     navOpen;
 
   const isAnyModalOpenExcludingHelp =
-    isRunModeModalOpen ||
+    isSearchComposerVisible ||
     isCommandBarOpen ||
     isFiltersOpen ||
     isDetailDrawerOpen ||
@@ -485,24 +487,25 @@ export const OrchestratorPage: React.FC = () => {
         isPipelineRunning={isPipelineRunning}
         isCancelling={isCancelling}
         pipelineSources={pipelineSources}
-        hideActions={isRunComposerOpen}
+        hideActions={isSearchComposerVisible}
         onOpenAutomaticRun={() => openRunMode("automatic")}
         onCancelPipeline={handleCancelPipeline}
       />
 
       <main
         className={
-          isRunComposerOpen
+          isSearchComposerVisible
             ? "min-h-[calc(100dvh-6rem)]"
             : `container mx-auto space-y-6 px-4 py-6 ${
                 selectedJobIds.size > 0 ? "pb-36 lg:pb-12" : "pb-12"
               }`
         }
       >
-        {isRunComposerOpen ? (
+        {isSearchComposerVisible ? (
           <RunModeModal
-            open={isRunModeModalOpen}
+            open={true}
             mode={runMode}
+            showCloseButton={!isFirstRunWorkspace}
             settings={settings ?? null}
             enabledSources={enabledSources}
             pipelineSources={pipelineSources}

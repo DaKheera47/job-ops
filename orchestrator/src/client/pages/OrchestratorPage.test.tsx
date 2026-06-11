@@ -1032,6 +1032,34 @@ describe("OrchestratorPage", () => {
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
   });
 
+  it("shows the search composer instead of empty columns for brand-new workspaces", () => {
+    mockJobs = [];
+    mockSelectedJob = null;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: /what do you want to search for\?/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("summary")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
   it("stores multiple cities for JobSpy sources in automatic mode", async () => {
     window.matchMedia = createMatchMedia(
       true,

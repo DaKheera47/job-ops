@@ -17,6 +17,7 @@ import type { RunMode } from "./run-mode";
 interface RunModeModalProps {
   open: boolean;
   mode: RunMode;
+  showCloseButton?: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -43,6 +44,7 @@ interface RunModeModalProps {
 export const RunModeModal: React.FC<RunModeModalProps> = ({
   open,
   mode,
+  showCloseButton = true,
   settings,
   enabledSources,
   pipelineSources,
@@ -75,7 +77,9 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
               Search composer
             </p>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              {isManualMode ? "Review job details" : "What do you want to search for?"}
+              {isManualMode
+                ? "Review job details"
+                : "What do you want to search for?"}
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               {isManualMode
@@ -83,9 +87,15 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
                 : "Describe the search in plain language. AI fills the settings for review, then you run the search."}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          {showCloseButton ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+          ) : null}
         </div>
 
         <Tabs
