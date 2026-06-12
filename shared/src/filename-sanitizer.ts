@@ -151,15 +151,19 @@ function transliterate(
   }).join("");
 }
 
-export function safeFilenamePart(
-  value: string,
-  options: FilenameOptions = {},
-): string {
+function sanitizeFilenamePart(value: string, options: FilenameOptions = {}) {
   const cleaned = transliterate(value, options.language).replace(
     /[^a-z0-9]/gi,
     "_",
   );
-  if (cleaned.replace(/_/g, "") === "") return "Unknown";
+  return cleaned.replace(/_/g, "") === "" ? "" : cleaned;
+}
+
+export function safeFilenamePart(
+  value: string,
+  options: FilenameOptions = {},
+): string {
+  const cleaned = sanitizeFilenamePart(value, options);
   return cleaned || "Unknown";
 }
 
@@ -168,8 +172,11 @@ export function safePdfFileName(
   options: PdfFilenameOptions = {},
 ): string {
   const baseValue = value.trim().replace(/\.pdf$/i, "");
-  const sanitized = safeFilenamePart(baseValue, {
+  const sanitized = sanitizeFilenamePart(baseValue, {
     language: options.language,
   }).replace(/^_+|_+$/g, "");
-  return `${sanitized || options.fallbackBase || "Unknown"}.pdf`;
+  const fallback = sanitizeFilenamePart(options.fallbackBase ?? "Unknown", {
+    language: options.language,
+  }).replace(/^_+|_+$/g, "");
+  return `${sanitized || fallback || "Unknown"}.pdf`;
 }

@@ -38,4 +38,20 @@ describe("safePdfFileName", () => {
       }),
     ).toBe("Mueller_Buero.pdf");
   });
+
+  it("uses the configured fallback when the PDF stem is empty", () => {
+    expect(
+      safePdfFileName("!!!.pdf", {
+        fallbackBase: "Design Resume",
+      }),
+    ).toBe("Design_Resume.pdf");
+  });
+
+  it("falls back to Unknown when the PDF stem and fallback are both unsafe", () => {
+    expect(
+      safePdfFileName("", {
+        fallbackBase: "!!!",
+      }),
+    ).toBe("Unknown.pdf");
+  });
 });
