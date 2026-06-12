@@ -277,7 +277,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {job.source && (
             <StatusIndicator
               variant="sky"
-              tooltip={`Job found on ${formatJobSourceLabel(job.source)}`}
+              tooltip={`Job found ${job.source === "manual" ? "manually" : `on ${formatJobSourceLabel(job.source)}`}`}
               label={
                 sourceLabel[job.source] ?? formatJobSourceLabel(job.source)
               }
