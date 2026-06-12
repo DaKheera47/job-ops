@@ -38,6 +38,10 @@ Once a job enters the post-application phase, each opportunity usually needs tig
 4. Open a card to view full job details and timeline.
 5. Use sorting (Recent / Title / Company) to prioritize review.
 
+:::tip Celebration Effect
+When you successfully move a job listing to the **Offer** stage (either by dragging a card to the **Offer** column or by logging an **Offer** stage event), a congratulatory celebration with confetti and floating balloons will trigger on the screen to celebrate your achievement!
+:::
+
 ### Moving jobs into post-application
 
 Jobs typically move into post-application tracking when they receive a response after applying.
