@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import { editorHtmlToMarkdown } from "@/client/lib/jobNoteContent";
 import * as privatePdf from "@/client/lib/private-pdf";
 import * as api from "../api";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
-import { celebrateOffer } from "@/client/lib/celebrate";
 import { JobPage } from "./JobPage";
 
 const TIPTAP_HTML =

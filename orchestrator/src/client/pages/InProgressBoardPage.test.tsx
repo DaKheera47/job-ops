@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import * as api from "../api";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
-import { celebrateOffer } from "@/client/lib/celebrate";
 import { InProgressBoardPage } from "./InProgressBoardPage";
 
 vi.mock("@/components/ui/dropdown-menu", async (importOriginal) => {
@@ -96,7 +96,10 @@ vi.mock("@client/components/LogEventModal", () => {
             <option value="no_change">No Change</option>
             <option value="offer">Offer</option>
           </select>
-          <button type="button" onClick={() => onLog({ title, stage, date: "2026-06-12" })}>
+          <button
+            type="button"
+            onClick={() => onLog({ title, stage, date: "2026-06-12" })}
+          >
             Log Event
           </button>
           <button type="button" onClick={onClose}>
