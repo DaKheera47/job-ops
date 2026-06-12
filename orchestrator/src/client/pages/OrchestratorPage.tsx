@@ -506,6 +506,7 @@ export const OrchestratorPage: React.FC = () => {
             open={true}
             mode={runMode}
             showCloseButton={!isFirstRunWorkspace}
+            showModeTabs={false}
             settings={settings ?? null}
             enabledSources={enabledSources}
             pipelineSources={pipelineSources}

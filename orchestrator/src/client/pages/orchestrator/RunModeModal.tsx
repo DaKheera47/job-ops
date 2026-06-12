@@ -18,6 +18,7 @@ interface RunModeModalProps {
   open: boolean;
   mode: RunMode;
   showCloseButton?: boolean;
+  showModeTabs?: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -45,6 +46,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   open,
   mode,
   showCloseButton = true,
+  showModeTabs = true,
   settings,
   enabledSources,
   pipelineSources,
@@ -103,10 +105,12 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
           onValueChange={(value) => onModeChange(value as RunMode)}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <TabsList className="grid w-full max-w-sm grid-cols-2">
-            <TabsTrigger value="automatic">Automatic</TabsTrigger>
-            <TabsTrigger value="manual">Manual</TabsTrigger>
-          </TabsList>
+          {showModeTabs ? (
+            <TabsList className="grid w-full max-w-sm grid-cols-2">
+              <TabsTrigger value="automatic">Automatic</TabsTrigger>
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+            </TabsList>
+          ) : null}
 
           <TabsContent value="automatic" className="min-h-0 flex-1">
             <AutomaticRunTab
