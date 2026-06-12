@@ -90,7 +90,9 @@ describe("typst resume renderer", () => {
   });
 
   it("exposes the bundled Typst template", async () => {
-    expect(getTypstTemplatePath().replace(/\\/g, "/")).toContain("typst-themes/classic/main.typ");
+    expect(getTypstTemplatePath().replace(/\\/g, "/")).toContain(
+      "typst-themes/classic/main.typ",
+    );
     const template = await readTypstTemplate();
     expect(template).toContain("#set page");
     expect(template).toContain("__BODY__");

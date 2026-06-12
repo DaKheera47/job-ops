@@ -11,7 +11,15 @@ export function celebrateOffer() {
     spread: 90,
     origin: { y: 0.6 },
     zIndex: 999999,
-    colors: ["#10b981", "#34d399", "#6ee7b7", "#3b82f6", "#f59e0b", "#ec4899", "#a855f7"],
+    colors: [
+      "#10b981",
+      "#34d399",
+      "#6ee7b7",
+      "#3b82f6",
+      "#f59e0b",
+      "#ec4899",
+      "#a855f7",
+    ],
   });
 
   // 2. Balloons floating up from the bottom of the viewport
