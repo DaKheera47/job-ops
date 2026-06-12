@@ -162,6 +162,10 @@ vi.mock("@client/hooks/useQueryErrorToast", () => ({
   useQueryErrorToast: vi.fn(),
 }));
 
+vi.mock("@/client/lib/celebrate", () => ({
+  celebrateOffer: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),

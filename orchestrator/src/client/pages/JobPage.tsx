@@ -8,7 +8,6 @@ import {
   type StageEvent,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import confetti from "canvas-confetti";
 import {
   ArrowLeft,
   ClipboardList,
@@ -42,6 +41,7 @@ import {
 import { useProfile } from "@/client/hooks/useProfile";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { useSettings } from "@/client/hooks/useSettings";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
@@ -324,12 +324,7 @@ export const JobPage: React.FC = () => {
       toast.success(eventId ? "Event updated" : "Event logged");
 
       if (effectiveStage === "offer") {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ["#10b981", "#34d399", "#6ee7b7", "#ffffff"],
-        });
+        celebrateOffer();
       }
     } catch (error) {
       showErrorToast(error, "Failed to log event");

@@ -60,8 +60,8 @@ vi.mock("../api", () => ({
   updateJobStageEvent: vi.fn(),
 }));
 
-vi.mock("canvas-confetti", () => ({
-  default: vi.fn(),
+vi.mock("@/client/lib/celebrate", () => ({
+  celebrateOffer: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
