@@ -14,15 +14,10 @@ import type React from "react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Tip } from "@/client/components/Tip";
 import { formatUserFacingError } from "@/client/lib/error-format";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   fromEditableSkillGroups,
   getOriginalHeadline,
@@ -84,28 +79,21 @@ const AutosaveStatusIcon: React.FC<{ status: AutosaveStatus }> = ({
           : "text-emerald-400/80";
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground"
-            role="img"
-            aria-label={copy}
-          >
-            {status === "saving" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : status === "error" || status === "unsaved" ? (
-              <CircleAlert className={`h-3.5 w-3.5 ${iconClassName}`} />
-            ) : (
-              <Check className={`h-3.5 w-3.5 ${iconClassName}`} />
-            )}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{copy}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tip content={<p>{copy}</p>}>
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground"
+        role="img"
+        aria-label={copy}
+      >
+        {status === "saving" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : status === "error" || status === "unsaved" ? (
+          <CircleAlert className={`h-3.5 w-3.5 ${iconClassName}`} />
+        ) : (
+          <Check className={`h-3.5 w-3.5 ${iconClassName}`} />
+        )}
+      </span>
+    </Tip>
   );
 };
 

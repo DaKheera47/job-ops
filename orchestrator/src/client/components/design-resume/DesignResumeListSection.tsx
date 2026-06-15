@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { DragEvent } from "react";
 import { useId, useMemo, useRef, useState } from "react";
+import { Tip } from "@/client/components/Tip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,12 +23,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { clampInt, cn } from "@/lib/utils";
 import { DesignResumeSection } from "./DesignResumeSection";
@@ -177,40 +172,40 @@ function ProjectTailoringModeControls({
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-      <TooltipProvider delayDuration={150}>
-        <div className="flex max-w-full flex-wrap gap-1.5">
-          {projectModeOptions.map((option) => {
-            const Icon = option.icon;
-            const active = selectedMode === option.mode;
+      <div className="flex max-w-full flex-wrap gap-1.5">
+        {projectModeOptions.map((option) => {
+          const Icon = option.icon;
+          const active = selectedMode === option.mode;
 
-            return (
-              <Tooltip key={option.mode}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-pressed={active}
-                    aria-label={`Set ${projectName} inclusion to ${option.label}`}
-                    disabled={disabled}
-                    className={cn(
-                      "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                      active
-                        ? option.activeClassName
-                        : "border-border/45 bg-background/35 text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
-                    )}
-                    onClick={() => onModeChange(option.mode)}
-                  >
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span>{option.shortLabel}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-60 text-center" side="top">
-                  {option.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </TooltipProvider>
+          return (
+            <Tip
+              key={option.mode}
+              asChild
+              clickBehavior="none"
+              content={option.tooltip}
+              contentClassName="max-w-60 text-center"
+              delayDuration={150}
+            >
+              <button
+                type="button"
+                aria-pressed={active}
+                aria-label={`Set ${projectName} inclusion to ${option.label}`}
+                disabled={disabled}
+                className={cn(
+                  "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  active
+                    ? option.activeClassName
+                    : "border-border/45 bg-background/35 text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
+                )}
+                onClick={() => onModeChange(option.mode)}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{option.shortLabel}</span>
+              </button>
+            </Tip>
+          );
+        })}
+      </div>
       <div className="min-h-4">
         {isSaving ? (
           <span className="text-[11px] text-muted-foreground">Saving...</span>
@@ -522,26 +517,27 @@ export function DesignResumeListSectionContent({
           </div>
           {showProjectPolicyControls ? (
             <div className="flex items-center gap-2 w-full">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <label
-                      htmlFor={maxProjectsInputId}
-                      className="text-xs font-medium text-muted-foreground w-full"
-                    >
-                      Maximum projects in Tailored Resumes
-                    </label>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-96 text-center" side="top">
+              <Tip
+                asChild
+                content={
+                  <>
                     Set the maximum number of projects that Job Tailoring can
                     include in tailored resumes. <br />
                     <br /> Always-selected projects count toward this limit.{" "}
                     <br />
                     <br /> Setting it to 0 prevents automatic project selection
                     unless projects are marked Always.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                  </>
+                }
+                contentClassName="max-w-96 text-center"
+              >
+                <label
+                  htmlFor={maxProjectsInputId}
+                  className="text-xs font-medium text-muted-foreground w-full"
+                >
+                  Maximum projects in Tailored Resumes
+                </label>
+              </Tip>
 
               <Input
                 id={maxProjectsInputId}

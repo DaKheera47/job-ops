@@ -8,6 +8,7 @@ import { GhostwriterDrawer } from "@client/components/ghostwriter/GhostwriterDra
 import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
 import { KbdHint } from "@client/components/KbdHint";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
+import { Tip } from "@client/components/Tip";
 import { TooltipWhenDisabled } from "@client/components/TooltipWhenDisabled";
 import { TailoringWorkspace } from "@client/components/tailoring/TailoringWorkspace";
 import {
@@ -66,12 +67,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { trackProductEvent } from "@/lib/analytics";
 import {
   cn,
@@ -556,37 +551,37 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       onValueChange={(value) => setInspectorTab(value as InspectorTab)}
       className="flex min-h-0 min-w-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto p-1"
     >
-      <TooltipProvider delayDuration={0}>
-        <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg text-sm bg-muted/90 mb-4">
-          {Object.entries(tabCopy).map(([value, copy]) => {
-            const isSelected = inspectorTab === value;
-            const trigger = (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className={cn(
-                  "flex-1 flex items-center lg:flex-none gap-1.5",
-                  isSelected && copy.selectedClassName,
-                )}
-              >
-                <span
-                  className={cn("h-1.5 w-1.5 rounded-full", copy.dotClassName)}
-                />
-                <span className="text-sm">{copy.label}</span>
-              </TabsTrigger>
-            );
+      <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg text-sm bg-muted/90 mb-4">
+        {Object.entries(tabCopy).map(([value, copy]) => {
+          const isSelected = inspectorTab === value;
+          const trigger = (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={cn(
+                "flex-1 flex items-center lg:flex-none gap-1.5",
+                isSelected && copy.selectedClassName,
+              )}
+            >
+              <span
+                className={cn("h-1.5 w-1.5 rounded-full", copy.dotClassName)}
+              />
+              <span className="text-sm">{copy.label}</span>
+            </TabsTrigger>
+          );
 
-            return (
-              <Tooltip key={value}>
-                <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-                <TooltipContent className="max-w-xs text-center">
-                  <p>{copy.description}</p>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </TabsList>
-      </TooltipProvider>
+          return (
+            <Tip
+              key={value}
+              asChild
+              content={<p>{copy.description}</p>}
+              contentClassName="max-w-xs text-center"
+            >
+              {trigger}
+            </Tip>
+          );
+        })}
+      </TabsList>
       <JobHeader
         job={selectedJob}
         onCheckSponsor={async () => {

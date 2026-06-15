@@ -30,12 +30,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useVersionCheck } from "../hooks/useVersionCheck";
 import {
@@ -44,6 +38,7 @@ import {
 } from "../lib/remembered-auth-users";
 import { isNavActive, NAV_LINKS } from "./navigation";
 import { StatusBadgeIndicator } from "./StatusIndicator";
+import { Tip } from "./Tip";
 
 const buildSignInPath = (username: string, nextPath: string): string => {
   const params = new URLSearchParams();
@@ -209,41 +204,34 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                   </DropdownMenu>
                 </div>
                 {showVersionFooter && (
-                  <TooltipProvider>
-                    <div className="flex flex-col items-start gap-2">
-                      <a
-                        href="https://github.com/DaKheera47/job-ops/releases"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <span className="truncate">Version {version}</span>
-                        {updateAvailable && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="h-2 w-2 shrink-0 cursor-pointer rounded-full bg-emerald-500" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Update available</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </a>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setNavOpen(false);
-                          window.open("/docs", "_blank", "noopener,noreferrer");
-                        }}
-                        className="h-7 gap-1.5 px-2 text-xs"
-                      >
-                        <span>Documentation</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TooltipProvider>
+                  <div className="flex flex-col items-start gap-2">
+                    <a
+                      href="https://github.com/DaKheera47/job-ops/releases"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <span className="truncate">Version {version}</span>
+                      {updateAvailable && (
+                        <Tip asChild content={<p>Update available</p>}>
+                          <span className="h-2 w-2 shrink-0 cursor-pointer rounded-full bg-emerald-500" />
+                        </Tip>
+                      )}
+                    </a>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setNavOpen(false);
+                        window.open("/docs", "_blank", "noopener,noreferrer");
+                      }}
+                      className="h-7 gap-1.5 px-2 text-xs"
+                    >
+                      <span>Documentation</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </SheetContent>

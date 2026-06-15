@@ -1,4 +1,5 @@
 import { KbdHint } from "@client/components/KbdHint";
+import { Tip } from "@client/components/Tip";
 import { getDisplayKey, SHORTCUTS } from "@client/lib/shortcut-map";
 import type { JobSource } from "@shared/types.js";
 import { Filter, Search } from "lucide-react";
@@ -25,12 +26,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { sourceLabel } from "@/lib/utils";
 import type {
@@ -261,41 +256,41 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
       onValueChange={(value) => onTabChange(value as FilterTab)}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <TooltipProvider delayDuration={0}>
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
-            {tabs.map((tab, index) => {
-              const description = tabDescriptions[tab.id];
-              const trigger = (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex-1 flex items-center lg:flex-none gap-1.5"
-                >
-                  <KbdHint shortcut={String(index + 1)} className="mr-0.5" />
-                  <span>{tab.label}</span>
-                  {counts[tab.id] > 0 && (
-                    <span className="text-[10px] mt-[2px] tabular-nums opacity-60">
-                      {counts[tab.id]}
-                    </span>
-                  )}
-                </TabsTrigger>
-              );
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
+          {tabs.map((tab, index) => {
+            const description = tabDescriptions[tab.id];
+            const trigger = (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="flex-1 flex items-center lg:flex-none gap-1.5"
+              >
+                <KbdHint shortcut={String(index + 1)} className="mr-0.5" />
+                <span>{tab.label}</span>
+                {counts[tab.id] > 0 && (
+                  <span className="text-[10px] mt-[2px] tabular-nums opacity-60">
+                    {counts[tab.id]}
+                  </span>
+                )}
+              </TabsTrigger>
+            );
 
-              if (!description) {
-                return trigger;
-              }
+            if (!description) {
+              return trigger;
+            }
 
-              return (
-                <Tooltip key={tab.id}>
-                  <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-center">
-                    <p>{description}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </TabsList>
-        </TooltipProvider>
+            return (
+              <Tip
+                key={tab.id}
+                asChild
+                content={<p>{description}</p>}
+                contentClassName="max-w-xs text-center"
+              >
+                {trigger}
+              </Tip>
+            );
+          })}
+        </TabsList>
 
         <div className="flex lg:flex-nowrap flex-wrap items-center justify-end gap-2">
           <Button

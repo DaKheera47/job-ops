@@ -9,12 +9,7 @@ import {
 import { GripVertical } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tip } from "@/client/components/Tip";
 import { trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import {
@@ -130,59 +125,56 @@ function DesignResumeDockButton({
         />
       )}
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.button
-            type="button"
-            ref={ref}
-            onClick={onClick}
-            style={{ width: size, height: size }}
-            animate={{
-              scale: isDragging
-                ? 0.9
-                : isDragTarget
-                  ? 1.1
-                  : isCandidate
-                    ? 0.96
-                    : 1,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 25,
-            }}
-            className={cn(
-              "relative inline-flex cursor-grab shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ml-4 -translate-x-2",
-              isDragTarget
-                ? "border-primary shadow-primary/30 border-solid"
+      <Tip
+        asChild
+        clickBehavior="none"
+        content={label}
+        contentClassName="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
+        side="right"
+        sideOffset={12}
+      >
+        <motion.button
+          type="button"
+          ref={ref}
+          onClick={onClick}
+          style={{ width: size, height: size }}
+          animate={{
+            scale: isDragging
+              ? 0.9
+              : isDragTarget
+                ? 1.1
                 : isCandidate
-                  ? "border-dashed border-primary/45 bg-primary/5 text-primary/80 shadow-sm shadow-primary/5"
-                  : active
-                    ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
-                    : "border-border/70 hover:border-border hover:bg-accent/70",
-            )}
-            aria-current={active ? "page" : undefined}
-            aria-label={label}
-          >
-            <span className="[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150">
-              {icon}
-            </span>
-            {badgeCount !== undefined && badgeCount > 0 ? (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
-                {badgeCount > 99 ? "99+" : badgeCount}
-              </span>
-            ) : null}
-          </motion.button>
-        </TooltipTrigger>
-
-        <TooltipContent
-          side="right"
-          sideOffset={12}
-          className="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
+                  ? 0.96
+                  : 1,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 25,
+          }}
+          className={cn(
+            "relative inline-flex cursor-grab shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ml-4 -translate-x-2",
+            isDragTarget
+              ? "border-primary shadow-primary/30 border-solid"
+              : isCandidate
+                ? "border-dashed border-primary/45 bg-primary/5 text-primary/80 shadow-sm shadow-primary/5"
+                : active
+                  ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
+                  : "border-border/70 hover:border-border hover:bg-accent/70",
+          )}
+          aria-current={active ? "page" : undefined}
+          aria-label={label}
         >
-          {label}
-        </TooltipContent>
-      </Tooltip>
+          <span className="[&_svg]:h-5 [&_svg]:w-5 transition-all duration-150">
+            {icon}
+          </span>
+          {badgeCount !== undefined && badgeCount > 0 ? (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          ) : null}
+        </motion.button>
+      </Tip>
     </motion.div>
   );
 }
@@ -432,54 +424,52 @@ export function DesignResumeDock({
         className,
       )}
     >
-      <TooltipProvider delayDuration={0} skipDelayDuration={80}>
-        <motion.nav
-          ref={railRef}
-          onMouseMove={({ clientY }) => {
-            mouseY.set(clientY);
-          }}
-          onMouseLeave={() => {
-            mouseY.set(Number.POSITIVE_INFINITY);
-          }}
-          onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
-          onWheel={handleWheel}
-          className="pointer-events-auto relative h-full min-h-0 w-[64px] overflow-x-visible overflow-y-clip overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
-          role="toolbar"
-          aria-label="Resume Studio sections"
+      <motion.nav
+        ref={railRef}
+        onMouseMove={({ clientY }) => {
+          mouseY.set(clientY);
+        }}
+        onMouseLeave={() => {
+          mouseY.set(Number.POSITIVE_INFINITY);
+        }}
+        onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
+        onWheel={handleWheel}
+        className="pointer-events-auto relative h-full min-h-0 w-[64px] overflow-x-visible overflow-y-clip overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+        role="toolbar"
+        aria-label="Resume Studio sections"
+      >
+        <motion.div
+          ref={contentRef}
+          className="absolute left-0 right-0 top-3 flex flex-col items-center gap-2"
+          style={{ y: -scrollOffset }}
         >
-          <motion.div
-            ref={contentRef}
-            className="absolute left-0 right-0 top-3 flex flex-col items-center gap-2"
-            style={{ y: -scrollOffset }}
-          >
-            {unmovableItems.map((item) => (
-              <DesignResumeDockButton
-                key={item.id}
-                {...item}
-                mouseY={mouseY}
-                baseItemSize={baseItemSize}
-                magnification={magnification}
-                distance={distance}
-                spring={spring}
-              />
-            ))}
-            {unmovableItems.length > 0 && movableItems.length > 0 && (
-              <div className="my-1.5 h-px w-6 bg-border/60" />
-            )}
-            {movableItems.map((item) => (
-              <DesignResumeDockButton
-                key={item.id}
-                {...item}
-                mouseY={mouseY}
-                baseItemSize={baseItemSize}
-                magnification={magnification}
-                distance={distance}
-                spring={spring}
-              />
-            ))}
-          </motion.div>
-        </motion.nav>
-      </TooltipProvider>
+          {unmovableItems.map((item) => (
+            <DesignResumeDockButton
+              key={item.id}
+              {...item}
+              mouseY={mouseY}
+              baseItemSize={baseItemSize}
+              magnification={magnification}
+              distance={distance}
+              spring={spring}
+            />
+          ))}
+          {unmovableItems.length > 0 && movableItems.length > 0 && (
+            <div className="my-1.5 h-px w-6 bg-border/60" />
+          )}
+          {movableItems.map((item) => (
+            <DesignResumeDockButton
+              key={item.id}
+              {...item}
+              mouseY={mouseY}
+              baseItemSize={baseItemSize}
+              magnification={magnification}
+              distance={distance}
+              spring={spring}
+            />
+          ))}
+        </motion.div>
+      </motion.nav>
     </div>
   );
 }

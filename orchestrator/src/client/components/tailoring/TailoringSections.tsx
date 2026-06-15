@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { Tip } from "@/client/components/Tip";
 import {
   Accordion,
   AccordionContent,
@@ -24,12 +25,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ProjectSelector } from "../discovered-panel/ProjectSelector";
 import type { EditableSkillGroup } from "../tailoring-utils";
@@ -303,22 +298,24 @@ const NoSelectedProjectsInfo = ({
 }: {
   info: NoSelectedProjectsInfoCopy;
 }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span
-        aria-label={info.title}
-        className="inline-flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-foreground"
-        role="img"
-        title={info.title}
-      >
-        <Info className="h-3.5 w-3.5" />
-      </span>
-    </TooltipTrigger>
-    <TooltipContent className="max-w-72 text-left text-xs leading-5" side="top">
-      <div className="font-semibold text-foreground">{info.title}</div>
-      <div className="mt-1 text-muted-foreground">{info.description}</div>
-    </TooltipContent>
-  </Tooltip>
+  <Tip
+    content={
+      <>
+        <div className="font-semibold text-foreground">{info.title}</div>
+        <div className="mt-1 text-muted-foreground">{info.description}</div>
+      </>
+    }
+    contentClassName="max-w-72 text-left text-xs leading-5"
+  >
+    <span
+      aria-label={info.title}
+      className="inline-flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-foreground"
+      role="img"
+    >
+      <Info className="h-3.5 w-3.5" />
+      <span className="sr-only">{info.description}</span>
+    </span>
+  </Tip>
 );
 
 export const TailoringSections: React.FC<TailoringSectionsProps> = ({
@@ -388,453 +385,416 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   });
 
   return (
-    <TooltipProvider>
-      <Accordion type="multiple" className="space-y-2">
-        <AccordionItem value="summary" className={sectionClass}>
-          <AccordionTrigger className={triggerClass} aria-label="Summary">
-            <SectionTriggerLabel
-              title="Summary"
-              state={sectionStateForText(summary)}
-            />
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pb-3 pt-3">
-            <div className="mb-2 flex justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className={actionButtonClass}
-                    onClick={onGenerateSummary}
-                    disabled={disableInputs}
-                    aria-label="Generate summary"
-                  >
-                    <Sparkles className="mr-1 h-3.5 w-3.5" />
-                    {generatingSection === "summary"
-                      ? "Generating..."
-                      : generateTooltip}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{generateTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onUndoSummary}
-                    disabled={disableInputs || !canUndoSummary}
-                    aria-label={undoTooltip}
-                    title={
-                      !canUndoSummary
-                        ? (undoDisabledReason ?? undefined)
-                        : undefined
-                    }
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{undoTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onRedoSummary}
-                    disabled={disableInputs || !canRedoSummary}
-                    aria-label={redoTooltip}
-                  >
-                    <Redo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{redoTooltip}</TooltipContent>
-              </Tooltip>
-            </div>
-            <label htmlFor="tailor-summary-edit" className="sr-only">
-              Tailored Summary
-            </label>
-            <textarea
-              id="tailor-summary-edit"
-              className={`${inputClass} min-h-[120px]`}
-              value={summary}
-              onChange={(event) => onSummaryChange(event.target.value)}
-              placeholder="Write a tailored summary for this role, or generate with AI..."
-              disabled={disableInputs}
-            />
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="headline" className={sectionClass}>
-          <AccordionTrigger className={triggerClass} aria-label="Headline">
-            <SectionTriggerLabel
-              title="Headline"
-              state={sectionStateForText(headline)}
-            />
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pb-3 pt-3">
-            <div className="mb-2 flex justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className={actionButtonClass}
-                    onClick={onGenerateHeadline}
-                    disabled={disableInputs}
-                    aria-label="Generate headline"
-                  >
-                    <Sparkles className="mr-1 h-3.5 w-3.5" />
-                    {generatingSection === "headline"
-                      ? "Generating..."
-                      : generateTooltip}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{generateTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onUndoHeadline}
-                    disabled={disableInputs || !canUndoHeadline}
-                    aria-label={undoTooltip}
-                    title={
-                      !canUndoHeadline
-                        ? (undoDisabledReason ?? undefined)
-                        : undefined
-                    }
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{undoTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onRedoHeadline}
-                    disabled={disableInputs || !canRedoHeadline}
-                    aria-label={redoTooltip}
-                  >
-                    <Redo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{redoTooltip}</TooltipContent>
-              </Tooltip>
-            </div>
-            <label htmlFor="tailor-headline-edit" className="sr-only">
-              Tailored Headline
-            </label>
-            <input
-              id="tailor-headline-edit"
-              type="text"
-              className={inputClass}
-              value={headline}
-              onChange={(event) => onHeadlineChange(event.target.value)}
-              placeholder="Write a concise headline tailored to this role..."
-              disabled={disableInputs}
-            />
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="skills" className={sectionClass}>
-          <AccordionTrigger
-            className={triggerClass}
-            aria-label="Tailored Skills"
-          >
-            <SectionTriggerLabel
-              title="Tailored Skills"
-              state={skillsState}
-              count={skillsDraft.length > 0 ? skillsDraft.length : undefined}
-            />
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pb-3 pt-3">
-            <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className={actionButtonClass}
-                    onClick={onGenerateSkills}
-                    disabled={disableInputs}
-                    aria-label="Generate skills"
-                  >
-                    <Sparkles className="mr-1 h-3.5 w-3.5" />
-                    {generatingSection === "skills"
-                      ? "Generating..."
-                      : generateTooltip}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{generateTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onUndoSkills}
-                    disabled={disableInputs || !canUndoSkills}
-                    aria-label={undoTooltip}
-                    title={
-                      !canUndoSkills
-                        ? (undoDisabledReason ?? undefined)
-                        : undefined
-                    }
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{undoTooltip}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={onRedoSkills}
-                    disabled={disableInputs || !canRedoSkills}
-                    aria-label={redoTooltip}
-                  >
-                    <Redo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{redoTooltip}</TooltipContent>
-              </Tooltip>
+    <Accordion type="multiple" className="space-y-2">
+      <AccordionItem value="summary" className={sectionClass}>
+        <AccordionTrigger className={triggerClass} aria-label="Summary">
+          <SectionTriggerLabel
+            title="Summary"
+            state={sectionStateForText(summary)}
+          />
+        </AccordionTrigger>
+        <AccordionContent className="px-3 pb-3 pt-3">
+          <div className="mb-2 flex justify-end gap-1">
+            <Tip asChild clickBehavior="none" content={generateTooltip}>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 className={actionButtonClass}
-                onClick={onAddSkillGroup}
+                onClick={onGenerateSummary}
                 disabled={disableInputs}
+                aria-label="Generate summary"
               >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                Add Skill Group
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                {generatingSection === "summary"
+                  ? "Generating..."
+                  : generateTooltip}
               </Button>
-            </div>
-
-            {skillsDraft.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-4 text-center text-[11px] text-muted-foreground">
-                No skill groups yet. Add one to tailor keywords for this role.
-              </div>
-            ) : (
-              <Accordion
-                type="single"
-                collapsible
-                value={openSkillGroupId}
-                onValueChange={onSkillGroupOpenChange}
-                className="space-y-2"
+            </Tip>
+            <Tip asChild clickBehavior="none" content={undoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onUndoSummary}
+                disabled={disableInputs || !canUndoSummary}
+                aria-label={undoTooltip}
+                title={
+                  !canUndoSummary
+                    ? (undoDisabledReason ?? undefined)
+                    : undefined
+                }
               >
-                {skillsDraft.map((group, index) => (
-                  <AccordionItem
-                    key={group.id}
-                    value={group.id}
-                    className="rounded-md border border-border/55 bg-background/45 px-0"
-                  >
-                    <AccordionTrigger className="px-3 py-2 text-[11px] font-medium hover:bg-muted/20 hover:no-underline">
-                      {group.name.trim() || `Skill Group ${index + 1}`}
-                    </AccordionTrigger>
-                    <AccordionContent className="px-3 pb-3 pt-2">
-                      <div className="space-y-2">
-                        <div className="space-y-1">
-                          <label
-                            htmlFor={`tailor-skill-group-name-${group.id}`}
-                            className="text-[11px] font-medium text-muted-foreground"
-                          >
-                            Category
-                          </label>
-                          <input
-                            id={`tailor-skill-group-name-${group.id}`}
-                            type="text"
-                            className={inputClass}
-                            value={group.name}
-                            onChange={(event) =>
-                              onUpdateSkillGroup(
-                                group.id,
-                                "name",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Backend, Frontend, Infrastructure..."
-                            disabled={disableInputs}
-                          />
-                        </div>
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+            <Tip asChild clickBehavior="none" content={redoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onRedoSummary}
+                disabled={disableInputs || !canRedoSummary}
+                aria-label={redoTooltip}
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+          </div>
+          <label htmlFor="tailor-summary-edit" className="sr-only">
+            Tailored Summary
+          </label>
+          <textarea
+            id="tailor-summary-edit"
+            className={`${inputClass} min-h-[120px]`}
+            value={summary}
+            onChange={(event) => onSummaryChange(event.target.value)}
+            placeholder="Write a tailored summary for this role, or generate with AI..."
+            disabled={disableInputs}
+          />
+        </AccordionContent>
+      </AccordionItem>
 
-                        <div className="space-y-1">
-                          <label
-                            htmlFor={`tailor-skill-group-keywords-${group.id}`}
-                            className="text-[11px] font-medium text-muted-foreground"
-                          >
-                            Keywords (comma-separated)
-                          </label>
-                          <TokenizedInput
-                            id={`tailor-skill-group-keywords-${group.id}`}
-                            values={parseSkillGroupKeywordsInput(
-                              group.keywordsText,
-                            )}
-                            draft={keywordDrafts[group.id] ?? ""}
-                            parseInput={parseSkillGroupKeywordsInput}
-                            onDraftChange={(value) =>
-                              setKeywordDrafts((current) => ({
-                                ...current,
-                                [group.id]: value,
-                              }))
-                            }
-                            onValuesChange={(values) =>
-                              onUpdateSkillGroup(
-                                group.id,
-                                "keywordsText",
-                                values.join(", "),
-                              )
-                            }
-                            placeholder="TypeScript, Node.js, REST APIs..."
-                            helperText="Press Enter, comma, or paste a list to add keywords."
-                            removeLabelPrefix="Remove keyword"
-                            disabled={disableInputs}
-                          />
-                        </div>
-
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                            onClick={() => onRemoveSkillGroup(group.id)}
-                            disabled={disableInputs}
-                          >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" />
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-
-        {!isCatalogLoading && catalog.length > 0 && (
-          <AccordionItem value="projects" className={sectionClass}>
-            <AccordionTrigger
-              className={triggerClass}
-              aria-label="Selected Projects"
-            >
-              <SectionTriggerLabel
-                title="Selected Projects"
-                state={projectsState}
-                badgeLabel={
-                  selectedIds.size > 0 ? String(selectedIds.size) : undefined
-                }
-                badgeAdornment={
-                  noSelectedProjectsInfo ? (
-                    <NoSelectedProjectsInfo info={noSelectedProjectsInfo} />
-                  ) : null
-                }
-              />
-            </AccordionTrigger>
-            <AccordionContent className="px-3 pb-3 pt-3">
-              <ProjectSelector
-                catalog={catalog}
-                selectedIds={selectedIds}
-                onToggle={onToggleProject}
-                maxProjects={3}
+      <AccordionItem value="headline" className={sectionClass}>
+        <AccordionTrigger className={triggerClass} aria-label="Headline">
+          <SectionTriggerLabel
+            title="Headline"
+            state={sectionStateForText(headline)}
+          />
+        </AccordionTrigger>
+        <AccordionContent className="px-3 pb-3 pt-3">
+          <div className="mb-2 flex justify-end gap-1">
+            <Tip asChild clickBehavior="none" content={generateTooltip}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={actionButtonClass}
+                onClick={onGenerateHeadline}
                 disabled={disableInputs}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        )}
-
-        <AccordionItem value="tracer-links" className={sectionClass}>
-          <AccordionTrigger className={triggerClass} aria-label="Tracer Links">
-            <SectionTriggerLabel
-              title="Tracer Links"
-              state={tracerLinksEnabled ? "ready" : "optional"}
-            />
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pb-3 pt-3">
-            <div className="rounded-md border border-border/60 bg-background/55 p-3">
-              <label
-                htmlFor="tailor-tracer-links-enabled"
-                className="flex cursor-pointer items-center gap-3"
+                aria-label="Generate headline"
               >
-                <Checkbox
-                  id="tailor-tracer-links-enabled"
-                  checked={tracerLinksEnabled}
-                  onCheckedChange={(checked) =>
-                    onTracerLinksEnabledChange(Boolean(checked))
-                  }
-                  disabled={tracerToggleDisabled}
-                />
-                <span className="text-sm font-medium text-foreground">
-                  Enable tracer links for this job
-                </span>
-              </label>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {tracerReadinessChecking
-                  ? "Checking tracer-link readiness..."
-                  : "When enabled, outgoing resume links are rewritten to JobOps tracer links on the next PDF generation. Existing PDFs are unchanged."}
-              </p>
-              {tracerEnableBlockedReason && !tracerLinksEnabled ? (
-                <p className="mt-2 text-xs text-destructive">
-                  Tracer links are unavailable: {tracerEnableBlockedReason}
-                </p>
-              ) : null}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                {generatingSection === "headline"
+                  ? "Generating..."
+                  : generateTooltip}
+              </Button>
+            </Tip>
+            <Tip asChild clickBehavior="none" content={undoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onUndoHeadline}
+                disabled={disableInputs || !canUndoHeadline}
+                aria-label={undoTooltip}
+                title={
+                  !canUndoHeadline
+                    ? (undoDisabledReason ?? undefined)
+                    : undefined
+                }
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+            <Tip asChild clickBehavior="none" content={redoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onRedoHeadline}
+                disabled={disableInputs || !canRedoHeadline}
+                aria-label={redoTooltip}
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+          </div>
+          <label htmlFor="tailor-headline-edit" className="sr-only">
+            Tailored Headline
+          </label>
+          <input
+            id="tailor-headline-edit"
+            type="text"
+            className={inputClass}
+            value={headline}
+            onChange={(event) => onHeadlineChange(event.target.value)}
+            placeholder="Write a concise headline tailored to this role..."
+            disabled={disableInputs}
+          />
+        </AccordionContent>
+      </AccordionItem>
 
-        <AccordionItem value="job-description" className={sectionClass}>
+      <AccordionItem value="skills" className={sectionClass}>
+        <AccordionTrigger className={triggerClass} aria-label="Tailored Skills">
+          <SectionTriggerLabel
+            title="Tailored Skills"
+            state={skillsState}
+            count={skillsDraft.length > 0 ? skillsDraft.length : undefined}
+          />
+        </AccordionTrigger>
+        <AccordionContent className="px-3 pb-3 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
+            <Tip asChild clickBehavior="none" content={generateTooltip}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={actionButtonClass}
+                onClick={onGenerateSkills}
+                disabled={disableInputs}
+                aria-label="Generate skills"
+              >
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                {generatingSection === "skills"
+                  ? "Generating..."
+                  : generateTooltip}
+              </Button>
+            </Tip>
+            <Tip asChild clickBehavior="none" content={undoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onUndoSkills}
+                disabled={disableInputs || !canUndoSkills}
+                aria-label={undoTooltip}
+                title={
+                  !canUndoSkills ? (undoDisabledReason ?? undefined) : undefined
+                }
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+            <Tip asChild clickBehavior="none" content={redoTooltip}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={onRedoSkills}
+                disabled={disableInputs || !canRedoSkills}
+                aria-label={redoTooltip}
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tip>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={actionButtonClass}
+              onClick={onAddSkillGroup}
+              disabled={disableInputs}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Add Skill Group
+            </Button>
+          </div>
+
+          {skillsDraft.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-4 text-center text-[11px] text-muted-foreground">
+              No skill groups yet. Add one to tailor keywords for this role.
+            </div>
+          ) : (
+            <Accordion
+              type="single"
+              collapsible
+              value={openSkillGroupId}
+              onValueChange={onSkillGroupOpenChange}
+              className="space-y-2"
+            >
+              {skillsDraft.map((group, index) => (
+                <AccordionItem
+                  key={group.id}
+                  value={group.id}
+                  className="rounded-md border border-border/55 bg-background/45 px-0"
+                >
+                  <AccordionTrigger className="px-3 py-2 text-[11px] font-medium hover:bg-muted/20 hover:no-underline">
+                    {group.name.trim() || `Skill Group ${index + 1}`}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-3 pb-3 pt-2">
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <label
+                          htmlFor={`tailor-skill-group-name-${group.id}`}
+                          className="text-[11px] font-medium text-muted-foreground"
+                        >
+                          Category
+                        </label>
+                        <input
+                          id={`tailor-skill-group-name-${group.id}`}
+                          type="text"
+                          className={inputClass}
+                          value={group.name}
+                          onChange={(event) =>
+                            onUpdateSkillGroup(
+                              group.id,
+                              "name",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Backend, Frontend, Infrastructure..."
+                          disabled={disableInputs}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label
+                          htmlFor={`tailor-skill-group-keywords-${group.id}`}
+                          className="text-[11px] font-medium text-muted-foreground"
+                        >
+                          Keywords (comma-separated)
+                        </label>
+                        <TokenizedInput
+                          id={`tailor-skill-group-keywords-${group.id}`}
+                          values={parseSkillGroupKeywordsInput(
+                            group.keywordsText,
+                          )}
+                          draft={keywordDrafts[group.id] ?? ""}
+                          parseInput={parseSkillGroupKeywordsInput}
+                          onDraftChange={(value) =>
+                            setKeywordDrafts((current) => ({
+                              ...current,
+                              [group.id]: value,
+                            }))
+                          }
+                          onValuesChange={(values) =>
+                            onUpdateSkillGroup(
+                              group.id,
+                              "keywordsText",
+                              values.join(", "),
+                            )
+                          }
+                          placeholder="TypeScript, Node.js, REST APIs..."
+                          helperText="Press Enter, comma, or paste a list to add keywords."
+                          removeLabelPrefix="Remove keyword"
+                          disabled={disableInputs}
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          onClick={() => onRemoveSkillGroup(group.id)}
+                          disabled={disableInputs}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+
+      {!isCatalogLoading && catalog.length > 0 && (
+        <AccordionItem value="projects" className={sectionClass}>
           <AccordionTrigger
             className={triggerClass}
-            aria-label="Job Description"
+            aria-label="Selected Projects"
           >
             <SectionTriggerLabel
-              title="Job Description"
-              state={
-                sectionStateForText(jobDescription) === "ready"
-                  ? "source"
-                  : "missing"
+              title="Selected Projects"
+              state={projectsState}
+              badgeLabel={
+                selectedIds.size > 0 ? String(selectedIds.size) : undefined
+              }
+              badgeAdornment={
+                noSelectedProjectsInfo ? (
+                  <NoSelectedProjectsInfo info={noSelectedProjectsInfo} />
+                ) : null
               }
             />
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
-            <label htmlFor="tailor-jd-edit" className="sr-only">
-              Job Description
-            </label>
-            <textarea
-              id="tailor-jd-edit"
-              className={`${inputClass} min-h-[120px] max-h-[250px]`}
-              value={jobDescription}
-              onChange={(event) => onDescriptionChange(event.target.value)}
-              placeholder="The raw job description..."
+            <ProjectSelector
+              catalog={catalog}
+              selectedIds={selectedIds}
+              onToggle={onToggleProject}
+              maxProjects={3}
               disabled={disableInputs}
             />
           </AccordionContent>
         </AccordionItem>
-      </Accordion>
-    </TooltipProvider>
+      )}
+
+      <AccordionItem value="tracer-links" className={sectionClass}>
+        <AccordionTrigger className={triggerClass} aria-label="Tracer Links">
+          <SectionTriggerLabel
+            title="Tracer Links"
+            state={tracerLinksEnabled ? "ready" : "optional"}
+          />
+        </AccordionTrigger>
+        <AccordionContent className="px-3 pb-3 pt-3">
+          <div className="rounded-md border border-border/60 bg-background/55 p-3">
+            <label
+              htmlFor="tailor-tracer-links-enabled"
+              className="flex cursor-pointer items-center gap-3"
+            >
+              <Checkbox
+                id="tailor-tracer-links-enabled"
+                checked={tracerLinksEnabled}
+                onCheckedChange={(checked) =>
+                  onTracerLinksEnabledChange(Boolean(checked))
+                }
+                disabled={tracerToggleDisabled}
+              />
+              <span className="text-sm font-medium text-foreground">
+                Enable tracer links for this job
+              </span>
+            </label>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {tracerReadinessChecking
+                ? "Checking tracer-link readiness..."
+                : "When enabled, outgoing resume links are rewritten to JobOps tracer links on the next PDF generation. Existing PDFs are unchanged."}
+            </p>
+            {tracerEnableBlockedReason && !tracerLinksEnabled ? (
+              <p className="mt-2 text-xs text-destructive">
+                Tracer links are unavailable: {tracerEnableBlockedReason}
+              </p>
+            ) : null}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="job-description" className={sectionClass}>
+        <AccordionTrigger className={triggerClass} aria-label="Job Description">
+          <SectionTriggerLabel
+            title="Job Description"
+            state={
+              sectionStateForText(jobDescription) === "ready"
+                ? "source"
+                : "missing"
+            }
+          />
+        </AccordionTrigger>
+        <AccordionContent className="px-3 pb-3 pt-3">
+          <label htmlFor="tailor-jd-edit" className="sr-only">
+            Job Description
+          </label>
+          <textarea
+            id="tailor-jd-edit"
+            className={`${inputClass} min-h-[120px] max-h-[250px]`}
+            value={jobDescription}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+            placeholder="The raw job description..."
+            disabled={disableInputs}
+          />
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };
