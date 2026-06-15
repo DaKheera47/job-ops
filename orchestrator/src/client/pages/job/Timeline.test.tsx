@@ -33,16 +33,21 @@ const expectTextBefore = (leftText: string, rightText: string) => {
 };
 
 describe("JobTimeline", () => {
-  it("renders a read-only Found entry when discoveredAt exists without stage events", () => {
+  it("renders a read-only Discovered entry when discoveredAt exists without stage events", () => {
     render(<JobTimeline events={[]} discoveredAt="2024-12-31T09:30:00.000Z" />);
 
-    expect(screen.getByText("Found")).toBeInTheDocument();
+    expect(screen.getByText("Discovered")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Job Ops discovered this job and added it to your pipeline.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText("No stage events yet.")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Edit event")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Delete event")).not.toBeInTheDocument();
   });
 
-  it("sorts the Found entry chronologically with stage events", () => {
+  it("sorts the Discovered entry chronologically with stage events", () => {
     const appliedEvent = makeEvent({
       id: "event-applied",
       title: "Applied",
@@ -62,20 +67,20 @@ describe("JobTimeline", () => {
       />,
     );
 
-    expectTextBefore("Applied", "Found");
-    expectTextBefore("Found", "Interview");
+    expectTextBefore("Applied", "Discovered");
+    expectTextBefore("Discovered", "Interview");
   });
 
   it("keeps the empty state when discoveredAt is missing or invalid", () => {
     const { rerender } = render(<JobTimeline events={[]} />);
 
     expect(screen.getByText("No stage events yet.")).toBeInTheDocument();
-    expect(screen.queryByText("Found")).not.toBeInTheDocument();
+    expect(screen.queryByText("Discovered")).not.toBeInTheDocument();
 
     rerender(<JobTimeline events={[]} discoveredAt="not a date" />);
 
     expect(screen.getByText("No stage events yet.")).toBeInTheDocument();
-    expect(screen.queryByText("Found")).not.toBeInTheDocument();
+    expect(screen.queryByText("Discovered")).not.toBeInTheDocument();
   });
 
   it("renders edit and delete controls when callbacks are provided", () => {
@@ -96,7 +101,7 @@ describe("JobTimeline", () => {
     expect(onDelete).toHaveBeenCalledWith("event-1");
   });
 
-  it("does not add edit or delete controls for the Found entry", () => {
+  it("does not add edit or delete controls for the Discovered entry", () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
@@ -109,7 +114,7 @@ describe("JobTimeline", () => {
       />,
     );
 
-    expect(screen.getByText("Found")).toBeInTheDocument();
+    expect(screen.getByText("Discovered")).toBeInTheDocument();
     expect(screen.getAllByTitle("Edit event")).toHaveLength(1);
     expect(screen.getAllByTitle("Delete event")).toHaveLength(1);
   });
