@@ -974,7 +974,7 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("saves the match job advert language mode through the settings page", async () => {
+  it("saves the match job description language mode through the settings page", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue(
       createAppSettings({
@@ -990,11 +990,7 @@ describe("SettingsPage", () => {
     await openWritingStyleSection();
 
     fireEvent.click(screen.getByRole("combobox", { name: /output language/i }));
-    fireEvent.click(
-      await screen.findByText(
-        "Match job advert language (auto-detect from JD)",
-      ),
-    );
+    fireEvent.click(await screen.findByText("Match job description"));
 
     expect(
       screen.queryByRole("combobox", { name: /specific language/i }),
