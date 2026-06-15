@@ -79,11 +79,15 @@ async function resolveTypstTheme() {
   );
 }
 
-async function resolveLocalResumeLanguage(resumeJson: Record<string, unknown>) {
+async function resolveLocalResumeLanguage(
+  resumeJson: Record<string, unknown>,
+  jobDescription?: string | null,
+) {
   const writingStyle = await getWritingStyle();
   return resolveWritingOutputLanguageForResumeJson({
     style: writingStyle,
     resumeJson,
+    jobDescription,
   }).language;
 }
 
@@ -375,7 +379,7 @@ export async function generatePdf(
     const outputPath = getTenantJobPdfPath(jobId);
     if (renderer !== "rxresume") {
       const [language, typstTheme] = await Promise.all([
-        resolveLocalResumeLanguage(preparedResume.data),
+        resolveLocalResumeLanguage(preparedResume.data, jobDescription),
         renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
       ]);
       await renderResumePdf({

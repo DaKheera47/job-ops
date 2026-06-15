@@ -95,7 +95,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Choose how AI output language is resolved:
   - `Manual`: always use the language you select, such as English, German, French, or Spanish
   - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output
-- If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
+  - `Match job advert language (auto-detect from JD)`: detect the dominant supported language from each job description and use it for job-specific output
+- Automatic language detection currently supports English, German, French, and Spanish. If detection is unclear or the text is not in a supported language, JobOps falls back to English.
 - Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
 - When using the local LaTeX PDF renderer, fixed resume section titles follow the resolved output language
 - Summary max words: optional cap on AI-generated summary length (empty = no limit)
@@ -114,6 +115,7 @@ Use these steps when you want Ghostwriter and resume tailoring to stay in a spec
 4. Under the language control, choose one of these modes:
    - **Manual**: pick the output language directly.
    - **Match Resume**: let JobOps infer the language from your resume/profile text.
+   - **Match job advert language**: let JobOps infer the language from each job description.
 5. If you chose **Manual**, select the language you want the AI to use.
 6. Review the rest of the writing defaults such as tone, formality, constraints, and do-not-use terms.
 7. Click **Save Changes**.
@@ -123,7 +125,8 @@ Defaults and constraints:
 
 - `Manual` is best when you always want output in one language regardless of the resume source text.
 - `Match Resume` is best when your base resume is already written in the language you want to preserve.
-- If JobOps cannot determine a reliable resume/profile language, it safely uses English.
+- `Match job advert language` is best when you want each application to follow the job advert's language.
+- If JobOps cannot determine a reliable supported language, it safely uses English.
 - The generated resume content follows the resolved language, but ATS-sensitive headline and job-title wording stays exact so matching and parsing remain safer.
 - The local LaTeX PDF renderer uses the resolved language for fixed section headings such as Summary, Experience, Education, Projects, and Technical Skills.
 

@@ -296,11 +296,16 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.chatStyleLanguageMode.parse("match-resume")).toBe(
         "match-resume",
       );
+      expect(
+        settingsRegistry.chatStyleLanguageMode.parse("match-job-description"),
+      ).toBe("match-job-description");
       expect(settingsRegistry.chatStyleLanguageMode.parse("auto")).toBeNull();
       expect(settingsRegistry.chatStyleLanguageMode.parse("")).toBeNull();
       expect(
-        settingsRegistry.chatStyleLanguageMode.serialize("match-resume"),
-      ).toBe("match-resume");
+        settingsRegistry.chatStyleLanguageMode.serialize(
+          "match-job-description",
+        ),
+      ).toBe("match-job-description");
       expect(settingsRegistry.chatStyleLanguageMode.serialize(null)).toBeNull();
 
       expect(settingsRegistry.chatStyleManualLanguage.parse("english")).toBe(

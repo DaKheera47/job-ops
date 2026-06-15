@@ -209,7 +209,7 @@ const {
 
   return {
     currentLanguageSettings: {
-      mode: "manual" as "manual" | "match-resume",
+      mode: "manual" as "manual" | "match-resume" | "match-job-description",
       manual: "english" as "english" | "german" | "french" | "spanish",
     },
     currentPdfRenderer: { value: "latex" as "latex" | "rxresume" | "typst" },
@@ -601,6 +601,23 @@ describe("PDF Service Tailoring Logic", () => {
       expect.objectContaining({
         jobId: "job-french-latex",
         language: "french",
+      }),
+    );
+  });
+
+  it("detects the job description language for local LaTeX rendering", async () => {
+    currentLanguageSettings.mode = "match-job-description";
+
+    await generatePdf(
+      "job-german-jd-latex",
+      {},
+      "Wir suchen Erfahrung mit Entwicklung und Verantwortung für APIs.",
+    );
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-german-jd-latex",
+        language: "german",
       }),
     );
   });

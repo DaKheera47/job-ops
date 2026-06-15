@@ -22,7 +22,11 @@ export function resolveFilenameLanguage(args: {
     );
   }
 
-  return args.profile
-    ? (detectProfileLanguage(args.profile) ?? "english")
-    : "english";
+  if (languageMode === "match-resume") {
+    return args.profile
+      ? (detectProfileLanguage(args.profile) ?? "english")
+      : "english";
+  }
+
+  return "english";
 }

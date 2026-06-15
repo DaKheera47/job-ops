@@ -151,6 +151,7 @@ async function buildTailoringPrompt(
   const resolvedLanguage = resolveWritingOutputLanguage({
     style: writingStyle,
     profile,
+    jobDescription: jd,
   });
   const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
   let effectiveConstraints = stripLanguageDirectivesFromConstraints(

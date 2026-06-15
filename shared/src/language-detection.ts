@@ -232,6 +232,12 @@ export function detectProfileLanguage(
   return detectLanguageFromSample(collectProfileLanguageSample(profile));
 }
 
+export function detectJobDescriptionLanguage(
+  jobDescription: string | null | undefined,
+): ChatStyleManualLanguage | null {
+  return detectLanguageFromSample(jobDescription ?? "");
+}
+
 export function detectReactiveResumeV5Language(
   resumeJson: Record<string, unknown>,
 ): ChatStyleManualLanguage | null {

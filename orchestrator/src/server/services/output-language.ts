@@ -1,4 +1,5 @@
 import {
+  detectJobDescriptionLanguage,
   detectProfileLanguage,
   detectReactiveResumeV5Language,
 } from "@shared/language-detection";
@@ -10,6 +11,7 @@ import {
 } from "@shared/types";
 
 export {
+  detectJobDescriptionLanguage,
   detectProfileLanguage,
   detectReactiveResumeV5Language,
 } from "@shared/language-detection";
@@ -27,6 +29,7 @@ export type ResolvedWritingLanguage = {
 export function resolveWritingOutputLanguage(args: {
   style: WritingLanguageConfig;
   profile: ResumeProfile;
+  jobDescription?: string | null;
 }): ResolvedWritingLanguage {
   if (args.style.languageMode === "manual") {
     return {
@@ -35,7 +38,10 @@ export function resolveWritingOutputLanguage(args: {
     };
   }
 
-  const detectedLanguage = detectProfileLanguage(args.profile);
+  const detectedLanguage =
+    args.style.languageMode === "match-job-description"
+      ? detectJobDescriptionLanguage(args.jobDescription)
+      : detectProfileLanguage(args.profile);
   if (detectedLanguage) {
     return {
       language: detectedLanguage,
@@ -52,6 +58,7 @@ export function resolveWritingOutputLanguage(args: {
 export function resolveWritingOutputLanguageForResumeJson(args: {
   style: WritingLanguageConfig;
   resumeJson: Record<string, unknown>;
+  jobDescription?: string | null;
 }): ResolvedWritingLanguage {
   if (args.style.languageMode === "manual") {
     return {
@@ -60,7 +67,10 @@ export function resolveWritingOutputLanguageForResumeJson(args: {
     };
   }
 
-  const detectedLanguage = detectReactiveResumeV5Language(args.resumeJson);
+  const detectedLanguage =
+    args.style.languageMode === "match-job-description"
+      ? detectJobDescriptionLanguage(args.jobDescription)
+      : detectReactiveResumeV5Language(args.resumeJson);
   if (detectedLanguage) {
     return {
       language: detectedLanguage,

@@ -1,6 +1,7 @@
 import type { ResumeProfile } from "@shared/types";
 import { describe, expect, it } from "vitest";
 import {
+  detectJobDescriptionLanguage,
   detectProfileLanguage,
   detectReactiveResumeV5Language,
   resolveWritingOutputLanguage,
@@ -63,6 +64,56 @@ describe("resolveWritingOutputLanguage", () => {
           headline: "Senior Engineer",
         },
       },
+    });
+
+    expect(result).toEqual({
+      language: "english",
+      source: "fallback",
+    });
+  });
+
+  it.each([
+    [
+      "english",
+      "We are looking for an engineer with experience building reliable APIs and working with product teams.",
+    ],
+    [
+      "german",
+      "Wir suchen eine Person mit Erfahrung in der Entwicklung skalierbarer Plattformen und Verantwortung für APIs.",
+    ],
+    [
+      "french",
+      "Nous recherchons une personne avec expérience dans le développement et responsable des plateformes pour les équipes.",
+    ],
+    [
+      "spanish",
+      "Buscamos una persona con experiencia en desarrollo, responsable de APIs y colaboración con los equipos.",
+    ],
+  ] as const)("detects %s from job description text", (language, jobDescription) => {
+    expect(detectJobDescriptionLanguage(jobDescription)).toBe(language);
+    expect(
+      resolveWritingOutputLanguage({
+        style: {
+          languageMode: "match-job-description",
+          manualLanguage: "english",
+        },
+        profile: {},
+        jobDescription,
+      }),
+    ).toEqual({
+      language,
+      source: "detected",
+    });
+  });
+
+  it("falls back to english when job description language detection is weak", () => {
+    const result = resolveWritingOutputLanguage({
+      style: {
+        languageMode: "match-job-description",
+        manualLanguage: "french",
+      },
+      profile: {},
+      jobDescription: "Senior platform role with Kubernetes.",
     });
 
     expect(result).toEqual({
@@ -181,6 +232,21 @@ describe("resolveWritingOutputLanguage", () => {
     ).toEqual({
       language: "english",
       source: "fallback",
+    });
+
+    expect(
+      resolveWritingOutputLanguageForResumeJson({
+        style: {
+          languageMode: "match-job-description",
+          manualLanguage: "french",
+        },
+        resumeJson,
+        jobDescription:
+          "Wir suchen Erfahrung mit Entwicklung und Verantwortung für APIs.",
+      }),
+    ).toEqual({
+      language: "german",
+      source: "detected",
     });
   });
 });

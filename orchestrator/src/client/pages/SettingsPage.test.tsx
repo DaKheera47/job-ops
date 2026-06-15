@@ -974,6 +974,45 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("saves the match job advert language mode through the settings page", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      createAppSettings({
+        chatStyleLanguageMode: {
+          value: "match-job-description",
+          default: "manual",
+          override: "match-job-description",
+        },
+      }),
+    );
+
+    renderPage();
+    await openWritingStyleSection();
+
+    fireEvent.click(screen.getByRole("combobox", { name: /output language/i }));
+    fireEvent.click(
+      await screen.findByText(
+        "Match job advert language (auto-detect from JD)",
+      ),
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: /specific language/i }),
+    ).not.toBeInTheDocument();
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatStyleLanguageMode: "match-job-description",
+        chatStyleManualLanguage: null,
+      }),
+    );
+  });
+
   it("saves the Ghostwriter Stop Slop toggle through the settings page", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue(
