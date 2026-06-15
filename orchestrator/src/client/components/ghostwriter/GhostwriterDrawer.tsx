@@ -107,9 +107,9 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
 
       <SheetContent side="right" className={panelClassName}>
         <div className="border-b border-border/50 p-4">
-          <SheetHeader>
+          <SheetHeader className="text-left">
             <div className="flex items-start justify-between gap-2 w-full max-w-6xl mx-auto">
-              <div className="min-w-0">
+              <div className="min-w-0 text-left">
                 <SheetTitle>Ghostwriter</SheetTitle>
                 <SheetDescription>
                   {job && `${job.title} at ${job.employer}.`}
