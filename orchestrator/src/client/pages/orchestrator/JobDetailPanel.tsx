@@ -589,17 +589,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           await onJobUpdated();
         }}
         jobCTA={
-          <div className="flex shrink-0 gap-2">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:shrink-0">
             <GhostwriterDrawer
               job={selectedJob}
               triggerLabel="Ask Ghostwriter"
               triggerVariant="ghost"
+              triggerClassName="w-full min-w-0 justify-start overflow-hidden sm:w-auto"
             />
             <Button
               size="sm"
               onClick={() => void handlePrimaryAction()}
               disabled={primaryBusy || selectedJob.status === "processing"}
-              className={cn(tone.button)}
+              className={cn(
+                "col-start-1 row-start-2 w-full min-w-0 justify-start sm:w-auto sm:justify-center",
+                tone.button,
+              )}
             >
               {primaryBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -616,7 +620,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" aria-label="More actions">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="More actions"
+                  className="col-start-2 row-span-2 row-start-1 self-center"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -755,14 +764,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             <div className="space-y-4">
               <div
                 className={cn(
-                  "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-3",
+                  "flex min-h-16 flex-col gap-3 rounded-md border px-3 py-3 sm:flex-row sm:items-center sm:justify-between",
                   applicationKitReady
                     ? "border-emerald-500/20 bg-emerald-500/[0.04]"
                     : "border-amber-500/20 bg-amber-500/[0.04]",
                 )}
               >
-                <div className="flex min-w-0 items-center w-full justify-between">
-                  <div className="flex gap-3">
+                <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 gap-3">
                     <span
                       className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
@@ -777,7 +786,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                         <CircleAlert className="h-4 w-4" />
                       )}
                     </span>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground/90">
                         {applicationKitReady
                           ? "Application materials ready"
@@ -791,7 +800,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     </div>
                   </div>
 
-                  <Button asChild variant="outline">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full justify-center sm:w-auto sm:shrink-0"
+                  >
                     <a href={`/job/${selectedJob.id}`}>
                       Open Job Page
                       <ArrowRight />

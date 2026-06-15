@@ -232,15 +232,17 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex w-full flex-row-reverse sm:flex-col justify-between items-end gap-4 sm:w-auto sm:justify-end h-full">
-          <ScoreRing
-            score={job.suitabilityScore}
-            size="sm"
-            isAwaitingAi={isAwaitingAiScore(job)}
-            suitabilityReason={job.suitabilityReason}
-            jobId={job.id}
-          />
-          {jobCTA && <>{jobCTA}</>}
+        <div className="flex h-full w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:items-end sm:justify-end">
+          <div className="self-end">
+            <ScoreRing
+              score={job.suitabilityScore}
+              size="sm"
+              isAwaitingAi={isAwaitingAiScore(job)}
+              suitabilityReason={job.suitabilityReason}
+              jobId={job.id}
+            />
+          </div>
+          {jobCTA && <div className="min-w-0 sm:w-auto">{jobCTA}</div>}
         </div>
       </div>
 
