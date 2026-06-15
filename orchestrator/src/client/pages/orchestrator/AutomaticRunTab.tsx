@@ -913,16 +913,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             className="mt-0 flex min-h-0 flex-1 flex-col justify-center py-8"
           >
             <div className="mx-auto w-full max-w-4xl space-y-4">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                  What do you want to search for?
-                </p>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Start with a plain-language brief. AI fills the settings for
-                  review, then you run the search.
-                </p>
-              </div>
-
               <Card className="border-border/70 bg-card/95 shadow-[0_20px_80px_-48px_rgba(0,0,0,0.85)]">
                 <CardContent className="space-y-4 p-5 sm:p-6">
                   <div className="space-y-2">
@@ -937,11 +927,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       className="min-h-44 resize-none rounded-2xl border-0 bg-background/50 px-4 py-4 text-base leading-7 shadow-none ring-0 placeholder:text-muted-foreground/70 focus-visible:ring-2 sm:text-lg"
                     />
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      AI fills the search settings for review. It will not start
-                      the search.
-                    </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <Button
                       type="button"
                       className="gap-2"
