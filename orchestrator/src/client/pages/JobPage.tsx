@@ -848,6 +848,7 @@ export const JobPage: React.FC = () => {
                   )}
                   <JobTimeline
                     events={events}
+                    discoveredAt={job.discoveredAt}
                     onEdit={isInProgress ? handleEditEvent : undefined}
                     onDelete={isInProgress ? confirmDeleteEvent : undefined}
                   />

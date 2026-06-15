@@ -12,6 +12,7 @@ import {
   MailCheck,
   PhoneCall,
   Presentation,
+  SearchCheck,
   Trash2,
   UserRound,
   Video,
@@ -38,6 +39,10 @@ const formatRange = (start: number, end: number) => {
 };
 
 type TimelineEntry =
+  | {
+      kind: "found";
+      occurredAt: number;
+    }
   | { kind: "event"; event: StageEvent }
   | {
       kind: "group";
@@ -49,12 +54,14 @@ type TimelineEntry =
 
 interface JobTimelineProps {
   events: StageEvent[];
+  discoveredAt?: string | null;
   onEdit?: (event: StageEvent) => void;
   onDelete?: (eventId: string) => void;
 }
 
 export const JobTimeline: React.FC<JobTimelineProps> = ({
   events,
+  discoveredAt,
   onEdit,
   onDelete,
 }) => {
@@ -99,12 +106,18 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
       });
     });
 
+    const foundTimestamp = toTimestampSeconds(discoveredAt);
+    if (foundTimestamp !== null) {
+      mapped.push({
+        kind: "found",
+        occurredAt: foundTimestamp,
+      });
+    }
+
     return mapped.sort((a, b) => {
-      const timeA = a.kind === "event" ? a.event.occurredAt : a.occurredAt;
-      const timeB = b.kind === "event" ? b.event.occurredAt : b.occurredAt;
-      return timeA - timeB;
+      return getEntryOccurredAt(a) - getEntryOccurredAt(b);
     });
-  }, [events]);
+  }, [events, discoveredAt]);
 
   if (entries.length === 0) {
     return (
@@ -117,6 +130,18 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
   return (
     <div className="space-y-6">
       {entries.map((entry, entryIndex) => {
+        if (entry.kind === "found") {
+          return (
+            <TimelineRow
+              key="found"
+              date={formatTimestampWithTime(entry.occurredAt)}
+              title="Found"
+              icon={<SearchCheck className="h-4 w-4" />}
+              isLast={entryIndex === entries.length - 1}
+            />
+          );
+        }
+
         if (entry.kind === "event") {
           const title = entry.event.title || STAGE_LABELS[entry.event.toStage];
           const note = entry.event.metadata?.note;
@@ -217,6 +242,18 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
       })}
     </div>
   );
+};
+
+const toTimestampSeconds = (dateString: string | null | undefined) => {
+  if (!dateString) return null;
+  const timestamp = Date.parse(dateString);
+  if (!Number.isFinite(timestamp)) return null;
+  return Math.floor(timestamp / 1000);
+};
+
+const getEntryOccurredAt = (entry: TimelineEntry) => {
+  if (entry.kind === "event") return entry.event.occurredAt;
+  return entry.occurredAt;
 };
 
 interface TimelineRowProps {
