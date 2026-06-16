@@ -8,23 +8,22 @@ import type {
   UpdatePipelineSearchPresetInput,
   WatchlistSelectedSource,
 } from "@shared/types";
+import { motion, useReducedMotion } from "framer-motion";
 import type React from "react";
-import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
 import type { RunMode } from "./run-mode";
 
+const SEARCH_COMPOSER_MOTION_EASE = [0.22, 1, 0.36, 1] as const;
+
 interface RunModeModalProps {
   open: boolean;
   mode: RunMode;
+  showCloseButton?: boolean;
+  showModeTabs?: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -56,6 +55,8 @@ interface RunModeModalProps {
 export const RunModeModal: React.FC<RunModeModalProps> = ({
   open,
   mode,
+  showCloseButton = true,
+  showModeTabs = true,
   settings,
   enabledSources,
   pipelineSources,
@@ -78,72 +79,118 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onDeleteSavedSearch,
   onApplySavedSearch,
 }) => {
+  const prefersReducedMotion = useReducedMotion();
   const isManualMode = mode === "manual";
+  const showTopHeader = isManualMode || showModeTabs;
+  const composerTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.42, ease: SEARCH_COMPOSER_MOTION_EASE };
+  const composerInitial = prefersReducedMotion
+    ? { opacity: 1 }
+    : { opacity: 0, y: 14, scale: 0.992 };
+
+  if (!open) {
+    return null;
+  }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl">
-        <div className="flex h-full flex-col">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              {isManualMode ? "Review job details" : "Run jobs"}
-            </SheetTitle>
-            <SheetDescription>
-              {isManualMode
-                ? "Add a job description, review the extracted details, then import."
-                : "Configure an automatic pipeline run."}
-            </SheetDescription>
-          </SheetHeader>
+    <motion.section
+      initial={composerInitial}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={composerTransition}
+      className="flex min-h-[calc(100dvh-6rem)] origin-top flex-col will-change-transform"
+    >
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-1 flex-col px-4 sm:px-6 lg:px-8",
+          isManualMode ? "max-w-6xl py-6" : "max-w-5xl py-8 sm:py-10",
+        )}
+      >
+        {showTopHeader ? (
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                Search composer
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                {isManualMode
+                  ? "Review job details"
+                  : "What kind of jobs are you looking for?"}
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                {isManualMode
+                  ? "Add a job description, review the extracted details, then import."
+                  : "Describe the search in plain language. AI fills the settings for review, then you run the search."}
+              </p>
+            </div>
+            {showCloseButton ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+            ) : null}
+          </div>
+        ) : showCloseButton ? (
+          <div className="mb-2 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+          </div>
+        ) : null}
 
-          <Separator className="my-4" />
-
-          <Tabs
-            value={mode}
-            onValueChange={(value) => onModeChange(value as RunMode)}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <TabsList className="grid w-full grid-cols-2">
+        <Tabs
+          value={mode}
+          onValueChange={(value) => onModeChange(value as RunMode)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {showModeTabs ? (
+            <TabsList className="grid w-full max-w-sm grid-cols-2">
               <TabsTrigger value="automatic">Automatic</TabsTrigger>
               <TabsTrigger value="manual">Manual</TabsTrigger>
             </TabsList>
+          ) : null}
 
-            <TabsContent value="automatic" className="min-h-0 flex-1">
-              <AutomaticRunTab
-                open={open}
-                settings={settings}
-                enabledSources={enabledSources}
-                pipelineSources={pipelineSources}
-                onToggleSource={onToggleSource}
-                onSetPipelineSources={onSetPipelineSources}
-                watchlistSources={watchlistSources}
-                selectedWatchlistSourceIds={selectedWatchlistSourceIds}
-                onToggleWatchlistSource={onToggleWatchlistSource}
-                onSetSelectedWatchlistSourceIds={
-                  onSetSelectedWatchlistSourceIds
-                }
-                isWatchlistSourcesLoading={isWatchlistSourcesLoading}
-                isPipelineRunning={isPipelineRunning}
-                onSaveAndRun={onSaveAndRunAutomatic}
-                savedSearches={savedSearches}
-                isSavedSearchesLoading={isSavedSearchesLoading}
-                onCreateSavedSearch={onCreateSavedSearch}
-                onUpdateSavedSearch={onUpdateSavedSearch}
-                onDeleteSavedSearch={onDeleteSavedSearch}
-                onApplySavedSearch={onApplySavedSearch}
-              />
-            </TabsContent>
+          <TabsContent value="automatic" className="min-h-0 flex-1">
+            <AutomaticRunTab
+              open={open}
+              settings={settings}
+              enabledSources={enabledSources}
+              pipelineSources={pipelineSources}
+              onToggleSource={onToggleSource}
+              onSetPipelineSources={onSetPipelineSources}
+              watchlistSources={watchlistSources}
+              selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+              onToggleWatchlistSource={onToggleWatchlistSource}
+              onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
+              isWatchlistSourcesLoading={isWatchlistSourcesLoading}
+              isPipelineRunning={isPipelineRunning}
+              onSaveAndRun={onSaveAndRunAutomatic}
+              savedSearches={savedSearches}
+              isSavedSearchesLoading={isSavedSearchesLoading}
+              onCreateSavedSearch={onCreateSavedSearch}
+              onUpdateSavedSearch={onUpdateSavedSearch}
+              onDeleteSavedSearch={onDeleteSavedSearch}
+              onApplySavedSearch={onApplySavedSearch}
+            />
+          </TabsContent>
 
-            <TabsContent value="manual" className="min-h-0 flex-1">
-              <ManualImportFlow
-                active={open && mode === "manual"}
-                onImported={onManualImported}
-                onClose={() => onOpenChange(false)}
-                showReviewIntro={false}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </SheetContent>
-    </Sheet>
+          <TabsContent value="manual" className="min-h-0 flex-1">
+            <ManualImportFlow
+              active={open && mode === "manual"}
+              onImported={onManualImported}
+              onClose={() => onOpenChange(false)}
+              showReviewIntro={false}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </motion.section>
   );
 };

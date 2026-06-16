@@ -35,6 +35,34 @@ describe("RunModeModal", () => {
     expect(screen.getByRole("tab", { name: /manual/i })).toBeInTheDocument();
   });
 
+  it("can hide mode tabs for the full-page composer", () => {
+    render(
+      <RunModeModal
+        open
+        mode="automatic"
+        showModeTabs={false}
+        settings={null}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onOpenChange={vi.fn()}
+        onModeChange={vi.fn()}
+        onSaveAndRunAutomatic={vi.fn().mockResolvedValue(undefined)}
+        onManualImported={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId("automatic-tab")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: /automatic/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: /manual/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("uses the review header for manual import", () => {
     render(
       <RunModeModal
@@ -57,7 +85,7 @@ describe("RunModeModal", () => {
       screen.getByRole("heading", { name: /review job details/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/choose automatic pipeline run or manual import/i),
+      screen.queryByText(/describe a job search or import jobs manually/i),
     ).not.toBeInTheDocument();
   });
 });

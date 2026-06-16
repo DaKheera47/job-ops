@@ -48,7 +48,17 @@ const renderHeader = (
 describe("OrchestratorHeader", () => {
   it("opens automatic run from the navbar button", () => {
     const { props } = renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: /run pipeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /run search/i }));
+    expect(props.onOpenAutomaticRun).toHaveBeenCalled();
+  });
+
+  it("uses the navbar button as the search composer close toggle", () => {
+    const { props } = renderHeader({ isSearchComposerOpen: true });
+    const button = screen.getByRole("button", { name: /close search/i });
+
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 
@@ -56,6 +66,13 @@ describe("OrchestratorHeader", () => {
     renderHeader();
     expect(
       screen.queryByRole("button", { name: /manual import/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the run action when requested", () => {
+    renderHeader({ hideActions: true });
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
     ).not.toBeInTheDocument();
   });
 

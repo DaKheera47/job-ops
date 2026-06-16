@@ -149,7 +149,7 @@ describe("PipelineProgress", () => {
     apiMock.getPipelineProgressSnapshot.mockResolvedValueOnce({
       ...baseProgress,
       step: "failed",
-      message: "Pipeline failed",
+      message: "Search failed",
       error: "Boom",
     });
 
@@ -160,7 +160,7 @@ describe("PipelineProgress", () => {
     });
 
     expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Pipeline failed")).toBeInTheDocument();
+    expect(screen.getByText("Search failed")).toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);

@@ -73,7 +73,7 @@ export function usePipelineControls(
         status: "cancelled",
         had_error_message: false,
       });
-      toast.message("Pipeline cancelled");
+      toast.message("Search cancelled");
       return;
     }
 
@@ -82,7 +82,7 @@ export function usePipelineControls(
         status: "failed",
         had_error_message: Boolean(pipelineTerminalEvent.errorMessage),
       });
-      toast.error(pipelineTerminalEvent.errorMessage || "Pipeline failed");
+      toast.error(pipelineTerminalEvent.errorMessage || "Search failed");
       return;
     }
 
@@ -90,7 +90,7 @@ export function usePipelineControls(
       status: "completed",
       had_error_message: false,
     });
-    toast.success("Pipeline completed");
+    toast.success("Search completed");
   }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
   const openRunMode = useCallback((mode: RunMode) => {
@@ -105,6 +105,7 @@ export function usePipelineControls(
       sources: JobSource[];
       runBudget: number;
       searchTerms: string[];
+      scoringInstructions: string;
       country: string;
       cityLocations: string[];
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
@@ -121,6 +122,7 @@ export function usePipelineControls(
           sources: config.sources,
           runBudget: config.runBudget,
           searchTerms: config.searchTerms,
+          scoringInstructions: config.scoringInstructions,
           country: config.country,
           cityLocations: config.cityLocations,
           workplaceTypes: config.workplaceTypes,
@@ -128,13 +130,13 @@ export function usePipelineControls(
           matchStrictness: config.matchStrictness,
           watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         });
-        toast.message("Pipeline started", {
+        toast.message("Search started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
         });
       } catch (error) {
         setIsPipelineRunning(false);
         setIsCancelling(false);
-        showErrorToast(error, "Failed to start pipeline");
+        showErrorToast(error, "Failed to start search");
       }
     },
     [setIsPipelineRunning],
@@ -152,7 +154,7 @@ export function usePipelineControls(
       toast.message(result.message);
     } catch (error) {
       setIsCancelling(false);
-      showErrorToast(error, "Failed to cancel pipeline");
+      showErrorToast(error, "Failed to cancel search");
     }
   }, [isCancelling, isPipelineRunning]);
 

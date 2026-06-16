@@ -1,15 +1,15 @@
 ---
 id: pipeline-run
-title: Pipeline Run
-description: How to use Run Mode (Automatic vs Manual), presets, source controls, and advanced run settings.
+title: Run Search
+description: How to use Run Search (Automatic vs Manual), natural-language setup, presets, source controls, and advanced run settings.
 sidebar_position: 2
 ---
 
 ## What it is
 
-Pipeline Run is the Jobs-page run modal for starting either:
+Run Search is the Jobs-page run modal for starting either:
 
-- an **Automatic** pipeline run
+- an **Automatic** job search
 - a **Manual** one-job import
 
 For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow).
@@ -17,10 +17,11 @@ For manual import internals, read [Manual Import Extractor](/docs/next/extractor
 
 ## Why it exists
 
-The modal provides one place to control run volume, source compatibility, and processing aggressiveness before consuming compute/time.
+The modal provides one place to describe a search, review the generated settings, and control run volume, source compatibility, and processing aggressiveness before consuming compute/time.
 
 It helps you:
 
+- turn a natural-language search brief into editable settings
 - choose speed vs depth with presets
 - avoid invalid source/country combinations
 - understand estimated run cost before starting
@@ -28,11 +29,26 @@ It helps you:
 
 ## How to use it
 
-1. Open the Jobs page and use the top-right run control.
+1. Open the Jobs page and use the top-right **Run search** control.
 2. Choose either **Automatic** or **Manual** tab.
-3. Configure required inputs and start run.
+3. For Automatic, describe the search you want or switch to **Configure details**.
+4. Review the settings, edit anything you want, then run the search.
 
 ### Automatic tab
+
+#### Describe search
+
+The Automatic tab opens on **Describe search** first.
+
+1. Enter a detailed search brief, such as `Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options.`
+2. Select **Generate search settings**.
+3. Review the generated settings in **Configure details**.
+
+AI fills the existing controls only. It does not start the search automatically.
+
+The generated plan can update search terms, ranking preferences, country, cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
+
+Add as much detail as possible. Mention what the AI should rank higher or lower, such as salary targets, role seniority, visa sponsorship, graduate programmes, domains, commute limits, or preferred responsibilities.
 
 #### Presets
 
@@ -91,7 +107,7 @@ Source behavior differs:
 
 The footer estimate shows expected discovered jobs and resume-processing range.
 
-`Start run now` is disabled when:
+`Run search` is disabled when:
 
 - a run is already in progress
 - required save/run work is still in progress
@@ -132,7 +148,7 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 ### Older jobs look expired or stale
 
-- Run the pipeline again before reviewing or applying.
+- Run the search again before reviewing or applying.
 - Existing discovered jobs are not automatically refreshed in the background.
 - A new run fetches current listings so you can work from fresher results.
 

@@ -464,7 +464,7 @@ export const progressHelpers = {
   complete: (discovered: number, processed: number) =>
     updateProgress({
       step: "completed",
-      message: `Pipeline complete! Discovered ${discovered} jobs, processed ${processed}.`,
+      message: `Search complete! Discovered ${discovered} jobs, processed ${processed}.`,
       detail: "Ready for review",
       completedAt: new Date().toISOString(),
       currentJob: undefined,
@@ -473,7 +473,7 @@ export const progressHelpers = {
   cancelled: (reason: string) =>
     updateProgress({
       step: "cancelled",
-      message: "Pipeline cancelled",
+      message: "Search cancelled",
       detail: reason,
       completedAt: new Date().toISOString(),
       currentJob: undefined,
@@ -482,7 +482,7 @@ export const progressHelpers = {
   failed: (error: string) =>
     updateProgress({
       step: "failed",
-      message: "Pipeline failed",
+      message: "Search failed",
       detail: error,
       error,
       completedAt: new Date().toISOString(),

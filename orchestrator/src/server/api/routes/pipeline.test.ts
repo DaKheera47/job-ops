@@ -3,6 +3,17 @@ import type { PipelineSearchPresetConfig } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
+const { mockCallJson } = vi.hoisted(() => ({
+  mockCallJson: vi.fn(),
+}));
+
+vi.mock("@server/services/modelSelection", () => ({
+  resolveLlmModel: vi.fn().mockResolvedValue("test-model"),
+  createConfiguredLlmService: vi.fn().mockResolvedValue({
+    callJson: mockCallJson,
+  }),
+}));
+
 describe.sequential("Pipeline API routes", () => {
   let server: Server;
   let baseUrl: string;
@@ -118,6 +129,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 10,
       minSuitabilityScore: 55,
       runBudget: 250,
+      scoringInstructions: "",
       automaticPresetId: "custom",
       watchlistSelectedSourceIds: ["wl-source-a"],
     };
@@ -201,6 +213,143 @@ describe.sequential("Pipeline API routes", () => {
     expect(missingDeleteRes.status).toBe(404);
   });
 
+  it("plans a natural-language pipeline search in the API envelope", async () => {
+    const currentConfig: PipelineSearchPresetConfig = {
+      searchTerms: ["backend engineer"],
+      sources: ["linkedin"],
+      country: "united kingdom",
+      cityLocations: ["London"],
+      workplaceTypes: ["remote", "hybrid"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+      topN: 10,
+      minSuitabilityScore: 55,
+      runBudget: 250,
+      scoringInstructions: "",
+      automaticPresetId: "custom",
+    };
+    mockCallJson.mockResolvedValueOnce({
+      success: true,
+      data: {
+        config: {
+          searchTerms: [
+            "Senior Backend Engineer",
+            "Platform Engineer",
+            "Senior Backend Engineer",
+          ],
+          sources: ["naukri", "manual", "linkedin"],
+          country: "United Kingdom",
+          cityLocations: [],
+          workplaceTypes: ["remote"],
+          searchScope: "selected_plus_remote_worldwide",
+          matchStrictness: "flexible",
+          topN: 80,
+          minSuitabilityScore: -10,
+          runBudget: 5000,
+          scoringInstructions:
+            "Prioritize senior backend platform roles and remote-first options.",
+          automaticPresetId: "detailed",
+        },
+        summary:
+          "The search was updated to focus on senior backend/platform roles.",
+        warnings: ["Assumed remote-first roles."],
+      },
+    });
+
+    const res = await fetch(`${baseUrl}/api/pipeline/search-plan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": "search-plan-request-id",
+      },
+      body: JSON.stringify({
+        prompt: "Find senior backend platform roles, remote first.",
+        currentConfig,
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBe("search-plan-request-id");
+    expect(body.data.source).toBe("ai");
+    expect(body.data.summary).toBe(
+      "The search was updated to focus on senior backend/platform roles.",
+    );
+    const searchPlanPrompt =
+      mockCallJson.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(searchPlanPrompt).toContain(
+      "Write summary in neutral product voice",
+    );
+    expect(searchPlanPrompt).toContain("never 'I updated...'");
+    expect(body.data.config).toEqual(
+      expect.objectContaining({
+        searchTerms: ["Senior Backend Engineer", "Platform Engineer"],
+        sources: ["linkedin"],
+        country: "united kingdom",
+        cityLocations: [],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "flexible",
+        topN: 50,
+        minSuitabilityScore: 0,
+        runBudget: 1000,
+        scoringInstructions:
+          "Prioritize senior backend platform roles and remote-first options.",
+        automaticPresetId: "detailed",
+      }),
+    );
+    expect(body.data.warnings).toEqual(
+      expect.arrayContaining([
+        "Assumed remote-first roles.",
+        expect.stringContaining("Ignored unavailable sources"),
+        expect.stringContaining("Removed sources"),
+      ]),
+    );
+  });
+
+  it("falls back safely when natural-language search planning fails", async () => {
+    const currentConfig: PipelineSearchPresetConfig = {
+      searchTerms: ["backend engineer"],
+      sources: ["linkedin"],
+      country: "united kingdom",
+      cityLocations: ["London"],
+      workplaceTypes: ["remote", "hybrid"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+      topN: 10,
+      minSuitabilityScore: 55,
+      runBudget: 250,
+      scoringInstructions: "",
+      automaticPresetId: "custom",
+    };
+    mockCallJson.mockResolvedValueOnce({
+      success: false,
+      error: "LLM API key not configured",
+    });
+
+    const res = await fetch(`${baseUrl}/api/pipeline/search-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "super secret prompt should not be returned",
+        currentConfig,
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBeTruthy();
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        source: "fallback",
+        config: currentConfig,
+      }),
+    );
+    expect(JSON.stringify(body)).not.toContain("super secret prompt");
+  });
+
   it("scopes pipeline saved searches by tenant and user", async () => {
     const { db, schema } = await import("@server/db");
     const { runWithRequestContext } = await import(
@@ -218,6 +367,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 5,
       minSuitabilityScore: 65,
       runBudget: 150,
+      scoringInstructions: "",
       automaticPresetId: "fast",
     };
 
@@ -503,6 +653,7 @@ describe.sequential("Pipeline API routes", () => {
         minSuitabilityScore: 65,
         runBudget: 150,
         searchTerms: ["backend engineer"],
+        scoringInstructions: "Prefer backend API roles above GBP 60k.",
         country: "united kingdom",
         cityLocations: ["London"],
         workplaceTypes: ["remote", "hybrid"],
@@ -518,6 +669,7 @@ describe.sequential("Pipeline API routes", () => {
         topN: 5,
         minSuitabilityScore: 65,
         sources: ["gradcracker"],
+        scoringInstructions: "Prefer backend API roles above GBP 60k.",
         locationIntent: expect.objectContaining({
           selectedCountry: "united kingdom",
           country: "united kingdom",

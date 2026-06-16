@@ -13,6 +13,7 @@ export interface PipelineConfig {
   sources: ExtractorSourceId[]; // Job sources to crawl
   outputDir: string; // Directory for generated PDFs
   locationIntent?: LocationIntent;
+  scoringInstructions?: string;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
@@ -148,6 +149,7 @@ export interface PipelineSearchPresetConfig {
   topN: number;
   minSuitabilityScore: number;
   runBudget: number;
+  scoringInstructions?: string;
   automaticPresetId?: PipelineSearchPresetMode;
   // Optional per-run Watchlist source selection. Omitted = legacy behavior
   // (include every Watchlist source the user has saved). See issue #621.
@@ -175,6 +177,18 @@ export interface CreatePipelineSearchPresetInput {
 export interface UpdatePipelineSearchPresetInput {
   name?: string;
   config?: PipelineSearchPresetConfig;
+}
+
+export interface PipelineSearchPlanRequest {
+  prompt: string;
+  currentConfig: PipelineSearchPresetConfig;
+}
+
+export interface PipelineSearchPlanResponse {
+  config: PipelineSearchPresetConfig;
+  summary: string;
+  warnings: string[];
+  source: "ai" | "fallback";
 }
 
 export type PipelineProgressStep =

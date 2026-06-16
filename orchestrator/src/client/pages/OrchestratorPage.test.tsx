@@ -24,6 +24,7 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 vi.mock("../api", () => ({
   updateSettings: vi.fn().mockResolvedValue({}),
   runPipeline: vi.fn().mockResolvedValue({ message: "ok" }),
+  planPipelineSearch: vi.fn().mockResolvedValue({}),
   getPipelineSearchPresets: vi.fn().mockResolvedValue({ searches: [] }),
   createPipelineSearchPreset: vi.fn().mockResolvedValue({}),
   updatePipelineSearchPreset: vi.fn().mockResolvedValue({}),
@@ -72,6 +73,7 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   topN: 12,
   minSuitabilityScore: 55,
   searchTerms: ["backend"],
+  scoringInstructions: "",
   runBudget: 150,
   country: "united kingdom",
   cityLocations: [],
@@ -178,11 +180,22 @@ vi.mock("../hooks/useSettings", () => ({
 
 vi.mock("./orchestrator/OrchestratorHeader", () => ({
   OrchestratorHeader: ({
+    hideActions,
+    isSearchComposerOpen,
+    onOpenAutomaticRun,
     onCancelPipeline,
   }: {
+    hideActions?: boolean;
+    isSearchComposerOpen?: boolean;
+    onOpenAutomaticRun?: () => void;
     onCancelPipeline: () => void;
   }) => (
     <div data-testid="header">
+      {!hideActions ? (
+        <button type="button" onClick={onOpenAutomaticRun}>
+          {isSearchComposerOpen ? "Close Search" : "Run Search"}
+        </button>
+      ) : null}
       <button type="button" onClick={onCancelPipeline}>
         Cancel Pipeline
       </button>
@@ -398,17 +411,32 @@ vi.mock("./orchestrator/JobListPanel", () => ({
 
 vi.mock("./orchestrator/RunModeModal", () => ({
   RunModeModal: ({
+    open,
+    mode,
     onSaveAndRunAutomatic,
   }: {
+    open: boolean;
+    mode: "automatic" | "manual";
     onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   }) => (
-    <button
-      type="button"
-      data-testid="run-automatic"
-      onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
-    >
-      Run automatic
-    </button>
+    <div data-testid="run-mode-modal">
+      {open ? (
+        <>
+          <h1>
+            {mode === "automatic"
+              ? "What kind of jobs are you looking for?"
+              : "Review job details"}
+          </h1>
+          <button
+            type="button"
+            data-testid="run-automatic"
+            onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
+          >
+            Run automatic
+          </button>
+        </>
+      ) : null}
+    </div>
   ),
 }));
 
@@ -441,6 +469,10 @@ const pressKeyOn = (
   fireEvent.keyDown(target, { key, ...options });
 };
 
+const openAutomaticRunComposer = () => {
+  fireEvent.click(screen.getByRole("button", { name: /run search/i }));
+};
+
 describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -458,6 +490,7 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       runBudget: 150,
       country: "united kingdom",
       cityLocations: [],
@@ -943,6 +976,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -969,6 +1003,7 @@ describe("OrchestratorPage", () => {
       sources: ["linkedin"],
       runBudget: 150,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       country: "united kingdom",
       cityLocations: [],
       workplaceTypes: ["remote", "hybrid", "onsite"],
@@ -981,6 +1016,91 @@ describe("OrchestratorPage", () => {
     setIntervalSpy.mockRestore();
   });
 
+  it("swaps the dashboard for the full-screen search composer", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+
+    expect(
+      screen.getByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /close search/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
+  it("toggles the full-screen search composer from the navbar", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+    fireEvent.click(screen.getByRole("button", { name: /close search/i }));
+
+    expect(
+      screen.queryByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run search/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the search composer instead of empty columns for brand-new workspaces", () => {
+    mockJobs = [];
+    mockSelectedJob = null;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("summary")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
   it("stores multiple cities for JobSpy sources in automatic mode", async () => {
     window.matchMedia = createMatchMedia(
       true,
@@ -990,6 +1110,7 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["London", "Manchester"],
@@ -1007,6 +1128,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1027,6 +1149,7 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
@@ -1044,6 +1167,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1064,6 +1188,7 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
@@ -1081,6 +1206,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
@@ -1112,7 +1238,7 @@ describe("OrchestratorPage", () => {
     );
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Pipeline completed");
+      expect(toast.success).toHaveBeenCalledWith("Search completed");
     });
   });
 
@@ -1136,7 +1262,7 @@ describe("OrchestratorPage", () => {
     );
 
     await waitFor(() => {
-      expect(toast.message).toHaveBeenCalledWith("Pipeline cancelled");
+      expect(toast.message).toHaveBeenCalledWith("Search cancelled");
     });
   });
 
@@ -1173,6 +1299,7 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       searchTerms: ["backend"],
+      scoringInstructions: "",
       runBudget: 150,
       country: "united states",
       cityLocations: [],
@@ -1190,6 +1317,7 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    openAutomaticRunComposer();
     fireEvent.click(screen.getByTestId("run-automatic"));
 
     await waitFor(() => {
