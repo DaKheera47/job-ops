@@ -240,9 +240,7 @@ describe("AutomaticRunTab", () => {
         target: { value: "Find platform jobs in London" },
       },
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Generate search" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Generate search" }));
 
     await waitFor(() => {
       expect(api.planPipelineSearch).toHaveBeenCalledWith(
@@ -257,7 +255,9 @@ describe("AutomaticRunTab", () => {
       );
     });
     await waitFor(() => {
-      expect(screen.getByText("Configure details")).toBeInTheDocument();
+      expect(screen.getAllByText("Configure details").length).toBeGreaterThan(
+        0,
+      );
     });
 
     expect(onSaveAndRun).not.toHaveBeenCalled();

@@ -1026,7 +1026,7 @@ describe("OrchestratorPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /what do you want to search for\?/i,
+        name: /what kind of jobs are you looking for\?/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -1053,7 +1053,7 @@ describe("OrchestratorPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /what do you want to search for\?/i,
+        name: /what kind of jobs are you looking for\?/i,
       }),
     ).toBeInTheDocument();
     expect(
