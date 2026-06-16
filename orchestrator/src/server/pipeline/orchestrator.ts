@@ -424,7 +424,7 @@ export async function runPipeline(
       try {
         ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
           profile,
-          scoringInstructions: mergedConfig.scoringInstructions ?? "",
+          scoringInstructions: mergedConfig.scoringInstructions,
           shouldCancel: () =>
             getPipelineState(scopeKey).cancelRequestedAt !== null,
         }));
@@ -445,7 +445,7 @@ export async function runPipeline(
 
           ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
             profile,
-            scoringInstructions: mergedConfig.scoringInstructions ?? "",
+            scoringInstructions: mergedConfig.scoringInstructions,
             shouldCancel: () =>
               getPipelineState(scopeKey).cancelRequestedAt !== null,
           }));

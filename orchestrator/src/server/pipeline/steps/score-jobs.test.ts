@@ -114,6 +114,17 @@ describe("scoreJobsStep auto-skip behavior", () => {
     );
   });
 
+  it("does not override global scoring instructions with a blank per-run value", async () => {
+    const scorer = await import("@server/services/scorer");
+
+    await scoreJobsStep({
+      profile: {},
+      scoringInstructions: "   ",
+    });
+
+    expect(vi.mocked(scorer.scoreJobSuitability).mock.calls[0]).toHaveLength(2);
+  });
+
   it("persists generated job briefs while scoring", async () => {
     const jobsRepo = await import("@server/repositories/jobs");
     const jobBrief = await import("@server/services/job-brief");

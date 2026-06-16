@@ -38,6 +38,7 @@ export async function scoreJobsStep(args: {
 
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
+  const scoringInstructions = args.scoringInstructions?.trim();
 
   await asyncPool({
     items: unprocessedJobs,
@@ -65,10 +66,11 @@ export async function scoreJobsStep(args: {
         return;
       }
 
+      const scoringResultPromise = scoringInstructions
+        ? scoreJobSuitability(job, args.profile, { scoringInstructions })
+        : scoreJobSuitability(job, args.profile);
       const [{ score, reason }, jobBrief] = await Promise.all([
-        scoreJobSuitability(job, args.profile, {
-          scoringInstructions: args.scoringInstructions ?? "",
-        }),
+        scoringResultPromise,
         generateJobBrief(job.jobDescription, { jobId: job.id }),
       ]);
       if (args.shouldCancel?.()) return;
