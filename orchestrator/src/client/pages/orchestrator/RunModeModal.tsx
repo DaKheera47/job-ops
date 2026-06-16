@@ -7,6 +7,7 @@ import type {
   PipelineSearchPreset,
   UpdatePipelineSearchPresetInput,
 } from "@shared/types";
+import { motion, useReducedMotion } from "framer-motion";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
 import type { RunMode } from "./run-mode";
+
+const SEARCH_COMPOSER_MOTION_EASE = [0.22, 1, 0.36, 1] as const;
 
 interface RunModeModalProps {
   open: boolean;
@@ -65,15 +68,27 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onDeleteSavedSearch,
   onApplySavedSearch,
 }) => {
+  const prefersReducedMotion = useReducedMotion();
   const isManualMode = mode === "manual";
   const showTopHeader = isManualMode || showModeTabs;
+  const composerTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.42, ease: SEARCH_COMPOSER_MOTION_EASE };
+  const composerInitial = prefersReducedMotion
+    ? { opacity: 1 }
+    : { opacity: 0, y: 14, scale: 0.992 };
 
   if (!open) {
     return null;
   }
 
   return (
-    <section className="flex min-h-[calc(100dvh-6rem)] flex-col">
+    <motion.section
+      initial={composerInitial}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={composerTransition}
+      className="flex min-h-[calc(100dvh-6rem)] origin-top flex-col will-change-transform"
+    >
       <div
         className={cn(
           "mx-auto flex w-full flex-1 flex-col px-4 sm:px-6 lg:px-8",
@@ -160,6 +175,6 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
           </TabsContent>
         </Tabs>
       </div>
-    </section>
+    </motion.section>
   );
 };
