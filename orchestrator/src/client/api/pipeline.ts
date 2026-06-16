@@ -135,6 +135,7 @@ export async function runPipeline(config?: {
   sources?: JobSource[];
   runBudget?: number;
   searchTerms?: string[];
+  scoringInstructions?: string;
   country?: string;
   cityLocations?: string[];
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;

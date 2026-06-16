@@ -1111,42 +1111,16 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("saves scoring instructions from scoring settings", async () => {
+  it("does not expose global scoring instructions in scoring settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
-    vi.mocked(api.updateSettings).mockResolvedValue({
-      ...baseSettings,
-      scoringInstructions: {
-        value:
-          "Open to relocating, so do not mark down for location discrepancies.",
-        default: "",
-        override:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      },
-    });
 
     renderPage();
 
     await openScoringSection();
 
-    const textarea = screen.getByLabelText(/scoring instructions/i);
-    fireEvent.change(textarea, {
-      target: {
-        value:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      },
-    });
-
-    const saveButton = getSaveButton();
-    await waitFor(() => expect(saveButton).toBeEnabled());
-    fireEvent.click(saveButton);
-
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        scoringInstructions:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      }),
-    );
+    expect(
+      screen.queryByLabelText(/scoring instructions/i),
+    ).not.toBeInTheDocument();
   });
 
   it("serializes prompt templates back to null when reset to defaults", async () => {

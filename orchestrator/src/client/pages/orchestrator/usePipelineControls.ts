@@ -103,6 +103,7 @@ export function usePipelineControls(
       sources: JobSource[];
       runBudget: number;
       searchTerms: string[];
+      scoringInstructions: string;
       country: string;
       cityLocations: string[];
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
@@ -118,6 +119,7 @@ export function usePipelineControls(
           sources: config.sources,
           runBudget: config.runBudget,
           searchTerms: config.searchTerms,
+          scoringInstructions: config.scoringInstructions,
           country: config.country,
           cityLocations: config.cityLocations,
           workplaceTypes: config.workplaceTypes,

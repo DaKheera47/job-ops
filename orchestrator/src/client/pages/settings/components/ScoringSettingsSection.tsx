@@ -8,7 +8,6 @@ import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 
 type ScoringSettingsSectionProps = {
   values: ScoringValues;
@@ -35,7 +34,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
     missingSalaryPenalty,
     autoSkipScoreThreshold,
     blockedCompanyKeywords,
-    scoringInstructions,
   } = values;
   const { control, watch, setValue } = useFormContext<UpdateSettingsInput>();
   const [blockedCompanyKeywordDraft, setBlockedCompanyKeywordDraft] =
@@ -166,46 +164,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
           />
         </div>
 
-        <Separator />
-
-        <div className="space-y-3">
-          <label
-            htmlFor="scoringInstructions"
-            className="text-sm font-medium leading-none"
-          >
-            Scoring Instructions
-          </label>
-          <Controller
-            name="scoringInstructions"
-            control={control}
-            render={({ field }) => (
-              <div className="space-y-2">
-                <Textarea
-                  id="scoringInstructions"
-                  value={field.value ?? scoringInstructions.default}
-                  onChange={(event) => field.onChange(event.target.value)}
-                  placeholder="Example: Open to relocating, so do not mark down for location discrepancies. Prioritize visa sponsorship and backend API work."
-                  disabled={isLoading || isSaving}
-                  maxLength={4000}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Optional guidance for the AI scorer about what to weigh more
-                  or less. This only changes scoring, not Ghostwriter or
-                  tailoring.
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Current:{" "}
-                  <span className="font-mono">
-                    {scoringInstructions.effective || "—"}
-                  </span>
-                </div>
-              </div>
-            )}
-          />
-        </div>
-
-        <Separator />
-
         <div className="space-y-3">
           <label
             htmlFor="blocked-company-keywords"
@@ -264,15 +222,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
             <div className="break-words font-mono text-xs">
               Effective: {autoSkipScoreThreshold.effective ?? "Disabled"} |
               Default: {autoSkipScoreThreshold.default ?? "Disabled"}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">
-              Scoring Instructions
-            </div>
-            <div className="break-words font-mono text-xs">
-              Effective: {scoringInstructions.effective || "—"} | Default:{" "}
-              {scoringInstructions.default || "—"}
             </div>
           </div>
         </div>

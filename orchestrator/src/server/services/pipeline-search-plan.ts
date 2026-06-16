@@ -93,6 +93,7 @@ const SEARCH_PLAN_SCHEMA: JsonSchemaDefinition = {
           topN: { type: "number" },
           minSuitabilityScore: { type: "number" },
           runBudget: { type: "number" },
+          scoringInstructions: { type: "string" },
           automaticPresetId: {
             type: "string",
             enum: [...PRESET_VALUES],
@@ -109,6 +110,7 @@ const SEARCH_PLAN_SCHEMA: JsonSchemaDefinition = {
           "topN",
           "minSuitabilityScore",
           "runBudget",
+          "scoringInstructions",
           "automaticPresetId",
         ],
         additionalProperties: false,
@@ -249,6 +251,14 @@ function normalizeSummary(value: unknown, source: "ai" | "fallback"): string {
     : "Search settings were left unchanged because AI planning was unavailable.";
 }
 
+function normalizeScoringInstructions(
+  value: unknown,
+  fallback: string,
+): string {
+  const raw = typeof value === "string" ? value.trim() : fallback.trim();
+  return raw.slice(0, 4000);
+}
+
 function filterCompatibleSources(args: {
   config: PipelineSearchPresetConfig;
   registry: ExtractorRegistry;
@@ -374,6 +384,10 @@ export function normalizePipelineSearchPlanConfig(args: {
       MAX_RUN_BUDGET,
       currentConfig.runBudget,
     ),
+    scoringInstructions: normalizeScoringInstructions(
+      candidate?.scoringInstructions,
+      currentConfig.scoringInstructions ?? "",
+    ),
     automaticPresetId: PRESET_VALUES.includes(
       candidate?.automaticPresetId as (typeof PRESET_VALUES)[number],
     )
@@ -410,6 +424,8 @@ function buildPrompt(args: {
     "- Keep locations in country/city fields, not in search terms.",
     "- Choose only available source ids.",
     "- Use conservative run volume unless the user asks for broad/deep search.",
+    "- Convert explicit ranking preferences into scoringInstructions. Examples: salary floor, lower-score graduate programs, prioritize sponsorship, prefer backend API work.",
+    "- Do not invent scoring preferences. If the user did not specify ranking preferences, keep current scoringInstructions.",
     "- Add warnings for assumptions, ignored requests, or source/location caveats.",
     "",
     "Available sources:",

@@ -119,6 +119,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   topN: 10,
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
+  scoringInstructions: "",
   runBudget: 200,
   country: "",
   cityLocations: [],
@@ -139,6 +140,7 @@ interface AutomaticRunFormValues {
   matchStrictness: LocationMatchStrictness;
   searchTerms: string[];
   searchTermDraft: string;
+  scoringInstructions: string;
 }
 
 const GLASSDOOR_COUNTRY_REASON =
@@ -340,6 +342,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       matchStrictness: DEFAULT_VALUES.matchStrictness,
       searchTerms: DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
+      scoringInstructions: DEFAULT_VALUES.scoringInstructions,
     },
   });
 
@@ -354,6 +357,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const matchStrictness = watch("matchStrictness");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
+  const scoringInstructions = watch("scoringInstructions");
 
   useEffect(() => {
     if (!open) return;
@@ -426,6 +430,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       matchStrictness: rememberedMatchStrictness,
       searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
+      scoringInstructions: DEFAULT_VALUES.scoringInstructions,
     });
     setSelectedPreset(memory?.presetId ?? "custom");
     setAdvancedOpen(false);
@@ -483,6 +488,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchScope,
       matchStrictness,
       searchTerms,
+      scoringInstructions: scoringInstructions.trim(),
     };
   }, [
     topNInput,
@@ -494,6 +500,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     searchScope,
     matchStrictness,
     searchTerms,
+    scoringInstructions,
   ]);
 
   const workplaceTypeSelectionInvalid = workplaceTypes.length === 0;
@@ -666,6 +673,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       topN: values.topN,
       minSuitabilityScore: values.minSuitabilityScore,
       runBudget: values.runBudget,
+      scoringInstructions: values.scoringInstructions,
       automaticPresetId: selectedPreset,
     }),
     [pipelineSources, selectedPreset, values],
@@ -745,6 +753,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     setValue("matchStrictness", config.matchStrictness, { shouldDirty: true });
     setValue("searchTerms", config.searchTerms, { shouldDirty: true });
     setValue("searchTermDraft", "");
+    setValue("scoringInstructions", config.scoringInstructions ?? "", {
+      shouldDirty: true,
+    });
 
     const nextSources = config.sources.filter((source) =>
       enabledSources.includes(source),
@@ -923,9 +934,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       id="search-plan-prompt"
                       value={searchPrompt}
                       onChange={(event) => setSearchPrompt(event.target.value)}
-                      placeholder="Find senior backend roles in London, remote or hybrid, using LinkedIn and Adzuna."
+                      placeholder="Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options."
                       className="min-h-44 resize-none rounded-2xl border-0 bg-background/50 px-4 py-4 text-base leading-7 shadow-none ring-0 placeholder:text-muted-foreground/70 focus-visible:ring-2 sm:text-lg"
                     />
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      Add as much detail as you can: titles, locations, salary,
+                      sources, work style, deal-breakers, and what the AI should
+                      rank higher or lower.
+                    </p>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <Button
@@ -1433,6 +1449,32 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Ranking preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Label htmlFor="scoring-instructions" className="sr-only">
+                  Ranking preferences
+                </Label>
+                <Textarea
+                  id="scoring-instructions"
+                  value={scoringInstructions}
+                  onChange={(event) =>
+                    setValue("scoringInstructions", event.target.value, {
+                      shouldDirty: true,
+                    })
+                  }
+                  placeholder="e.g. Prefer roles above GBP 60k, lower-score graduate programmes, prioritize backend API work and visa sponsorship."
+                  className="min-h-28 resize-y"
+                  maxLength={4000}
+                />
+                <p className="text-sm leading-6 text-muted-foreground">
+                  These preferences are sent to scoring for this search only.
+                </p>
               </CardContent>
             </Card>
 

@@ -107,7 +107,6 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   missingSalaryPenalty: null,
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: [],
-  scoringInstructions: "",
   ghostwriterSystemPromptTemplate: "",
   tailoringPromptTemplate: "",
   scoringPromptTemplate: "",
@@ -318,7 +317,6 @@ const SECTION_FIELD_MAP: Record<
     "missingSalaryPenalty",
     "autoSkipScoreThreshold",
     "blockedCompanyKeywords",
-    "scoringInstructions",
   ],
   "reactive-resume": [
     "pdfRenderer",
@@ -438,7 +436,6 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   missingSalaryPenalty: null,
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: null,
-  scoringInstructions: null,
   ghostwriterSystemPromptTemplate: null,
   tailoringPromptTemplate: null,
   scoringPromptTemplate: null,
@@ -507,7 +504,6 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   missingSalaryPenalty: data.missingSalaryPenalty.override,
   autoSkipScoreThreshold: data.autoSkipScoreThreshold.override,
   blockedCompanyKeywords: data.blockedCompanyKeywords.override ?? [],
-  scoringInstructions: data.scoringInstructions.override ?? "",
   ghostwriterSystemPromptTemplate:
     data.ghostwriterSystemPromptTemplate.value ?? "",
   tailoringPromptTemplate: data.tailoringPromptTemplate.value ?? "",
@@ -744,10 +740,6 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       blockedCompanyKeywords: {
         effective: settings?.blockedCompanyKeywords?.value ?? [],
         default: settings?.blockedCompanyKeywords?.default ?? [],
-      },
-      scoringInstructions: {
-        effective: settings?.scoringInstructions?.value ?? "",
-        default: settings?.scoringInstructions?.default ?? "",
       },
     },
     promptTemplates: {
@@ -1253,10 +1245,6 @@ export const SettingsPage: React.FC = () => {
             ? null
             : normalized;
         })(),
-        scoringInstructions: nullIfSame(
-          normalizeString(data.scoringInstructions),
-          scoring.scoringInstructions.default,
-        ),
         ghostwriterSystemPromptTemplate: nullIfSame(
           normalizeString(data.ghostwriterSystemPromptTemplate),
           promptTemplates.ghostwriterSystemPromptTemplate.default,
@@ -1533,8 +1521,7 @@ export const SettingsPage: React.FC = () => {
           : { label: "Using defaults", variant: "secondary" as const };
       case "scoring":
         return scoring.autoSkipScoreThreshold.effective != null ||
-          scoring.blockedCompanyKeywords.effective.length > 0 ||
-          scoring.scoringInstructions.effective
+          scoring.blockedCompanyKeywords.effective.length > 0
           ? { label: "Customized", variant: "outline" as const }
           : { label: "Default rules", variant: "secondary" as const };
       case "reactive-resume":

@@ -99,6 +99,21 @@ describe("scoreJobsStep auto-skip behavior", () => {
     );
   });
 
+  it("passes per-run scoring instructions to the scorer", async () => {
+    const scorer = await import("@server/services/scorer");
+
+    await scoreJobsStep({
+      profile: {},
+      scoringInstructions: "Lower-score graduate programmes.",
+    });
+
+    expect(scorer.scoreJobSuitability).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "job-1" }),
+      {},
+      { scoringInstructions: "Lower-score graduate programmes." },
+    );
+  });
+
   it("persists generated job briefs while scoring", async () => {
     const jobsRepo = await import("@server/repositories/jobs");
     const jobBrief = await import("@server/services/job-brief");

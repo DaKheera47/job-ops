@@ -13,6 +13,7 @@ export interface PipelineConfig {
   sources: ExtractorSourceId[]; // Job sources to crawl
   outputDir: string; // Directory for generated PDFs
   locationIntent?: LocationIntent;
+  scoringInstructions?: string;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
@@ -138,6 +139,7 @@ export interface PipelineSearchPresetConfig {
   topN: number;
   minSuitabilityScore: number;
   runBudget: number;
+  scoringInstructions?: string;
   automaticPresetId?: PipelineSearchPresetMode;
 }
 

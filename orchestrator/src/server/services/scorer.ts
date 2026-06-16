@@ -98,14 +98,18 @@ function applySalaryPenalty(
 export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
+  options: { scoringInstructions?: string } = {},
 ): Promise<SuitabilityResult> {
   const [model, settings] = await Promise.all([
     resolveLlmModel("scoring"),
     getEffectiveSettings(),
   ]);
+  const scoringInstructions = Object.hasOwn(options, "scoringInstructions")
+    ? (options.scoringInstructions ?? "")
+    : (settings.scoringInstructions?.value ?? "");
 
   const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile), {
-    instructions: settings.scoringInstructions?.value ?? "",
+    instructions: scoringInstructions,
     promptTemplate:
       settings.scoringPromptTemplate?.value ??
       getDefaultPromptTemplate("scoringPromptTemplate"),

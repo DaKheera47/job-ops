@@ -31,11 +31,12 @@ Important:
 
 ### 2) Configure search settings
 
-In Automatic mode, start with **Describe search** when you want AI to fill the options from a plain-language brief. Review the generated settings before running; AI does not start the search for you.
+In Automatic mode, start with **Describe search** when you want AI to fill the options from a plain-language brief. Add as much detail as possible, including what to surface or lower-score. Review the generated settings before running; AI does not start the search for you.
 
 In **Configure details**, review or edit:
 
 - how many jobs to discover (approximate target)
+- ranking preferences for scoring this search
 - minimum score threshold for tailoring
 - how many jobs should be tailored/generated
 

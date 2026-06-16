@@ -204,6 +204,7 @@ const pipelineSearchPresetConfigSchema = z.object({
   topN: z.number().int().min(1).max(50),
   minSuitabilityScore: z.number().int().min(0).max(100),
   runBudget: z.number().int().min(50).max(1000),
+  scoringInstructions: z.string().trim().max(4000).optional().default(""),
   automaticPresetId: z
     .enum(["fast", "balanced", "detailed", "custom"])
     .optional(),
@@ -424,6 +425,7 @@ const runPipelineSchema = z.object({
   sources: z.array(pipelineSourceSchema).min(1).optional(),
   runBudget: z.number().min(50).max(1000).optional(),
   searchTerms: z.array(z.string().trim().min(1)).optional(),
+  scoringInstructions: z.string().trim().max(4000).optional(),
   country: z.string().trim().optional(),
   cityLocations: z.array(z.string().trim().min(1)).optional(),
   workplaceTypes: z
@@ -505,6 +507,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         topN: config.topN,
         minSuitabilityScore: config.minSuitabilityScore,
         sources: config.sources,
+        scoringInstructions: config.scoringInstructions,
         locationIntent,
       });
       return okWithMeta(res, simulated, { simulated: true });
@@ -520,6 +523,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         topN: config.topN,
         minSuitabilityScore: config.minSuitabilityScore,
         sources: config.sources,
+        scoringInstructions: config.scoringInstructions,
         locationIntent,
       }).catch((error) => {
         logger.error("Background pipeline run failed", error);

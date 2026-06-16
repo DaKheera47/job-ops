@@ -40,13 +40,15 @@ It helps you:
 
 The Automatic tab opens on **Describe search** first.
 
-1. Enter a short search brief, such as `Find senior backend roles in London, remote or hybrid`.
+1. Enter a detailed search brief, such as `Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options.`
 2. Select **Generate search settings**.
 3. Review the generated settings in **Configure details**.
 
 AI fills the existing controls only. It does not start the search automatically.
 
-The generated plan can update search terms, country, cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
+The generated plan can update search terms, ranking preferences, country, cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
+
+Add as much detail as possible. Mention what the AI should rank higher or lower, such as salary targets, role seniority, visa sponsorship, graduate programmes, domains, commute limits, or preferred responsibilities.
 
 #### Presets
 

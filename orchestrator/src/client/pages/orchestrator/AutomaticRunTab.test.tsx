@@ -200,6 +200,8 @@ describe("AutomaticRunTab", () => {
         topN: 20,
         minSuitabilityScore: 40,
         runBudget: 500,
+        scoringInstructions:
+          "Prioritize backend platform work and remote-friendly roles.",
         automaticPresetId: "custom",
       },
     });
@@ -242,6 +244,7 @@ describe("AutomaticRunTab", () => {
           currentConfig: expect.objectContaining({
             searchTerms: ["backend engineer"],
             sources: ["linkedin"],
+            scoringInstructions: "",
           }),
         }),
       );
@@ -258,6 +261,9 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByText("Focused the search on platform roles."),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText("Ranking preferences")).toHaveValue(
+      "Prioritize backend platform work and remote-friendly roles.",
+    );
     expect(screen.getAllByText("Platform Engineer").length).toBeGreaterThan(0);
     expect(screen.getAllByText("London").length).toBeGreaterThan(0);
   });

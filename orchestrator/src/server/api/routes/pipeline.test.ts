@@ -129,6 +129,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 10,
       minSuitabilityScore: 55,
       runBudget: 250,
+      scoringInstructions: "",
       automaticPresetId: "custom",
     };
 
@@ -220,6 +221,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 10,
       minSuitabilityScore: 55,
       runBudget: 250,
+      scoringInstructions: "",
       automaticPresetId: "custom",
     };
     mockCallJson.mockResolvedValueOnce({
@@ -240,6 +242,8 @@ describe.sequential("Pipeline API routes", () => {
           topN: 80,
           minSuitabilityScore: -10,
           runBudget: 5000,
+          scoringInstructions:
+            "Prioritize senior backend platform roles and remote-first options.",
           automaticPresetId: "detailed",
         },
         summary: "Focused the search on senior backend/platform roles.",
@@ -277,6 +281,8 @@ describe.sequential("Pipeline API routes", () => {
         topN: 50,
         minSuitabilityScore: 0,
         runBudget: 1000,
+        scoringInstructions:
+          "Prioritize senior backend platform roles and remote-first options.",
         automaticPresetId: "detailed",
       }),
     );
@@ -301,6 +307,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 10,
       minSuitabilityScore: 55,
       runBudget: 250,
+      scoringInstructions: "",
       automaticPresetId: "custom",
     };
     mockCallJson.mockResolvedValueOnce({
@@ -347,6 +354,7 @@ describe.sequential("Pipeline API routes", () => {
       topN: 5,
       minSuitabilityScore: 65,
       runBudget: 150,
+      scoringInstructions: "",
       automaticPresetId: "fast",
     };
 
@@ -631,6 +639,7 @@ describe.sequential("Pipeline API routes", () => {
         minSuitabilityScore: 65,
         runBudget: 150,
         searchTerms: ["backend engineer"],
+        scoringInstructions: "Prefer backend API roles above GBP 60k.",
         country: "united kingdom",
         cityLocations: ["London"],
         workplaceTypes: ["remote", "hybrid"],
@@ -646,6 +655,7 @@ describe.sequential("Pipeline API routes", () => {
         topN: 5,
         minSuitabilityScore: 65,
         sources: ["gradcracker"],
+        scoringInstructions: "Prefer backend API roles above GBP 60k.",
         locationIntent: expect.objectContaining({
           selectedCountry: "united kingdom",
           country: "united kingdom",

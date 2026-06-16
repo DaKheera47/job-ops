@@ -25,6 +25,7 @@ export interface AutomaticRunValues {
   topN: number;
   minSuitabilityScore: number;
   searchTerms: string[];
+  scoringInstructions: string;
   runBudget: number;
   country: string;
   cityLocations: string[];
