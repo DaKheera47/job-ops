@@ -111,7 +111,7 @@ export const OrchestratorJobsWorkspace: React.FC<
   <>
     <OrchestratorSummary stats={stats} isPipelineRunning={isPipelineRunning} />
 
-    <section className="space-y-4">
+    <section className="mt-6 space-y-4">
       <JobCommandBar
         jobs={jobs}
         onSelectJob={onCommandSelectJob}
