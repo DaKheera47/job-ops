@@ -247,7 +247,7 @@ describe.sequential("Pipeline API routes", () => {
           automaticPresetId: "detailed",
         },
         summary:
-          "I have updated the search to focus on senior backend/platform roles.",
+          "The search was updated to focus on senior backend/platform roles.",
         warnings: ["Assumed remote-first roles."],
       },
     });

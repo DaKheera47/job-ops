@@ -245,16 +245,7 @@ function normalizeWarnings(value: unknown): string[] {
 
 function normalizeSummary(value: unknown, source: "ai" | "fallback"): string {
   const summary = typeof value === "string" ? value.trim() : "";
-  if (summary) {
-    return summary
-      .replace(/^I have updated the search\b/i, "The search was updated")
-      .replace(/^I've updated the search\b/i, "The search was updated")
-      .replace(/^I updated the search\b/i, "The search was updated")
-      .replace(/^I have updated the settings\b/i, "The settings were updated")
-      .replace(/^I've updated the settings\b/i, "The settings were updated")
-      .replace(/^I updated the settings\b/i, "The settings were updated")
-      .slice(0, 500);
-  }
+  if (summary) return summary.slice(0, 500);
   return source === "ai"
     ? "Search settings were generated from your prompt."
     : "Search settings were left unchanged because AI planning was unavailable.";
