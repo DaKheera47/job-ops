@@ -10,6 +10,7 @@ import type {
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
 import type { RunMode } from "./run-mode";
@@ -65,6 +66,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onApplySavedSearch,
 }) => {
   const isManualMode = mode === "manual";
+  const showTopHeader = isManualMode || showModeTabs;
 
   if (!open) {
     return null;
@@ -72,24 +74,41 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
 
   return (
     <section className="flex min-h-[calc(100dvh-6rem)] flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              Search composer
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              {isManualMode
-                ? "Review job details"
-                : "What do you want to search for?"}
-            </h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              {isManualMode
-                ? "Add a job description, review the extracted details, then import."
-                : "Describe the search in plain language. AI fills the settings for review, then you run the search."}
-            </p>
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-1 flex-col px-4 sm:px-6 lg:px-8",
+          isManualMode ? "max-w-6xl py-6" : "max-w-5xl py-8 sm:py-10",
+        )}
+      >
+        {showTopHeader ? (
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                Search composer
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                {isManualMode
+                  ? "Review job details"
+                  : "What kind of jobs are you looking for?"}
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                {isManualMode
+                  ? "Add a job description, review the extracted details, then import."
+                  : "Describe the search in plain language. AI fills the settings for review, then you run the search."}
+              </p>
+            </div>
+            {showCloseButton ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+            ) : null}
           </div>
-          {showCloseButton ? (
+        ) : showCloseButton ? (
+          <div className="mb-2 flex justify-end">
             <Button
               variant="ghost"
               size="sm"
@@ -97,8 +116,8 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
             >
               Close
             </Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <Tabs
           value={mode}

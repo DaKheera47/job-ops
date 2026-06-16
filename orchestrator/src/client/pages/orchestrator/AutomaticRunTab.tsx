@@ -27,11 +27,14 @@ import type {
 } from "@shared/types";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowLeft,
   BookmarkPlus,
   Check,
   Info,
   Loader2,
   Save,
+  Search,
+  ShieldCheck,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -72,7 +75,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getDetectedCountryKey } from "@/lib/user-location";
-import { sourceLabel } from "@/lib/utils";
+import { cn, sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
   type AutomaticPresetId,
@@ -127,6 +130,29 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   searchScope: "selected_only",
   matchStrictness: "exact_only",
 };
+
+const SEARCH_PROMPT_EXAMPLES = [
+  {
+    label: "Masters placement",
+    prompt:
+      "Masters placement roles in software engineering, data, or QA. Prefer Manchester, Sheffield, Leeds, or remote. Visa-friendly is important. Avoid unpaid roles.",
+  },
+  {
+    label: "Graduate software engineer",
+    prompt:
+      "Graduate software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score generic graduate programmes, and prefer hybrid or remote options.",
+  },
+  {
+    label: "Data analyst internship",
+    prompt:
+      "Data analyst internships in the UK. Prefer paid roles using SQL, Python, or dashboards. Rank remote-friendly and visa-friendly employers higher.",
+  },
+  {
+    label: "Visa-friendly roles",
+    prompt:
+      "Software roles from visa-friendly employers. Prioritize backend TypeScript, platform engineering, or API work. Avoid unpaid roles and roles below GBP 45k.",
+  },
+];
 
 interface AutomaticRunFormValues {
   topN: string;
@@ -913,60 +939,101 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         }
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="mb-3 grid w-full grid-cols-2">
+        <TabsList className="sr-only">
           <TabsTrigger value="describe">Describe search</TabsTrigger>
           <TabsTrigger value="details">Configure details</TabsTrigger>
         </TabsList>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto",
+            automaticTab === "details" && "pr-1",
+          )}
+        >
           <TabsContent
             value="describe"
-            className="mt-0 flex min-h-0 flex-1 flex-col justify-center py-8"
+            className="mt-0 flex min-h-0 flex-1 flex-col items-center py-10 sm:py-14"
           >
-            <div className="mx-auto w-full max-w-4xl space-y-4">
-              <Card className="border-border/70 bg-card/95 shadow-[0_20px_80px_-48px_rgba(0,0,0,0.85)]">
-                <CardContent className="space-y-4 p-5 sm:p-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="search-plan-prompt" className="sr-only">
-                      What do you want to search for?
-                    </Label>
-                    <Textarea
-                      id="search-plan-prompt"
-                      value={searchPrompt}
-                      onChange={(event) => setSearchPrompt(event.target.value)}
-                      placeholder="Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options."
-                      className="min-h-44 resize-none rounded-2xl border-0 bg-background/50 px-4 py-4 text-base leading-7 shadow-none ring-0 placeholder:text-muted-foreground/70 focus-visible:ring-2 sm:text-lg"
-                    />
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      Add as much detail as you can: titles, locations, salary,
-                      sources, work style, deal-breakers, and what the AI should
-                      rank higher or lower.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="mx-auto flex w-full max-w-[40rem] flex-col">
+              <div className="mb-7 space-y-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  Search composer
+                </p>
+                <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+                  What kind of jobs are you looking for?
+                </h1>
+                <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Describe the roles you want. Job Ops will turn that into
+                  search terms, sources, filters, and ranking rules before
+                  anything runs.
+                </p>
+              </div>
+
+              <Label htmlFor="search-plan-prompt" className="sr-only">
+                What kind of jobs are you looking for?
+              </Label>
+              <Textarea
+                id="search-plan-prompt"
+                value={searchPrompt}
+                onChange={(event) => setSearchPrompt(event.target.value)}
+                placeholder="Example: Software engineering jobs in Manchester above GBP 60k. Prefer backend/API work, hybrid or remote roles, and visa-friendly employers. Lower-score generic graduate programmes."
+                className="min-h-48 resize-none rounded-lg border-border/70 bg-background/35 px-4 py-4 text-base leading-7 shadow-none placeholder:text-muted-foreground/75 focus-visible:ring-1 focus-visible:ring-primary/70"
+              />
+
+              <div className="mt-5 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Try these examples
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SEARCH_PROMPT_EXAMPLES.map((example) => (
                     <Button
+                      key={example.label}
                       type="button"
-                      className="gap-2"
-                      disabled={
-                        isPlanningSearch || searchPrompt.trim().length === 0
-                      }
-                      onClick={() => void handleGenerateSearchPlan()}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-2 rounded-md border-border/70 bg-background/35 px-3 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchPrompt(example.prompt)}
                     >
-                      {isPlanningSearch ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      {isPlanningSearch
-                        ? "Generating settings..."
-                        : "Generate search settings"}
+                      <Search className="h-3.5 w-3.5" />
+                      {example.label}
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                className="mt-6 h-11 w-full gap-2"
+                disabled={isPlanningSearch || searchPrompt.trim().length === 0}
+                onClick={() => void handleGenerateSearchPlan()}
+              >
+                {isPlanningSearch ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {isPlanningSearch ? "Generating search..." : "Generate search"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="link"
+                className="mx-auto mt-3 h-auto px-0 text-sm text-primary/80 underline-offset-4"
+                onClick={() => setAutomaticTab("details")}
+              >
+                Configure manually
+              </Button>
+
+              <div className="mt-7 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <ShieldCheck className="h-4 w-4" />
+                <span>
+                  You'll review the generated settings before running the
+                  search.
+                </span>
+              </div>
 
               {planSummary ? (
-                <Alert className="border-border/70 bg-card/80">
+                <Alert className="mt-5 border-border/70 bg-card/70 text-left">
                   <Info className="h-4 w-4" />
                   <AlertTitle>
                     {planSource === "fallback"
@@ -989,6 +1056,22 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           </TabsContent>
 
           <TabsContent value="details" className="mt-0 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                onClick={() => setAutomaticTab("describe")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Describe search
+              </Button>
+              <p className="text-sm font-medium text-muted-foreground">
+                Configure details
+              </p>
+            </div>
+
             {planSummary ? (
               <Alert>
                 <Info className="h-4 w-4" />
@@ -1727,27 +1810,29 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         </div>
       </Tabs>
 
-      <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
-        <div className="hidden text-sm text-muted-foreground md:block">
-          Est: {estimate.discovered.min}-{estimate.discovered.max} jobs, ~
-          {values.topN} resumes
+      {automaticTab === "details" ? (
+        <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
+          <div className="hidden text-sm text-muted-foreground md:block">
+            Est: {estimate.discovered.min}-{estimate.discovered.max} jobs, ~
+            {values.topN} resumes
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={runDisabled}
+              onClick={() => void handleSaveAndRun()}
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Run search
+            </Button>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            className="gap-2"
-            disabled={runDisabled}
-            onClick={() => void handleSaveAndRun()}
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            Run search
-          </Button>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 };

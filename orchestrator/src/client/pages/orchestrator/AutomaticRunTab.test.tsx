@@ -121,12 +121,11 @@ function ensureStorage(): Storage {
 
 describe("AutomaticRunTab", () => {
   const openConfigureDetails = () => {
-    const trigger = screen.getByRole("tab", { name: "Configure details" });
-    if (trigger.getAttribute("aria-selected") !== "true") {
-      fireEvent.pointerDown(trigger);
-      fireEvent.mouseDown(trigger);
+    const trigger = screen.queryByRole("button", {
+      name: "Configure manually",
+    });
+    if (trigger) {
       fireEvent.click(trigger);
-      fireEvent.keyDown(trigger, { key: "Enter", code: "Enter" });
     }
   };
 
@@ -160,7 +159,7 @@ describe("AutomaticRunTab", () => {
     Element.prototype.releasePointerCapture ??= vi.fn();
   });
 
-  it("opens with the describe search tab first", () => {
+  it("opens with the lean search composer first", () => {
     render(
       <AutomaticRunTab
         open
@@ -175,10 +174,15 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
-      screen.getByRole("tab", { name: "Describe search" }),
-    ).toHaveAttribute("aria-selected", "true");
+      screen.getByRole("heading", {
+        name: "What kind of jobs are you looking for?",
+      }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByLabelText("What do you want to search for?"),
+      screen.getByLabelText("What kind of jobs are you looking for?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Generate search" }),
     ).toBeInTheDocument();
   });
 
@@ -230,11 +234,14 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("What do you want to search for?"), {
-      target: { value: "Find platform jobs in London" },
-    });
+    fireEvent.change(
+      screen.getByLabelText("What kind of jobs are you looking for?"),
+      {
+        target: { value: "Find platform jobs in London" },
+      },
+    );
     fireEvent.click(
-      screen.getByRole("button", { name: "Generate search settings" }),
+      screen.getByRole("button", { name: "Generate search" }),
     );
 
     await waitFor(() => {
@@ -250,9 +257,7 @@ describe("AutomaticRunTab", () => {
       );
     });
     await waitFor(() => {
-      expect(
-        screen.getByRole("tab", { name: "Configure details" }),
-      ).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByText("Configure details")).toBeInTheDocument();
     });
 
     expect(onSaveAndRun).not.toHaveBeenCalled();

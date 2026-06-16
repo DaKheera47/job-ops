@@ -417,7 +417,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
         <>
           <h1>
             {mode === "automatic"
-              ? "What do you want to search for?"
+              ? "What kind of jobs are you looking for?"
               : "Review job details"}
           </h1>
           <button
