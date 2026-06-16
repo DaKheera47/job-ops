@@ -246,7 +246,8 @@ describe.sequential("Pipeline API routes", () => {
             "Prioritize senior backend platform roles and remote-first options.",
           automaticPresetId: "detailed",
         },
-        summary: "Focused the search on senior backend/platform roles.",
+        summary:
+          "I have updated the search to focus on senior backend/platform roles.",
         warnings: ["Assumed remote-first roles."],
       },
     });
@@ -268,7 +269,15 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.meta.requestId).toBe("search-plan-request-id");
     expect(body.data.source).toBe("ai");
-    expect(body.data.summary).toContain("senior backend");
+    expect(body.data.summary).toBe(
+      "The search was updated to focus on senior backend/platform roles.",
+    );
+    const searchPlanPrompt =
+      mockCallJson.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(searchPlanPrompt).toContain(
+      "Write summary in neutral product voice",
+    );
+    expect(searchPlanPrompt).toContain("never 'I updated...'");
     expect(body.data.config).toEqual(
       expect.objectContaining({
         searchTerms: ["Senior Backend Engineer", "Platform Engineer"],

@@ -245,7 +245,16 @@ function normalizeWarnings(value: unknown): string[] {
 
 function normalizeSummary(value: unknown, source: "ai" | "fallback"): string {
   const summary = typeof value === "string" ? value.trim() : "";
-  if (summary) return summary.slice(0, 500);
+  if (summary) {
+    return summary
+      .replace(/^I have updated the search\b/i, "The search was updated")
+      .replace(/^I've updated the search\b/i, "The search was updated")
+      .replace(/^I updated the search\b/i, "The search was updated")
+      .replace(/^I have updated the settings\b/i, "The settings were updated")
+      .replace(/^I've updated the settings\b/i, "The settings were updated")
+      .replace(/^I updated the settings\b/i, "The settings were updated")
+      .slice(0, 500);
+  }
   return source === "ai"
     ? "Search settings were generated from your prompt."
     : "Search settings were left unchanged because AI planning was unavailable.";
@@ -426,6 +435,7 @@ function buildPrompt(args: {
     "- Use conservative run volume unless the user asks for broad/deep search.",
     "- Convert explicit ranking preferences into scoringInstructions. Examples: salary floor, lower-score graduate programs, prioritize sponsorship, prefer backend API work.",
     "- Do not invent scoring preferences. If the user did not specify ranking preferences, keep current scoringInstructions.",
+    "- Write summary in neutral product voice, not first person. Use wording like 'The search was updated...' or 'Search settings were updated...', never 'I updated...' or 'I have updated...'.",
     "- Add warnings for assumptions, ignored requests, or source/location caveats.",
     "",
     "Available sources:",
