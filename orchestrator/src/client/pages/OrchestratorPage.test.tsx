@@ -176,17 +176,19 @@ vi.mock("../hooks/useSettings", () => ({
 vi.mock("./orchestrator/OrchestratorHeader", () => ({
   OrchestratorHeader: ({
     hideActions,
+    isSearchComposerOpen,
     onOpenAutomaticRun,
     onCancelPipeline,
   }: {
     hideActions?: boolean;
+    isSearchComposerOpen?: boolean;
     onOpenAutomaticRun?: () => void;
     onCancelPipeline: () => void;
   }) => (
     <div data-testid="header">
       {!hideActions ? (
         <button type="button" onClick={onOpenAutomaticRun}>
-          Run Search
+          {isSearchComposerOpen ? "Close Search" : "Run Search"}
         </button>
       ) : null}
       <button type="button" onClick={onCancelPipeline}>
@@ -1030,9 +1032,39 @@ describe("OrchestratorPage", () => {
       }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /close search/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByRole("button", { name: /run search/i }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
+  it("toggles the full-screen search composer from the navbar", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+    fireEvent.click(screen.getByRole("button", { name: /close search/i }));
+
+    expect(
+      screen.queryByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run search/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows the search composer instead of empty columns for brand-new workspaces", () => {

@@ -1,6 +1,6 @@
 import { useSettings } from "@client/hooks/useSettings";
 import type React from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorJobWorkspaceContainer } from "./orchestrator/OrchestratorJobWorkspaceContainer";
 import { OrchestratorSearchComposer } from "./orchestrator/OrchestratorSearchComposer";
@@ -63,6 +63,7 @@ export const OrchestratorPage: React.FC = () => {
 
   const isFirstRunWorkspace = !isLoading && jobs.length === 0;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
+  const canToggleSearchComposer = !isFirstRunWorkspace;
   const searchPresetProps = usePipelineSearchPresets({
     enabled: isSearchComposerVisible && runMode === "automatic",
   });
@@ -71,6 +72,19 @@ export const OrchestratorPage: React.FC = () => {
     selectedJobId: navigation.selectedJobId,
     onClearSelectedJob: () => navigation.handleSelectJobId(null),
   });
+  const handleToggleAutomaticRun = useCallback(() => {
+    if (isSearchComposerVisible && canToggleSearchComposer) {
+      setIsRunModeModalOpen(false);
+      return;
+    }
+
+    openRunMode("automatic");
+  }, [
+    canToggleSearchComposer,
+    isSearchComposerVisible,
+    openRunMode,
+    setIsRunModeModalOpen,
+  ]);
 
   return (
     <>
@@ -80,8 +94,11 @@ export const OrchestratorPage: React.FC = () => {
         isPipelineRunning={isPipelineRunning}
         isCancelling={isCancelling}
         pipelineSources={pipelineSources}
-        hideActions={isSearchComposerVisible}
-        onOpenAutomaticRun={() => openRunMode("automatic")}
+        hideActions={isSearchComposerVisible && !canToggleSearchComposer}
+        isSearchComposerOpen={
+          isSearchComposerVisible && canToggleSearchComposer
+        }
+        onOpenAutomaticRun={handleToggleAutomaticRun}
         onCancelPipeline={handleCancelPipeline}
       />
 
@@ -95,7 +112,6 @@ export const OrchestratorPage: React.FC = () => {
         {isSearchComposerVisible ? (
           <OrchestratorSearchComposer
             mode={runMode}
-            isFirstRunWorkspace={isFirstRunWorkspace}
             settings={settings ?? null}
             enabledSources={enabledSources}
             pipelineSources={pipelineSources}

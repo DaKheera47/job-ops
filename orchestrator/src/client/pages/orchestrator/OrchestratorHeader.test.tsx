@@ -52,6 +52,16 @@ describe("OrchestratorHeader", () => {
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 
+  it("uses the navbar button as the search composer close toggle", () => {
+    const { props } = renderHeader({ isSearchComposerOpen: true });
+    const button = screen.getByRole("button", { name: /close search/i });
+
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+
+    expect(props.onOpenAutomaticRun).toHaveBeenCalled();
+  });
+
   it("does not render manual import button", () => {
     renderHeader();
     expect(

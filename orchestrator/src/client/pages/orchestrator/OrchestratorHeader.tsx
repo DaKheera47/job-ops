@@ -1,6 +1,6 @@
 import { PageHeader, StatusIndicator } from "@client/components/layout";
 import type { JobSource } from "@shared/types.js";
-import { Loader2, Play, Square } from "lucide-react";
+import { Loader2, Play, Square, X } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +11,7 @@ interface OrchestratorHeaderProps {
   isCancelling: boolean;
   pipelineSources: JobSource[];
   hideActions?: boolean;
+  isSearchComposerOpen?: boolean;
   onOpenAutomaticRun: () => void;
   onCancelPipeline: () => void;
 }
@@ -22,6 +23,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   isCancelling,
   pipelineSources,
   hideActions = false,
+  isSearchComposerOpen = false,
   onOpenAutomaticRun,
   onCancelPipeline,
 }) => {
@@ -43,9 +45,21 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
       </span>
     </Button>
   ) : (
-    <Button size="sm" onClick={onOpenAutomaticRun} className="gap-2">
-      <Play className="h-4 w-4" />
-      <span className="hidden sm:inline">Run search</span>
+    <Button
+      size="sm"
+      onClick={onOpenAutomaticRun}
+      variant={isSearchComposerOpen ? "secondary" : "default"}
+      className="gap-2"
+      aria-pressed={isSearchComposerOpen}
+    >
+      {isSearchComposerOpen ? (
+        <X className="h-4 w-4" />
+      ) : (
+        <Play className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">
+        {isSearchComposerOpen ? "Close search" : "Run search"}
+      </span>
     </Button>
   );
 

@@ -9,7 +9,6 @@ import type { PipelineSearchPresetComposerProps } from "./usePipelineSearchPrese
 interface OrchestratorSearchComposerProps
   extends PipelineSearchPresetComposerProps {
   mode: RunMode;
-  isFirstRunWorkspace: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -26,7 +25,6 @@ export const OrchestratorSearchComposer: React.FC<
   OrchestratorSearchComposerProps
 > = ({
   mode,
-  isFirstRunWorkspace,
   settings,
   enabledSources,
   pipelineSources,
@@ -47,7 +45,7 @@ export const OrchestratorSearchComposer: React.FC<
   <RunModeModal
     open={true}
     mode={mode}
-    showCloseButton={!isFirstRunWorkspace}
+    showCloseButton={false}
     showModeTabs={false}
     settings={settings}
     enabledSources={enabledSources}
