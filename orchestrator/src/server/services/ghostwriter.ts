@@ -761,12 +761,21 @@ async function runAssistantReply(
       if (controller.signal.aborted) {
         throw requestTimeout("Chat generation was cancelled");
       }
-      throw upstreamError("LLM generation failed", {
+      throw upstreamError(`LLM generation failed: ${llmResult.error}`, {
         reason: llmResult.error,
       });
     }
 
-    const finalText = (llmResult.data.response || "").trim();
+    if (!llmResult.data || typeof llmResult.data.response !== "string") {
+      throw upstreamError(
+        "LLM response structure was invalid: missing 'response' property",
+        {
+          received: llmResult.data,
+        },
+      );
+    }
+
+    const finalText = llmResult.data.response.trim();
     const chunks = chunkText(finalText);
 
     for (const chunk of chunks) {
@@ -831,6 +840,15 @@ async function runAssistantReply(
     const message = isCancelled
       ? "Generation cancelled by user"
       : appError.message || "Generation failed";
+
+    if (!isCancelled) {
+      logger.error("Job chat generation failed", {
+        jobId: options.jobId,
+        threadId: options.threadId,
+        runId: run.id,
+        error: appError,
+      });
+    }
 
     const failedMessage = await jobChatRepo.updateMessage(assistantMessage.id, {
       content: accumulated,

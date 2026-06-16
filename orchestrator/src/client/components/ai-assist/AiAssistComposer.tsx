@@ -1,4 +1,5 @@
 import { getMetaShortcutLabel, isMetaKeyPressed } from "@client/lib/meta-key";
+import { createId } from "@paralleldrive/cuid2";
 import type { JobChatImageAttachment } from "@shared/types";
 import { Eraser, ImagePlus, Send, Square } from "lucide-react";
 import type React from "react";
@@ -82,7 +83,7 @@ export const AiAssistComposer: React.FC<AiAssistComposerProps> = ({
       }
 
       nextAttachments.push({
-        id: crypto.randomUUID(),
+        id: createId(),
         name: file.name,
         mediaType: file.type as JobChatImageAttachment["mediaType"],
         dataUrl,

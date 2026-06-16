@@ -8,7 +8,6 @@ import {
   type StageEvent,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import confetti from "canvas-confetti";
 import {
   ArrowLeft,
   ClipboardList,
@@ -39,11 +38,15 @@ import {
   useSkipJobMutation,
   useUpdateJobMutation,
 } from "@/client/hooks/queries/useJobMutations";
+import { useProfile } from "@/client/hooks/useProfile";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { useSettings } from "@/client/hooks/useSettings";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
 import { logJobStageEvent } from "@/client/lib/logJobStageEvent";
+import { resolveFilenameLanguage } from "@/client/lib/pdf-filename";
 import {
   getPdfActionLabels,
   isPdfRegenerating,
@@ -149,6 +152,9 @@ export const JobPage: React.FC = () => {
   const [catalog, setCatalog] = React.useState<ResumeProjectCatalogItem[]>([]);
   const pendingEventRef = React.useRef<StageEvent | null>(null);
   const uploadPdfInputRef = React.useRef<HTMLInputElement | null>(null);
+  const { settings } = useSettings();
+  const { profile } = useProfile();
+  const filenameLanguage = resolveFilenameLanguage({ settings, profile });
   const openEditDetails = React.useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
@@ -318,12 +324,7 @@ export const JobPage: React.FC = () => {
       toast.success(eventId ? "Event updated" : "Event logged");
 
       if (effectiveStage === "offer") {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ["#10b981", "#34d399", "#6ee7b7", "#ffffff"],
-        });
+        celebrateOffer();
       }
     } catch (error) {
       showErrorToast(error, "Failed to log event");
@@ -467,9 +468,11 @@ export const JobPage: React.FC = () => {
 
   const handleDownloadPdf = async () => {
     if (!job || !job.pdfPath || pdfActionsDisabled) return;
-    const filename = `${safeFilenamePart(job.employer)}-${safeFilenamePart(
-      job.title,
-    )}-resume.pdf`;
+    const filename = `${safeFilenamePart(job.employer, {
+      language: filenameLanguage,
+    })}-${safeFilenamePart(job.title, {
+      language: filenameLanguage,
+    })}-resume.pdf`;
     await downloadJobPdf(job.id, filename).catch((error) => {
       showErrorToast(error, "Could not download PDF");
     });
@@ -845,6 +848,7 @@ export const JobPage: React.FC = () => {
                   )}
                   <JobTimeline
                     events={events}
+                    discoveredAt={job.discoveredAt}
                     onEdit={isInProgress ? handleEditEvent : undefined}
                     onDelete={isInProgress ? confirmDeleteEvent : undefined}
                   />

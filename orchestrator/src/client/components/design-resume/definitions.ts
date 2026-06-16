@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ItemFieldConfig } from "./ItemDialog";
 
 export type ItemDefinition = {
@@ -41,7 +42,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       icon: "",
       network: "",
@@ -81,7 +82,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       company: "",
       location: "",
@@ -121,7 +122,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       school: "",
       area: "",
@@ -159,7 +160,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       name: "",
       period: "",
@@ -195,7 +196,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       { key: "keywords", label: "Keywords", type: "tags", aiAssist: true },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       icon: "",
       name: "",
@@ -217,7 +218,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       { key: "level", label: "Level", type: "number", min: 0, step: 1 },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       language: "",
       fluency: "",
@@ -242,7 +243,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       { key: "keywords", label: "Keywords", type: "tags", aiAssist: true },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       icon: "",
       name: "",
@@ -274,7 +275,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       title: "",
       awarder: "",
@@ -309,7 +310,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       title: "",
       issuer: "",
@@ -344,7 +345,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       title: "",
       publisher: "",
@@ -384,7 +385,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       organization: "",
       location: "",
@@ -419,7 +420,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       },
     ],
     createItem: () => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       hidden: false,
       name: "",
       position: "",

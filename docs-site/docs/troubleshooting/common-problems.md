@@ -64,3 +64,9 @@ npm --workspace docs-site run build
 
 - Re-authenticate by removing cached auth file or forcing refresh.
 - Verify extractor credentials and API response behavior.
+
+## Ghostwriter returns empty response / validation error when using Gemini models
+
+- **Symptom**: Chat responses from Ghostwriter are empty, or show a validation/structure error.
+- **Root cause**: Standard Gemini REST API expects `responseMimeType` and `responseSchema` at the top level of `generationConfig`. The app was passing them wrapped in a nested `responseFormat` structure, causing Gemini to silently ignore the schema constraints and return responses with an unexpected shape (e.g. `{ "coverLetter": "..." }` instead of `{ "response": "..." }`).
+- **Fix**: The Gemini integration was updated to correctly pass structured schema parameters. A runtime validation was added to surface formatting issues immediately as an error rather than failing silently with an empty message. If you still encounter issues, verify you are using a model that fully supports JSON schema structured outputs.

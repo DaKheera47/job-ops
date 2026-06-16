@@ -1,11 +1,13 @@
-import { createJob } from "@shared/testing/factories.js";
+import { createAppSettings, createJob } from "@shared/testing/factories.js";
 import type { Job, JobNote } from "@shared/types.js";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import { editorHtmlToMarkdown } from "@/client/lib/jobNoteContent";
+import * as privatePdf from "@/client/lib/private-pdf";
 import * as api from "../api";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { JobPage } from "./JobPage";
@@ -76,7 +78,10 @@ vi.mock("../api", () => ({
   getJobStageEvents: vi.fn(),
   getJobTasks: vi.fn(),
   getJobNotes: vi.fn(),
+  getProfile: vi.fn(),
+  getSettings: vi.fn(),
   getJobEmails: vi.fn(),
+  getJobDocuments: vi.fn(),
   createJobNote: vi.fn(),
   updateJobNote: vi.fn(),
   deleteJobNote: vi.fn(),
@@ -88,6 +93,12 @@ vi.mock("../api", () => ({
   rescoreJob: vi.fn(),
   generateJobPdf: vi.fn(),
   checkSponsor: vi.fn(),
+}));
+
+vi.mock("@/client/lib/private-pdf", () => ({
+  createJobPdfObjectUrl: vi.fn().mockResolvedValue("blob:job-pdf"),
+  downloadJobPdf: vi.fn().mockResolvedValue(undefined),
+  openJobPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../components/JobHeader", () => ({
@@ -109,7 +120,25 @@ vi.mock("../components/JobDetailsEditDrawer", () => ({
 }));
 
 vi.mock("../components/LogEventModal", () => ({
-  LogEventModal: () => null,
+  LogEventModal: ({ isOpen, onLog }: any) =>
+    isOpen ? (
+      <div data-testid="log-event-modal">
+        <button
+          type="button"
+          data-testid="mock-log-submit"
+          onClick={() =>
+            onLog({
+              stage: "offer",
+              title: "Offer Received",
+              date: "2026-06-12",
+              notes: "Got an offer!",
+            })
+          }
+        >
+          Submit Log Event
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("./job-page/JobPageRightSidebar", () => ({
@@ -152,6 +181,10 @@ vi.mock("@client/hooks/useQueryErrorToast", () => ({
   useQueryErrorToast: vi.fn(),
 }));
 
+vi.mock("@/client/lib/celebrate", () => ({
+  celebrateOffer: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -165,6 +198,9 @@ beforeEach(() => {
   notesStore = [];
 
   vi.mocked(api.getJob).mockResolvedValue(createJob() as Job);
+  vi.mocked(api.getProfile).mockResolvedValue({});
+  vi.mocked(api.getSettings).mockResolvedValue(createAppSettings());
+  vi.mocked(api.getJobDocuments).mockResolvedValue([]);
   vi.mocked(api.getJobStageEvents).mockResolvedValue([]);
   vi.mocked(api.getJobTasks).mockResolvedValue([
     {
@@ -455,6 +491,47 @@ describe("JobPage emails", () => {
   });
 });
 
+describe("JobPage PDF filenames", () => {
+  it("downloads resume PDFs with language-aware German transliteration", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({
+        id: "job-1",
+        employer: "Müller Büro",
+        title: "Straße Plattform",
+        pdfPath: "data/pdfs/job-1.pdf",
+        status: "ready",
+      }) as Job,
+    );
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        chatStyleLanguageMode: {
+          value: "manual",
+          default: "manual",
+          override: null,
+        },
+        chatStyleManualLanguage: {
+          value: "german",
+          default: "english",
+          override: null,
+        },
+      }),
+    );
+
+    renderJobPage("/job/job-1/documents");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /download pdf/i }),
+    );
+
+    await waitFor(() =>
+      expect(privatePdf.downloadJobPdf).toHaveBeenCalledWith(
+        "job-1",
+        "Mueller_Buero-Strasse_Plattform-resume.pdf",
+      ),
+    );
+  });
+});
+
 describe("JobPage back navigation", () => {
   it("returns to the entry page instead of stepping through job memory views", async () => {
     renderJobPage({
@@ -511,10 +588,39 @@ describe("JobPage back navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId("location-probe")).toHaveTextContent(
         "/jobs/ready?source=naukri",
-      ),
+      );
+    });
+  });
+
+  it("triggers celebrateOffer when an offer event is logged", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "in_progress" }) as Job,
     );
+    vi.mocked(api.transitionJobStage).mockResolvedValue({
+      id: "evt-offer",
+      applicationId: "job-1",
+      title: "Offer Received",
+      groupId: null,
+      fromStage: "applied",
+      toStage: "offer",
+      occurredAt: 1_700_000_000,
+      metadata: null,
+      outcome: null,
+    });
+
+    renderJobPage("/job/job-1");
+
+    const logButton = await screen.findByRole("button", { name: /log event/i });
+    fireEvent.click(logButton);
+
+    const submitButton = await screen.findByTestId("mock-log-submit");
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(celebrateOffer).toHaveBeenCalled();
+    });
   });
 });

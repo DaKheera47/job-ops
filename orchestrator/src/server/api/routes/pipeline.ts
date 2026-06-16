@@ -208,6 +208,12 @@ const pipelineSearchPresetConfigSchema = z.object({
   automaticPresetId: z
     .enum(["fast", "balanced", "detailed", "custom"])
     .optional(),
+  // Optional per-#621 Watchlist source selection persisted with the preset.
+  // Omitted = legacy behavior (include every saved Watchlist source).
+  watchlistSelectedSourceIds: z
+    .array(z.string().min(1).max(128))
+    .max(200)
+    .optional(),
 });
 
 const createPipelineSearchPresetSchema = z
@@ -435,6 +441,12 @@ const runPipelineSchema = z.object({
     .optional(),
   searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES).optional(),
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES).optional(),
+  // Per-#621: optional client-supplied per-run Watchlist source filter.
+  // Omitted preserves the legacy "include every saved Watchlist source"
+  // behavior; [] disables Watchlist entirely; non-empty restricts to a
+  // subset. Cross-tenant safety is enforced by re-resolving IDs against
+  // the user's saved Watchlist sources inside discoverJobsStep.
+  watchlistSelectedSourceIds: z.array(z.string().min(1).max(128)).optional(),
 });
 
 pipelineRouter.post("/run", async (req: Request, res: Response) => {
@@ -525,6 +537,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         sources: config.sources,
         scoringInstructions: config.scoringInstructions,
         locationIntent,
+        watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
       }).catch((error) => {
         logger.error("Background pipeline run failed", error);
       });
@@ -542,6 +555,12 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
           : false,
         search_terms_count: searchTermsState.searchTermsCount,
         search_terms_source: searchTermsState.source,
+        // Count-only, never raw IDs (tenant safety / PII).
+        watchlist_source_filter_count: Array.isArray(
+          config.watchlistSelectedSourceIds,
+        )
+          ? config.watchlistSelectedSourceIds.length
+          : undefined,
       },
       {
         requestOrigin: resolveRequestOrigin(req),

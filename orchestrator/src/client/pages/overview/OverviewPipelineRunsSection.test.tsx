@@ -84,6 +84,7 @@ describe("OverviewPipelineRunsSection", () => {
           enableScoring: true,
           enableImporting: true,
           enableAutoTailoring: false,
+          watchlistSelectedSourceIds: null,
         },
         effectiveConfig: {
           country: "united states",

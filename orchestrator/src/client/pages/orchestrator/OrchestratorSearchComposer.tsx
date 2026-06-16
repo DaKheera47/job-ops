@@ -1,5 +1,9 @@
 import type { ManualImportResult } from "@client/components/ManualImportFlow";
-import type { AppSettings, JobSource } from "@shared/types";
+import type {
+  AppSettings,
+  JobSource,
+  WatchlistSelectedSource,
+} from "@shared/types";
 import type React from "react";
 import type { AutomaticRunValues } from "./automatic-run";
 import { RunModeModal } from "./RunModeModal";
@@ -12,9 +16,14 @@ interface OrchestratorSearchComposerProps
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
+  watchlistSources: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds: string[];
   isPipelineRunning: boolean;
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
+  onToggleWatchlistSource: (sourceId: string, checked: boolean) => void;
+  onSetSelectedWatchlistSourceIds: (ids: string[]) => void;
+  isWatchlistSourcesLoading: boolean;
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
@@ -28,9 +37,14 @@ export const OrchestratorSearchComposer: React.FC<
   settings,
   enabledSources,
   pipelineSources,
+  watchlistSources,
+  selectedWatchlistSourceIds,
   isPipelineRunning,
   onToggleSource,
   onSetPipelineSources,
+  onToggleWatchlistSource,
+  onSetSelectedWatchlistSourceIds,
+  isWatchlistSourcesLoading,
   onOpenChange,
   onModeChange,
   onSaveAndRunAutomatic,
@@ -52,6 +66,11 @@ export const OrchestratorSearchComposer: React.FC<
     pipelineSources={pipelineSources}
     onToggleSource={onToggleSource}
     onSetPipelineSources={onSetPipelineSources}
+    watchlistSources={watchlistSources}
+    selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+    onToggleWatchlistSource={onToggleWatchlistSource}
+    onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
+    isWatchlistSourcesLoading={isWatchlistSourcesLoading}
     isPipelineRunning={isPipelineRunning}
     onOpenChange={onOpenChange}
     onModeChange={onModeChange}

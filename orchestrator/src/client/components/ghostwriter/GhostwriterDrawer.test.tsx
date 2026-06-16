@@ -71,8 +71,16 @@ vi.mock("@/components/ui/sheet", async () => {
         </div>
       );
     },
-    SheetHeader: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
+    SheetHeader: ({
+      className,
+      children,
+    }: {
+      className?: string;
+      children: React.ReactNode;
+    }) => (
+      <div data-testid="sheet-header" className={className}>
+        {children}
+      </div>
     ),
     SheetTitle: ({ children }: { children: React.ReactNode }) => (
       <h2>{children}</h2>
@@ -188,6 +196,15 @@ describe("GhostwriterDrawer", () => {
     expect(
       screen.queryByRole("button", { name: "Restore Ghostwriter drawer" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the drawer header text left-aligned on mobile", () => {
+    window.matchMedia = createMatchMedia(false) as typeof window.matchMedia;
+
+    render(<GhostwriterDrawer job={createJob()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Ghostwriter" }));
+
+    expect(screen.getByTestId("sheet-header").className).toContain("text-left");
   });
 
   it("keeps GhostwriterPanel mounted while switching modes", () => {

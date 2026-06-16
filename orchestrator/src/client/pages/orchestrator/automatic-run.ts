@@ -32,6 +32,9 @@ export interface AutomaticRunValues {
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
+  // Optional override for per-#621 Watchlist source selection. When
+  // omitted, usePipelineControls falls back to the global hook selection.
+  watchlistSelectedSourceIds?: string[];
 }
 
 export interface AutomaticPresetValues {

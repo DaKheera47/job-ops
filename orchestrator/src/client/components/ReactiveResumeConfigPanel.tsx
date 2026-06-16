@@ -138,8 +138,9 @@ export const ReactiveResumeConfigPanel: React.FC<
   v5,
   projectSelection,
 }) => {
+  const hasProjectCatalog = Boolean(projectSelection?.projects.length);
   const canShowProjectSelection = Boolean(
-    projectSelection && hasRxResumeAccess,
+    projectSelection && (hasRxResumeAccess || hasProjectCatalog),
   );
   const selectedValidationStatus = validationStatus;
   const showInlineValidationAlert = Boolean(
@@ -297,21 +298,34 @@ export const ReactiveResumeConfigPanel: React.FC<
 
           {!canShowProjectSelection ? (
             <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-              Connect Reactive Resume and choose a template resume to configure
-              resume projects.
+              No resume projects were found. Add projects to your active resume
+              to configure automatic project selection.
             </div>
           ) : (
             <div className="space-y-4">
-              <BaseResumeSelection
-                value={projectSelection.baseResumeId}
-                onValueChange={projectSelection.onBaseResumeIdChange}
-                hasRxResumeAccess={hasRxResumeAccess}
-                disabled={projectSelection.disabled}
-              />
+              {hasRxResumeAccess ? (
+                <BaseResumeSelection
+                  value={projectSelection.baseResumeId}
+                  onValueChange={projectSelection.onBaseResumeIdChange}
+                  hasRxResumeAccess={hasRxResumeAccess}
+                  disabled={projectSelection.disabled}
+                />
+              ) : null}
 
-              {!projectSelection.baseResumeId ? (
+              {projectSelection.isProjectsLoading ? (
+                <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  Loading resume projects...
+                </div>
+              ) : hasRxResumeAccess &&
+                !projectSelection.baseResumeId &&
+                !hasProjectCatalog ? (
                 <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                   Choose a PDF to configure resume projects.
+                </div>
+              ) : !hasProjectCatalog ? (
+                <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  No resume projects were found. Add projects to your active
+                  resume to configure automatic project selection.
                 </div>
               ) : (
                 <>

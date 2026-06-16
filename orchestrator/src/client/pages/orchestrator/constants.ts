@@ -12,6 +12,8 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
   "ukvisajobs",
 ];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
+export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
+  "jobops.pipeline.watchlist-sources";
 
 export const orderedSources: JobSource[] = [
   ...PIPELINE_EXTRACTOR_SOURCE_IDS,

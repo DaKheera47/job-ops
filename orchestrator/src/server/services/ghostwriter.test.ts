@@ -851,6 +851,50 @@ describe("ghostwriter service", () => {
     });
   });
 
+  it("rejects LLM responses with invalid JSON shape", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "partial",
+    };
+    const assistantFailed: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "failed",
+    };
+
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantFailed);
+    mocks.repo.getMessageById.mockResolvedValue(assistantFailed);
+
+    mocks.llmCallJson.mockResolvedValue({
+      success: true,
+      data: { coverLetter: "Dear hiring committee..." },
+    });
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Tell me about this role",
+      }),
+    ).rejects.toMatchObject({
+      code: "UPSTREAM_ERROR",
+      message:
+        "LLM response structure was invalid: missing 'response' property",
+    });
+
+    expect(mocks.repo.completeRun).toHaveBeenCalledWith("run-1", {
+      status: "failed",
+      errorCode: "UPSTREAM_ERROR",
+      errorMessage:
+        "LLM response structure was invalid: missing 'response' property",
+    });
+  });
+
   it("cancels a running generation during streaming", async () => {
     vi.useFakeTimers();
 

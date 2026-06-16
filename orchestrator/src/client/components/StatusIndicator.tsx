@@ -1,16 +1,11 @@
 import type { JobStatus } from "@shared/types/jobs";
 import type React from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   defaultStatusToken,
   statusTokens,
 } from "../pages/orchestrator/constants";
+import { Tip } from "./Tip";
 
 const STATUS_INDICATOR_BASE_CLASS =
   "inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80";
@@ -89,14 +84,14 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   if (!tooltip) return content;
 
   return (
-    <TooltipProvider>
-      <Tooltip delayDuration={tooltipDelayDuration}>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side={tooltipSide} className={tooltipClassName}>
-          {tooltip}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tip
+      content={tooltip}
+      contentClassName={tooltipClassName}
+      side={tooltipSide}
+      delayDuration={tooltipDelayDuration}
+    >
+      {content}
+    </Tip>
   );
 };
 

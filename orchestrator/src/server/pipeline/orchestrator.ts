@@ -68,6 +68,19 @@ const DEFAULT_CONFIG: PipelineConfig = {
   enableAutoTailoring: true,
 };
 
+function parseProjectIdsCsv(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const rawId of value.split(",")) {
+    const id = rawId.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
 type TenantPipelineState = {
   isRunning: boolean;
   activePipelineRunId: string | null;
@@ -311,6 +324,7 @@ export async function runPipeline(
       let { discoveredJobs, sourceErrors, pendingChallenges } =
         await discoverJobsStep({
           mergedConfig,
+          watchlistSelectedSourceIds: mergedConfig.watchlistSelectedSourceIds,
           shouldCancel: () =>
             getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
@@ -642,9 +656,10 @@ export async function summarizeJob(
 
       // 2. Suggest Projects
       let selectedProjectIds = job.selectedProjectIds;
-      if (shouldUpdateAllTailoring && (!selectedProjectIds || options?.force)) {
-        jobLogger.info("Selecting projects");
+      if (shouldUpdateAllTailoring) {
         try {
+          const existingSelectedProjectIds =
+            parseProjectIdsCsv(selectedProjectIds);
           const { catalog, selectionItems } =
             extractProjectsFromProfile(profile);
           const overrideResumeProjectsRaw =
@@ -663,16 +678,38 @@ export async function summarizeJob(
           const eligibleProjects = selectionItems.filter((p) =>
             eligibleSet.has(p.id),
           );
+          const allowedProjectIds = new Set([
+            ...locked,
+            ...eligibleProjects.map((project) => project.id),
+          ]);
+          const missingLockedProjectIds = locked.filter(
+            (id) => !existingSelectedProjectIds.includes(id),
+          );
+          const disallowedExistingProjectIds =
+            existingSelectedProjectIds.filter(
+              (id) => !allowedProjectIds.has(id),
+            );
+          const existingSelectionExceedsMax =
+            existingSelectedProjectIds.length > resumeProjects.maxProjects;
+          const existingSelectionValid =
+            existingSelectedProjectIds.length > 0 &&
+            disallowedExistingProjectIds.length === 0 &&
+            missingLockedProjectIds.length === 0 &&
+            !existingSelectionExceedsMax;
 
-          const picked = await pickProjectIdsForJob({
-            jobDescription: job.jobDescription || "",
-            eligibleProjects,
-            desiredCount,
-          });
+          if (existingSelectionValid && !options?.force) {
+            selectedProjectIds = existingSelectedProjectIds.join(",");
+          } else {
+            const picked = await pickProjectIdsForJob({
+              jobDescription: job.jobDescription || "",
+              eligibleProjects,
+              desiredCount,
+            });
 
-          selectedProjectIds = [...locked, ...picked].join(",");
+            selectedProjectIds = [...locked, ...picked].join(",");
+          }
         } catch (error) {
-          jobLogger.warn("Failed to suggest projects", error);
+          jobLogger.warn("Failed to suggest projects", { error });
         }
       }
 

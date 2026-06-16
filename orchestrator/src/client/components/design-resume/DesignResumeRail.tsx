@@ -413,6 +413,27 @@ export function DesignResumeRail({
                   ),
                   projectId,
                 ),
+              maxProjects: normalizeResumeProjectsForDesignItems(
+                items,
+                settings?.resumeProjects?.value ?? null,
+              ).maxProjects,
+              minProjects: normalizeResumeProjectsForDesignItems(
+                items,
+                settings?.resumeProjects?.value ?? null,
+              ).lockedProjectIds.length,
+              maxProjectsTotal: items.length,
+              onMaxProjectsChange: (maxProjects: number) => {
+                const current = normalizeResumeProjectsForDesignItems(
+                  items,
+                  settings?.resumeProjects?.value ?? null,
+                );
+                updateSettingsMutation.mutate({
+                  resumeProjects: {
+                    ...current,
+                    maxProjects,
+                  },
+                });
+              },
               onModeChange: (projectId: string, mode: ProjectTailoringMode) => {
                 const current = normalizeResumeProjectsForDesignItems(
                   items,

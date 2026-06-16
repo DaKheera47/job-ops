@@ -38,6 +38,7 @@ type ChatSettingsSectionProps = {
 const LANGUAGE_MODE_LABELS: Record<ChatStyleLanguageMode, string> = {
   manual: "Choose specific language",
   "match-resume": "Match current resume language",
+  "match-job-description": "Match job description",
 };
 
 function parseTokenizedTerms(input: string): string[] {
@@ -247,6 +248,9 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                   <SelectContent>
                     <SelectItem value="match-resume">
                       Match current resume language
+                    </SelectItem>
+                    <SelectItem value="match-job-description">
+                      Match job description
                     </SelectItem>
                     <SelectItem value="manual">
                       Choose specific language

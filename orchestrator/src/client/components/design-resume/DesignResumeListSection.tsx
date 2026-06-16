@@ -9,7 +9,8 @@ import {
   Trash2,
 } from "lucide-react";
 import type { DragEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { Tip } from "@/client/components/Tip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,14 +22,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import { bucketCount, trackProductEvent } from "@/lib/analytics";
-import { cn } from "@/lib/utils";
+import { clampInt, cn } from "@/lib/utils";
 import { DesignResumeSection } from "./DesignResumeSection";
 import type { ItemDefinition } from "./definitions";
 import { getByPath, toBoolean, toText } from "./utils";
@@ -117,6 +113,10 @@ export type ProjectTailoringMode = "manual" | "ai-selectable" | "must-include";
 export type ProjectPolicyConfig = {
   getMode: (projectId: string) => ProjectTailoringMode;
   onModeChange: (projectId: string, mode: ProjectTailoringMode) => void;
+  maxProjects: number;
+  minProjects: number;
+  maxProjectsTotal: number;
+  onMaxProjectsChange: (maxProjects: number) => void;
   disabled?: boolean;
   isSaving?: boolean;
 };
@@ -172,40 +172,40 @@ function ProjectTailoringModeControls({
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-      <TooltipProvider delayDuration={150}>
-        <div className="flex max-w-full flex-wrap gap-1.5">
-          {projectModeOptions.map((option) => {
-            const Icon = option.icon;
-            const active = selectedMode === option.mode;
+      <div className="flex max-w-full flex-wrap gap-1.5">
+        {projectModeOptions.map((option) => {
+          const Icon = option.icon;
+          const active = selectedMode === option.mode;
 
-            return (
-              <Tooltip key={option.mode}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-pressed={active}
-                    aria-label={`Set ${projectName} inclusion to ${option.label}`}
-                    disabled={disabled}
-                    className={cn(
-                      "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                      active
-                        ? option.activeClassName
-                        : "border-border/45 bg-background/35 text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
-                    )}
-                    onClick={() => onModeChange(option.mode)}
-                  >
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span>{option.shortLabel}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-60 text-center" side="top">
-                  {option.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </TooltipProvider>
+          return (
+            <Tip
+              key={option.mode}
+              asChild
+              clickBehavior="none"
+              content={option.tooltip}
+              contentClassName="max-w-60 text-center"
+              delayDuration={150}
+            >
+              <button
+                type="button"
+                aria-pressed={active}
+                aria-label={`Set ${projectName} inclusion to ${option.label}`}
+                disabled={disabled}
+                className={cn(
+                  "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  active
+                    ? option.activeClassName
+                    : "border-border/45 bg-background/35 text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
+                )}
+                onClick={() => onModeChange(option.mode)}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{option.shortLabel}</span>
+              </button>
+            </Tip>
+          );
+        })}
+      </div>
       <div className="min-h-4">
         {isSaving ? (
           <span className="text-[11px] text-muted-foreground">Saving...</span>
@@ -386,6 +386,7 @@ export function DesignResumeListSectionContent({
   );
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const maxProjectsInputId = useId();
   const cardRefs = useRef<Array<HTMLLIElement | null>>([]);
   const pendingRemovalItem = useMemo(
     () =>
@@ -412,6 +413,9 @@ export function DesignResumeListSectionContent({
     });
     setPendingRemovalIndex(null);
   };
+
+  const showProjectPolicyControls =
+    definition.key === "projects" && projectPolicy;
 
   const toggleItemHidden = (index: number) => {
     const isHidden = toBoolean(items[index]?.hidden, false);
@@ -493,21 +497,74 @@ export function DesignResumeListSectionContent({
   return (
     <>
       <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-          <div>
-            <div className="text-sm font-medium text-foreground">
-              {items.length} item{items.length === 1 ? "" : "s"}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3 flex-wrap gap-3">
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="text-sm font-medium text-foreground">
+                {items.length} item{items.length === 1 ? "" : "s"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {definition.key === "projects"
+                  ? "Add entries, reorder them, or choose when each one appears."
+                  : "Add entries, reorder them, or hide the ones you do not want to show."}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              {definition.key === "projects"
-                ? "Add entries, reorder them, or choose when each one appears."
-                : "Add entries, reorder them, or hide the ones you do not want to show."}
-            </div>
+
+            <Button type="button" variant="outline" onClick={onAdd}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add
+            </Button>
           </div>
-          <Button type="button" variant="outline" onClick={onAdd}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add
-          </Button>
+          {showProjectPolicyControls ? (
+            <div className="flex items-center gap-2 w-full">
+              <Tip
+                asChild
+                content={
+                  <>
+                    Set the maximum number of projects that Job Tailoring can
+                    include in tailored resumes. <br />
+                    <br /> Always-selected projects count toward this limit.{" "}
+                    <br />
+                    <br /> Setting it to 0 prevents automatic project selection
+                    unless projects are marked Always.
+                  </>
+                }
+                contentClassName="max-w-96 text-center"
+              >
+                <label
+                  htmlFor={maxProjectsInputId}
+                  className="text-xs font-medium text-muted-foreground w-full"
+                >
+                  Maximum projects in Tailored Resumes
+                </label>
+              </Tip>
+
+              <Input
+                id={maxProjectsInputId}
+                type="number"
+                inputMode="numeric"
+                min={projectPolicy.minProjects}
+                max={projectPolicy.maxProjectsTotal}
+                value={projectPolicy.maxProjects}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  projectPolicy.onMaxProjectsChange(
+                    clampInt(
+                      next,
+                      projectPolicy.minProjects,
+                      projectPolicy.maxProjectsTotal,
+                    ),
+                  );
+                }}
+                disabled={
+                  projectPolicy.disabled ||
+                  projectPolicy.isSaving ||
+                  projectPolicy.maxProjectsTotal === 0
+                }
+                className="text-center w-28"
+              />
+            </div>
+          ) : null}
         </div>
 
         {items.length === 0 ? (

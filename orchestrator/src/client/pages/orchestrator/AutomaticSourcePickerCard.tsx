@@ -1,4 +1,4 @@
-import type { JobSource } from "@shared/types";
+import type { JobSource, WatchlistSelectedSource } from "@shared/types";
 import {
   AnimatePresence,
   motion,
@@ -34,7 +34,11 @@ interface AutomaticSourcePickerCardProps {
   selectedSourceRows: AutomaticSourcePickerRow[];
   readySourceRows: AutomaticSourcePickerRow[];
   unavailableSourceRows: AutomaticSourcePickerRow[];
+  watchlistSources: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds: string[];
+  isWatchlistSourcesLoading: boolean;
   onSourceToggle: (source: JobSource, checked: boolean) => void;
+  onWatchlistSourceToggle?: (sourceId: string, checked: boolean) => void;
 }
 
 export function AutomaticSourcePickerCard({
@@ -42,7 +46,11 @@ export function AutomaticSourcePickerCard({
   selectedSourceRows,
   readySourceRows,
   unavailableSourceRows,
+  watchlistSources,
+  selectedWatchlistSourceIds,
+  isWatchlistSourcesLoading,
   onSourceToggle,
+  onWatchlistSourceToggle,
 }: AutomaticSourcePickerCardProps) {
   const prefersReducedMotion = useReducedMotion();
   const sourceMotionTransition = prefersReducedMotion
@@ -61,6 +69,8 @@ export function AutomaticSourcePickerCard({
   const availableCount = sourceRows.filter(
     (row) => row.status.available,
   ).length;
+  const selectedCount =
+    selectedSourceRows.length + selectedWatchlistSourceIds.length;
 
   return (
     <Card>
@@ -85,9 +95,9 @@ export function AutomaticSourcePickerCard({
                   className="min-w-0 space-y-1"
                 >
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedSourceRows.length === 0
+                    {selectedCount === 0
                       ? "Choose sources for this run"
-                      : `${selectedSourceRows.length} source${selectedSourceRows.length === 1 ? "" : "s"} selected`}
+                      : `${selectedCount} source${selectedCount === 1 ? "" : "s"} selected`}
                   </p>
                 </motion.div>
                 <motion.div
@@ -96,10 +106,10 @@ export function AutomaticSourcePickerCard({
                   className="flex shrink-0 flex-wrap gap-2"
                 >
                   <Badge variant="outline" className="rounded-full">
-                    {selectedSourceRows.length} selected
+                    {selectedCount} selected
                   </Badge>
                   <Badge variant="outline" className="rounded-full">
-                    {availableCount} available
+                    {availableCount + watchlistSources.length} available
                   </Badge>
                   {unavailableSourceRows.length > 0 ? (
                     <Badge variant="outline" className="rounded-full">
@@ -142,12 +152,143 @@ export function AutomaticSourcePickerCard({
                   rowAnimate={sourceSectionAnimate}
                   rowExit={sourceRowExit}
                 />
+                <WatchlistSourceGroup
+                  sources={watchlistSources}
+                  selectedSourceIds={selectedWatchlistSourceIds}
+                  isLoading={isWatchlistSourcesLoading}
+                  transition={sourceMotionTransition}
+                  rowInitial={sourceRowInitial}
+                  rowAnimate={sourceSectionAnimate}
+                  rowExit={sourceRowExit}
+                  onSourceToggle={onWatchlistSourceToggle}
+                />
               </motion.div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       </CardContent>
     </Card>
+  );
+}
+
+interface WatchlistSourceGroupProps {
+  sources: WatchlistSelectedSource[];
+  selectedSourceIds: string[];
+  isLoading: boolean;
+  transition: Transition;
+  rowInitial: TargetAndTransition;
+  rowAnimate: TargetAndTransition;
+  rowExit: TargetAndTransition;
+  onSourceToggle?: (sourceId: string, checked: boolean) => void;
+}
+
+function WatchlistSourceGroup({
+  sources,
+  selectedSourceIds,
+  isLoading,
+  transition,
+  rowInitial,
+  rowAnimate,
+  rowExit,
+  onSourceToggle,
+}: WatchlistSourceGroupProps) {
+  return (
+    <motion.div layout transition={transition} className="space-y-2">
+      <motion.div
+        layout
+        transition={transition}
+        className="flex items-center justify-between"
+      >
+        <motion.p
+          layout
+          transition={transition}
+          className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+        >
+          Watchlist
+        </motion.p>
+        {sources.length > 0 ? (
+          <Badge
+            variant="outline"
+            className="rounded-full text-[10px] font-semibold uppercase tracking-[0.18em]"
+          >
+            {selectedSourceIds.length} of {sources.length} selected
+          </Badge>
+        ) : null}
+      </motion.div>
+
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">
+          Loading Watchlist sources...
+        </p>
+      ) : sources.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No Watchlist sources saved yet. Add company career pages on the{" "}
+          <a
+            href="/watchlist"
+            className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+          >
+            Watchlist page
+          </a>{" "}
+          to include them in pipeline runs.
+        </p>
+      ) : (
+        <motion.div
+          layout
+          transition={transition}
+          className="grid gap-2 md:grid-cols-2"
+        >
+          <AnimatePresence initial={false} mode="popLayout">
+            {sources.map((source) => {
+              const isSelected = selectedSourceIds.includes(source.id);
+
+              return (
+                <motion.div
+                  key={source.id}
+                  layout
+                  initial={rowInitial}
+                  animate={rowAnimate}
+                  exit={rowExit}
+                  transition={transition}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Watchlist: ${source.label}`}
+                    aria-pressed={isSelected}
+                    title={
+                      isSelected
+                        ? "Included in this run. Click to exclude."
+                        : "Click to include in this run."
+                    }
+                    onClick={() => onSourceToggle?.(source.id, !isSelected)}
+                    className={
+                      isSelected
+                        ? "flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-primary/15"
+                        : "flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-muted/40"
+                    }
+                  >
+                    <span className="min-w-0 space-y-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {source.label}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {source.sourceType}
+                      </span>
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                    >
+                      Watchlist
+                    </Badge>
+                  </Button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </motion.div>
   );
 }
 

@@ -23,12 +23,8 @@ export const geminiStrategy = createProviderStrategy({
       body.generationConfig = {
         // Gemini JSON Schema structured outputs support nullable type arrays here.
         // https://ai.google.dev/gemini-api/docs/structured-output#json_schemas
-        responseFormat: {
-          text: {
-            mimeType: "application/json",
-            schema: toGeminiJsonSchema(jsonSchema.schema),
-          },
-        },
+        responseMimeType: "application/json",
+        responseSchema: toGeminiJsonSchema(jsonSchema.schema),
       };
     } else if (mode === "json_object") {
       body.generationConfig = {
@@ -78,6 +74,9 @@ function toGeminiJsonSchema(schema: unknown): unknown {
 
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
+    if (key === "additionalProperties") {
+      continue;
+    }
     out[key] = toGeminiJsonSchema(value);
   }
 

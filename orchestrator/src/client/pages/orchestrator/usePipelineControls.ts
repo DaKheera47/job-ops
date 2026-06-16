@@ -22,6 +22,7 @@ type UsePipelineControlsArgs = {
   setIsPipelineRunning: (value: boolean) => void;
   pipelineTerminalEvent: { status: string; errorMessage: string | null } | null;
   pipelineSources: JobSource[];
+  watchlistSelectedSourceIds?: string[];
   loadJobs: () => Promise<void>;
   navigateWithContext: (
     newTab: string,
@@ -51,6 +52,7 @@ export function usePipelineControls(
     setIsPipelineRunning,
     pipelineTerminalEvent,
     pipelineSources,
+    watchlistSelectedSourceIds,
     loadJobs,
     navigateWithContext,
   } = args;
@@ -109,6 +111,7 @@ export function usePipelineControls(
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
+      watchlistSelectedSourceIds?: string[];
     }) => {
       try {
         setIsPipelineRunning(true);
@@ -125,6 +128,7 @@ export function usePipelineControls(
           workplaceTypes: config.workplaceTypes,
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
+          watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         });
         toast.message("Search started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
@@ -213,10 +217,17 @@ export function usePipelineControls(
         sources: compatibleSources,
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
+        watchlistSelectedSourceIds:
+          values.watchlistSelectedSourceIds ?? watchlistSelectedSourceIds,
       });
       setIsRunModeModalOpen(false);
     },
-    [pipelineSources, refreshSettings, startPipelineRun],
+    [
+      pipelineSources,
+      refreshSettings,
+      startPipelineRun,
+      watchlistSelectedSourceIds,
+    ],
   );
 
   const handleManualImported = useCallback(

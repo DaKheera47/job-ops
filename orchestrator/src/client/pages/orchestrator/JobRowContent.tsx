@@ -1,13 +1,8 @@
 import { isAwaitingAiScore } from "@client/components";
 import type { JobListItem } from "@shared/types.js";
 import { Loader2, XCircle } from "lucide-react";
+import { Tip } from "@/client/components/Tip";
 import { isPdfRegenerating, isPdfStale } from "@/client/lib/pdf-freshness";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { defaultStatusToken, statusTokens } from "./constants";
 
@@ -99,36 +94,27 @@ export const JobRowContent = ({
         </div>
       ) : showSuitabilityScore && isAwaitingAi ? (
         <div className="shrink-0 text-right">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Loader2
-                  aria-label="Waiting for AI scoring to finish."
-                  className="h-4 w-4 animate-spin text-muted-foreground"
-                />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-60 text-xs">
-                Waiting for AI scoring to finish.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tip
+            content="Waiting for AI scoring to finish."
+            contentClassName="max-w-60 text-xs"
+          >
+            <Loader2
+              aria-label="Waiting for AI scoring to finish."
+              className="h-4 w-4 animate-spin text-muted-foreground"
+            />
+          </Tip>
         </div>
       ) : showSuitabilityScore ? (
         <div className="shrink-0 text-right">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <XCircle
-                  aria-label="AI misconfiguration or service error."
-                  className="h-4 w-4 text-destructive"
-                />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-60 text-xs">
-                AI misconfiguration or service error. Please check your settings
-                and AI service status.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tip
+            content="AI misconfiguration or service error. Please check your settings and AI service status."
+            contentClassName="max-w-60 text-xs"
+          >
+            <XCircle
+              aria-label="AI misconfiguration or service error."
+              className="h-4 w-4 text-destructive"
+            />
+          </Tip>
         </div>
       ) : null}
     </div>

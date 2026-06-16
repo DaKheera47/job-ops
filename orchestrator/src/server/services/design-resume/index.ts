@@ -421,23 +421,69 @@ function toDesignResumeAsset(
   };
 }
 
+type DesignResumeDocumentRow = NonNullable<
+  Awaited<ReturnType<typeof designResumeRepo.getLatestDesignResumeDocument>>
+>;
+
+async function persistMissingProjectIdRepair(
+  row: DesignResumeDocumentRow,
+  resumeJson: DesignResumeJson,
+): Promise<DesignResumeDocumentRow> {
+  const nextRevision = row.revision + 1;
+  const updatedAt = new Date().toISOString();
+  const saved = await designResumeRepo.upsertDesignResumeDocument({
+    id: row.id,
+    title: buildDocumentTitle(resumeJson),
+    resumeJson,
+    revision: nextRevision,
+    sourceResumeId: row.sourceResumeId ?? null,
+    sourceMode: row.sourceMode ?? null,
+    importedAt: row.importedAt ?? null,
+    updatedAt,
+  });
+
+  logger.info("Repaired missing Resume Studio project IDs", {
+    documentId: row.id,
+    previousRevision: row.revision,
+    nextRevision,
+  });
+
+  return (
+    saved ?? {
+      ...row,
+      title: buildDocumentTitle(resumeJson),
+      resumeJson,
+      revision: nextRevision,
+      updatedAt,
+    }
+  );
+}
+
 async function hydrateDocument(
   row: Awaited<
     ReturnType<typeof designResumeRepo.getLatestDesignResumeDocument>
   >,
 ): Promise<DesignResumeDocument | null> {
   if (!row) return null;
-  const assets = await designResumeRepo.listDesignResumeAssets(row.id);
+  const validatedResumeJson = validateStoredDesignResumeDocument(
+    row.resumeJson ?? {},
+  );
+  const resumeJson = ensureImportedProjectIds(validatedResumeJson);
+  const documentRow =
+    resumeJson === validatedResumeJson
+      ? row
+      : await persistMissingProjectIdRepair(row, resumeJson);
+  const assets = await designResumeRepo.listDesignResumeAssets(documentRow.id);
   return {
-    id: row.id,
-    title: row.title,
-    resumeJson: validateStoredDesignResumeDocument(row.resumeJson ?? {}),
-    revision: row.revision,
-    sourceResumeId: row.sourceResumeId ?? null,
-    sourceMode: (row.sourceMode as "v4" | "v5" | null) ?? null,
-    importedAt: row.importedAt ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    id: documentRow.id,
+    title: documentRow.title,
+    resumeJson,
+    revision: documentRow.revision,
+    sourceResumeId: documentRow.sourceResumeId ?? null,
+    sourceMode: (documentRow.sourceMode as "v4" | "v5" | null) ?? null,
+    importedAt: documentRow.importedAt ?? null,
+    createdAt: documentRow.createdAt,
+    updatedAt: documentRow.updatedAt,
     assets: assets.map(toDesignResumeAsset),
   };
 }

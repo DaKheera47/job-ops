@@ -5,12 +5,6 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn, formatDate, formatJobSourceLabel, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
 import { formatPostingAgeLabel } from "../lib/job-posting-age";
@@ -20,6 +14,7 @@ import {
   getTracerStatusIndicator,
   StatusIndicator,
 } from "./StatusIndicator";
+import { Tip } from "./Tip";
 
 interface JobHeaderProps {
   job: Job;
@@ -59,31 +54,26 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   // Show "Check" button if no score and callback provided
   if (score == null && onCheck) {
     return (
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-              onClick={handleCheck}
-              disabled={isChecking}
-            >
-              {isChecking ? (
-                <Loader2 className="h-2 w-2 animate-spin" />
-              ) : (
-                <Search className="h-2 w-2" />
-              )}
-              <span>
-                {isChecking ? "Checking..." : "Check Sponsorship Status"}
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">Check if employer is a visa sponsor</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tip
+        asChild
+        clickBehavior="none"
+        content={<p className="text-xs">Check if employer is a visa sponsor</p>}
+      >
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          onClick={handleCheck}
+          disabled={isChecking}
+        >
+          {isChecking ? (
+            <Loader2 className="h-2 w-2 animate-spin" />
+          ) : (
+            <Search className="h-2 w-2" />
+          )}
+          <span>{isChecking ? "Checking..." : "Check Sponsorship Status"}</span>
+        </Button>
+      </Tip>
     );
   }
 
@@ -242,15 +232,17 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex w-full flex-row-reverse sm:flex-col justify-between items-end gap-4 sm:w-auto sm:justify-end h-full">
-          <ScoreRing
-            score={job.suitabilityScore}
-            size="sm"
-            isAwaitingAi={isAwaitingAiScore(job)}
-            suitabilityReason={job.suitabilityReason}
-            jobId={job.id}
-          />
-          {jobCTA && <>{jobCTA}</>}
+        <div className="flex h-full w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:items-end sm:justify-end">
+          <div className="self-end">
+            <ScoreRing
+              score={job.suitabilityScore}
+              size="sm"
+              isAwaitingAi={isAwaitingAiScore(job)}
+              suitabilityReason={job.suitabilityReason}
+              jobId={job.id}
+            />
+          </div>
+          {jobCTA && <div className="min-w-0 sm:w-auto">{jobCTA}</div>}
         </div>
       </div>
 
@@ -277,7 +269,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {job.source && (
             <StatusIndicator
               variant="sky"
-              tooltip={`Job found on ${formatJobSourceLabel(job.source)}`}
+              tooltip={`Job found ${job.source === "manual" ? "manually" : `on ${formatJobSourceLabel(job.source)}`}`}
               label={
                 sourceLabel[job.source] ?? formatJobSourceLabel(job.source)
               }

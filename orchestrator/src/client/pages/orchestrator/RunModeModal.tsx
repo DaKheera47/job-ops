@@ -6,6 +6,7 @@ import type {
   JobSource,
   PipelineSearchPreset,
   UpdatePipelineSearchPresetInput,
+  WatchlistSelectedSource,
 } from "@shared/types";
 import { motion, useReducedMotion } from "framer-motion";
 import type React from "react";
@@ -28,6 +29,11 @@ interface RunModeModalProps {
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
+  watchlistSources?: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds?: string[];
+  onToggleWatchlistSource?: (sourceId: string, checked: boolean) => void;
+  onSetSelectedWatchlistSourceIds?: (ids: string[]) => void;
+  isWatchlistSourcesLoading?: boolean;
   isPipelineRunning: boolean;
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
@@ -56,6 +62,11 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   pipelineSources,
   onToggleSource,
   onSetPipelineSources,
+  watchlistSources,
+  selectedWatchlistSourceIds,
+  onToggleWatchlistSource,
+  onSetSelectedWatchlistSourceIds,
+  isWatchlistSourcesLoading,
   isPipelineRunning,
   onOpenChange,
   onModeChange,
@@ -154,6 +165,11 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
               pipelineSources={pipelineSources}
               onToggleSource={onToggleSource}
               onSetPipelineSources={onSetPipelineSources}
+              watchlistSources={watchlistSources}
+              selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+              onToggleWatchlistSource={onToggleWatchlistSource}
+              onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
+              isWatchlistSourcesLoading={isWatchlistSourcesLoading}
               isPipelineRunning={isPipelineRunning}
               onSaveAndRun={onSaveAndRunAutomatic}
               savedSearches={savedSearches}

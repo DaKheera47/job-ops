@@ -131,6 +131,7 @@ describe.sequential("Pipeline API routes", () => {
       runBudget: 250,
       scoringInstructions: "",
       automaticPresetId: "custom",
+      watchlistSelectedSourceIds: ["wl-source-a"],
     };
 
     const createRes = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
@@ -151,6 +152,9 @@ describe.sequential("Pipeline API routes", () => {
         lastUsedAt: null,
       }),
     );
+    expect(createBody.data.config.watchlistSelectedSourceIds).toEqual([
+      "wl-source-a",
+    ]);
 
     const duplicateRes = await fetch(`${baseUrl}/api/pipeline/search-presets`, {
       method: "POST",
@@ -463,6 +467,7 @@ describe.sequential("Pipeline API routes", () => {
         enableScoring: true,
         enableImporting: true,
         enableAutoTailoring: true,
+        watchlistSelectedSourceIds: null,
       },
       effectiveConfig: {
         country: "united states",
@@ -761,6 +766,58 @@ describe.sequential("Pipeline API routes", () => {
     expect(blockedNaukriRes.status).toBe(400);
     expect(blockedNaukriBody.ok).toBe(false);
     expect(blockedNaukriBody.error.message).toContain("incompatible");
+  });
+
+  it("forwards Watchlist source filter to the pipeline runner (#621)", async () => {
+    const { runPipeline } = await import("@server/pipeline/index");
+    const { trackCanonicalActivationEvent } = await import(
+      "@server/services/activation-funnel"
+    );
+
+    const runRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topN: 5,
+        minSuitabilityScore: 50,
+        sources: ["linkedin"],
+        searchTerms: ["engineer"],
+        country: "united kingdom",
+        cityLocations: ["London"],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
+        watchlistSelectedSourceIds: ["watchlist-a", "watchlist-b"],
+      }),
+    });
+    const runBody = await runRes.json();
+    expect(runBody.ok).toBe(true);
+
+    expect(runPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        watchlistSelectedSourceIds: ["watchlist-a", "watchlist-b"],
+      }),
+    );
+    // Analytics records the count only — never raw IDs (tenant safety).
+    expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+      "jobs_pipeline_run_started",
+      expect.objectContaining({
+        watchlist_source_filter_count: 2,
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("rejects malformed Watchlist source IDs on /pipeline/run (#621)", async () => {
+    const badRun = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sources: ["linkedin"],
+        watchlistSelectedSourceIds: [123, ""],
+      }),
+    });
+    expect(badRun.status).toBe(400);
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {

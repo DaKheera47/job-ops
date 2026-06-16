@@ -1,4 +1,5 @@
 import { getDesignResumeAssetContentBlob } from "@client/api/settings-profile";
+import { createId } from "@paralleldrive/cuid2";
 import type { DesignResumeJson } from "@shared/types";
 import { FileImage, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -429,7 +430,7 @@ export function BasicsCustomFieldsSection({
           onChange([
             ...customFields,
             {
-              id: crypto.randomUUID(),
+              id: createId(),
               title: "",
               icon: "",
               text: "",

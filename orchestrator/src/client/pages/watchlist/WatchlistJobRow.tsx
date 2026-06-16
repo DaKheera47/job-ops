@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
+import { Tip } from "@/client/components/Tip";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -24,12 +25,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { JobDetailsState, RankedWatchlistJob } from "./types";
 
@@ -152,32 +147,31 @@ export default function WatchlistJobRow({
           <div className="min-w-[16rem]">
             <div className="flex items-center gap-2">
               {signals.length > 0 ? (
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={`View signals for ${rankedJob.job.title}`}
-                        className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      >
-                        {signals.map((signal) => (
-                          <span
-                            key={signal.label}
-                            aria-hidden="true"
-                            className={`h-2 w-2 rounded-full ${signal.dotClassName}`}
-                          />
-                        ))}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-64 text-xs">
-                      <div className="space-y-1">
-                        {signals.map((signal) => (
-                          <div key={signal.label}>{signal.label}</div>
-                        ))}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Tip
+                  asChild
+                  content={
+                    <div className="space-y-1">
+                      {signals.map((signal) => (
+                        <div key={signal.label}>{signal.label}</div>
+                      ))}
+                    </div>
+                  }
+                  contentClassName="max-w-64 text-xs"
+                >
+                  <button
+                    type="button"
+                    aria-label={`View signals for ${rankedJob.job.title}`}
+                    className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    {signals.map((signal) => (
+                      <span
+                        key={signal.label}
+                        aria-hidden="true"
+                        className={`h-2 w-2 rounded-full ${signal.dotClassName}`}
+                      />
+                    ))}
+                  </button>
+                </Tip>
               ) : null}
               <button
                 type="button"
@@ -209,26 +203,25 @@ export default function WatchlistJobRow({
           <div className="flex items-center justify-end">
             {watchlistJob.workspaceJob ? (
               <>
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0"
-                        onClick={() => {
-                          if (watchlistJob.workspaceJob) {
-                            onOpenWorkspaceJob(watchlistJob.workspaceJob);
-                          }
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>View in JobOps workspace</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Tip
+                  asChild
+                  clickBehavior="none"
+                  content="View in JobOps workspace"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => {
+                      if (watchlistJob.workspaceJob) {
+                        onOpenWorkspaceJob(watchlistJob.workspaceJob);
+                      }
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </Tip>
 
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
@@ -287,27 +280,26 @@ export default function WatchlistJobRow({
               </DropdownMenu>
             ) : (
               <>
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 gap-2"
-                        disabled={movingJobRef === watchlistJob.jobRef}
-                        onClick={() => onMoveToWorkspace(watchlistJob, source)}
-                      >
-                        {movingJobRef === watchlistJob.jobRef ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FolderInput className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Move to JobOps workspace</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Tip
+                  asChild
+                  clickBehavior="none"
+                  content="Move to JobOps workspace"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 gap-2"
+                    disabled={movingJobRef === watchlistJob.jobRef}
+                    onClick={() => onMoveToWorkspace(watchlistJob, source)}
+                  >
+                    {movingJobRef === watchlistJob.jobRef ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FolderInput className="h-4 w-4" />
+                    )}
+                  </Button>
+                </Tip>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button

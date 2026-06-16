@@ -11,13 +11,13 @@ import {
   type StageEvent,
 } from "@shared/types.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import confetti from "canvas-confetti";
 import { ArrowDownAZ, Columns3, Plus } from "lucide-react";
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { invalidateJobData } from "@/client/hooks/queries/invalidate";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { celebrateOffer } from "@/client/lib/celebrate";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { logJobStageEvent } from "@/client/lib/logJobStageEvent";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -224,6 +224,9 @@ export const InProgressBoardPage: React.FC = () => {
         await queryClient.invalidateQueries({
           queryKey: queryKeys.jobs.inProgressBoard(),
         });
+        if (toStage === "offer") {
+          celebrateOffer();
+        }
       } catch (error) {
         queryClient.setQueryData(
           queryKeys.jobs.inProgressBoard(),
@@ -258,12 +261,7 @@ export const InProgressBoardPage: React.FC = () => {
         toast.success("Event logged");
 
         if (effectiveStage === "offer") {
-          confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ["#10b981", "#34d399", "#6ee7b7", "#ffffff"],
-          });
+          celebrateOffer();
         }
       } catch (error) {
         showErrorToast(error, "Failed to log event");

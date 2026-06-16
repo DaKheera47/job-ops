@@ -29,10 +29,14 @@ export async function pickProjectIdsForJob(args: {
   desiredCount: number;
 }): Promise<string[]> {
   const desiredCount = Math.max(0, Math.floor(args.desiredCount));
-  if (desiredCount === 0) return [];
+  if (desiredCount === 0) {
+    return [];
+  }
 
   const eligibleIds = new Set(args.eligibleProjects.map((p) => p.id));
-  if (eligibleIds.size === 0) return [];
+  if (eligibleIds.size === 0) {
+    return [];
+  }
 
   const model = await resolveLlmModel("projectSelection");
 
@@ -50,11 +54,12 @@ export async function pickProjectIdsForJob(args: {
   });
 
   if (!result.success) {
-    return fallbackPickProjectIds(
+    const fallback = fallbackPickProjectIds(
       args.jobDescription,
       args.eligibleProjects,
       desiredCount,
     );
+    return fallback;
   }
 
   const selectedProjectIds = Array.isArray(result.data?.selectedProjectIds)
@@ -76,11 +81,12 @@ export async function pickProjectIdsForJob(args: {
   }
 
   if (unique.length === 0) {
-    return fallbackPickProjectIds(
+    const fallback = fallbackPickProjectIds(
       args.jobDescription,
       args.eligibleProjects,
       desiredCount,
     );
+    return fallback;
   }
 
   return unique;

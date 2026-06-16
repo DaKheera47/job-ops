@@ -19,6 +19,7 @@ import type {
   PipelineSearchPreset,
   PipelineSearchPresetConfig,
   UpdatePipelineSearchPresetInput,
+  WatchlistSelectedSource,
 } from "@shared/types";
 import { ArrowLeft, Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -62,6 +63,11 @@ interface AutomaticRunTabProps {
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
+  watchlistSources?: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds?: string[];
+  onToggleWatchlistSource?: (sourceId: string, checked: boolean) => void;
+  onSetSelectedWatchlistSourceIds?: (ids: string[]) => void;
+  isWatchlistSourcesLoading?: boolean;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
   savedSearches?: PipelineSearchPreset[];
@@ -132,6 +138,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   pipelineSources,
   onToggleSource,
   onSetPipelineSources,
+  watchlistSources = [],
+  selectedWatchlistSourceIds = [],
+  onToggleWatchlistSource,
+  onSetSelectedWatchlistSourceIds,
+  isWatchlistSourcesLoading = false,
   isPipelineRunning,
   onSaveAndRun,
   savedSearches = [],
@@ -497,8 +508,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       runBudget: values.runBudget,
       scoringInstructions: values.scoringInstructions,
       automaticPresetId: selectedPreset,
+      watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
     }),
-    [pipelineSources, selectedPreset, values],
+    [pipelineSources, selectedPreset, selectedWatchlistSourceIds, values],
   );
 
   const runDisabled =
@@ -550,7 +562,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         runBudget: values.runBudget,
         presetId: selectedPreset,
       });
-      await onSaveAndRun(values);
+      await onSaveAndRun({
+        ...values,
+        watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
+      });
     } finally {
       setIsSaving(false);
     }
@@ -585,12 +600,19 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     if (nextSources.length > 0) {
       onSetPipelineSources(nextSources);
     }
+
+    if (Array.isArray(config.watchlistSelectedSourceIds)) {
+      const availableIds = new Set(watchlistSources.map((source) => source.id));
+      const restored = config.watchlistSelectedSourceIds.filter((id) =>
+        availableIds.has(id),
+      );
+      onSetSelectedWatchlistSourceIds?.(restored);
+    }
   };
 
   const applySavedSearch = async (preset: PipelineSearchPreset) => {
     setSelectedSavedSearchId(preset.id);
     applySearchConfig(preset.config);
-
     await onApplySavedSearch?.(preset);
   };
 
@@ -851,7 +873,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               selectedSourceRows={selectedSourceRows}
               readySourceRows={readySourceRows}
               unavailableSourceRows={unavailableSourceRows}
+              watchlistSources={watchlistSources}
+              selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+              isWatchlistSourcesLoading={isWatchlistSourcesLoading}
               onSourceToggle={handleSourceToggle}
+              onWatchlistSourceToggle={onToggleWatchlistSource}
             />
           </TabsContent>
         </div>

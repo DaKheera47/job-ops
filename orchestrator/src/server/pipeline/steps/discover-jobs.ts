@@ -122,6 +122,7 @@ function buildLocationEvidence(args: {
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
   includeWatchlist?: boolean;
+  watchlistSelectedSourceIds?: string[] | null;
   shouldCancel?: () => boolean;
 }): Promise<{
   discoveredJobs: CreateJobInput[];
@@ -133,6 +134,12 @@ export async function discoverJobsStep(args: {
   const discoveredJobs: CreateJobInput[] = [];
   const sourceErrors: string[] = [];
   const includeWatchlist = args.includeWatchlist !== false;
+  const watchlistFilterIds = args.watchlistSelectedSourceIds ?? null;
+  // [] explicitly disables Watchlist for this run; treat as "no Watchlist
+  // sources" without short-circuiting includeWatchlist (so the explicit
+  // disable still emits accurate progress totals).
+  const watchlistExplicitlyDisabled =
+    Array.isArray(watchlistFilterIds) && watchlistFilterIds.length === 0;
 
   const settings = await settingsRepo.getAllSettings();
   const registry = await getExtractorRegistry();
@@ -314,7 +321,7 @@ export async function discoverJobsStep(args: {
   let watchlistSelectedSources: Awaited<
     ReturnType<typeof listHydratedWatchlistSelectedSources>
   > = [];
-  if (includeWatchlist && getUserId()) {
+  if (includeWatchlist && !watchlistExplicitlyDisabled && getUserId()) {
     try {
       watchlistSelectedSources = await listHydratedWatchlistSelectedSources();
     } catch (error) {
@@ -323,6 +330,35 @@ export async function discoverJobsStep(args: {
         error: sanitizeUnknown(error),
       });
       sourceErrors.push("Watchlist: failed to load selected sources");
+    }
+
+    // When the caller passed an explicit subset, intersect by ID and drop
+    // anything the current user does not own. Never trust the client to
+    // scope across tenants — IDs always re-resolve through the user-scoped
+    // listHydratedWatchlistSelectedSources() call above.
+    if (
+      Array.isArray(watchlistFilterIds) &&
+      watchlistFilterIds.length > 0 &&
+      watchlistSelectedSources.length > 0
+    ) {
+      const ownedIds = new Set(
+        watchlistSelectedSources.map((source) => source.id),
+      );
+      const requestedIds = new Set(watchlistFilterIds);
+      const unknownIds = watchlistFilterIds.filter((id) => !ownedIds.has(id));
+      if (unknownIds.length > 0) {
+        logger.warn(
+          "Ignoring unknown Watchlist source IDs in pipeline discovery",
+          {
+            step: "discover-jobs",
+            unknownIdCount: unknownIds.length,
+            requestedIdCount: watchlistFilterIds.length,
+          },
+        );
+      }
+      watchlistSelectedSources = watchlistSelectedSources.filter((source) =>
+        requestedIds.has(source.id),
+      );
     }
   }
 
