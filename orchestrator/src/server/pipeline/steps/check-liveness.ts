@@ -35,6 +35,12 @@ const LISTING_PAGE_PATTERNS: RegExp[] = [
 
 const MIN_CONTENT_LENGTH = 300;
 const REQUEST_TIMEOUT_MS = 5000;
+// Hard upper bound on a single liveness check, even if fetch's AbortSignal
+// fails to interrupt (TLS handshake stalls, broken keep-alive, DNS quirks
+// behind proxies). Larger than REQUEST_TIMEOUT_MS so a slow-but-finishing
+// request still completes; smaller than any reasonable "pipeline is hung"
+// window so the step makes progress.
+const HARD_TIMEOUT_MS = 12_000;
 const CONCURRENCY = 5;
 
 // Greenhouse job URL pattern: boards.greenhouse.io/{slug}/jobs/{id}
@@ -104,15 +110,27 @@ async function checkJobLiveness(job: Job): Promise<LivenessResult> {
   if (!job.jobUrl) return "uncertain";
   if (job.source === "manual") return "uncertain";
 
-  try {
-    if (job.source === "greenhouse" && GREENHOUSE_URL_RE.test(job.jobUrl)) {
-      return await checkGreenhouseLiveness(job.jobUrl);
+  const inner = (async (): Promise<LivenessResult> => {
+    try {
+      if (job.source === "greenhouse" && GREENHOUSE_URL_RE.test(job.jobUrl)) {
+        return await checkGreenhouseLiveness(job.jobUrl);
+      }
+      return await checkGenericLiveness(job.jobUrl);
+    } catch {
+      // Network error, timeout, DNS failure — don't expire
+      return "uncertain";
     }
-    return await checkGenericLiveness(job.jobUrl);
-  } catch {
-    // Network error, timeout, DNS failure — don't expire
-    return "uncertain";
-  }
+  })();
+
+  // Hard outer timeout to guarantee progress even when fetch's AbortSignal
+  // does not interrupt a hung connection. Leaving the inner Promise to
+  // settle later is fine — its result is discarded.
+  return Promise.race<LivenessResult>([
+    inner,
+    new Promise<LivenessResult>((resolve) =>
+      setTimeout(() => resolve("uncertain"), HARD_TIMEOUT_MS),
+    ),
+  ]);
 }
 
 // ---------------------------------------------------------------------------

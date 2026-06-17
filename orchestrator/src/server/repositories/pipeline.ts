@@ -162,6 +162,29 @@ export async function updatePipelineRun(
 }
 
 /**
+ * Mark any pipeline_runs row still in `running` status as failed. Intended to
+ * be called once on server startup: the in-memory pipeline state is empty
+ * after a restart, so any row left in `running` is an orphan from a previous
+ * process that was killed mid-run. Returns the number of rows updated.
+ *
+ * Operates across all tenants on purpose — this is a server-level maintenance
+ * task, not a per-request action.
+ */
+export async function failOrphanedRunningPipelineRuns(): Promise<number> {
+  const now = new Date().toISOString();
+  const result = await db
+    .update(pipelineRuns)
+    .set({
+      status: "failed",
+      completedAt: now,
+      errorMessage: "Pipeline interrupted by server restart",
+    })
+    .where(eq(pipelineRuns.status, "running"))
+    .returning({ id: pipelineRuns.id });
+  return result.length;
+}
+
+/**
  * Get the latest pipeline run.
  */
 export async function getLatestPipelineRun(): Promise<PipelineRun | null> {

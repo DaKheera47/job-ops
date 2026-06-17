@@ -8,6 +8,7 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import { createApp } from "./app";
 import { initializeExtractorRegistry } from "./extractors/registry";
 import { deleteExpiredOrRevokedAuthSessions } from "./repositories/auth-sessions";
+import { failOrphanedRunningPipelineRuns } from "./repositories/pipeline";
 import * as settingsRepo from "./repositories/settings";
 import { initializeActivationAnalyticsSafely } from "./services/activation-funnel";
 import {
@@ -151,6 +152,22 @@ async function startServer() {
       await initializeDemoModeServices();
     } catch (error) {
       logger.warn("Failed to initialize demo mode services", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    // Close orphaned pipeline_runs left in 'running' status by a previous
+    // process that was killed (container restart, OOM, etc). The in-memory
+    // pipeline state is empty at this point, so any 'running' row is a zombie.
+    try {
+      const closed = await failOrphanedRunningPipelineRuns();
+      if (closed > 0) {
+        logger.info("Closed orphaned pipeline runs from previous process", {
+          count: closed,
+        });
+      }
+    } catch (error) {
+      logger.warn("Failed to close orphaned pipeline runs", {
         error: sanitizeUnknown(error),
       });
     }
