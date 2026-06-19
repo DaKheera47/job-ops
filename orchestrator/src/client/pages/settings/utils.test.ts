@@ -47,6 +47,14 @@ describe("settings utils", () => {
     expect(config.showBaseUrl).toBe(false);
   });
 
+  it("treats Ollama as a local provider without a required API key", () => {
+    const config = getLlmProviderConfig("ollama");
+
+    expect(config.showApiKey).toBe(false);
+    expect(config.requiresApiKey).toBe(false);
+    expect(config.keyHelperText).toBe("No API key required for Ollama");
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     expect(normalizeLlmProvider("openai-compatible")).toBe("openai_compatible");
   });
