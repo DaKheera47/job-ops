@@ -162,6 +162,8 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
   const baseUrlHelper = showBaseUrl
     ? normalizedProvider === "openai_compatible"
       ? "Enter a base URL or a full /v1/chat/completions endpoint."
+      : normalizedProvider === "ollama"
+        ? "Default: http://localhost:11434. From Docker Desktop, use http://host.docker.internal:11434. On Linux Docker, use a container-reachable host gateway such as http://172.17.0.1:11434."
       : `Default: ${baseUrlPlaceholder}`
     : "";
   const providerHint = PROVIDER_HINTS[normalizedProvider];

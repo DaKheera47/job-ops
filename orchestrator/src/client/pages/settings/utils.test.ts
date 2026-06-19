@@ -55,6 +55,17 @@ describe("settings utils", () => {
     expect(config.keyHelperText).toBe("No API key required for Ollama");
   });
 
+  it("explains Docker host URLs for Ollama without changing the placeholder", () => {
+    const config = getLlmProviderConfig("ollama");
+
+    expect(config.baseUrlPlaceholder).toBe("http://localhost:11434");
+    expect(config.baseUrlHelper).toContain("http://localhost:11434");
+    expect(config.baseUrlHelper).toContain(
+      "http://host.docker.internal:11434",
+    );
+    expect(config.baseUrlHelper).toContain("http://172.17.0.1:11434");
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     expect(normalizeLlmProvider("openai-compatible")).toBe("openai_compatible");
   });
