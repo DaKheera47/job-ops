@@ -304,15 +304,31 @@ function buildRequirement(args: {
 }
 
 async function buildModelRequirement(): Promise<OnboardingRequirement> {
-  const [provider, baseUrl] = await Promise.all([
+  const [provider, baseUrl, model] = await Promise.all([
     getSetting("llmProvider"),
     getSetting("llmBaseUrl"),
+    getSetting("model"),
   ]);
   const validation = await validateLlm({});
   const normalizedProvider = normalizeLlmProviderValue(provider);
   const providerLabel = normalizedProvider ?? "selected provider";
 
   if (validation.valid) {
+    if (normalizedProvider === "ollama" && !model?.trim()) {
+      return buildRequirement({
+        id: "model",
+        status: "needs_action",
+        title: "Choose an Ollama model",
+        message:
+          "Ollama is connected. Choose one of the models installed in Ollama before continuing.",
+        primaryAction: "connect_model",
+        details: {
+          provider: normalizedProvider,
+          baseUrl: baseUrl?.trim() || null,
+        },
+      });
+    }
+
     return buildRequirement({
       id: "model",
       status: "ready",
@@ -543,6 +559,27 @@ export async function saveOnboardingModelAction(
   input: OnboardingModelActionInput,
 ): Promise<OnboardingStatusResponse> {
   const provider = normalizeLlmProviderValue(input.provider);
+  const [storedProvider, storedModel] = await Promise.all([
+    getSetting("llmProvider"),
+    getSetting("model"),
+  ]);
+  const storedNormalizedProvider = normalizeLlmProviderValue(storedProvider);
+  const hasInputModel = Boolean(input.model?.trim());
+  const hasSavedOllamaModel =
+    provider === "ollama" &&
+    storedNormalizedProvider === "ollama" &&
+    Boolean(storedModel?.trim());
+
+  if (provider === "ollama" && !hasInputModel && !hasSavedOllamaModel) {
+    throw unprocessableEntity(
+      "Choose an Ollama model before continuing. If no models appear, pull a model in Ollama and try again.",
+      {
+        provider,
+        status: null,
+      },
+    );
+  }
+
   const validation = await validateLlm({
     provider,
     baseUrl: input.baseUrl,

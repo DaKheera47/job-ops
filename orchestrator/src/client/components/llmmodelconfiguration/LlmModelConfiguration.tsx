@@ -110,6 +110,8 @@ export function LlmModelConfiguration({
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
   const isGeminiCliProvider =
     providerConfig.normalizedProvider === "gemini_cli";
+  const requiresExplicitDefaultModel =
+    providerConfig.normalizedProvider === "ollama";
   const deferredProvider = useDeferredValue(selectedProvider);
   const deferredBaseUrl = useDeferredValue(baseUrl.value);
   const deferredApiKey = useDeferredValue(apiKey.value);
@@ -219,6 +221,8 @@ export function LlmModelConfiguration({
       modelsError
     ) : availableModels.length > 0 ? (
       "Choose from the available text-generation models."
+    ) : requiresExplicitDefaultModel ? (
+      "No Ollama models were returned. Pull a model in Ollama, then choose it here before continuing."
     ) : (
       "No text-generation models were returned."
     )
@@ -241,7 +245,9 @@ export function LlmModelConfiguration({
   );
   const defaultModelOptions = buildModelOptions({
     models: availableModels,
-    emptyLabel: `Use ${providerConfig.label} default`,
+    emptyLabel: requiresExplicitDefaultModel
+      ? `Select a ${providerConfig.label} model`
+      : `Use ${providerConfig.label} default`,
     emptyValue: "",
     fallbackValue: model.value.trim(),
   });

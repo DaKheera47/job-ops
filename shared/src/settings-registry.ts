@@ -103,6 +103,10 @@ export function getDefaultModelForProvider(
   if (normalizedProvider === "codex") {
     return DEFAULT_CODEX_MODEL;
   }
+
+  if (normalizedProvider === "ollama") {
+    return "";
+  }
   return DEFAULT_GEMINI_MODEL;
 }
 

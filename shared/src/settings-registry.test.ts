@@ -362,6 +362,7 @@ describe("settingsRegistry helpers", () => {
         "google/gemini-3-flash-preview",
       );
       expect(getDefaultModelForProvider("codex")).toBe("gpt-5.4-mini");
+      expect(getDefaultModelForProvider("ollama")).toBe("");
       expect(getDefaultModelForProvider("openrouter")).toBe(
         "google/gemini-3-flash-preview",
       );

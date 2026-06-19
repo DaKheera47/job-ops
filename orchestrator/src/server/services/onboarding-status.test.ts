@@ -106,6 +106,7 @@ describe("onboarding status engine", () => {
         llmApiKey: "sk-test",
         llmProvider: "openrouter",
         llmBaseUrl: "",
+        model: "gpt-4o",
         rxresumeUrl: null,
       };
       return values[key] ?? null;
@@ -163,6 +164,30 @@ describe("onboarding status engine", () => {
       id: "resume",
       status: "needs_action",
       primaryAction: "upload_resume",
+    });
+  });
+
+  it("keeps Ollama onboarding on the model step until a model is selected", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: null,
+        llmProvider: "ollama",
+        llmBaseUrl: "http://localhost:11434",
+        model: null,
+        rxresumeUrl: null,
+      };
+      return values[key] ?? null;
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(status.complete).toBe(false);
+    expect(status.nextRequirementId).toBe("model");
+    expect(status.requirements[0]).toMatchObject({
+      id: "model",
+      status: "needs_action",
+      title: "Choose an Ollama model",
+      primaryAction: "connect_model",
     });
   });
 
@@ -224,6 +249,23 @@ describe("onboarding status engine", () => {
         status: null,
       },
     });
+    expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
+  });
+
+  it("rejects a new Ollama model action without an explicit model", async () => {
+    await expect(
+      saveOnboardingModelAction({
+        provider: "ollama",
+        baseUrl: "http://localhost:11434",
+        model: null,
+      }),
+    ).rejects.toMatchObject({
+      details: {
+        provider: "ollama",
+        status: null,
+      },
+    });
+    expect(mocks.validateLlmCredentials).not.toHaveBeenCalled();
     expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
   });
 
