@@ -394,6 +394,7 @@ describe("OnboardingPage", () => {
         provider: "openrouter",
       }),
     ]);
+    expect(await screen.findByText("content:resume")).toBeInTheDocument();
   });
 
   it("verifies and persists the Codex provider when Codex auth completes", async () => {
