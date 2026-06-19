@@ -191,6 +191,36 @@ describe("onboarding status engine", () => {
     });
   });
 
+  it("adds Ollama hardware and provider guidance to unavailable model checks", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: null,
+        llmProvider: "ollama",
+        llmBaseUrl: "http://localhost:11434",
+        model: "llama3:latest",
+        rxresumeUrl: null,
+      };
+      return values[key] ?? null;
+    });
+    mocks.validateLlmCredentials.mockResolvedValue({
+      valid: false,
+      message: "The operation timed out.",
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(status.requirements[0]).toMatchObject({
+      id: "model",
+      status: "checking_unavailable",
+    });
+    expect(status.requirements[0]?.message).toContain(
+      "Try a smaller or faster model",
+    );
+    expect(status.requirements[0]?.message).toContain(
+      "switch provider from the model step",
+    );
+  });
+
   it("is complete when model and resume requirements validate", async () => {
     const status = await getOnboardingStatus();
 
@@ -266,6 +296,24 @@ describe("onboarding status engine", () => {
       },
     });
     expect(mocks.validateLlmCredentials).not.toHaveBeenCalled();
+    expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
+  });
+
+  it("adds Ollama timeout guidance to model action failures", async () => {
+    mocks.validateLlmCredentials.mockResolvedValue({
+      valid: false,
+      message: "The operation timed out.",
+    });
+
+    await expect(
+      saveOnboardingModelAction({
+        provider: "ollama",
+        baseUrl: "http://localhost:11434",
+        model: "llama3:latest",
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("Try a smaller or faster model"),
+    });
     expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
   });
 
