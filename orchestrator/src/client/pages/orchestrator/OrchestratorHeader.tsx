@@ -1,8 +1,21 @@
 import { PageHeader, StatusIndicator } from "@client/components/layout";
 import type { JobSource } from "@shared/types.js";
-import { Loader2, Play, Square, X } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Play,
+  Square,
+  X,
+} from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface OrchestratorHeaderProps {
   navOpen: boolean;
@@ -10,10 +23,11 @@ interface OrchestratorHeaderProps {
   isPipelineRunning: boolean;
   isCancelling: boolean;
   pipelineSources: JobSource[];
-  hideActions?: boolean;
+  hideRunAction?: boolean;
   isSearchComposerOpen?: boolean;
   onOpenAutomaticRun: () => void;
   onCancelPipeline: () => void;
+  onOpenManualImport: () => void;
 }
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
@@ -22,12 +36,13 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   isPipelineRunning,
   isCancelling,
   pipelineSources,
-  hideActions = false,
+  hideRunAction = false,
   isSearchComposerOpen = false,
   onOpenAutomaticRun,
   onCancelPipeline,
+  onOpenManualImport,
 }) => {
-  const actions = hideActions ? null : isPipelineRunning ? (
+  const primaryAction = hideRunAction ? null : isPipelineRunning ? (
     <Button
       size="sm"
       onClick={onCancelPipeline}
@@ -61,6 +76,33 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
         {isSearchComposerOpen ? "Close search" : "Run search"}
       </span>
     </Button>
+  );
+  const actions = (
+    <div className="flex items-center gap-2">
+      {primaryAction}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            aria-label="More job actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onSelect={onOpenManualImport}
+            className="cursor-pointer gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Import job manually
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 
   return (

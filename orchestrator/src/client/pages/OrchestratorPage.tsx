@@ -1,6 +1,7 @@
+import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { useSettings } from "@client/hooks/useSettings";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorJobWorkspaceContainer } from "./orchestrator/OrchestratorJobWorkspaceContainer";
 import { OrchestratorSearchComposer } from "./orchestrator/OrchestratorSearchComposer";
@@ -18,6 +19,7 @@ import { useWatchlistPipelineSources } from "./orchestrator/useWatchlistPipeline
 import { getEnabledSources } from "./orchestrator/utils";
 
 export const OrchestratorPage: React.FC = () => {
+  const [isManualImportOpen, setIsManualImportOpen] = useState(false);
   const filters = useOrchestratorFilters();
   const navigation = useOrchestratorNavigation({
     searchParams: filters.searchParams,
@@ -104,12 +106,13 @@ export const OrchestratorPage: React.FC = () => {
         isPipelineRunning={isPipelineRunning}
         isCancelling={isCancelling}
         pipelineSources={pipelineSources}
-        hideActions={isSearchComposerVisible && !canToggleSearchComposer}
+        hideRunAction={isSearchComposerVisible && !canToggleSearchComposer}
         isSearchComposerOpen={
           isSearchComposerVisible && canToggleSearchComposer
         }
         onOpenAutomaticRun={handleToggleAutomaticRun}
         onCancelPipeline={handleCancelPipeline}
+        onOpenManualImport={() => setIsManualImportOpen(true)}
       />
 
       <main
@@ -155,6 +158,14 @@ export const OrchestratorPage: React.FC = () => {
           />
         )}
       </main>
+
+      <ManualImportSheet
+        open={isManualImportOpen}
+        onOpenChange={setIsManualImportOpen}
+        onImported={async (result) => {
+          await handleManualImported(result);
+        }}
+      />
     </>
   );
 };

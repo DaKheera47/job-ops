@@ -83,6 +83,7 @@ let mockAutomaticRunValues: AutomaticRunValues = {
 };
 const mockJobListScrollToIndex = vi.fn();
 let mockIsLoading = false;
+let mockLoadJobs = vi.fn();
 
 const jobFixture = createJob({
   id: "job-1",
@@ -145,7 +146,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
     setIsPipelineRunning: vi.fn(),
     pipelineTerminalEvent: mockPipelineTerminalEvent,
     setIsRefreshPaused: vi.fn(),
-    loadJobs: vi.fn(),
+    loadJobs: mockLoadJobs,
   }),
 }));
 
@@ -180,22 +181,27 @@ vi.mock("../hooks/useSettings", () => ({
 
 vi.mock("./orchestrator/OrchestratorHeader", () => ({
   OrchestratorHeader: ({
-    hideActions,
+    hideRunAction,
     isSearchComposerOpen,
     onOpenAutomaticRun,
     onCancelPipeline,
+    onOpenManualImport,
   }: {
-    hideActions?: boolean;
+    hideRunAction?: boolean;
     isSearchComposerOpen?: boolean;
     onOpenAutomaticRun?: () => void;
     onCancelPipeline: () => void;
+    onOpenManualImport: () => void;
   }) => (
     <div data-testid="header">
-      {!hideActions ? (
+      {!hideRunAction ? (
         <button type="button" onClick={onOpenAutomaticRun}>
           {isSearchComposerOpen ? "Close Search" : "Run Search"}
         </button>
       ) : null}
+      <button type="button" onClick={onOpenManualImport}>
+        Import job manually
+      </button>
       <button type="button" onClick={onCancelPipeline}>
         Cancel Pipeline
       </button>
@@ -440,8 +446,38 @@ vi.mock("./orchestrator/RunModeModal", () => ({
   ),
 }));
 
-vi.mock("../components", () => ({
-  ManualImportSheet: () => <div data-testid="manual-import" />,
+vi.mock("@client/components/ManualImportSheet", () => ({
+  ManualImportSheet: ({
+    open,
+    onOpenChange,
+    onImported,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onImported: (result: {
+      jobId: string;
+      source: "pasted_description";
+      sourceHost: string | null;
+    }) => void | Promise<void>;
+  }) =>
+    open ? (
+      <div data-testid="manual-import">
+        <button
+          type="button"
+          data-testid="complete-manual-import"
+          onClick={async () => {
+            await onImported({
+              jobId: "manual-job-1",
+              source: "pasted_description",
+              sourceHost: null,
+            });
+            onOpenChange(false);
+          }}
+        >
+          Complete manual import
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("../components/KeyboardShortcutDialog", () => ({
@@ -473,6 +509,10 @@ const openAutomaticRunComposer = () => {
   fireEvent.click(screen.getByRole("button", { name: /run search/i }));
 };
 
+const openManualImport = () => {
+  fireEvent.click(screen.getByRole("button", { name: /import job manually/i }));
+};
+
 describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -486,6 +526,7 @@ describe("OrchestratorPage", () => {
     mockPipelineSources = ["linkedin"];
     mockJobs = [jobFixture, job2, processingJob];
     mockSelectedJob = jobFixture;
+    mockLoadJobs = vi.fn().mockResolvedValue(undefined);
     mockAutomaticRunValues = {
       topN: 12,
       minSuitabilityScore: 55,
@@ -1073,6 +1114,35 @@ describe("OrchestratorPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens manual import from the header and navigates to the imported job", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openManualImport();
+
+    expect(screen.getByTestId("manual-import")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("complete-manual-import"));
+
+    await waitFor(() => {
+      expect(mockLoadJobs).toHaveBeenCalled();
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/jobs/ready/manual-job-1",
+      );
+    });
+  });
+
   it("shows the search composer instead of empty columns for brand-new workspaces", () => {
     mockJobs = [];
     mockSelectedJob = null;
@@ -1097,8 +1167,32 @@ describe("OrchestratorPage", () => {
     expect(
       screen.queryByRole("button", { name: /run search/i }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /import job manually/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("summary")).not.toBeInTheDocument();
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
+  });
+
+  it("opens manual import from the first-run search composer state", () => {
+    mockJobs = [];
+    mockSelectedJob = null;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openManualImport();
+
+    expect(screen.getByTestId("manual-import")).toBeInTheDocument();
   });
 
   it("stores multiple cities for JobSpy sources in automatic mode", async () => {
