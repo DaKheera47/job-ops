@@ -106,7 +106,7 @@ export default function PurposeOverrideCard({
       return;
     }
 
-    if (providerConfig.showApiKey && !apiKeyValue.trim() && !hasSavedKey) {
+    if (providerConfig.requiresApiKey && !apiKeyValue.trim() && !hasSavedKey) {
       setAvailableModels([]);
       setModelsError(null);
       setIsLoadingModels(false);
@@ -151,6 +151,7 @@ export default function PurposeOverrideCard({
     apiKeyValue,
     baseUrlValue,
     hasSavedKey,
+    providerConfig.requiresApiKey,
     providerConfig.showApiKey,
     providerConfig.showBaseUrl,
     purpose,
@@ -230,14 +231,20 @@ export default function PurposeOverrideCard({
 
       {hasProviderOverride && providerConfig.showApiKey ? (
         <SettingsInput
-          label="API key"
+          label={
+            providerConfig.requiresApiKey ? "API key" : "API key (optional)"
+          }
           inputProps={{
             name: `${purpose}.apiKey`,
             value: apiKeyValue,
             onChange: (event) => onApiKeyChange(purpose, event.target.value),
           }}
           type="password"
-          placeholder="Paste a purpose key"
+          placeholder={
+            providerConfig.requiresApiKey
+              ? "Paste a purpose key"
+              : "Optional bearer token"
+          }
           disabled={disabled}
           helper={renderKeyHelper(
             providerConfig.keyHelperText,

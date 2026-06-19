@@ -47,12 +47,14 @@ describe("settings utils", () => {
     expect(config.showBaseUrl).toBe(false);
   });
 
-  it("treats Ollama as a local provider without a required API key", () => {
+  it("treats Ollama as a local provider with an optional API key", () => {
     const config = getLlmProviderConfig("ollama");
 
-    expect(config.showApiKey).toBe(false);
+    expect(config.showApiKey).toBe(true);
     expect(config.requiresApiKey).toBe(false);
-    expect(config.keyHelperText).toBe("No API key required for Ollama");
+    expect(config.keyHelperText).toBe(
+      "Optional bearer token for Ollama-compatible endpoints that require auth",
+    );
   });
 
   it("explains Docker host URLs for Ollama without changing the placeholder", () => {
@@ -60,9 +62,7 @@ describe("settings utils", () => {
 
     expect(config.baseUrlPlaceholder).toBe("http://localhost:11434");
     expect(config.baseUrlHelper).toContain("http://localhost:11434");
-    expect(config.baseUrlHelper).toContain(
-      "http://host.docker.internal:11434",
-    );
+    expect(config.baseUrlHelper).toContain("http://host.docker.internal:11434");
     expect(config.baseUrlHelper).toContain("http://172.17.0.1:11434");
   });
 

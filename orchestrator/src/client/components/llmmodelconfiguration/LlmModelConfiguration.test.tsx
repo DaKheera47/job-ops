@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LlmModelConfiguration } from "./LlmModelConfiguration";
 
@@ -64,6 +63,7 @@ describe("LlmModelConfiguration", () => {
       />,
     );
 
+    expect(screen.getByLabelText("API key (optional)")).toBeInTheDocument();
     await waitFor(() => {
       expect(
         screen.getByText(

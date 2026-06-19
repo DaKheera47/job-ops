@@ -117,7 +117,7 @@ export function LlmModelConfiguration({
   const deferredApiKey = useDeferredValue(apiKey.value);
   const supportsModelSuggestions =
     supportsLlmModelSuggestions(selectedProvider);
-  const hasAvailableApiKey = showApiKey
+  const hasAvailableApiKey = providerConfig.requiresApiKey
     ? Boolean(deferredApiKey.trim() || apiKeyHint)
     : true;
   const providerDefaultModel = getDefaultModelForProvider(
@@ -199,6 +199,13 @@ export function LlmModelConfiguration({
 
   const formattedKeyHint = formatSecretHint(apiKeyHint ?? null);
   const hasSavedKey = Boolean(apiKeyHint);
+  const apiKeyLabel = providerConfig.requiresApiKey
+    ? mode === "compact"
+      ? "API key"
+      : "LLM API key"
+    : mode === "compact"
+      ? "API key (optional)"
+      : "LLM API key (optional)";
   const keyText = showApiKey ? formattedKeyHint : "Not required";
   const resolvedBaseUrl = baseUrl.value.trim() || savedBaseUrl || "-";
   const selectedDefaultModel = model.value.trim();
@@ -344,7 +351,7 @@ export function LlmModelConfiguration({
             ) : null}
             {showApiKey ? (
               <SettingsInput
-                label={mode === "compact" ? "API key" : "LLM API key"}
+                label={apiKeyLabel}
                 inputProps={{
                   name: "llmApiKey",
                   value: apiKey.value,
@@ -352,7 +359,11 @@ export function LlmModelConfiguration({
                 }}
                 type="password"
                 placeholder={
-                  mode === "compact" ? "Paste a new key" : "Enter new key"
+                  providerConfig.requiresApiKey
+                    ? mode === "compact"
+                      ? "Paste a new key"
+                      : "Enter new key"
+                    : "Optional bearer token"
                 }
                 disabled={disabled}
                 error={apiKey.error}

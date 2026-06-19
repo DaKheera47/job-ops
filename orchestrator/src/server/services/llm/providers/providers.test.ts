@@ -177,6 +177,19 @@ describe("provider adapters", () => {
     expect(ollamaStrategy.extractText(response)).toBe("ok");
   });
 
+  it("sends optional bearer auth for Ollama chat requests", () => {
+    const request = ollamaStrategy.buildRequest({
+      mode: "none",
+      baseUrl: "http://localhost:11434",
+      apiKey: "local-token",
+      model: "llama3:latest",
+      messages,
+      jsonSchema: schema,
+    });
+
+    expect(request.headers.Authorization).toBe("Bearer local-token");
+  });
+
   it("builds validation URLs for GLM base URLs and endpoints", () => {
     expect(
       glmStrategy.getValidationUrls({

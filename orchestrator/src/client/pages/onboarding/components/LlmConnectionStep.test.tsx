@@ -50,9 +50,9 @@ describe("LlmConnectionStep", () => {
       />,
     );
 
+    expect(screen.getByLabelText("API key (optional)")).toBeInTheDocument();
     expect(
-      screen.getByText("No API key is required for this provider."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("LLM API key is missing.")).not.toBeInTheDocument();
+      screen.queryByText("LLM API key is missing."),
+    ).not.toBeInTheDocument();
   });
 });
