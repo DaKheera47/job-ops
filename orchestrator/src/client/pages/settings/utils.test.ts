@@ -52,6 +52,9 @@ describe("settings utils", () => {
 
     expect(config.showApiKey).toBe(true);
     expect(config.requiresApiKey).toBe(false);
+    expect(config.providerHint).toBe(
+      "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
+    );
     expect(config.keyHelperText).toBe(
       "Optional bearer token for Ollama-compatible endpoints that require auth",
     );

@@ -74,7 +74,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
-  ollama: "Ollama typically runs locally and does not require an API key.",
+  ollama:
+    "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
   openai: "OpenAI uses the Responses API with structured outputs.",
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
