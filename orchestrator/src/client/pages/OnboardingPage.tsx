@@ -7,6 +7,7 @@ import type {
 } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Circle,
@@ -714,6 +715,8 @@ const LaunchOnboardingPage: React.FC = () => {
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
   const [actionStatus, setActionStatus] =
     useState<OnboardingStatusResponse | null>(null);
+  const [userSelectedPanel, setUserSelectedPanel] =
+    useState<OnboardingPanelId | null>(null);
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
   const launchStartedAtRef = useRef(Date.now());
   const codexAutoSaveAttemptedRef = useRef(false);
@@ -769,6 +772,15 @@ const LaunchOnboardingPage: React.FC = () => {
     if (onboardingComplete) return "first-run";
     return visiblePanels.includes("model") ? "model" : "resume";
   }, [onboardingComplete, onboardingNextRequirementId, visiblePanels]);
+  const selectOnboardingPanel = useCallback(
+    (panel: OnboardingPanelId) => {
+      if (!visiblePanels.includes(panel)) return;
+      if (panel === "first-run" && !onboardingComplete) return;
+      setUserSelectedPanel(panel);
+      setActivePanel(panel);
+    },
+    [onboardingComplete, visiblePanels],
+  );
 
   const modelRequirement = useMemo(
     () => getRequirement(visibleRequirements, "model"),
@@ -874,7 +886,11 @@ const LaunchOnboardingPage: React.FC = () => {
   useEffect(() => {
     if (isAppStatusLoading) return;
     if (!visiblePanels.includes(activePanel)) {
+      setUserSelectedPanel(null);
       setActivePanel(fallbackPanel);
+      return;
+    }
+    if (userSelectedPanel === activePanel) {
       return;
     }
     if (
@@ -893,6 +909,7 @@ const LaunchOnboardingPage: React.FC = () => {
     isAppStatusLoading,
     onboardingComplete,
     onboardingNextRequirementId,
+    userSelectedPanel,
     visiblePanels,
   ]);
 
@@ -923,6 +940,7 @@ const LaunchOnboardingPage: React.FC = () => {
 
   const applyReturnedStatus = useCallback(
     (status: OnboardingStatusResponse) => {
+      setUserSelectedPanel(null);
       setActionStatus(status);
       if (status.complete) {
         setActivePanel("first-run");
@@ -1012,6 +1030,11 @@ const LaunchOnboardingPage: React.FC = () => {
     isHostedMode && activePanel === "resume"
       ? "upload_resume"
       : (activeRequirement?.primaryAction ?? "none");
+  const previousPanel = (() => {
+    const currentIndex = visiblePanels.indexOf(activePanel);
+    if (currentIndex <= 0) return null;
+    return visiblePanels[currentIndex - 1] ?? null;
+  })();
 
   const submitActivePanel = async () => {
     if (activePanel === "account") {
@@ -1069,9 +1092,7 @@ const LaunchOnboardingPage: React.FC = () => {
         <OnboardingCoach
           activePanel={activePanel}
           allowReactiveResume={allowReactiveResumeSetup}
-          onPanelChange={(panel) => {
-            if (visiblePanels.includes(panel)) setActivePanel(panel);
-          }}
+          onPanelChange={selectOnboardingPanel}
           replayNonce={coachReplayNonce}
           showAccount={showAccountStep}
           showModel={showModelStep}
@@ -1097,7 +1118,7 @@ const LaunchOnboardingPage: React.FC = () => {
                 activePanel={activePanel}
                 complete={onboardingComplete}
                 nextRequirementId={onboardingNextRequirementId}
-                onPanelSelect={setActivePanel}
+                onPanelSelect={selectOnboardingPanel}
                 requirements={visibleRequirements}
                 showAccount={showAccountStep}
                 showModel={showModelStep}
@@ -1338,15 +1359,28 @@ const LaunchOnboardingPage: React.FC = () => {
                 </CardContent>
 
                 <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void onboarding.refetch()}
-                    disabled={flow.isBusy || onboarding.checking}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Recheck
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void onboarding.refetch()}
+                      disabled={flow.isBusy || onboarding.checking}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Recheck
+                    </Button>
+                    {previousPanel ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => selectOnboardingPanel(previousPanel)}
+                        disabled={flow.isBusy || onboarding.checking}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Previous step
+                      </Button>
+                    ) : null}
+                  </div>
 
                   <Button
                     type="submit"
