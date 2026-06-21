@@ -6,6 +6,7 @@ import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
   APPLICATION_TASK_TYPES,
+  HOSTED_USAGE_ACTIONS,
   INTERVIEW_OUTCOMES,
   INTERVIEW_TYPES,
   JOB_CHAT_MESSAGE_ROLES,
@@ -80,6 +81,80 @@ export const tenantMemberships = sqliteTable(
       table.tenantId,
     ),
     tenantIndex: index("idx_tenant_memberships_tenant_id").on(table.tenantId),
+  }),
+);
+
+export const HOSTED_USAGE_RESERVATION_STATUSES = [
+  "reserved",
+  "settled",
+  "refunded",
+] as const;
+
+export const hostedUsageCounters = sqliteTable(
+  "hosted_usage_counters",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    period: text("period").notNull(),
+    action: text("action", { enum: HOSTED_USAGE_ACTIONS }).notNull(),
+    usedUnits: integer("used_units").notNull().default(0),
+    reservedUnits: integer("reserved_units").notNull().default(0),
+    limitUnits: integer("limit_units").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserPeriodActionUnique: uniqueIndex(
+      "idx_hosted_usage_counters_tenant_user_period_action_unique",
+    ).on(table.tenantId, table.userId, table.period, table.action),
+    tenantUserPeriodIndex: index(
+      "idx_hosted_usage_counters_tenant_user_period",
+    ).on(table.tenantId, table.userId, table.period),
+  }),
+);
+
+export const hostedUsageReservations = sqliteTable(
+  "hosted_usage_reservations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    period: text("period").notNull(),
+    action: text("action", { enum: HOSTED_USAGE_ACTIONS }).notNull(),
+    reservedUnits: integer("reserved_units").notNull(),
+    usedUnits: integer("used_units").notNull().default(0),
+    refundedUnits: integer("refunded_units").notNull().default(0),
+    status: text("status", {
+      enum: HOSTED_USAGE_RESERVATION_STATUSES,
+    })
+      .notNull()
+      .default("reserved"),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserPeriodIndex: index(
+      "idx_hosted_usage_reservations_tenant_user_period",
+    ).on(table.tenantId, table.userId, table.period),
+    tenantUserPeriodActionIdempotencyUnique: uniqueIndex(
+      "idx_hosted_usage_reservations_idempotency_unique",
+    ).on(
+      table.tenantId,
+      table.userId,
+      table.period,
+      table.action,
+      table.idempotencyKey,
+    ),
   }),
 );
 
@@ -970,6 +1045,12 @@ export type TenantRow = typeof tenants.$inferSelect;
 export type NewTenantRow = typeof tenants.$inferInsert;
 export type TenantMembershipRow = typeof tenantMemberships.$inferSelect;
 export type NewTenantMembershipRow = typeof tenantMemberships.$inferInsert;
+export type HostedUsageCounterRow = typeof hostedUsageCounters.$inferSelect;
+export type NewHostedUsageCounterRow = typeof hostedUsageCounters.$inferInsert;
+export type HostedUsageReservationRow =
+  typeof hostedUsageReservations.$inferSelect;
+export type NewHostedUsageReservationRow =
+  typeof hostedUsageReservations.$inferInsert;
 export type JobRow = typeof jobs.$inferSelect;
 export type NewJobRow = typeof jobs.$inferInsert;
 export type StageEventRow = typeof stageEvents.$inferSelect;
