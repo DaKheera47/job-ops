@@ -89,14 +89,12 @@ export function useOrchestratorUiState({
   const isAnyModalOpen =
     isSearchComposerVisible ||
     isCommandBarOpen ||
-    isFiltersOpen ||
     isHelpDialogOpen ||
     isDetailDrawerOpen ||
     navOpen;
 
   const isAnyModalOpenExcludingCommandBar =
     isSearchComposerVisible ||
-    isFiltersOpen ||
     isHelpDialogOpen ||
     isDetailDrawerOpen ||
     navOpen;
@@ -104,7 +102,6 @@ export function useOrchestratorUiState({
   const isAnyModalOpenExcludingHelp =
     isSearchComposerVisible ||
     isCommandBarOpen ||
-    isFiltersOpen ||
     isDetailDrawerOpen ||
     navOpen;
 
