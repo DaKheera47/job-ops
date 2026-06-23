@@ -69,6 +69,7 @@ export type TypstTheme = (typeof TYPST_THEME_VALUES)[number];
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
   "manual",
   "match-resume",
+  "match-job-description",
 ] as const;
 
 export type ChatStyleLanguageMode =

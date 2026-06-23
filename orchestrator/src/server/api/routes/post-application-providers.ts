@@ -3,7 +3,7 @@ import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { executePostApplicationProviderAction } from "@server/services/post-application/providers";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import {
   POST_APPLICATION_PROVIDER_ACTIONS,
   POST_APPLICATION_PROVIDERS,
@@ -47,6 +47,7 @@ const oauthStateStore = new Map<
   {
     accountKey: string;
     tenantId: string;
+    userId: string | null;
     redirectUri: string;
     createdAt: number;
   }
@@ -102,6 +103,7 @@ function setOauthState(
   entry: {
     accountKey: string;
     tenantId: string;
+    userId: string | null;
     redirectUri: string;
     createdAt: number;
   },
@@ -236,10 +238,12 @@ postApplicationProvidersRouter.get(
       const accountKey = parsed.accountKey ?? "default";
       const oauth = resolveGmailOauthConfig(req);
       const state = randomUUID();
+      const scope = getPrivateDataScope();
 
       setOauthState(state, {
         accountKey,
-        tenantId: getActiveTenantId(),
+        tenantId: scope.tenantId,
+        userId: scope.enforceUserIsolation ? scope.userId : null,
         redirectUri: oauth.redirectUri,
         createdAt: Date.now(),
       });
@@ -289,8 +293,13 @@ postApplicationProvidersRouter.post(
         fail(res, badRequest("OAuth state/account mismatch."));
         return;
       }
-      if (oauthState.tenantId !== getActiveTenantId()) {
+      const scope = getPrivateDataScope();
+      if (oauthState.tenantId !== scope.tenantId) {
         fail(res, badRequest("OAuth state/workspace mismatch."));
+        return;
+      }
+      if (scope.enforceUserIsolation && oauthState.userId !== scope.userId) {
+        fail(res, badRequest("OAuth state/user mismatch."));
         return;
       }
 

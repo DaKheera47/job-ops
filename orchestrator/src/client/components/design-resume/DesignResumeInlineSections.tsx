@@ -1,5 +1,8 @@
+import { getDesignResumeAssetContentBlob } from "@client/api/settings-profile";
+import { createId } from "@paralleldrive/cuid2";
 import type { DesignResumeJson } from "@shared/types";
 import { FileImage, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +95,41 @@ export function PictureSection({
   onUpdatePicture,
 }: PictureSectionProps) {
   const editDisabled = !pictureEnabled;
+  const pictureUrl = toText(picture.url);
+  const [previewUrl, setPreviewUrl] = useState(pictureUrl);
+
+  useEffect(() => {
+    if (!pictureUrl) {
+      setPreviewUrl("");
+      return;
+    }
+
+    if (!pictureUrl.startsWith("/api/design-resume/assets/")) {
+      setPreviewUrl(pictureUrl);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    getDesignResumeAssetContentBlob(pictureUrl)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewUrl(pictureUrl);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [pictureUrl]);
 
   return (
     <div className="grid gap-3">
@@ -109,7 +147,7 @@ export function PictureSection({
           className={`${insetPanelClassName} flex items-center gap-3 border-dashed p-3`}
         >
           <img
-            src={toText(picture.url)}
+            src={previewUrl}
             alt="Resume Studio profile"
             className="h-16 w-16 rounded-lg border border-border/60 object-cover"
           />
@@ -392,7 +430,7 @@ export function BasicsCustomFieldsSection({
           onChange([
             ...customFields,
             {
-              id: crypto.randomUUID(),
+              id: createId(),
               title: "",
               icon: "",
               text: "",

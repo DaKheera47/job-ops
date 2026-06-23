@@ -36,6 +36,7 @@ function resolveLocationIntentSnapshot(args: {
 export function buildRequestedConfigSnapshot(
   config: PipelineConfig,
 ): PipelineRunRequestedConfig {
+  const watchlistFilter = config.watchlistSelectedSourceIds;
   return {
     topN: config.topN,
     minSuitabilityScore: config.minSuitabilityScore,
@@ -44,6 +45,10 @@ export function buildRequestedConfigSnapshot(
     enableScoring: config.enableScoring !== false,
     enableImporting: config.enableImporting !== false,
     enableAutoTailoring: config.enableAutoTailoring !== false,
+    watchlistSelectedSourceIds:
+      watchlistFilter === undefined || watchlistFilter === null
+        ? null
+        : [...watchlistFilter],
   };
 }
 

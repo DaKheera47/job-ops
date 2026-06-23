@@ -1,7 +1,8 @@
-import { toAppError, unauthorized } from "@infra/errors";
+import { forbidden, toAppError, unauthorized } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import { runPipeline } from "@server/pipeline/index";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
@@ -31,6 +32,13 @@ webhookRouter.post("/trigger", async (req: Request, res: Response) => {
           runId: simulated.runId,
         },
         { simulated: true },
+      );
+    }
+
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      return fail(
+        res,
+        forbidden("Webhook pipeline trigger is unavailable in hosted mode."),
       );
     }
 

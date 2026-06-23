@@ -285,6 +285,22 @@ function classifyValidation(
   return "invalid";
 }
 
+function getModelValidationMessage(args: {
+  validation: ValidationResponse;
+  provider: LlmProviderId | undefined;
+  providerLabel: string;
+}): string {
+  const baseMessage =
+    args.validation.message ||
+    `Job Ops could not verify ${args.providerLabel}. Check the connection and try again.`;
+
+  if (args.provider === "ollama" && isUnavailable(args.validation)) {
+    return `${baseMessage} Local Ollama models can be slow or unavailable on smaller hardware. Try a smaller or faster model, make sure Ollama is reachable from the Job Ops container, add more CPU/GPU/RAM, or switch provider from the model step.`;
+  }
+
+  return baseMessage;
+}
+
 function buildRequirement(args: {
   id: OnboardingRequirement["id"];
   status: OnboardingRequirementStatus;
@@ -304,15 +320,31 @@ function buildRequirement(args: {
 }
 
 async function buildModelRequirement(): Promise<OnboardingRequirement> {
-  const [provider, baseUrl] = await Promise.all([
+  const [provider, baseUrl, model] = await Promise.all([
     getSetting("llmProvider"),
     getSetting("llmBaseUrl"),
+    getSetting("model"),
   ]);
   const validation = await validateLlm({});
   const normalizedProvider = normalizeLlmProviderValue(provider);
   const providerLabel = normalizedProvider ?? "selected provider";
 
   if (validation.valid) {
+    if (normalizedProvider === "ollama" && !model?.trim()) {
+      return buildRequirement({
+        id: "model",
+        status: "needs_action",
+        title: "Choose an Ollama model",
+        message:
+          "Ollama is connected. Choose one of the models installed in Ollama before continuing.",
+        primaryAction: "connect_model",
+        details: {
+          provider: normalizedProvider,
+          baseUrl: baseUrl?.trim() || null,
+        },
+      });
+    }
+
     return buildRequirement({
       id: "model",
       status: "ready",
@@ -337,9 +369,11 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
         : status === "invalid"
           ? "Model connection needs attention"
           : "Connect your LLM",
-    message:
-      validation.message ||
-      `Job Ops could not verify ${providerLabel}. Check the connection and try again.`,
+    message: getModelValidationMessage({
+      validation,
+      provider: normalizedProvider,
+      providerLabel,
+    }),
     primaryAction:
       status === "checking_unavailable" ? "recheck" : "connect_model",
     details: {
@@ -543,6 +577,27 @@ export async function saveOnboardingModelAction(
   input: OnboardingModelActionInput,
 ): Promise<OnboardingStatusResponse> {
   const provider = normalizeLlmProviderValue(input.provider);
+  const [storedProvider, storedModel] = await Promise.all([
+    getSetting("llmProvider"),
+    getSetting("model"),
+  ]);
+  const storedNormalizedProvider = normalizeLlmProviderValue(storedProvider);
+  const hasInputModel = Boolean(input.model?.trim());
+  const hasSavedOllamaModel =
+    provider === "ollama" &&
+    storedNormalizedProvider === "ollama" &&
+    Boolean(storedModel?.trim());
+
+  if (provider === "ollama" && !hasInputModel && !hasSavedOllamaModel) {
+    throw unprocessableEntity(
+      "Choose an Ollama model before continuing. If no models appear, pull a model in Ollama and try again.",
+      {
+        provider,
+        status: null,
+      },
+    );
+  }
+
   const validation = await validateLlm({
     provider,
     baseUrl: input.baseUrl,
@@ -559,7 +614,11 @@ export async function saveOnboardingModelAction(
 
   if (!validation.valid) {
     throw unprocessableEntity(
-      validation.message || "Model connection could not be verified.",
+      getModelValidationMessage({
+        validation,
+        provider,
+        providerLabel: provider ?? "selected provider",
+      }),
       {
         provider: provider ?? null,
         status: validation.status ?? null,

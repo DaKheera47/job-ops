@@ -20,7 +20,7 @@ type SearchTermSuggestionModelResponse = {
   terms: string[];
 };
 
-type SearchTermContext = {
+export type SearchTermContext = {
   headline: string;
   summary: string;
   experiencePositions: string[];
@@ -65,7 +65,9 @@ function dedupe(values: string[], maxItems = MAX_SEARCH_TERMS): string[] {
   });
 }
 
-function collectContext(profile: ResumeProfile): SearchTermContext {
+export function collectSearchTermContext(
+  profile: ResumeProfile,
+): SearchTermContext {
   const experienceItems =
     profile.sections?.experience?.items?.filter((item) => isVisible(item)) ??
     [];
@@ -117,7 +119,7 @@ function hasUsableContext(context: SearchTermContext): boolean {
 export function buildFallbackSearchTerms(
   profile: ResumeProfile,
 ): SearchTermsSuggestionResponse {
-  const context = collectContext(profile);
+  const context = collectSearchTermContext(profile);
 
   return {
     terms: dedupe([
@@ -167,7 +169,7 @@ export async function suggestOnboardingSearchTerms(): Promise<SearchTermsSuggest
     throw conflict("Resume must be configured before suggesting search terms.");
   }
 
-  const context = collectContext(profile);
+  const context = collectSearchTermContext(profile);
   if (!hasUsableContext(context)) {
     logger.warn(
       "Onboarding search-term suggestion skipped because resume context was empty",

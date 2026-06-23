@@ -6,9 +6,16 @@ import type {
 } from "@shared/types";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { postApplicationIntegrations } = schema;
+
+function integrationsScopeFilter() {
+  return privateDataScopeFilter(postApplicationIntegrations);
+}
 
 type IntegrationCredentials = Record<string, unknown>;
 
@@ -57,7 +64,6 @@ export async function getPostApplicationIntegration(
   provider: PostApplicationProvider,
   accountKey: string,
 ): Promise<PostApplicationIntegration | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(postApplicationIntegrations)
@@ -65,7 +71,7 @@ export async function getPostApplicationIntegration(
       and(
         eq(postApplicationIntegrations.provider, provider),
         eq(postApplicationIntegrations.accountKey, accountKey),
-        eq(postApplicationIntegrations.tenantId, tenantId),
+        integrationsScopeFilter(),
       ),
     );
 
@@ -77,7 +83,7 @@ export async function upsertConnectedPostApplicationIntegration(
 ): Promise<PostApplicationIntegration> {
   const nowEpoch = Date.now();
   const nowIso = new Date(nowEpoch).toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
   const existing = await getPostApplicationIntegration(
     input.provider,
     input.accountKey,
@@ -111,7 +117,8 @@ export async function upsertConnectedPostApplicationIntegration(
   const id = randomUUID();
   await db.insert(postApplicationIntegrations).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     provider: input.provider,
     accountKey: input.accountKey,
     displayName: input.displayName ?? null,
@@ -151,7 +158,12 @@ export async function disconnectPostApplicationIntegration(
       lastError: null,
       updatedAt: nowIso,
     })
-    .where(eq(postApplicationIntegrations.id, existing.id));
+    .where(
+      and(
+        integrationsScopeFilter(),
+        eq(postApplicationIntegrations.id, existing.id),
+      ),
+    );
 
   return getPostApplicationIntegration(provider, accountKey);
 }
@@ -179,7 +191,12 @@ export async function updatePostApplicationIntegrationSyncState(
         : {}),
       updatedAt: nowIso,
     })
-    .where(eq(postApplicationIntegrations.id, existing.id));
+    .where(
+      and(
+        integrationsScopeFilter(),
+        eq(postApplicationIntegrations.id, existing.id),
+      ),
+    );
 
   return getPostApplicationIntegration(input.provider, input.accountKey);
 }

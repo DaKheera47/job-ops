@@ -2,9 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { JobDocument } from "@shared/types";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/index";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { jobDocuments } = schema;
+
+function documentsScopeFilter() {
+  return privateDataScopeFilter(jobDocuments);
+}
 
 type CreateJobDocumentInput = {
   jobId: string;
@@ -34,13 +41,10 @@ function mapRowToJobDocument(
 }
 
 export async function listJobDocuments(jobId: string): Promise<JobDocument[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobDocuments)
-    .where(
-      and(eq(jobDocuments.tenantId, tenantId), eq(jobDocuments.jobId, jobId)),
-    )
+    .where(and(documentsScopeFilter(), eq(jobDocuments.jobId, jobId)))
     .orderBy(desc(jobDocuments.createdAt), desc(jobDocuments.id));
 
   return rows
@@ -51,13 +55,14 @@ export async function listJobDocuments(jobId: string): Promise<JobDocument[]> {
 export async function createJobDocument(
   input: CreateJobDocumentInput,
 ): Promise<JobDocument> {
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
   const now = new Date().toISOString();
   const id = randomUUID();
 
   await db.insert(jobDocuments).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     jobId: input.jobId,
     fileName: input.fileName,
     mediaType: input.mediaType,
@@ -79,13 +84,12 @@ export async function getJobDocumentForJob(
   jobId: string,
   documentId: string,
 ): Promise<JobDocumentWithStorage | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobDocuments)
     .where(
       and(
-        eq(jobDocuments.tenantId, tenantId),
+        documentsScopeFilter(),
         eq(jobDocuments.jobId, jobId),
         eq(jobDocuments.id, documentId),
       ),
@@ -100,13 +104,12 @@ export async function listJobDocumentsByIds(
 ): Promise<JobDocumentWithStorage[]> {
   if (documentIds.length === 0) return [];
 
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobDocuments)
     .where(
       and(
-        eq(jobDocuments.tenantId, tenantId),
+        documentsScopeFilter(),
         eq(jobDocuments.jobId, jobId),
         inArray(jobDocuments.id, [...documentIds]),
       ),
@@ -122,12 +125,11 @@ export async function deleteJobDocumentForJob(
   const document = await getJobDocumentForJob(jobId, documentId);
   if (!document) return null;
 
-  const tenantId = getActiveTenantId();
   await db
     .delete(jobDocuments)
     .where(
       and(
-        eq(jobDocuments.tenantId, tenantId),
+        documentsScopeFilter(),
         eq(jobDocuments.jobId, jobId),
         eq(jobDocuments.id, documentId),
       ),

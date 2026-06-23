@@ -1,6 +1,7 @@
 import { badRequest, conflict, notFound, toAppError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { getRequestId } from "@server/infra/request-context";
 import { enqueueAutoPdfRegenerationForReadyJobs } from "@server/services/auto-pdf-regeneration";
 import {
@@ -421,7 +422,7 @@ designResumeRouter.get(
     }
 
     const { asset, content } = await readDesignResumeAssetContent(assetId, {
-      bypassTenantScope: true,
+      bypassTenantScope: getJobOpsAppConfig().appMode !== "hosted",
     });
     res.setHeader("Content-Type", asset.mimeType);
     res.setHeader("Cache-Control", "private, max-age=60");

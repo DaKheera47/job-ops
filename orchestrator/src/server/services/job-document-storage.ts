@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { badRequest } from "@infra/errors";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import { decodeBase64Upload } from "./upload-base64";
 
 const MAX_JOB_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -19,6 +20,21 @@ function getTenantJobDocumentsDir(
   jobId: string,
   tenantId = getActiveTenantId(),
 ): string {
+  const scope = getPrivateDataScope();
+  if (
+    scope.enforceUserIsolation &&
+    scope.userId &&
+    tenantId === scope.tenantId
+  ) {
+    return join(
+      getDataDir(),
+      "job-documents",
+      tenantId,
+      "users",
+      scope.userId,
+      jobId,
+    );
+  }
   return join(getDataDir(), "job-documents", tenantId, jobId);
 }
 

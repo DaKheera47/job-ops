@@ -25,7 +25,10 @@ const { codexCallJsonMock, MockCodexClientClass } = vi.hoisted(() => {
 });
 
 vi.mock("@server/services/modelSelection", () => modelSelection);
-vi.mock("./index", () => designResumeService);
+vi.mock("./index", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./index")>()),
+  ...designResumeService,
+}));
 vi.mock("@server/infra/request-context", () => requestContext);
 vi.mock("@server/services/llm/codex/client", () => ({
   CodexClient: MockCodexClientClass,
@@ -167,6 +170,57 @@ describe("importDesignResumeFromFile", () => {
     );
   });
 
+  it("generates missing project ids when importing Reactive Resume JSON", async () => {
+    const resumeJson = buildDefaultReactiveResumeDocument() as DesignResumeJson;
+    resumeJson.sections.projects.items = [
+      {
+        id: "",
+        hidden: false,
+        name: "Blank ID",
+        period: "2024",
+        website: { url: "", label: "" },
+        description: "Blank ID project",
+        options: { showLinkInTitle: false },
+      },
+      {
+        id: "   ",
+        hidden: false,
+        name: "Whitespace ID",
+        period: "2025",
+        website: { url: "", label: "" },
+        description: "Whitespace ID project",
+        options: { showLinkInTitle: false },
+      },
+      {
+        id: "project-keep",
+        hidden: false,
+        name: "Existing ID",
+        period: "2026",
+        website: { url: "", label: "" },
+        description: "Existing ID project",
+        options: { showLinkInTitle: false },
+      },
+    ];
+
+    const result = await importDesignResumeFromFile({
+      fileName: "resume.json",
+      mediaType: "application/json",
+      dataBase64: Buffer.from(JSON.stringify(resumeJson), "utf8").toString(
+        "base64",
+      ),
+    });
+
+    const projectIds = result.resumeJson.sections.projects.items.map(
+      (project) => project.id,
+    );
+
+    expect(projectIds[0]).toEqual(expect.any(String));
+    expect(projectIds[0]?.trim()).not.toBe("");
+    expect(projectIds[1]).toEqual(expect.any(String));
+    expect(projectIds[1]?.trim()).not.toBe("");
+    expect(projectIds[2]).toBe("project-keep");
+  });
+
   it("rejects non Reactive Resume JSON files", async () => {
     await expect(
       importDesignResumeFromFile({
@@ -257,6 +311,70 @@ describe("importDesignResumeFromFile", () => {
       hidden: false,
     });
     expect(result.title).toBe("Taylor Resume");
+  });
+
+  it("generates missing project ids when importing AI-extracted resume files", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: `{
+  "basics": { "name": "Taylor Quinn" },
+  "sections": {
+    "projects": {
+      "items": [
+        {
+          "id": "",
+          "name": "Blank ID",
+          "period": "2024",
+          "description": "Blank ID project"
+        },
+        {
+          "id": "   ",
+          "name": "Whitespace ID",
+          "period": "2025",
+          "description": "Whitespace ID project"
+        },
+        {
+          "name": "Missing ID",
+          "period": "2026",
+          "description": "Missing ID project"
+        },
+        {
+          "id": "project-keep",
+          "name": "Existing ID",
+          "period": "2027",
+          "description": "Existing ID project"
+        }
+      ]
+    }
+  }
+}`,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const result = await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    const projectIds = result.resumeJson.sections.projects.items.map(
+      (project) => project.id,
+    );
+
+    expect(projectIds).toHaveLength(4);
+    expect(projectIds[0]).toEqual(expect.any(String));
+    expect(projectIds[0]?.trim()).not.toBe("");
+    expect(projectIds[1]).toEqual(expect.any(String));
+    expect(projectIds[1]?.trim()).not.toBe("");
+    expect(projectIds[2]).toEqual(expect.any(String));
+    expect(projectIds[2]?.trim()).not.toBe("");
+    expect(projectIds[3]).toBe("project-keep");
   });
 
   it("extracts DOCX text locally before sending it to Gemini", async () => {

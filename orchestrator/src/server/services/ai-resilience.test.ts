@@ -5,10 +5,32 @@ import { pickProjectIdsForJob } from "./projectSelection";
 import { scoreJobSuitability } from "./scorer";
 
 // --- Mocks ---
-vi.mock("../repositories/settings", () => ({
+const settingsMocks = vi.hoisted(() => ({
   getSetting: vi.fn().mockResolvedValue(null),
   getAllSettings: vi.fn().mockResolvedValue({}),
+  getEffectiveSettings: vi.fn(),
 }));
+
+vi.mock("../repositories/settings", () => settingsMocks);
+vi.mock("@server/repositories/settings", () => settingsMocks);
+vi.mock("@server/services/settings", () => ({
+  getEffectiveSettings: settingsMocks.getEffectiveSettings,
+}));
+
+function effectiveSettings(raw: Record<string, unknown>) {
+  return {
+    model: { value: raw.model ?? "gpt-4o-mini" },
+    llmProvider: { value: raw.llmProvider ?? "openrouter" },
+    llmBaseUrl: { value: raw.llmBaseUrl ?? null },
+    llmPurposeOverrides: { value: {} },
+    modelScorer: { value: null },
+    modelProjectSelection: { value: null },
+    scoringInstructions: { value: "" },
+    scoringPromptTemplate: { value: null },
+    penalizeMissingSalary: { value: false },
+    missingSalaryPenalty: { value: 0 },
+  };
+}
 
 // We need to mock 'fetch' globally for these tests
 const globalFetch = global.fetch;
@@ -35,6 +57,9 @@ describe("AI Service Resilience", () => {
       llmProvider: "openrouter",
       llmApiKey: "mock-key",
     });
+    settingsMocks.getEffectiveSettings.mockImplementation(async () =>
+      effectiveSettings(await settingsMocks.getAllSettings()),
+    );
   });
 
   afterEach(() => {

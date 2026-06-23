@@ -110,12 +110,14 @@ export function LlmModelConfiguration({
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
   const isGeminiCliProvider =
     providerConfig.normalizedProvider === "gemini_cli";
+  const requiresExplicitDefaultModel =
+    providerConfig.normalizedProvider === "ollama";
   const deferredProvider = useDeferredValue(selectedProvider);
   const deferredBaseUrl = useDeferredValue(baseUrl.value);
   const deferredApiKey = useDeferredValue(apiKey.value);
   const supportsModelSuggestions =
     supportsLlmModelSuggestions(selectedProvider);
-  const hasAvailableApiKey = showApiKey
+  const hasAvailableApiKey = providerConfig.requiresApiKey
     ? Boolean(deferredApiKey.trim() || apiKeyHint)
     : true;
   const providerDefaultModel = getDefaultModelForProvider(
@@ -197,6 +199,13 @@ export function LlmModelConfiguration({
 
   const formattedKeyHint = formatSecretHint(apiKeyHint ?? null);
   const hasSavedKey = Boolean(apiKeyHint);
+  const apiKeyLabel = providerConfig.requiresApiKey
+    ? mode === "compact"
+      ? "API key"
+      : "LLM API key"
+    : mode === "compact"
+      ? "API key (optional)"
+      : "LLM API key (optional)";
   const keyText = showApiKey ? formattedKeyHint : "Not required";
   const resolvedBaseUrl = baseUrl.value.trim() || savedBaseUrl || "-";
   const selectedDefaultModel = model.value.trim();
@@ -219,6 +228,8 @@ export function LlmModelConfiguration({
       modelsError
     ) : availableModels.length > 0 ? (
       "Choose from the available text-generation models."
+    ) : requiresExplicitDefaultModel ? (
+      "No Ollama models were returned. Pull a model in Ollama, then choose it here before continuing."
     ) : (
       "No text-generation models were returned."
     )
@@ -241,7 +252,9 @@ export function LlmModelConfiguration({
   );
   const defaultModelOptions = buildModelOptions({
     models: availableModels,
-    emptyLabel: `Use ${providerConfig.label} default`,
+    emptyLabel: requiresExplicitDefaultModel
+      ? `Select a ${providerConfig.label} model`
+      : `Use ${providerConfig.label} default`,
     emptyValue: "",
     fallbackValue: model.value.trim(),
   });
@@ -338,7 +351,7 @@ export function LlmModelConfiguration({
             ) : null}
             {showApiKey ? (
               <SettingsInput
-                label={mode === "compact" ? "API key" : "LLM API key"}
+                label={apiKeyLabel}
                 inputProps={{
                   name: "llmApiKey",
                   value: apiKey.value,
@@ -346,7 +359,11 @@ export function LlmModelConfiguration({
                 }}
                 type="password"
                 placeholder={
-                  mode === "compact" ? "Paste a new key" : "Enter new key"
+                  providerConfig.requiresApiKey
+                    ? mode === "compact"
+                      ? "Paste a new key"
+                      : "Enter new key"
+                    : "Optional bearer token"
                 }
                 disabled={disabled}
                 error={apiKey.error}

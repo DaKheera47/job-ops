@@ -99,6 +99,16 @@ describe("updateSettingsSchema", () => {
       chatStyleLanguageMode: null,
       chatStyleManualLanguage: null,
     });
+
+    expect(
+      updateSettingsSchema.parse({
+        chatStyleLanguageMode: "match-job-description",
+        chatStyleManualLanguage: null,
+      }),
+    ).toEqual({
+      chatStyleLanguageMode: "match-job-description",
+      chatStyleManualLanguage: null,
+    });
   });
 
   it("rejects unsupported language mode and manual language values", () => {

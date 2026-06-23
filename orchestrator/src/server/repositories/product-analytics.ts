@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { db, schema } from "@server/db";
+import {
+  getPrivateDataScope,
+  isHostedUserIsolationEnabled,
+  privateDataScopeFilter,
+} from "@server/tenancy/private-scope";
+import type { SQL } from "drizzle-orm";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 const {
   analyticsInstallState,
@@ -48,6 +55,10 @@ const INTERVIEW_STAGES = [
 
 type InstallState = typeof analyticsInstallState.$inferSelect;
 type MilestoneRow = typeof analyticsMilestones.$inferSelect;
+type UserScopedAnalyticsTable = {
+  tenantId: AnySQLiteColumn;
+  userId: AnySQLiteColumn;
+};
 
 type Primitive = string | number | boolean | null;
 
@@ -60,6 +71,7 @@ export type HistoricalServerEventReplayCandidate = {
 };
 
 const RAW_EVENT_REPLAY_CLAIM_STALE_MS = 10 * 60 * 1000;
+const HOSTED_ANALYTICS_SCOPE_SEPARATOR = "::";
 const HISTORICAL_REPLAY_EVENT_RANK: Record<string, number> = {
   jobs_pipeline_run_started: 0,
   application_marked_applied: 1,
@@ -71,6 +83,52 @@ const HISTORICAL_REPLAY_EVENT_RANK: Record<string, number> = {
   tracking_email_matched: 7,
   tracer_human_click_recorded: 8,
 };
+
+function getAnalyticsInstallStateId(): string {
+  if (!isHostedUserIsolationEnabled()) return ANALYTICS_INSTALL_STATE_ID;
+  const scope = getPrivateDataScope();
+  return `${scope.tenantId}${HOSTED_ANALYTICS_SCOPE_SEPARATOR}${scope.userId}`;
+}
+
+function analyticsPrivateDataFilter(table: UserScopedAnalyticsTable): SQL {
+  return isHostedUserIsolationEnabled()
+    ? privateDataScopeFilter(table)
+    : sql`1 = 1`;
+}
+
+function toScopedActivationMilestone(milestone: ActivationMilestone): string {
+  const stateId = getAnalyticsInstallStateId();
+  if (stateId === ANALYTICS_INSTALL_STATE_ID) return milestone;
+  return `${stateId}${HOSTED_ANALYTICS_SCOPE_SEPARATOR}${milestone}`;
+}
+
+function toScopedActivationMilestones(): string[] {
+  return ACTIVATION_MILESTONES.map((milestone) =>
+    toScopedActivationMilestone(milestone),
+  );
+}
+
+function fromScopedActivationMilestone(milestone: string): string {
+  const stateId = getAnalyticsInstallStateId();
+  if (stateId === ANALYTICS_INSTALL_STATE_ID) return milestone;
+  const prefix = `${stateId}${HOSTED_ANALYTICS_SCOPE_SEPARATOR}`;
+  return milestone.startsWith(prefix)
+    ? milestone.slice(prefix.length)
+    : milestone;
+}
+
+function mapMilestoneRow(row: MilestoneRow): MilestoneRow {
+  return {
+    ...row,
+    milestone: fromScopedActivationMilestone(row.milestone),
+  };
+}
+
+function toScopedServerEventKey(eventKey: string): string {
+  const stateId = getAnalyticsInstallStateId();
+  if (stateId === ANALYTICS_INSTALL_STATE_ID) return eventKey;
+  return `${stateId}${HOSTED_ANALYTICS_SCOPE_SEPARATOR}${eventKey}`;
+}
 
 function toEpochMs(value: string | number | null | undefined): number | null {
   if (typeof value === "number") {
@@ -175,31 +233,40 @@ async function estimateInstallTimestampMs(): Promise<number> {
     earliestIntegrationCreatedAt,
     earliestTracerLinkCreatedAt,
   ] = await Promise.all([
-    db.select({ value: sql<string | null>`min(${jobs.createdAt})` }).from(jobs),
+    db
+      .select({ value: sql<string | null>`min(${jobs.createdAt})` })
+      .from(jobs)
+      .where(analyticsPrivateDataFilter(jobs)),
     db
       .select({ value: sql<string | null>`min(${pipelineRuns.startedAt})` })
-      .from(pipelineRuns),
+      .from(pipelineRuns)
+      .where(analyticsPrivateDataFilter(pipelineRuns)),
     db
       .select({ value: sql<string | null>`min(${settings.createdAt})` })
-      .from(settings),
+      .from(settings)
+      .where(analyticsPrivateDataFilter(settings)),
     db
       .select({ value: sql<string | null>`min(${authSessions.createdAt})` })
-      .from(authSessions),
+      .from(authSessions)
+      .where(analyticsPrivateDataFilter(authSessions)),
     db
       .select({
         value: sql<string | null>`min(${designResumeDocuments.createdAt})`,
       })
-      .from(designResumeDocuments),
+      .from(designResumeDocuments)
+      .where(analyticsPrivateDataFilter(designResumeDocuments)),
     db
       .select({
         value: sql<
           string | null
         >`min(${postApplicationIntegrations.createdAt})`,
       })
-      .from(postApplicationIntegrations),
+      .from(postApplicationIntegrations)
+      .where(analyticsPrivateDataFilter(postApplicationIntegrations)),
     db
       .select({ value: sql<string | null>`min(${tracerLinks.createdAt})` })
-      .from(tracerLinks),
+      .from(tracerLinks)
+      .where(analyticsPrivateDataFilter(tracerLinks)),
   ]);
 
   const installTimestampCandidates = [
@@ -226,10 +293,11 @@ function mapInstallState(row: InstallState): InstallState {
 }
 
 export async function getAnalyticsInstallState(): Promise<InstallState | null> {
+  const installStateId = getAnalyticsInstallStateId();
   const [row] = await db
     .select()
     .from(analyticsInstallState)
-    .where(eq(analyticsInstallState.id, ANALYTICS_INSTALL_STATE_ID))
+    .where(eq(analyticsInstallState.id, installStateId))
     .limit(1);
   return row ? mapInstallState(row) : null;
 }
@@ -243,7 +311,7 @@ export async function getOrCreateAnalyticsInstallState(): Promise<InstallState> 
 
   try {
     await db.insert(analyticsInstallState).values({
-      id: ANALYTICS_INSTALL_STATE_ID,
+      id: getAnalyticsInstallStateId(),
       distinctId: randomUUID(),
       installedAt,
       createdAt: now,
@@ -263,21 +331,25 @@ export async function getOrCreateAnalyticsInstallState(): Promise<InstallState> 
 }
 
 export async function listActivationMilestones(): Promise<MilestoneRow[]> {
-  return db
+  const rows = await db
     .select()
     .from(analyticsMilestones)
-    .where(inArray(analyticsMilestones.milestone, [...ACTIVATION_MILESTONES]));
+    .where(
+      inArray(analyticsMilestones.milestone, toScopedActivationMilestones()),
+    );
+  return rows.map(mapMilestoneRow);
 }
 
 export async function getActivationMilestone(
   milestone: ActivationMilestone,
 ): Promise<MilestoneRow | null> {
+  const scopedMilestone = toScopedActivationMilestone(milestone);
   const [row] = await db
     .select()
     .from(analyticsMilestones)
-    .where(eq(analyticsMilestones.milestone, milestone))
+    .where(eq(analyticsMilestones.milestone, scopedMilestone))
     .limit(1);
-  return row ?? null;
+  return row ? mapMilestoneRow(row) : null;
 }
 
 export async function recordActivationMilestone(args: {
@@ -293,7 +365,7 @@ export async function recordActivationMilestone(args: {
 
   if (!existing) {
     await db.insert(analyticsMilestones).values({
-      milestone: args.milestone,
+      milestone: toScopedActivationMilestone(args.milestone),
       firstSeenAt: args.firstSeenAt,
       firstSessionId: args.sessionId ?? null,
       reportedAt: null,
@@ -315,7 +387,12 @@ export async function recordActivationMilestone(args: {
         ...(args.sessionId ? { firstSessionId: args.sessionId } : {}),
         updatedAt: now,
       })
-      .where(eq(analyticsMilestones.milestone, args.milestone));
+      .where(
+        eq(
+          analyticsMilestones.milestone,
+          toScopedActivationMilestone(args.milestone),
+        ),
+      );
     const updated = await getActivationMilestone(args.milestone);
     if (!updated) {
       throw new Error(`Failed to update milestone '${args.milestone}'`);
@@ -339,7 +416,12 @@ export async function setActivationMilestoneFromHistory(args: {
       firstSessionId: null,
       updatedAt: now,
     })
-    .where(eq(analyticsMilestones.milestone, args.milestone));
+    .where(
+      eq(
+        analyticsMilestones.milestone,
+        toScopedActivationMilestone(args.milestone),
+      ),
+    );
 
   const updated = await getActivationMilestone(args.milestone);
   if (!updated) {
@@ -354,7 +436,9 @@ export async function deleteActivationMilestone(
 ): Promise<void> {
   await db
     .delete(analyticsMilestones)
-    .where(eq(analyticsMilestones.milestone, milestone));
+    .where(
+      eq(analyticsMilestones.milestone, toScopedActivationMilestone(milestone)),
+    );
 }
 
 export async function markActivationMilestoneReported(
@@ -366,21 +450,24 @@ export async function markActivationMilestoneReported(
       reportedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(analyticsMilestones.milestone, milestone));
+    .where(
+      eq(analyticsMilestones.milestone, toScopedActivationMilestone(milestone)),
+    );
 }
 
 export async function listPendingActivationMilestones(): Promise<
   MilestoneRow[]
 > {
-  return db
+  const rows = await db
     .select()
     .from(analyticsMilestones)
     .where(
       and(
-        inArray(analyticsMilestones.milestone, [...ACTIVATION_MILESTONES]),
+        inArray(analyticsMilestones.milestone, toScopedActivationMilestones()),
         sql`${analyticsMilestones.reportedAt} IS NULL`,
       ),
     );
+  return rows.map(mapMilestoneRow);
 }
 
 export async function getHistoricalActivationMilestoneCandidates(): Promise<
@@ -397,31 +484,58 @@ export async function getHistoricalActivationMilestoneCandidates(): Promise<
   ] = await Promise.all([
     db
       .select({ value: sql<string | null>`min(${pipelineRuns.startedAt})` })
-      .from(pipelineRuns),
+      .from(pipelineRuns)
+      .where(analyticsPrivateDataFilter(pipelineRuns)),
     db
       .select({ value: sql<string | null>`min(${jobs.appliedAt})` })
       .from(jobs)
-      .where(isNotNull(jobs.appliedAt)),
+      .where(and(analyticsPrivateDataFilter(jobs), isNotNull(jobs.appliedAt))),
     db
       .select({ value: sql<number | null>`min(${stageEvents.occurredAt})` })
       .from(stageEvents)
-      .where(inArray(stageEvents.toStage, [...POSITIVE_RESPONSE_STAGES])),
+      .where(
+        and(
+          analyticsPrivateDataFilter(stageEvents),
+          inArray(stageEvents.toStage, [...POSITIVE_RESPONSE_STAGES]),
+        ),
+      ),
     db
       .select({ value: sql<number | null>`min(${stageEvents.occurredAt})` })
       .from(stageEvents)
-      .where(inArray(stageEvents.toStage, [...INTERVIEW_STAGES])),
+      .where(
+        and(
+          analyticsPrivateDataFilter(stageEvents),
+          inArray(stageEvents.toStage, [...INTERVIEW_STAGES]),
+        ),
+      ),
     db
       .select({ value: sql<number | null>`min(${stageEvents.occurredAt})` })
       .from(stageEvents)
-      .where(eq(stageEvents.toStage, "offer")),
+      .where(
+        and(
+          analyticsPrivateDataFilter(stageEvents),
+          eq(stageEvents.toStage, "offer"),
+        ),
+      ),
     db
       .select({ value: sql<number | null>`min(${jobs.closedAt})` })
       .from(jobs)
-      .where(and(eq(jobs.outcome, "offer_accepted"), isNotNull(jobs.closedAt))),
+      .where(
+        and(
+          analyticsPrivateDataFilter(jobs),
+          eq(jobs.outcome, "offer_accepted"),
+          isNotNull(jobs.closedAt),
+        ),
+      ),
     db
       .select({ value: sql<number | null>`min(${stageEvents.occurredAt})` })
       .from(stageEvents)
-      .where(eq(stageEvents.outcome, "offer_accepted")),
+      .where(
+        and(
+          analyticsPrivateDataFilter(stageEvents),
+          eq(stageEvents.outcome, "offer_accepted"),
+        ),
+      ),
   ]);
 
   const earliestPipelineRunValue = earliestPipelineRun[0]?.value ?? null;
@@ -482,7 +596,7 @@ export async function markAnalyticsRawEventReplayCompleted(args: {
   completedAt?: string;
 }): Promise<void> {
   const now = new Date().toISOString();
-  await getOrCreateAnalyticsInstallState();
+  const installState = await getOrCreateAnalyticsInstallState();
   await db
     .update(analyticsInstallState)
     .set({
@@ -490,7 +604,7 @@ export async function markAnalyticsRawEventReplayCompleted(args: {
       rawEventReplayCompletedAt: args.completedAt ?? now,
       updatedAt: now,
     })
-    .where(eq(analyticsInstallState.id, ANALYTICS_INSTALL_STATE_ID));
+    .where(eq(analyticsInstallState.id, installState.id));
 }
 
 export async function claimAnalyticsServerEventReplay(args: {
@@ -499,6 +613,7 @@ export async function claimAnalyticsServerEventReplay(args: {
   occurredAt: number;
   payload: Record<string, Primitive> | undefined;
 }): Promise<boolean> {
+  const eventKey = toScopedServerEventKey(args.eventKey);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
   const staleBefore = nowMs - RAW_EVENT_REPLAY_CLAIM_STALE_MS;
@@ -514,7 +629,7 @@ export async function claimAnalyticsServerEventReplay(args: {
     })
     .where(
       and(
-        eq(analyticsServerEventReplays.eventKey, args.eventKey),
+        eq(analyticsServerEventReplays.eventKey, eventKey),
         sql`${analyticsServerEventReplays.reportedAt} IS NULL`,
         sql`(${analyticsServerEventReplays.claimedAt} IS NULL OR ${analyticsServerEventReplays.claimedAt} < ${staleBefore})`,
       ),
@@ -526,7 +641,7 @@ export async function claimAnalyticsServerEventReplay(args: {
 
   try {
     await db.insert(analyticsServerEventReplays).values({
-      eventKey: args.eventKey,
+      eventKey,
       eventName: args.eventName,
       occurredAt: args.occurredAt,
       payload: args.payload ?? {},
@@ -540,7 +655,7 @@ export async function claimAnalyticsServerEventReplay(args: {
     const [existing] = await db
       .select()
       .from(analyticsServerEventReplays)
-      .where(eq(analyticsServerEventReplays.eventKey, args.eventKey))
+      .where(eq(analyticsServerEventReplays.eventKey, eventKey))
       .limit(1);
 
     if (!existing || existing.reportedAt !== null) {
@@ -564,7 +679,7 @@ export async function claimAnalyticsServerEventReplay(args: {
       })
       .where(
         and(
-          eq(analyticsServerEventReplays.eventKey, args.eventKey),
+          eq(analyticsServerEventReplays.eventKey, eventKey),
           sql`${analyticsServerEventReplays.reportedAt} IS NULL`,
           sql`(${analyticsServerEventReplays.claimedAt} IS NULL OR ${analyticsServerEventReplays.claimedAt} < ${staleBefore})`,
         ),
@@ -577,6 +692,7 @@ export async function claimAnalyticsServerEventReplay(args: {
 export async function markAnalyticsServerEventReplayDelivered(
   eventKey: string,
 ): Promise<void> {
+  const scopedEventKey = toScopedServerEventKey(eventKey);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
 
@@ -586,13 +702,14 @@ export async function markAnalyticsServerEventReplayDelivered(
       reportedAt: nowMs,
       updatedAt: nowIso,
     })
-    .where(eq(analyticsServerEventReplays.eventKey, eventKey));
+    .where(eq(analyticsServerEventReplays.eventKey, scopedEventKey));
 }
 
 export async function hasPendingAnalyticsServerEventReplays(
   eventKeys: string[],
 ): Promise<boolean> {
   if (eventKeys.length === 0) return false;
+  const scopedEventKeys = eventKeys.map(toScopedServerEventKey);
 
   const [row] = await db
     .select({
@@ -601,7 +718,7 @@ export async function hasPendingAnalyticsServerEventReplays(
     .from(analyticsServerEventReplays)
     .where(
       and(
-        inArray(analyticsServerEventReplays.eventKey, [...eventKeys]),
+        inArray(analyticsServerEventReplays.eventKey, scopedEventKeys),
         sql`${analyticsServerEventReplays.reportedAt} IS NULL`,
       ),
     )
@@ -622,7 +739,8 @@ export async function getHistoricalServerEventReplayCandidates(args: {
           id: pipelineRuns.id,
           startedAt: pipelineRuns.startedAt,
         })
-        .from(pipelineRuns),
+        .from(pipelineRuns)
+        .where(analyticsPrivateDataFilter(pipelineRuns)),
       db
         .select({
           id: stageEvents.id,
@@ -633,7 +751,12 @@ export async function getHistoricalServerEventReplayCandidates(args: {
           outcome: stageEvents.outcome,
         })
         .from(stageEvents)
-        .where(sql`${stageEvents.occurredAt} < ${cutoffSeconds}`),
+        .where(
+          and(
+            analyticsPrivateDataFilter(stageEvents),
+            sql`${stageEvents.occurredAt} < ${cutoffSeconds}`,
+          ),
+        ),
       db
         .select({
           id: postApplicationMessages.id,
@@ -645,6 +768,7 @@ export async function getHistoricalServerEventReplayCandidates(args: {
         .from(postApplicationMessages)
         .where(
           and(
+            analyticsPrivateDataFilter(postApplicationMessages),
             inArray(postApplicationMessages.processingStatus, [
               "auto_linked",
               "manual_linked",
@@ -662,7 +786,12 @@ export async function getHistoricalServerEventReplayCandidates(args: {
           referrerHost: tracerClickEvents.referrerHost,
         })
         .from(tracerClickEvents)
-        .where(sql`${tracerClickEvents.clickedAt} < ${cutoffSeconds}`),
+        .where(
+          and(
+            analyticsPrivateDataFilter(tracerClickEvents),
+            sql`${tracerClickEvents.clickedAt} < ${cutoffSeconds}`,
+          ),
+        ),
     ]);
 
   const candidates: HistoricalServerEventReplayCandidate[] = [];

@@ -1,8 +1,17 @@
 import { join } from "node:path";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 
 export function getTenantPdfDir(tenantId = getActiveTenantId()): string {
+  const scope = getPrivateDataScope();
+  if (
+    scope.enforceUserIsolation &&
+    scope.userId &&
+    tenantId === scope.tenantId
+  ) {
+    return join(getDataDir(), "pdfs", tenantId, "users", scope.userId);
+  }
   return join(getDataDir(), "pdfs", tenantId);
 }
 

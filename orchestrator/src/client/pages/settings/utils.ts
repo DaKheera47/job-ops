@@ -61,6 +61,8 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "gemini",
 ]);
 
+const PROVIDERS_WITH_OPTIONAL_API_KEY = new Set<LlmProviderId>(["ollama"]);
+
 const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
   "lmstudio",
   "ollama",
@@ -72,7 +74,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
-  ollama: "Ollama typically runs locally and does not require an API key.",
+  ollama:
+    "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
   openai: "OpenAI uses the Responses API with structured outputs.",
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
@@ -93,7 +96,9 @@ const PROVIDER_KEY_HELPERS: Record<
     href: "https://openrouter.ai/keys",
   },
   lmstudio: { text: "No API key required for LM Studio" },
-  ollama: { text: "No API key required for Ollama" },
+  ollama: {
+    text: "Optional bearer token for Ollama-compatible endpoints that require auth",
+  },
   openai: {
     text: "Create a key at platform.openai.com",
     href: "https://platform.openai.com/api-keys",
@@ -154,7 +159,9 @@ export function supportsLlmModelSuggestions(
 
 export function getLlmProviderConfig(provider: string | null | undefined) {
   const normalizedProvider = normalizeLlmProvider(provider);
-  const showApiKey = PROVIDERS_WITH_API_KEY.has(normalizedProvider);
+  const requiresApiKey = PROVIDERS_WITH_API_KEY.has(normalizedProvider);
+  const showApiKey =
+    requiresApiKey || PROVIDERS_WITH_OPTIONAL_API_KEY.has(normalizedProvider);
   const showBaseUrl = PROVIDERS_WITH_BASE_URL.has(normalizedProvider);
   const baseUrlPlaceholder = showBaseUrl
     ? PROVIDER_BASE_URLS[normalizedProvider as BaseUrlProviderId]
@@ -162,7 +169,9 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
   const baseUrlHelper = showBaseUrl
     ? normalizedProvider === "openai_compatible"
       ? "Enter a base URL or a full /v1/chat/completions endpoint."
-      : `Default: ${baseUrlPlaceholder}`
+      : normalizedProvider === "ollama"
+        ? "Default: http://localhost:11434. From Docker Desktop, use http://host.docker.internal:11434. On Linux Docker, use a container-reachable host gateway such as http://172.17.0.1:11434."
+        : `Default: ${baseUrlPlaceholder}`
     : "";
   const providerHint = PROVIDER_HINTS[normalizedProvider];
   const keyHelper = PROVIDER_KEY_HELPERS[normalizedProvider];
@@ -172,7 +181,7 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
     label: LLM_PROVIDER_LABELS[normalizedProvider],
     showApiKey,
     showBaseUrl,
-    requiresApiKey: showApiKey,
+    requiresApiKey,
     baseUrlPlaceholder,
     baseUrlHelper,
     providerHint,

@@ -320,6 +320,25 @@ describe("OnboardingPage", () => {
     expect(screen.getAllByText("Load your resume").length).toBeGreaterThan(0);
   });
 
+  it("lets users return to completed onboarding steps for edits", async () => {
+    vi.mocked(useOnboardingStatus).mockReturnValue({
+      status: resumeBlockedStatus,
+      complete: false,
+      nextRequirementId: "resume",
+      requirements: resumeBlockedStatus.requirements,
+      checking: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    await renderPage();
+
+    expect(await screen.findByText("content:resume")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /previous step/i }));
+
+    expect(await screen.findByText("content:model")).toBeInTheDocument();
+  });
+
   it("hides account and model launch steps in hosted platform LLM mode", async () => {
     const hostedResumeStatus: OnboardingStatusResponse = {
       complete: false,
@@ -394,6 +413,7 @@ describe("OnboardingPage", () => {
         provider: "openrouter",
       }),
     ]);
+    expect(await screen.findByText("content:resume")).toBeInTheDocument();
   });
 
   it("verifies and persists the Codex provider when Codex auth completes", async () => {

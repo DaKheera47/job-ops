@@ -47,6 +47,14 @@ vi.mock("@server/services/tracer-links", () => ({
 vi.mock("@server/tenancy/context", () => ({
   getActiveTenantId: vi.fn(() => "tenant-test-2"),
 }));
+vi.mock("@server/tenancy/private-scope", () => ({
+  getPrivateDataScope: vi.fn(() => ({
+    tenantId: "tenant-test-2",
+    userId: null,
+    enforceUserIsolation: false,
+    scopeKey: "tenant-test-2",
+  })),
+}));
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
   default: {
@@ -58,10 +66,12 @@ vi.mock("node:fs/promises", () => ({
   default: fsMocks,
 }));
 
+import { createId } from "@paralleldrive/cuid2";
 import { getSetting } from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import {
   deleteDesignResumePicture,
   getCurrentDesignResume,
@@ -108,6 +118,12 @@ describe("design resume service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-test-2",
+      userId: null,
+      enforceUserIsolation: false,
+      scopeKey: "tenant-test-2",
+    });
     repo.getLatestDesignResumeDocument.mockResolvedValue(makeDocumentRow());
     repo.listDesignResumeAssets.mockResolvedValue([]);
     repo.getDesignResumeAssetById.mockResolvedValue(null);
@@ -165,6 +181,29 @@ describe("design resume service", () => {
     );
   });
 
+  it("uses a user-scoped design resume id in hosted mode", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(null);
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-test-2",
+      userId: "user-2",
+      enforceUserIsolation: true,
+      scopeKey: "tenant-test-2:user-2",
+    });
+
+    await replaceCurrentDesignResumeDocument({
+      importedAt: "2026-04-11T00:00:00.000Z",
+      resumeJson: makeValidResumeJson(),
+      sourceResumeId: null,
+      sourceMode: null,
+    });
+
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "primary_tenant-test-2_user-2",
+      }),
+    );
+  });
+
   it("imports Reactive Resume v5.1 data when metadata.css is absent", async () => {
     const upstreamResume = makeValidResumeJson();
     delete (upstreamResume.metadata as Record<string, unknown>).css;
@@ -185,6 +224,80 @@ describe("design resume service", () => {
         resumeJson: expect.objectContaining({
           metadata: expect.objectContaining({
             css: { enabled: false, value: "" },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("generates missing project ids when importing from Reactive Resume", async () => {
+    const upstreamResume = makeValidResumeJson({
+      sections: {
+        ...(buildDefaultReactiveResumeDocument().sections as Record<
+          string,
+          unknown
+        >),
+        projects: {
+          title: "",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "",
+              hidden: false,
+              name: "Blank ID",
+              period: "2024",
+              website: { url: "", label: "" },
+              description: "Blank ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "   ",
+              hidden: false,
+              name: "Whitespace ID",
+              period: "2025",
+              website: { url: "", label: "" },
+              description: "Whitespace ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "project-keep",
+              hidden: false,
+              name: "Existing ID",
+              period: "2026",
+              website: { url: "", label: "" },
+              description: "Existing ID project",
+              options: { showLinkInTitle: false },
+            },
+          ],
+        },
+      },
+    });
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+    const projectIds = result.resumeJson.sections.projects.items.map(
+      (project) => project.id,
+    );
+
+    expect(projectIds[0]).toEqual(expect.any(String));
+    expect(projectIds[0]?.trim()).not.toBe("");
+    expect(projectIds[1]).toEqual(expect.any(String));
+    expect(projectIds[1]?.trim()).not.toBe("");
+    expect(projectIds[2]).toBe("project-keep");
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
+          sections: expect.objectContaining({
+            projects: expect.objectContaining({
+              items: expect.arrayContaining([
+                expect.objectContaining({ id: "project-keep" }),
+              ]),
+            }),
           }),
         }),
       }),
@@ -229,6 +342,84 @@ describe("design resume service", () => {
         link: "",
       },
     ]);
+  });
+
+  it("repairs blank project ids in existing stored documents", async () => {
+    vi.mocked(createId)
+      .mockReturnValueOnce("project-generated-1")
+      .mockReturnValueOnce("project-generated-2");
+    const resumeJson = makeValidResumeJson({
+      sections: {
+        ...(buildDefaultReactiveResumeDocument().sections as Record<
+          string,
+          unknown
+        >),
+        projects: {
+          title: "Projects",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "",
+              hidden: false,
+              name: "Blank ID",
+              period: "2024",
+              website: { url: "", label: "" },
+              description: "Blank ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "   ",
+              hidden: false,
+              name: "Whitespace ID",
+              period: "2025",
+              website: { url: "", label: "" },
+              description: "Whitespace ID project",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "project-keep",
+              hidden: false,
+              name: "Existing ID",
+              period: "2026",
+              website: { url: "", label: "" },
+              description: "Existing ID project",
+              options: { showLinkInTitle: false },
+            },
+          ],
+        },
+      },
+    });
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
+      makeDocumentRow({ resumeJson }),
+    );
+
+    const result = await getCurrentDesignResume();
+
+    if (!result) {
+      throw new Error("Expected stored design resume document");
+    }
+    expect(
+      result.resumeJson.sections.projects.items.map((project) => project.id),
+    ).toEqual(["project-generated-1", "project-generated-2", "project-keep"]);
+    expect(result.revision).toBe(2);
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "primary",
+        revision: 2,
+        resumeJson: expect.objectContaining({
+          sections: expect.objectContaining({
+            projects: expect.objectContaining({
+              items: [
+                expect.objectContaining({ id: "project-generated-1" }),
+                expect.objectContaining({ id: "project-generated-2" }),
+                expect.objectContaining({ id: "project-keep" }),
+              ],
+            }),
+          }),
+        }),
+      }),
+    );
   });
 
   it("localizes Reactive Resume relative picture URLs into design resume assets", async () => {

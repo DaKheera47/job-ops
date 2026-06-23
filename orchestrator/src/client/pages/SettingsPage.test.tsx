@@ -974,6 +974,41 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("saves the match job description language mode through the settings page", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      createAppSettings({
+        chatStyleLanguageMode: {
+          value: "match-job-description",
+          default: "manual",
+          override: "match-job-description",
+        },
+      }),
+    );
+
+    renderPage();
+    await openWritingStyleSection();
+
+    fireEvent.click(screen.getByRole("combobox", { name: /output language/i }));
+    fireEvent.click(await screen.findByText("Match job description"));
+
+    expect(
+      screen.queryByRole("combobox", { name: /specific language/i }),
+    ).not.toBeInTheDocument();
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatStyleLanguageMode: "match-job-description",
+        chatStyleManualLanguage: null,
+      }),
+    );
+  });
+
   it("saves the Ghostwriter Stop Slop toggle through the settings page", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue(
@@ -1111,42 +1146,16 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("saves scoring instructions from scoring settings", async () => {
+  it("does not expose global scoring instructions in scoring settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
-    vi.mocked(api.updateSettings).mockResolvedValue({
-      ...baseSettings,
-      scoringInstructions: {
-        value:
-          "Open to relocating, so do not mark down for location discrepancies.",
-        default: "",
-        override:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      },
-    });
 
     renderPage();
 
     await openScoringSection();
 
-    const textarea = screen.getByLabelText(/scoring instructions/i);
-    fireEvent.change(textarea, {
-      target: {
-        value:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      },
-    });
-
-    const saveButton = getSaveButton();
-    await waitFor(() => expect(saveButton).toBeEnabled());
-    fireEvent.click(saveButton);
-
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        scoringInstructions:
-          "Open to relocating, so do not mark down for location discrepancies.",
-      }),
-    );
+    expect(
+      screen.queryByLabelText(/scoring instructions/i),
+    ).not.toBeInTheDocument();
   });
 
   it("serializes prompt templates back to null when reset to defaults", async () => {

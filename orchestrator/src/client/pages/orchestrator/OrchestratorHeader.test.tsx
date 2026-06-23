@@ -21,6 +21,33 @@ vi.mock("@/components/ui/sheet", () => ({
   ),
 }));
 
+vi.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+    <div role="menu">{children}</div>
+  ),
+  DropdownMenuItem: ({
+    children,
+    onSelect,
+  }: {
+    children: React.ReactNode;
+    onSelect?: () => void;
+  }) => (
+    <button type="button" role="menuitem" onClick={() => onSelect?.()}>
+      {children}
+    </button>
+  ),
+  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSeparator: () => <hr />,
+}));
+
 const renderHeader = (
   overrides: Partial<React.ComponentProps<typeof OrchestratorHeader>> = {},
 ) => {
@@ -32,6 +59,7 @@ const renderHeader = (
     pipelineSources: ["gradcracker"],
     onOpenAutomaticRun: vi.fn(),
     onCancelPipeline: vi.fn(),
+    onOpenManualImport: vi.fn(),
     ...overrides,
   };
 
@@ -48,15 +76,45 @@ const renderHeader = (
 describe("OrchestratorHeader", () => {
   it("opens automatic run from the navbar button", () => {
     const { props } = renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: /run pipeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /run search/i }));
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 
-  it("does not render manual import button", () => {
-    renderHeader();
+  it("uses the navbar button as the search composer close toggle", () => {
+    const { props } = renderHeader({ isSearchComposerOpen: true });
+    const button = screen.getByRole("button", { name: /close search/i });
+
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+
+    expect(props.onOpenAutomaticRun).toHaveBeenCalled();
+  });
+
+  it("opens manual import from the overflow menu", () => {
+    const { props } = renderHeader();
+
     expect(
-      screen.queryByRole("button", { name: /manual import/i }),
+      screen.getByRole("button", { name: /more job actions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: /import job manually/i }),
+    );
+
+    expect(props.onOpenManualImport).toHaveBeenCalled();
+  });
+
+  it("hides the run action while keeping manual import reachable", () => {
+    renderHeader({ hideRunAction: true });
+    expect(
+      screen.queryByRole("button", { name: /run search/i }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /more job actions/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /import job manually/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders cancel button while running and triggers cancel", () => {

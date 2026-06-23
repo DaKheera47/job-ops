@@ -13,10 +13,17 @@ export interface PipelineConfig {
   sources: ExtractorSourceId[]; // Job sources to crawl
   outputDir: string; // Directory for generated PDFs
   locationIntent?: LocationIntent;
+  scoringInstructions?: string;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
   enableAutoTailoring?: boolean;
+  // Per-run filter over the current user's saved Watchlist sources.
+  // undefined/null = include every Watchlist source the user has saved
+  // (legacy behavior pre-#621). [] = explicitly exclude all Watchlist
+  // sources. Non-empty = include only those source IDs that still belong
+  // to the current user; unknown IDs are dropped server-side.
+  watchlistSelectedSourceIds?: string[] | null;
 }
 
 export interface PipelineRunConfigSnapshot {
@@ -55,6 +62,10 @@ export interface PipelineRunRequestedConfig {
   enableScoring: boolean;
   enableImporting: boolean;
   enableAutoTailoring: boolean;
+  // null = run did not constrain Watchlist (legacy / pre-#621 behavior);
+  // [] = explicitly disabled all Watchlist sources;
+  // non-empty = subset of the user's saved Watchlist source IDs.
+  watchlistSelectedSourceIds: string[] | null;
 }
 
 export interface PipelineRunSourceLimitSnapshot {
@@ -138,7 +149,11 @@ export interface PipelineSearchPresetConfig {
   topN: number;
   minSuitabilityScore: number;
   runBudget: number;
+  scoringInstructions?: string;
   automaticPresetId?: PipelineSearchPresetMode;
+  // Optional per-run Watchlist source selection. Omitted = legacy behavior
+  // (include every Watchlist source the user has saved). See issue #621.
+  watchlistSelectedSourceIds?: string[];
 }
 
 export interface PipelineSearchPreset {
@@ -162,6 +177,18 @@ export interface CreatePipelineSearchPresetInput {
 export interface UpdatePipelineSearchPresetInput {
   name?: string;
   config?: PipelineSearchPresetConfig;
+}
+
+export interface PipelineSearchPlanRequest {
+  prompt: string;
+  currentConfig: PipelineSearchPresetConfig;
+}
+
+export interface PipelineSearchPlanResponse {
+  config: PipelineSearchPresetConfig;
+  summary: string;
+  warnings: string[];
+  source: "ai" | "fallback";
 }
 
 export type PipelineProgressStep =

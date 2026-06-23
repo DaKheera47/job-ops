@@ -2,6 +2,10 @@ import { createId } from "@paralleldrive/cuid2";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { jobs, tracerClickEvents, tracerLinks } = schema;
 const TRACE_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -71,11 +75,10 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 function buildEventFilters(args: AnalyticsFilterArgs) {
-  const tenantId = getActiveTenantId();
   const filters = [];
 
-  filters.push(eq(tracerLinks.tenantId, tenantId));
-  filters.push(eq(tracerClickEvents.tenantId, tenantId));
+  filters.push(privateDataScopeFilter(tracerLinks));
+  filters.push(privateDataScopeFilter(tracerClickEvents));
 
   if (typeof args.from === "number") {
     filters.push(gte(tracerClickEvents.clickedAt, args.from));
@@ -106,14 +109,14 @@ export async function getOrCreateTracerLink(args: {
 }): Promise<typeof tracerLinks.$inferSelect> {
   const now = new Date().toISOString();
   const slugPrefix = normalizeSlugPrefix(args.slugPrefix);
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   const [existing] = await db
     .select()
     .from(tracerLinks)
     .where(
       and(
-        eq(tracerLinks.tenantId, tenantId),
+        privateDataScopeFilter(tracerLinks),
         eq(tracerLinks.jobId, args.jobId),
         eq(tracerLinks.sourcePath, args.sourcePath),
         eq(tracerLinks.destinationUrlHash, args.destinationUrlHash),
@@ -139,7 +142,8 @@ export async function getOrCreateTracerLink(args: {
         .insert(tracerLinks)
         .values({
           id: createId(),
-          tenantId,
+          tenantId: scope.tenantId,
+          userId: scope.userId,
           token,
           jobId: args.jobId,
           sourcePath: args.sourcePath,
@@ -150,14 +154,7 @@ export async function getOrCreateTracerLink(args: {
           createdAt: now,
           updatedAt: now,
         })
-        .onConflictDoNothing({
-          target: [
-            tracerLinks.tenantId,
-            tracerLinks.jobId,
-            tracerLinks.sourcePath,
-            tracerLinks.destinationUrlHash,
-          ],
-        })
+        .onConflictDoNothing()
         .run();
     } catch (error) {
       if (!isUniqueConstraintError(error)) {
@@ -170,7 +167,10 @@ export async function getOrCreateTracerLink(args: {
         .select()
         .from(tracerLinks)
         .where(
-          and(eq(tracerLinks.tenantId, tenantId), eq(tracerLinks.token, token)),
+          and(
+            privateDataScopeFilter(tracerLinks),
+            eq(tracerLinks.token, token),
+          ),
         )
         .limit(1);
       if (created) return created;
@@ -181,7 +181,7 @@ export async function getOrCreateTracerLink(args: {
       .from(tracerLinks)
       .where(
         and(
-          eq(tracerLinks.tenantId, tenantId),
+          privateDataScopeFilter(tracerLinks),
           eq(tracerLinks.jobId, args.jobId),
           eq(tracerLinks.sourcePath, args.sourcePath),
           eq(tracerLinks.destinationUrlHash, args.destinationUrlHash),
@@ -235,7 +235,7 @@ export async function insertTracerClickEvent(args: {
   uniqueFingerprintHash: string | null;
 }): Promise<void> {
   const [link] = await db
-    .select({ tenantId: tracerLinks.tenantId })
+    .select({ tenantId: tracerLinks.tenantId, userId: tracerLinks.userId })
     .from(tracerLinks)
     .where(eq(tracerLinks.id, args.tracerLinkId))
     .limit(1);
@@ -243,6 +243,7 @@ export async function insertTracerClickEvent(args: {
   await db.insert(tracerClickEvents).values({
     id: createId(),
     tenantId: link?.tenantId ?? getActiveTenantId(),
+    userId: link?.userId ?? null,
     tracerLinkId: args.tracerLinkId,
     clickedAt: args.clickedAt,
     requestId: args.requestId,
@@ -260,7 +261,6 @@ export async function listTracerLinkStatsByJob(
   jobId: string,
   args: Omit<AnalyticsFilterArgs, "jobId"> = {},
 ): Promise<TracerLinkStatsRow[]> {
-  const tenantId = getActiveTenantId();
   const joinFilters = [];
   if (typeof args.from === "number") {
     joinFilters.push(gte(tracerClickEvents.clickedAt, args.from));
@@ -293,7 +293,7 @@ export async function listTracerLinkStatsByJob(
       and(eq(tracerLinks.id, tracerClickEvents.tracerLinkId), ...joinFilters),
     )
     .where(
-      and(eq(tracerLinks.tenantId, tenantId), eq(tracerLinks.jobId, jobId)),
+      and(privateDataScopeFilter(tracerLinks), eq(tracerLinks.jobId, jobId)),
     )
     .groupBy(tracerLinks.id)
     .orderBy(

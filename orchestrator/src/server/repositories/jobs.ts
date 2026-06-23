@@ -34,9 +34,20 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, schema } from "../db/index";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { jobNotes, jobs } = schema;
+
+function jobsScopeFilter() {
+  return privateDataScopeFilter(jobs);
+}
+
+function jobNotesScopeFilter() {
+  return privateDataScopeFilter(jobNotes);
+}
 
 type AppliedDuplicateMatchCandidate = {
   id: string;
@@ -98,20 +109,17 @@ function serializeLocationEvidence(
  * Get all jobs, optionally filtered by status.
  */
 export async function getAllJobs(statuses?: JobStatus[]): Promise<Job[]> {
-  const tenantId = getActiveTenantId();
   const query =
     statuses && statuses.length > 0
       ? db
           .select()
           .from(jobs)
-          .where(
-            and(eq(jobs.tenantId, tenantId), inArray(jobs.status, statuses)),
-          )
+          .where(and(jobsScopeFilter(), inArray(jobs.status, statuses)))
           .orderBy(desc(jobs.discoveredAt))
       : db
           .select()
           .from(jobs)
-          .where(eq(jobs.tenantId, tenantId))
+          .where(jobsScopeFilter())
           .orderBy(desc(jobs.discoveredAt));
 
   const rows = await query;
@@ -124,7 +132,6 @@ export async function getAllJobs(statuses?: JobStatus[]): Promise<Job[]> {
 export async function getJobListItems(
   statuses?: JobStatus[],
 ): Promise<JobListItemWithPdfFreshnessInput[]> {
-  const tenantId = getActiveTenantId();
   const selection = {
     id: jobs.id,
     source: jobs.source,
@@ -169,14 +176,12 @@ export async function getJobListItems(
       ? db
           .select(selection)
           .from(jobs)
-          .where(
-            and(eq(jobs.tenantId, tenantId), inArray(jobs.status, statuses)),
-          )
+          .where(and(jobsScopeFilter(), inArray(jobs.status, statuses)))
           .orderBy(desc(jobs.discoveredAt))
       : db
           .select(selection)
           .from(jobs)
-          .where(eq(jobs.tenantId, tenantId))
+          .where(jobsScopeFilter())
           .orderBy(desc(jobs.discoveredAt));
 
   const rows = await query;
@@ -202,7 +207,6 @@ export async function getJobListItems(
 export async function getAppliedDuplicateMatchCandidates(): Promise<
   AppliedDuplicateMatchCandidate[]
 > {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select({
       id: jobs.id,
@@ -216,7 +220,7 @@ export async function getAppliedDuplicateMatchCandidates(): Promise<
     .where(
       and(
         inArray(jobs.status, ["applied", "in_progress"]),
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         sql`${jobs.appliedAt} IS NOT NULL`,
       ),
     )
@@ -238,12 +242,11 @@ export async function getAppliedDuplicateMatchCandidates(): Promise<
 export async function getJobsRevision(
   statuses?: JobStatus[],
 ): Promise<JobsRevisionResponse> {
-  const tenantId = getActiveTenantId();
   const statusFilter = normalizeStatusFilter(statuses);
   const whereClause =
     statuses && statuses.length > 0
-      ? and(eq(jobs.tenantId, tenantId), inArray(jobs.status, statuses))
-      : eq(jobs.tenantId, tenantId);
+      ? and(jobsScopeFilter(), inArray(jobs.status, statuses))
+      : jobsScopeFilter();
 
   const baseQuery = db
     .select({
@@ -269,20 +272,18 @@ export async function getJobsRevision(
  * Get a single job by ID.
  */
 export async function getJobById(id: string): Promise<Job | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, id)));
+    .where(and(jobsScopeFilter(), eq(jobs.id, id)));
   return row ? mapRowToJob(row) : null;
 }
 
 export async function listJobNotes(jobId: string): Promise<JobNote[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobNotes)
-    .where(and(eq(jobNotes.tenantId, tenantId), eq(jobNotes.jobId, jobId)))
+    .where(and(jobNotesScopeFilter(), eq(jobNotes.jobId, jobId)))
     .orderBy(
       desc(jobNotes.updatedAt),
       desc(jobNotes.createdAt),
@@ -301,13 +302,12 @@ export async function listJobNotesByIds(
   );
   if (normalizedNoteIds.length === 0) return [];
 
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobNotes)
     .where(
       and(
-        eq(jobNotes.tenantId, tenantId),
+        jobNotesScopeFilter(),
         eq(jobNotes.jobId, jobId),
         inArray(jobNotes.id, normalizedNoteIds),
       ),
@@ -317,11 +317,10 @@ export async function listJobNotesByIds(
 }
 
 export async function getJobNoteById(noteId: string): Promise<JobNote | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobNotes)
-    .where(and(eq(jobNotes.tenantId, tenantId), eq(jobNotes.id, noteId)));
+    .where(and(jobNotesScopeFilter(), eq(jobNotes.id, noteId)));
   return row ? mapRowToJobNote(row) : null;
 }
 
@@ -329,13 +328,12 @@ export async function getJobNoteForJob(
   jobId: string,
   noteId: string,
 ): Promise<JobNote | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobNotes)
     .where(
       and(
-        eq(jobNotes.tenantId, tenantId),
+        jobNotesScopeFilter(),
         eq(jobNotes.id, noteId),
         eq(jobNotes.jobId, jobId),
       ),
@@ -348,11 +346,12 @@ export async function createJobNote(
 ): Promise<JobNote> {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   await db.insert(jobNotes).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     jobId: input.jobId,
     title: input.title,
     content: input.content,
@@ -371,7 +370,6 @@ export async function updateJobNote(
   input: { jobId: string; noteId: string } & UpdateJobNoteInput,
 ): Promise<JobNote | null> {
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
 
   await db
     .update(jobNotes)
@@ -382,7 +380,7 @@ export async function updateJobNote(
     })
     .where(
       and(
-        eq(jobNotes.tenantId, tenantId),
+        jobNotesScopeFilter(),
         eq(jobNotes.id, input.noteId),
         eq(jobNotes.jobId, input.jobId),
       ),
@@ -395,12 +393,11 @@ export async function deleteJobNote(input: {
   jobId: string;
   noteId: string;
 }): Promise<number> {
-  const tenantId = getActiveTenantId();
   const result = await db
     .delete(jobNotes)
     .where(
       and(
-        eq(jobNotes.tenantId, tenantId),
+        jobNotesScopeFilter(),
         eq(jobNotes.id, input.noteId),
         eq(jobNotes.jobId, input.jobId),
       ),
@@ -417,7 +414,6 @@ export async function listJobSummariesByIds(jobIds: string[]): Promise<
   }>
 > {
   if (jobIds.length === 0) return [];
-  const tenantId = getActiveTenantId();
 
   return db
     .select({
@@ -426,18 +422,17 @@ export async function listJobSummariesByIds(jobIds: string[]): Promise<
       employer: jobs.employer,
     })
     .from(jobs)
-    .where(and(eq(jobs.tenantId, tenantId), inArray(jobs.id, jobIds)));
+    .where(and(jobsScopeFilter(), inArray(jobs.id, jobIds)));
 }
 
 /**
  * Get a job by its URL (for deduplication).
  */
 export async function getJobByUrl(jobUrl: string): Promise<Job | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.tenantId, tenantId), eq(jobs.jobUrl, jobUrl)));
+    .where(and(jobsScopeFilter(), eq(jobs.jobUrl, jobUrl)));
   return row ? mapRowToJob(row) : null;
 }
 
@@ -448,13 +443,12 @@ export async function getJobBySourceJobId(
   source: string,
   sourceJobId: string,
 ): Promise<Job | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(jobs)
     .where(
       and(
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         eq(jobs.source, source),
         eq(jobs.sourceJobId, sourceJobId),
       ),
@@ -466,22 +460,22 @@ export async function getJobBySourceJobId(
  * Get all known job URLs (for deduplication / crawler optimizations).
  */
 export async function getAllJobUrls(): Promise<string[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select({ jobUrl: jobs.jobUrl })
     .from(jobs)
-    .where(eq(jobs.tenantId, tenantId));
+    .where(jobsScopeFilter());
   return rows.map((r) => r.jobUrl);
 }
 
 async function insertJob(input: CreateJobInput): Promise<Job> {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   await db.insert(jobs).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     source: input.source,
     sourceJobId: input.sourceJobId ?? null,
     jobUrlDirect: input.jobUrlDirect ?? null,
@@ -538,7 +532,7 @@ async function insertJob(input: CreateJobInput): Promise<Job> {
 
 function isJobUrlUniqueViolation(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return /UNIQUE constraint failed: (jobs\.job_url|jobs\.tenant_id, jobs\.job_url)/i.test(
+  return /UNIQUE constraint failed: (jobs\.job_url|jobs\.tenant_id, jobs\.job_url|jobs\.tenant_id, jobs\.user_id, jobs\.job_url|index ['"]idx_jobs_tenant_user_job_url_unique['"])/i.test(
     error.message,
   );
 }
@@ -598,12 +592,7 @@ export async function createJobs(
   const existingRows = await db
     .select({ jobUrl: jobs.jobUrl })
     .from(jobs)
-    .where(
-      and(
-        eq(jobs.tenantId, getActiveTenantId()),
-        inArray(jobs.jobUrl, uniqueUrls),
-      ),
-    );
+    .where(and(jobsScopeFilter(), inArray(jobs.jobUrl, uniqueUrls)));
   const existingUrlSet = new Set(existingRows.map((row) => row.jobUrl));
 
   for (const { input, count } of byUrl.values()) {
@@ -640,7 +629,12 @@ export async function updateJob(
   input: UpdateJobInput,
 ): Promise<Job | null> {
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
+  if (input.jobUrl !== undefined) {
+    const existing = await getJobByUrl(input.jobUrl);
+    if (existing && existing.id !== id) {
+      throw new Error("UNIQUE constraint failed: jobs.job_url");
+    }
+  }
   const { locationEvidence, ...updateFields } = input;
   const clearsBriefForDescriptionEdit =
     input.jobDescription !== undefined && input.jobBrief === undefined;
@@ -670,7 +664,7 @@ export async function updateJob(
       ...readyAtUpdate,
       ...appliedAtUpdate,
     })
-    .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, id)));
+    .where(and(jobsScopeFilter(), eq(jobs.id, id)));
 
   return getJobById(id);
 }
@@ -684,9 +678,8 @@ export async function finalizeGeneratedPdfIfCurrent(input: {
   pdfGeneratedAt: string;
 }): Promise<Job | null> {
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
   const conditions = [
-    eq(jobs.tenantId, tenantId),
+    jobsScopeFilter(),
     eq(jobs.id, input.id),
     eq(jobs.status, input.expectedStatus),
     eq(jobs.pdfRegenerating, true),
@@ -719,14 +712,13 @@ export async function finalizeGeneratedPdfIfCurrent(input: {
  * Get job statistics by status.
  */
 export async function getJobStats(): Promise<Record<JobStatus, number>> {
-  const tenantId = getActiveTenantId();
   const result = await db
     .select({
       status: jobs.status,
       count: sql<number>`count(*)`,
     })
     .from(jobs)
-    .where(eq(jobs.tenantId, tenantId))
+    .where(jobsScopeFilter())
     .groupBy(jobs.status);
 
   const stats: Record<JobStatus, number> = {
@@ -750,14 +742,13 @@ export async function getJobStats(): Promise<Record<JobStatus, number>> {
  * Get jobs ready for processing (discovered with description).
  */
 export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobs)
     .where(
       and(
         eq(jobs.status, "discovered"),
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         sql`${jobs.jobDescription} IS NOT NULL`,
       ),
     )
@@ -771,13 +762,12 @@ export async function getReadyJobsWithGeneratedPdfs(
   limit: number,
   offset = 0,
 ): Promise<Job[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(jobs)
     .where(
       and(
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         eq(jobs.status, "ready"),
         eq(jobs.pdfSource, "generated"),
         isNotNull(jobs.pdfPath),
@@ -796,13 +786,12 @@ export async function getReadyJobsWithGeneratedPdfs(
 export async function getUnscoredDiscoveredJobs(
   limit?: number,
 ): Promise<Job[]> {
-  const tenantId = getActiveTenantId();
   const query = db
     .select()
     .from(jobs)
     .where(
       and(
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         eq(jobs.status, "discovered"),
         isNull(jobs.suitabilityScore),
       ),
@@ -818,10 +807,9 @@ export async function getUnscoredDiscoveredJobs(
  * Delete jobs by status.
  */
 export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
-  const tenantId = getActiveTenantId();
   const result = await db
     .delete(jobs)
-    .where(and(eq(jobs.tenantId, tenantId), eq(jobs.status, status)))
+    .where(and(jobsScopeFilter(), eq(jobs.status, status)))
     .run();
   return result.changes;
 }
@@ -830,13 +818,12 @@ export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
  * Delete jobs with suitability score below threshold (excluding applied and in_progress jobs).
  */
 export async function deleteJobsBelowScore(threshold: number): Promise<number> {
-  const tenantId = getActiveTenantId();
   const result = await db
     .delete(jobs)
     .where(
       and(
         lt(jobs.suitabilityScore, threshold),
-        eq(jobs.tenantId, tenantId),
+        jobsScopeFilter(),
         ne(jobs.status, "applied"),
         ne(jobs.status, "in_progress"),
       ),

@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     updateThreadContext: vi.fn(),
   },
   jobsRepo: {
+    getJobById: vi.fn(),
     listJobNotesByIds: vi.fn(),
   },
   jobDocumentsRepo: {
@@ -39,6 +40,11 @@ const mocks = vi.hoisted(() => ({
     getAllSettings: vi.fn(),
   },
   resolveLlmRuntimeSettings: vi.fn(),
+  hostedUsage: {
+    reserveHostedUsage: vi.fn(),
+    settleHostedUsageReservation: vi.fn(),
+    refundHostedUsageReservation: vi.fn(),
+  },
 }));
 
 vi.mock("@infra/logger", () => ({
@@ -86,6 +92,7 @@ vi.mock("../repositories/ghostwriter", () => ({
 }));
 
 vi.mock("../repositories/jobs", () => ({
+  getJobById: mocks.jobsRepo.getJobById,
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
 }));
 
@@ -100,6 +107,12 @@ vi.mock("./post-application/job-emails", () => ({
 
 vi.mock("./modelSelection", () => ({
   resolveLlmRuntimeSettings: mocks.resolveLlmRuntimeSettings,
+}));
+
+vi.mock("./hosted-usage", () => ({
+  reserveHostedUsage: mocks.hostedUsage.reserveHostedUsage,
+  settleHostedUsageReservation: mocks.hostedUsage.settleHostedUsageReservation,
+  refundHostedUsageReservation: mocks.hostedUsage.refundHostedUsageReservation,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -177,6 +190,12 @@ describe("ghostwriter service", () => {
       baseUrl: null,
       apiKey: "test-key",
     });
+    mocks.hostedUsage.reserveHostedUsage.mockResolvedValue({
+      allowance: { quotasEnabled: true },
+      reservation: { id: "usage-reservation-1", reservedUnits: 1 },
+    });
+    mocks.hostedUsage.settleHostedUsageReservation.mockResolvedValue({});
+    mocks.hostedUsage.refundHostedUsageReservation.mockResolvedValue({});
     mocks.buildJobChatPromptContext.mockResolvedValue({
       job: { id: "job-1" },
       style: {
@@ -194,6 +213,7 @@ describe("ghostwriter service", () => {
     });
 
     mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
+    mocks.jobsRepo.getJobById.mockResolvedValue({ id: "job-1" });
     mocks.jobDocumentsRepo.listJobDocumentsByIds.mockResolvedValue([]);
     mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
@@ -319,6 +339,32 @@ describe("ghostwriter service", () => {
           message.role !== "system" && message.role !== "user",
       ),
     ).toEqual([{ role: "assistant", content: "Draft response" }]);
+    expect(mocks.hostedUsage.reserveHostedUsage).toHaveBeenCalledWith({
+      action: "ghostwriter",
+    });
+    expect(mocks.hostedUsage.settleHostedUsageReservation).toHaveBeenCalledWith(
+      {
+        reservationId: "usage-reservation-1",
+        usedUnits: 1,
+      },
+    );
+  });
+
+  it("does not persist a user message when Ghostwriter quota is exhausted", async () => {
+    mocks.hostedUsage.reserveHostedUsage.mockRejectedValueOnce(
+      new Error("Monthly usage quota exceeded"),
+    );
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Tell me about this role",
+      }),
+    ).rejects.toThrow("Monthly usage quota exceeded");
+
+    expect(mocks.repo.createMessage).not.toHaveBeenCalled();
+    expect(mocks.repo.setActiveChild).not.toHaveBeenCalled();
+    expect(mocks.repo.setActiveRoot).not.toHaveBeenCalled();
   });
 
   it("saves selected notes before building prompt context", async () => {
@@ -848,6 +894,53 @@ describe("ghostwriter service", () => {
     });
   });
 
+  it("rejects LLM responses with invalid JSON shape", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "partial",
+    };
+    const assistantFailed: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "failed",
+    };
+
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantFailed);
+    mocks.repo.getMessageById.mockResolvedValue(assistantFailed);
+
+    mocks.llmCallJson.mockResolvedValue({
+      success: true,
+      data: { coverLetter: "Dear hiring committee..." },
+    });
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Tell me about this role",
+      }),
+    ).rejects.toMatchObject({
+      code: "UPSTREAM_ERROR",
+      message:
+        "LLM response structure was invalid: missing 'response' property",
+    });
+
+    expect(mocks.repo.completeRun).toHaveBeenCalledWith("run-1", {
+      status: "failed",
+      errorCode: "UPSTREAM_ERROR",
+      errorMessage:
+        "LLM response structure was invalid: missing 'response' property",
+    });
+    expect(mocks.hostedUsage.refundHostedUsageReservation).toHaveBeenCalledWith(
+      "usage-reservation-1",
+    );
+  });
+
   it("cancels a running generation during streaming", async () => {
     vi.useFakeTimers();
 
@@ -921,6 +1014,12 @@ describe("ghostwriter service", () => {
     expect(onCancelled).toHaveBeenCalled();
     expect(onCompleted).not.toHaveBeenCalled();
     expect(result.assistantMessage?.status).toBe("cancelled");
+    expect(mocks.hostedUsage.settleHostedUsageReservation).toHaveBeenCalledWith(
+      {
+        reservationId: "usage-reservation-1",
+        usedUnits: 0,
+      },
+    );
   });
 
   it("regenerates any assistant message, not just the latest", async () => {

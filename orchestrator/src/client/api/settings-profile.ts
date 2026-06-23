@@ -122,6 +122,12 @@ export async function deleteDesignResumePicture(input?: {
   });
 }
 
+export async function getDesignResumeAssetContentBlob(
+  assetUrl: string,
+): Promise<Blob> {
+  return fetchBlobApi(normalizeApiPath(assetUrl), { cache: "no-store" });
+}
+
 export async function exportDesignResume(): Promise<DesignResumeExportResponse> {
   return fetchApi<DesignResumeExportResponse>("/design-resume/export");
 }

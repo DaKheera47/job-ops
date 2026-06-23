@@ -240,6 +240,37 @@ describe("buildJobChatPromptContext", () => {
     );
   });
 
+  it("matches Ghostwriter language to detected job description language when configured", async () => {
+    const job = createJob({
+      id: "job-ctx-jd-language",
+      jobDescription:
+        "Wir suchen Erfahrung mit Entwicklung und Verantwortung für APIs.",
+    });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "professional",
+      formality: "medium",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "match-job-description",
+      manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
+    });
+    vi.mocked(getProfile).mockResolvedValue({
+      basics: {
+        name: "Claire",
+        summary: "I build reliable data platforms and work with product teams.",
+      },
+    });
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.systemPrompt).toContain(
+      "When the user does not request a language, default to writing user-visible resume or application content in German.",
+    );
+  });
+
   it("removes language instructions from global writing constraints", async () => {
     const job = createJob({ id: "job-ctx-4" });
     vi.mocked(getJobById).mockResolvedValue(job);

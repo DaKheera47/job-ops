@@ -12,7 +12,7 @@ import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type {
   JobStatus,
@@ -23,6 +23,11 @@ import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
+import {
+  refundHostedUsageReservation,
+  reserveHostedUsage,
+  settleHostedUsageReservation,
+} from "../services/hosted-usage";
 import { generatePdf } from "../services/pdf";
 import {
   createJobPdfFingerprint,
@@ -68,6 +73,19 @@ const DEFAULT_CONFIG: PipelineConfig = {
   enableAutoTailoring: true,
 };
 
+function parseProjectIdsCsv(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const rawId of value.split(",")) {
+    const id = rawId.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
 type TenantPipelineState = {
   isRunning: boolean;
   activePipelineRunId: string | null;
@@ -87,8 +105,14 @@ type LlmConfigState = {
 
 const pipelineStateByTenant = new Map<string, TenantPipelineState>();
 
-function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
-  let state = pipelineStateByTenant.get(tenantId);
+function getPipelineScopeKey(): string {
+  return getPrivateDataScope().scopeKey;
+}
+
+function getPipelineState(
+  scopeKey = getPipelineScopeKey(),
+): TenantPipelineState {
+  let state = pipelineStateByTenant.get(scopeKey);
   if (!state) {
     state = {
       isRunning: false,
@@ -97,7 +121,7 @@ function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
       activeChallengeState: null,
       activeLlmConfigState: null,
     };
-    pipelineStateByTenant.set(tenantId, state);
+    pipelineStateByTenant.set(scopeKey, state);
   }
   return state;
 }
@@ -202,8 +226,8 @@ class PipelineCancelledError extends Error {
   }
 }
 
-function ensureNotCancelled(tenantId = getActiveTenantId()): void {
-  if (getPipelineState(tenantId).cancelRequestedAt) {
+function ensureNotCancelled(scopeKey = getPipelineScopeKey()): void {
+  if (getPipelineState(scopeKey).cancelRequestedAt) {
     throw new PipelineCancelledError();
   }
 }
@@ -230,15 +254,22 @@ function buildRepeatedChallengeMessage(args: {
  */
 export async function runPipeline(
   config: Partial<PipelineConfig> = {},
+  options?: { hostedUsageReservationId?: string | null },
 ): Promise<{
   success: boolean;
   jobsDiscovered: number;
   jobsProcessed: number;
   error?: string;
 }> {
-  const tenantId = getActiveTenantId();
-  const tenantState = getPipelineState(tenantId);
+  const scopeKey = getPipelineScopeKey();
+  const tenantState = getPipelineState(scopeKey);
   if (tenantState.isRunning) {
+    if (options?.hostedUsageReservationId) {
+      await settleHostedUsageReservation({
+        reservationId: options.hostedUsageReservationId,
+        usedUnits: 0,
+      });
+    }
     return {
       success: false,
       jobsDiscovered: 0,
@@ -277,6 +308,7 @@ export async function runPipeline(
     const pipelineLogger = logger.child({ pipelineRunId: pipelineRun.id });
     let jobsDiscovered = 0;
     let jobsProcessed = 0;
+    let pipelineUsageUnits = 0;
     let resultSummary =
       savedDetails?.resultSummary ?? createPipelineRunResultSummary();
     const persistResultSummary = async (
@@ -295,18 +327,19 @@ export async function runPipeline(
     });
 
     try {
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "started" });
       const profile = await loadProfileStep();
       await persistResultSummary({ stage: "profile_loaded" });
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "discovery" });
       let { discoveredJobs, sourceErrors, pendingChallenges } =
         await discoverJobsStep({
           mergedConfig,
+          watchlistSelectedSourceIds: mergedConfig.watchlistSelectedSourceIds,
           shouldCancel: () =>
-            getPipelineState(tenantId).cancelRequestedAt !== null,
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
       await persistResultSummary({
         stage: "discovery",
@@ -341,7 +374,7 @@ export async function runPipeline(
         });
         tenantState.activeChallengeState = null;
 
-        ensureNotCancelled(tenantId);
+        ensureNotCancelled(scopeKey);
 
         // Re-run only the extractors that had challenges
         pipelineLogger.info("Challenges resolved, re-running extractors", {
@@ -353,7 +386,7 @@ export async function runPipeline(
           mergedConfig: retryConfig,
           includeWatchlist: false,
           shouldCancel: () =>
-            getPipelineState(tenantId).cancelRequestedAt !== null,
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
 
         discoveredJobs = [...discoveredJobs, ...retryResult.discoveredJobs];
@@ -385,7 +418,7 @@ export async function runPipeline(
         progressHelpers.crawlingComplete(discoveredJobs.length);
       }
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       jobsDiscovered = discoveredJobs.length;
       const { created, skipped, fuzzyMerged } = await importJobsStep({
         discoveredJobs,
@@ -399,13 +432,14 @@ export async function runPipeline(
       let unprocessedJobs: import("@shared/types").Job[] = [];
       let scoredJobs: import("./steps/types").ScoredJob[] = [];
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "scoring" });
       try {
         ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
           profile,
+          scoringInstructions: mergedConfig.scoringInstructions,
           shouldCancel: () =>
-            getPipelineState(tenantId).cancelRequestedAt !== null,
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
         }));
       } catch (error) {
         if (error instanceof LlmNotConfiguredError) {
@@ -418,14 +452,15 @@ export async function runPipeline(
           });
           tenantState.activeLlmConfigState = null;
 
-          ensureNotCancelled(tenantId);
+          ensureNotCancelled(scopeKey);
 
           pipelineLogger.info("LLM configured, resuming scoring");
 
           ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
             profile,
+            scoringInstructions: mergedConfig.scoringInstructions,
             shouldCancel: () =>
-              getPipelineState(tenantId).cancelRequestedAt !== null,
+              getPipelineState(scopeKey).cancelRequestedAt !== null,
           }));
         } else {
           throw error;
@@ -436,7 +471,7 @@ export async function runPipeline(
         jobsScored: scoredJobs.length,
       });
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "selection" });
       const jobsToProcess = await selectJobsStep({
         scoredJobs,
@@ -461,7 +496,7 @@ export async function runPipeline(
         jobsToProcess,
         processJob,
         shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
+          getPipelineState(scopeKey).cancelRequestedAt !== null,
       });
       jobsProcessed = processedCount;
 
@@ -493,6 +528,7 @@ export async function runPipeline(
         jobsProcessed: processedCount,
       });
 
+      pipelineUsageUnits = 1;
       return {
         success: true,
         jobsDiscovered,
@@ -551,6 +587,12 @@ export async function runPipeline(
       tenantState.cancelRequestedAt = null;
       tenantState.activeChallengeState = null;
       tenantState.activeLlmConfigState = null;
+      if (options?.hostedUsageReservationId) {
+        await settleHostedUsageReservation({
+          reservationId: options.hostedUsageReservationId,
+          usedUnits: pipelineUsageUnits,
+        });
+      }
     }
   });
 }
@@ -580,6 +622,27 @@ export async function summarizeJob(
   return runWithRequestContext({ jobId }, async () => {
     const jobLogger = logger.child({ jobId });
     jobLogger.info("Summarizing job");
+    let tailoringReservationId: string | null | undefined;
+    let tailoringUsageSucceeded = false;
+    const reserveTailoringUsage = async () => {
+      if (tailoringReservationId !== undefined) return;
+      const reserved = await reserveHostedUsage({ action: "tailoring" });
+      tailoringReservationId = reserved.reservation?.id ?? null;
+    };
+    const settleTailoringUsage = async () => {
+      if (!tailoringReservationId) return;
+      await settleHostedUsageReservation({
+        reservationId: tailoringReservationId,
+        usedUnits: tailoringUsageSucceeded ? 1 : 0,
+      });
+      tailoringReservationId = null;
+    };
+    const refundTailoringUsage = async () => {
+      if (!tailoringReservationId) return;
+      await refundHostedUsageReservation(tailoringReservationId);
+      tailoringReservationId = null;
+    };
+
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
@@ -606,11 +669,13 @@ export async function summarizeJob(
         (!tailoredSummary || !tailoredHeadline || options?.force)
       ) {
         jobLogger.info("Generating tailoring content");
+        await reserveTailoringUsage();
         const tailoringResult = await generateTailoring(
           job.jobDescription || "",
           profile,
         );
         if (tailoringResult.success && tailoringResult.data) {
+          tailoringUsageSucceeded = true;
           if (shouldUpdateSummary) {
             tailoredSummary = tailoringResult.data.summary;
           }
@@ -625,6 +690,7 @@ export async function summarizeJob(
           (shouldUpdateSummary && !tailoredSummary) ||
           (shouldUpdateHeadline && !tailoredHeadline)
         ) {
+          await settleTailoringUsage();
           return {
             success: false,
             error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
@@ -634,9 +700,10 @@ export async function summarizeJob(
 
       // 2. Suggest Projects
       let selectedProjectIds = job.selectedProjectIds;
-      if (shouldUpdateAllTailoring && (!selectedProjectIds || options?.force)) {
-        jobLogger.info("Selecting projects");
+      if (shouldUpdateAllTailoring) {
         try {
+          const existingSelectedProjectIds =
+            parseProjectIdsCsv(selectedProjectIds);
           const { catalog, selectionItems } =
             extractProjectsFromProfile(profile);
           const overrideResumeProjectsRaw =
@@ -655,16 +722,40 @@ export async function summarizeJob(
           const eligibleProjects = selectionItems.filter((p) =>
             eligibleSet.has(p.id),
           );
+          const allowedProjectIds = new Set([
+            ...locked,
+            ...eligibleProjects.map((project) => project.id),
+          ]);
+          const missingLockedProjectIds = locked.filter(
+            (id) => !existingSelectedProjectIds.includes(id),
+          );
+          const disallowedExistingProjectIds =
+            existingSelectedProjectIds.filter(
+              (id) => !allowedProjectIds.has(id),
+            );
+          const existingSelectionExceedsMax =
+            existingSelectedProjectIds.length > resumeProjects.maxProjects;
+          const existingSelectionValid =
+            existingSelectedProjectIds.length > 0 &&
+            disallowedExistingProjectIds.length === 0 &&
+            missingLockedProjectIds.length === 0 &&
+            !existingSelectionExceedsMax;
 
-          const picked = await pickProjectIdsForJob({
-            jobDescription: job.jobDescription || "",
-            eligibleProjects,
-            desiredCount,
-          });
+          if (existingSelectionValid && !options?.force) {
+            selectedProjectIds = existingSelectedProjectIds.join(",");
+          } else {
+            await reserveTailoringUsage();
+            const picked = await pickProjectIdsForJob({
+              jobDescription: job.jobDescription || "",
+              eligibleProjects,
+              desiredCount,
+            });
 
-          selectedProjectIds = [...locked, ...picked].join(",");
+            tailoringUsageSucceeded = true;
+            selectedProjectIds = [...locked, ...picked].join(",");
+          }
         } catch (error) {
-          jobLogger.warn("Failed to suggest projects", error);
+          jobLogger.warn("Failed to suggest projects", { error });
         }
       }
 
@@ -683,8 +774,10 @@ export async function summarizeJob(
           : {}),
       });
 
+      await settleTailoringUsage();
       return { success: true };
     } catch (error) {
+      await refundTailoringUsage();
       const message = error instanceof Error ? error.message : "Unknown error";
       jobLogger.error("Summarization failed", error);
       return { success: false, error: message };
@@ -708,6 +801,26 @@ export async function generateFinalPdf(
     jobLogger.info("Generating final PDF");
     let jobStatusToRestore: JobStatus | null = null;
     let pdfRegeneratingMarked = false;
+    let pdfReservationId: string | null | undefined;
+    const reservePdfUsage = async () => {
+      if (pdfReservationId !== undefined) return;
+      const reserved = await reserveHostedUsage({ action: "pdf_export" });
+      pdfReservationId = reserved.reservation?.id ?? null;
+    };
+    const settlePdfUsage = async (usedUnits: number) => {
+      if (!pdfReservationId) return;
+      await settleHostedUsageReservation({
+        reservationId: pdfReservationId,
+        usedUnits,
+      });
+      pdfReservationId = null;
+    };
+    const refundPdfUsage = async () => {
+      if (!pdfReservationId) return;
+      await refundHostedUsageReservation(pdfReservationId);
+      pdfReservationId = null;
+    };
+
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
@@ -720,6 +833,7 @@ export async function generateFinalPdf(
         };
       }
       jobStatusToRestore = job.status;
+      await reservePdfUsage();
 
       // Ready jobs already have a usable PDF; keep them visible while regenerating.
       if (job.status !== "ready") {
@@ -755,6 +869,7 @@ export async function generateFinalPdf(
           pdfRegenerating: false,
         });
         pdfRegeneratingMarked = false;
+        await settlePdfUsage(0);
         const preservedPdfMessage =
           job.status === "ready" && job.pdfPath
             ? " Your previous resume PDF is still available."
@@ -794,6 +909,7 @@ export async function generateFinalPdf(
           await jobsRepo.updateJob(job.id, { pdfRegenerating: false });
         }
         pdfRegeneratingMarked = false;
+        await settlePdfUsage(0);
         return {
           success: false,
           error: "PDF generation was superseded by newer job changes.",
@@ -838,8 +954,10 @@ export async function generateFinalPdf(
         );
       }
 
+      await settlePdfUsage(1);
       return { success: true };
     } catch (error) {
+      await refundPdfUsage();
       const message = error instanceof Error ? error.message : "Unknown error";
       if (jobStatusToRestore || pdfRegeneratingMarked) {
         try {

@@ -7,6 +7,9 @@ dist/
 # Data (local database and generated files)
 data/
 
+# Crawlee/Apify runtime storage (contains live session cookies)
+storage/
+
 # Environment
 .env
 .env.local

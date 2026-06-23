@@ -337,10 +337,12 @@ async function buildSelectedDocumentsSnapshot(
 async function buildSystemPrompt(
   style: WritingStyle,
   profile: ResumeProfile,
+  jobDescription?: string | null,
 ): Promise<string> {
   const resolvedLanguage = resolveWritingOutputLanguage({
     style,
     profile,
+    jobDescription,
   });
   const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
   const effectiveConstraints = stripLanguageDirectivesFromConstraints(
@@ -402,7 +404,7 @@ export async function buildJobChatPromptContext(
     selectedEmailsSnapshot,
     selectedDocumentsSnapshot,
   ] = await Promise.all([
-    buildSystemPrompt(style, profile),
+    buildSystemPrompt(style, profile, job.jobDescription),
     isStopSlopEnabled(),
     buildSelectedNotesSnapshot(jobId, selectedNoteIds),
     buildSelectedEmailsSnapshot(jobId, selectedEmailIds),

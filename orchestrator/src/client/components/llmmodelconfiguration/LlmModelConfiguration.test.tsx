@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LlmModelConfiguration } from "./LlmModelConfiguration";
 
@@ -48,5 +48,30 @@ describe("LlmModelConfiguration", () => {
     expect(
       screen.getByRole("link", { name: "find out what model name to use" }),
     ).toHaveAttribute("href", "https://developers.openai.com/codex/models");
+  });
+
+  it("asks Ollama users to choose an installed model instead of using a default", async () => {
+    render(
+      <LlmModelConfiguration
+        mode="compact"
+        disabled={false}
+        selectedProvider="ollama"
+        provider={textField}
+        baseUrl={textField}
+        apiKey={textField}
+        model={textField}
+      />,
+    );
+
+    expect(screen.getByLabelText("API key (optional)")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No Ollama models were returned. Pull a model in Ollama, then choose it here before continuing.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText("Current:")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
   });
 });

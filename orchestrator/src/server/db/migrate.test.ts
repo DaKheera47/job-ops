@@ -99,6 +99,66 @@ describe.sequential("database migrations", () => {
     );
   });
 
+  it("creates hosted usage tables with user-scoped foreign keys and indexes", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+
+      function tableExists(tableName) {
+        return Boolean(
+          migratedDb
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+            .get(tableName),
+        );
+      }
+
+      for (const tableName of ["hosted_usage_counters", "hosted_usage_reservations"]) {
+        if (!tableExists(tableName)) {
+          throw new Error(\`\${tableName} was not created\`);
+        }
+        const fks = migratedDb.prepare(\`PRAGMA foreign_key_list(\${tableName})\`).all();
+        const hasTenantCascade = fks.some((fk) => fk.from === "tenant_id" && fk.table === "tenants" && String(fk.on_delete).toUpperCase() === "CASCADE");
+        const hasUserCascade = fks.some((fk) => fk.from === "user_id" && fk.table === "users" && String(fk.on_delete).toUpperCase() === "CASCADE");
+        if (!hasTenantCascade || !hasUserCascade) {
+          throw new Error(\`\${tableName} is missing hosted usage foreign keys\`);
+        }
+      }
+
+      const counterIndexes = migratedDb.prepare("PRAGMA index_list(hosted_usage_counters)").all();
+      const counterUnique = counterIndexes.find((index) => index.name === "idx_hosted_usage_counters_tenant_user_period_action_unique");
+      if (!counterUnique || !counterUnique.unique) {
+        throw new Error("hosted usage counter unique index missing");
+      }
+
+      const reservationIndexes = migratedDb.prepare("PRAGMA index_list(hosted_usage_reservations)").all();
+      const reservationUnique = reservationIndexes.find((index) => index.name === "idx_hosted_usage_reservations_idempotency_unique");
+      if (!reservationUnique || !reservationUnique.unique) {
+        throw new Error("hosted usage reservation idempotency unique index missing");
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
   it("backfills legacy PDF rows as generated", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
     const script = `
@@ -191,7 +251,7 @@ describe.sequential("database migrations", () => {
 
       const migratedDb = new Database(dbPath, { readonly: true });
       const indexes = migratedDb.prepare("PRAGMA index_list(tracer_links)").all();
-      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_job_source_destination_unique");
+      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_user_job_source_destination_unique");
       if (!uniqueIndex || !uniqueIndex.unique) {
         throw new Error("tracer_links composite unique index missing after migration");
       }
@@ -204,6 +264,58 @@ describe.sequential("database migrations", () => {
       const click = migratedDb.prepare("SELECT tracer_link_id FROM tracer_click_events WHERE id = ?").get("click-1");
       if (click?.tracer_link_id !== "link-1") {
         throw new Error(\`Expected duplicate click to be reassigned to link-1, got \${click?.tracer_link_id}\`);
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
+  it("enforces private unique indexes when user_id is null", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath);
+      migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+        "job-null-owner-1",
+        "tenant_default",
+        "Role",
+        "Acme",
+        "https://example.com/null-owner",
+      );
+
+      let duplicateFailed = false;
+      try {
+        migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+          "job-null-owner-2",
+          "tenant_default",
+          "Role",
+          "Acme",
+          "https://example.com/null-owner",
+        );
+      } catch {
+        duplicateFailed = true;
+      }
+
+      if (!duplicateFailed) {
+        throw new Error("jobs unique index allowed duplicate NULL user_id rows");
       }
 
       migratedDb.close();

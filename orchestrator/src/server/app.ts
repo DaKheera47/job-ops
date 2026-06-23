@@ -225,7 +225,7 @@ export function createAuthGuard() {
       ["GET", "HEAD"].includes(normalizedMethod) &&
       /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
     )
-      return true;
+      return getJobOpsAppConfig().appMode !== "hosted";
     if (
       ["GET", "HEAD"].includes(normalizedMethod) &&
       /^\/api\/[^/]+\/health$/.test(normalizedPath)

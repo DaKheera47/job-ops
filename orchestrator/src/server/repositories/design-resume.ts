@@ -1,60 +1,54 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { designResumeAssets, designResumeDocuments } = schema;
 
+function documentsScopeFilter() {
+  return privateDataScopeFilter(designResumeDocuments);
+}
+
+function assetsScopeFilter() {
+  return privateDataScopeFilter(designResumeAssets);
+}
+
 export async function getLatestDesignResumeDocument() {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(designResumeDocuments)
-    .where(eq(designResumeDocuments.tenantId, tenantId))
+    .where(documentsScopeFilter())
     .orderBy(desc(designResumeDocuments.updatedAt))
     .limit(1);
   return row ?? null;
 }
 
 export async function getDesignResumeDocumentById(id: string) {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(designResumeDocuments)
-    .where(
-      and(
-        eq(designResumeDocuments.tenantId, tenantId),
-        eq(designResumeDocuments.id, id),
-      ),
-    )
+    .where(and(documentsScopeFilter(), eq(designResumeDocuments.id, id)))
     .limit(1);
   return row ?? null;
 }
 
 export async function listDesignResumeAssets(documentId: string) {
-  const tenantId = getActiveTenantId();
   return db
     .select()
     .from(designResumeAssets)
     .where(
-      and(
-        eq(designResumeAssets.tenantId, tenantId),
-        eq(designResumeAssets.documentId, documentId),
-      ),
+      and(assetsScopeFilter(), eq(designResumeAssets.documentId, documentId)),
     )
     .orderBy(desc(designResumeAssets.updatedAt));
 }
 
 export async function getDesignResumeAssetById(id: string) {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(designResumeAssets)
-    .where(
-      and(
-        eq(designResumeAssets.tenantId, tenantId),
-        eq(designResumeAssets.id, id),
-      ),
-    )
+    .where(and(assetsScopeFilter(), eq(designResumeAssets.id, id)))
     .limit(1);
   return row ?? null;
 }
@@ -79,7 +73,7 @@ export async function upsertDesignResumeDocument(input: {
   createdAt?: string;
   updatedAt: string;
 }) {
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
   const existing = await getDesignResumeDocumentById(input.id);
   if (existing) {
     await db
@@ -94,15 +88,13 @@ export async function upsertDesignResumeDocument(input: {
         updatedAt: input.updatedAt,
       })
       .where(
-        and(
-          eq(designResumeDocuments.tenantId, tenantId),
-          eq(designResumeDocuments.id, input.id),
-        ),
+        and(documentsScopeFilter(), eq(designResumeDocuments.id, input.id)),
       );
   } else {
     await db.insert(designResumeDocuments).values({
       id: input.id,
-      tenantId,
+      tenantId: scope.tenantId,
+      userId: scope.userId,
       title: input.title,
       resumeJson: input.resumeJson,
       revision: input.revision,
@@ -128,10 +120,11 @@ export async function insertDesignResumeAsset(input: {
   createdAt?: string;
   updatedAt: string;
 }) {
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
   await db.insert(designResumeAssets).values({
     id: input.id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     documentId: input.documentId,
     kind: input.kind,
     originalName: input.originalName,
@@ -146,53 +139,36 @@ export async function insertDesignResumeAsset(input: {
 }
 
 export async function deleteDesignResumeAsset(id: string) {
-  const tenantId = getActiveTenantId();
   await db
     .delete(designResumeAssets)
-    .where(
-      and(
-        eq(designResumeAssets.tenantId, tenantId),
-        eq(designResumeAssets.id, id),
-      ),
-    );
+    .where(and(assetsScopeFilter(), eq(designResumeAssets.id, id)));
 }
 
 export async function deleteDesignResumeAssetsForDocument(documentId: string) {
-  const tenantId = getActiveTenantId();
   await db
     .delete(designResumeAssets)
     .where(
-      and(
-        eq(designResumeAssets.tenantId, tenantId),
-        eq(designResumeAssets.documentId, documentId),
-      ),
+      and(assetsScopeFilter(), eq(designResumeAssets.documentId, documentId)),
     );
 }
 
 export async function deleteDesignResumeDocument(id: string) {
-  const tenantId = getActiveTenantId();
   await db
     .delete(designResumeDocuments)
-    .where(
-      and(
-        eq(designResumeDocuments.tenantId, tenantId),
-        eq(designResumeDocuments.id, id),
-      ),
-    );
+    .where(and(documentsScopeFilter(), eq(designResumeDocuments.id, id)));
 }
 
 export async function findDesignResumeAssetForDocument(args: {
   documentId: string;
   kind: "picture";
 }) {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(designResumeAssets)
     .where(
       and(
         eq(designResumeAssets.documentId, args.documentId),
-        eq(designResumeAssets.tenantId, tenantId),
+        assetsScopeFilter(),
         eq(designResumeAssets.kind, args.kind),
       ),
     )

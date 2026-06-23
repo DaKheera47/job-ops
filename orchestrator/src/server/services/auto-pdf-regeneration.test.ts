@@ -27,6 +27,15 @@ vi.mock("@server/tenancy/context", () => ({
   getActiveTenantId: vi.fn(() => "tenant-test"),
 }));
 
+vi.mock("@server/tenancy/private-scope", () => ({
+  getPrivateDataScope: vi.fn(() => ({
+    tenantId: "tenant-test",
+    userId: null,
+    enforceUserIsolation: false,
+    scopeKey: "tenant-test",
+  })),
+}));
+
 vi.mock("./pdf-fingerprint", () => ({
   resolvePdfFingerprintContext: vi.fn().mockResolvedValue({
     version: "v1",
@@ -42,6 +51,7 @@ vi.mock("./pdf-fingerprint", () => ({
   ),
 }));
 
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import {
   enqueueAutoPdfRegenerationForSettingsChanges,
   shouldEnqueueTailoringAutoPdfRegeneration,
@@ -51,6 +61,12 @@ import { resolvePdfFingerprintContext } from "./pdf-fingerprint";
 describe("auto PDF regeneration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-test",
+      userId: null,
+      enforceUserIsolation: false,
+      scopeKey: "tenant-test",
+    });
     mocks.enqueue.mockResolvedValue({
       id: "queue-job-1",
       queue: "auto_pdf_regeneration",
@@ -114,22 +130,58 @@ describe("auto PDF regeneration", () => {
       "auto_pdf_regeneration",
       expect.objectContaining({
         tenantId: "tenant-test",
+        userId: null,
         jobId: "job-1",
         reason: "settings_changed",
         requestedBy: "user",
       }),
-      { dedupeKey: "tenant-test:job-1" },
+      { dedupeKey: "tenant-test:tenant:job-1" },
     );
     expect(mocks.enqueue).toHaveBeenNthCalledWith(
       2,
       "auto_pdf_regeneration",
       expect.objectContaining({
         tenantId: "tenant-test",
+        userId: null,
         jobId: "job-2",
         reason: "settings_changed",
         requestedBy: "user",
       }),
-      { dedupeKey: "tenant-test:job-2" },
+      { dedupeKey: "tenant-test:tenant:job-2" },
+    );
+  });
+
+  it("carries hosted user ownership into queued regeneration jobs", async () => {
+    vi.mocked(getPrivateDataScope).mockReturnValue({
+      tenantId: "tenant-hosted",
+      userId: "user-a",
+      enforceUserIsolation: true,
+      scopeKey: "tenant-hosted:user-a",
+    });
+    mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([
+      createJob({
+        id: "job-hosted",
+        status: "ready",
+        pdfPath: "data/pdfs/job-hosted.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
+    ]);
+
+    const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
+      updatedSettingKeys: ["pdfRenderer"],
+      requestedBy: "user",
+    });
+
+    expect(enqueued).toBe(1);
+    expect(mocks.enqueue).toHaveBeenCalledWith(
+      "auto_pdf_regeneration",
+      expect.objectContaining({
+        tenantId: "tenant-hosted",
+        userId: "user-a",
+        jobId: "job-hosted",
+      }),
+      { dedupeKey: "tenant-hosted:user-a:job-hosted" },
     );
   });
 
@@ -161,7 +213,7 @@ describe("auto PDF regeneration", () => {
     expect(mocks.enqueue).toHaveBeenCalledWith(
       "auto_pdf_regeneration",
       expect.objectContaining({ jobId: "job-stale" }),
-      { dedupeKey: "tenant-test:job-stale" },
+      { dedupeKey: "tenant-test:tenant:job-stale" },
     );
   });
 
@@ -205,7 +257,7 @@ describe("auto PDF regeneration", () => {
     expect(mocks.enqueue).toHaveBeenCalledWith(
       "auto_pdf_regeneration",
       expect.objectContaining({ jobId: "job-typst" }),
-      { dedupeKey: "tenant-test:job-typst" },
+      { dedupeKey: "tenant-test:tenant:job-typst" },
     );
   });
 

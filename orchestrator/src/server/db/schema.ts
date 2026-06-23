@@ -6,6 +6,7 @@ import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
   APPLICATION_TASK_TYPES,
+  HOSTED_USAGE_ACTIONS,
   INTERVIEW_OUTCOMES,
   INTERVIEW_TYPES,
   JOB_CHAT_MESSAGE_ROLES,
@@ -83,6 +84,80 @@ export const tenantMemberships = sqliteTable(
   }),
 );
 
+export const HOSTED_USAGE_RESERVATION_STATUSES = [
+  "reserved",
+  "settled",
+  "refunded",
+] as const;
+
+export const hostedUsageCounters = sqliteTable(
+  "hosted_usage_counters",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    period: text("period").notNull(),
+    action: text("action", { enum: HOSTED_USAGE_ACTIONS }).notNull(),
+    usedUnits: integer("used_units").notNull().default(0),
+    reservedUnits: integer("reserved_units").notNull().default(0),
+    limitUnits: integer("limit_units").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserPeriodActionUnique: uniqueIndex(
+      "idx_hosted_usage_counters_tenant_user_period_action_unique",
+    ).on(table.tenantId, table.userId, table.period, table.action),
+    tenantUserPeriodIndex: index(
+      "idx_hosted_usage_counters_tenant_user_period",
+    ).on(table.tenantId, table.userId, table.period),
+  }),
+);
+
+export const hostedUsageReservations = sqliteTable(
+  "hosted_usage_reservations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    period: text("period").notNull(),
+    action: text("action", { enum: HOSTED_USAGE_ACTIONS }).notNull(),
+    reservedUnits: integer("reserved_units").notNull(),
+    usedUnits: integer("used_units").notNull().default(0),
+    refundedUnits: integer("refunded_units").notNull().default(0),
+    status: text("status", {
+      enum: HOSTED_USAGE_RESERVATION_STATUSES,
+    })
+      .notNull()
+      .default("reserved"),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserPeriodIndex: index(
+      "idx_hosted_usage_reservations_tenant_user_period",
+    ).on(table.tenantId, table.userId, table.period),
+    tenantUserPeriodActionIdempotencyUnique: uniqueIndex(
+      "idx_hosted_usage_reservations_idempotency_unique",
+    ).on(
+      table.tenantId,
+      table.userId,
+      table.period,
+      table.action,
+      table.idempotencyKey,
+    ),
+  }),
+);
+
 export const jobs = sqliteTable(
   "jobs",
   {
@@ -91,6 +166,9 @@ export const jobs = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
 
     // From crawler
     source: text("source").notNull().default("gradcracker"),
@@ -184,12 +262,12 @@ export const jobs = sqliteTable(
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => ({
-    tenantJobUrlUnique: uniqueIndex("idx_jobs_tenant_job_url_unique").on(
+    tenantUserJobUrlUnique: uniqueIndex(
+      "idx_jobs_tenant_user_job_url_unique",
+    ).on(table.tenantId, sql`coalesce(${table.userId}, '')`, table.jobUrl),
+    tenantStatusIndex: index("idx_jobs_tenant_user_status").on(
       table.tenantId,
-      table.jobUrl,
-    ),
-    tenantStatusIndex: index("idx_jobs_tenant_status").on(
-      table.tenantId,
+      table.userId,
       table.status,
     ),
     tenantDiscoveredAtIndex: index("idx_jobs_tenant_discovered_at").on(
@@ -205,6 +283,9 @@ export const stageEvents = sqliteTable("stage_events", {
     .notNull()
     .default("tenant_default")
     .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -223,6 +304,9 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("tenant_default")
     .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -243,6 +327,9 @@ export const jobNotes = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -265,6 +352,9 @@ export const interviews = sqliteTable("interviews", {
     .notNull()
     .default("tenant_default")
     .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -280,6 +370,9 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
     .notNull()
     .default("tenant_default")
     .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
   startedAt: text("started_at").notNull().default(sql`(datetime('now'))`),
   completedAt: text("completed_at"),
   status: text("status", {
@@ -329,6 +422,9 @@ export const jobChatThreads = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -357,6 +453,9 @@ export const jobChatMessages = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     threadId: text("thread_id")
       .notNull()
       .references(() => jobChatThreads.id, { onDelete: "cascade" }),
@@ -394,6 +493,9 @@ export const jobChatRuns = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     threadId: text("thread_id")
       .notNull()
       .references(() => jobChatThreads.id, { onDelete: "cascade" }),
@@ -428,14 +530,18 @@ export const settings = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     key: text("key").notNull(),
     value: text("value").notNull(),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => ({
-    tenantKeyUnique: uniqueIndex("idx_settings_tenant_key_unique").on(
+    tenantUserKeyUnique: uniqueIndex("idx_settings_tenant_user_key_unique").on(
       table.tenantId,
+      sql`coalesce(${table.userId}, '')`,
       table.key,
     ),
   }),
@@ -627,6 +733,7 @@ export const designResumeDocuments = sqliteTable("design_resume_documents", {
     .notNull()
     .default("tenant_default")
     .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   resumeJson: text("resume_json", { mode: "json" }).notNull(),
   revision: integer("revision").notNull().default(1),
@@ -645,6 +752,9 @@ export const designResumeAssets = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     documentId: text("document_id")
       .notNull()
       .references(() => designResumeDocuments.id, { onDelete: "cascade" }),
@@ -673,6 +783,9 @@ export const jobDocuments = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -700,6 +813,9 @@ export const postApplicationIntegrations = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     displayName: text("display_name"),
@@ -715,8 +831,13 @@ export const postApplicationIntegrations = sqliteTable(
   },
   (table) => ({
     providerAccountUnique: uniqueIndex(
-      "idx_post_app_integrations_tenant_provider_account_unique",
-    ).on(table.tenantId, table.provider, table.accountKey),
+      "idx_post_app_integrations_tenant_user_provider_account_unique",
+    ).on(
+      table.tenantId,
+      sql`coalesce(${table.userId}, '')`,
+      table.provider,
+      table.accountKey,
+    ),
   }),
 );
 
@@ -728,6 +849,9 @@ export const postApplicationSyncRuns = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     integrationId: text("integration_id").references(
@@ -766,6 +890,9 @@ export const postApplicationMessages = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     integrationId: text("integration_id").references(
@@ -819,9 +946,10 @@ export const postApplicationMessages = sqliteTable(
   },
   (table) => ({
     providerAccountExternalMessageUnique: uniqueIndex(
-      "idx_post_app_messages_tenant_provider_account_external_unique",
+      "idx_post_app_messages_tenant_user_provider_account_external_unique",
     ).on(
       table.tenantId,
+      sql`coalesce(${table.userId}, '')`,
       table.provider,
       table.accountKey,
       table.externalMessageId,
@@ -840,6 +968,9 @@ export const tracerLinks = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     token: text("token").notNull().unique(),
     jobId: text("job_id")
       .notNull()
@@ -854,9 +985,10 @@ export const tracerLinks = sqliteTable(
   },
   (table) => ({
     jobPathDestinationUnique: uniqueIndex(
-      "idx_tracer_links_tenant_job_source_destination_unique",
+      "idx_tracer_links_tenant_user_job_source_destination_unique",
     ).on(
       table.tenantId,
+      sql`coalesce(${table.userId}, '')`,
       table.jobId,
       table.sourcePath,
       table.destinationUrlHash,
@@ -873,6 +1005,9 @@ export const tracerClickEvents = sqliteTable(
       .notNull()
       .default("tenant_default")
       .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     tracerLinkId: text("tracer_link_id")
       .notNull()
       .references(() => tracerLinks.id, { onDelete: "cascade" }),
@@ -910,6 +1045,12 @@ export type TenantRow = typeof tenants.$inferSelect;
 export type NewTenantRow = typeof tenants.$inferInsert;
 export type TenantMembershipRow = typeof tenantMemberships.$inferSelect;
 export type NewTenantMembershipRow = typeof tenantMemberships.$inferInsert;
+export type HostedUsageCounterRow = typeof hostedUsageCounters.$inferSelect;
+export type NewHostedUsageCounterRow = typeof hostedUsageCounters.$inferInsert;
+export type HostedUsageReservationRow =
+  typeof hostedUsageReservations.$inferSelect;
+export type NewHostedUsageReservationRow =
+  typeof hostedUsageReservations.$inferInsert;
 export type JobRow = typeof jobs.$inferSelect;
 export type NewJobRow = typeof jobs.$inferInsert;
 export type StageEventRow = typeof stageEvents.$inferSelect;

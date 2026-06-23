@@ -10,6 +10,7 @@ export type AutoPdfRegenerationReason =
 
 export interface AutoPdfRegenerationJobPayload {
   tenantId: string;
+  userId?: string | null;
   jobId: string;
   reason: AutoPdfRegenerationReason;
   requestedAt: string;

@@ -1,4 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getPostApplicationMessageByExternalId: vi.fn(),
+  upsertPostApplicationMessage: vi.fn(),
+  transitionStage: vi.fn(),
+}));
+
+vi.mock("@infra/product-analytics", () => ({
+  trackServerProductEvent: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock("@server/infra/product-analytics", () => ({
+  trackServerProductEvent: vi.fn().mockResolvedValue(false),
+}));
 
 vi.mock("@server/repositories/post-application-integrations", () => ({
   getPostApplicationIntegration: vi.fn().mockResolvedValue({
@@ -40,16 +57,18 @@ vi.mock("@server/repositories/jobs", () => ({
   ]),
 }));
 
-const getPostApplicationMessageByExternalId = vi.fn();
-const upsertPostApplicationMessage = vi.fn();
 vi.mock("@server/repositories/post-application-messages", () => ({
-  getPostApplicationMessageByExternalId,
-  upsertPostApplicationMessage,
+  getPostApplicationMessageByExternalId:
+    mocks.getPostApplicationMessageByExternalId,
+  upsertPostApplicationMessage: mocks.upsertPostApplicationMessage,
 }));
 
-const transitionStage = vi.fn();
 vi.mock("@server/services/applicationTracking", () => ({
-  transitionStage,
+  transitionStage: mocks.transitionStage,
+}));
+
+vi.mock("../../applicationTracking", () => ({
+  transitionStage: mocks.transitionStage,
 }));
 
 vi.mock("@server/repositories/settings", () => ({
@@ -85,7 +104,21 @@ function makeJsonResponse(body: unknown): Response {
 }
 
 describe("gmail sync auto-log idempotency", () => {
-  beforeEach(() => {
+  const originalEnv = { ...process.env };
+  let tempDir: string;
+  let closeDb: (() => void) | null = null;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-gmail-sync-"));
+    process.env = {
+      ...originalEnv,
+      DATA_DIR: tempDir,
+      NODE_ENV: "test",
+      JOBOPS_APP_MODE: "local",
+    };
+    await import("@server/db/migrate");
+    ({ closeDb } = await import("@server/db"));
+
     vi.clearAllMocks();
     llmCallJson.mockClear();
 
@@ -131,10 +164,17 @@ describe("gmail sync auto-log idempotency", () => {
     );
   });
 
+  afterEach(async () => {
+    closeDb?.();
+    closeDb = null;
+    process.env = { ...originalEnv };
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
   it("creates auto stage event only on first auto_linked transition", async () => {
     const { runGmailIngestionSync } = await import("./gmail-sync");
 
-    getPostApplicationMessageByExternalId
+    mocks.getPostApplicationMessageByExternalId
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
         id: "post-msg-1",
@@ -169,7 +209,7 @@ describe("gmail sync auto-log idempotency", () => {
         updatedAt: new Date().toISOString(),
       });
 
-    upsertPostApplicationMessage
+    mocks.upsertPostApplicationMessage
       .mockResolvedValueOnce({
         message: {
           id: "post-msg-1",
@@ -198,7 +238,7 @@ describe("gmail sync auto-log idempotency", () => {
     await runGmailIngestionSync({ accountKey: "default", maxMessages: 1 });
     await runGmailIngestionSync({ accountKey: "default", maxMessages: 1 });
 
-    expect(upsertPostApplicationMessage).toHaveBeenCalledTimes(2);
-    expect(transitionStage).toHaveBeenCalledTimes(1);
+    expect(mocks.upsertPostApplicationMessage).toHaveBeenCalledTimes(2);
+    expect(mocks.transitionStage).toHaveBeenCalledTimes(1);
   });
 });

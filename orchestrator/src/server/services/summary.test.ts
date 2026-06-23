@@ -4,9 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const callJsonMock = vi.fn();
 const getProviderMock = vi.fn();
 const getBaseUrlMock = vi.fn();
-
-vi.mock("../repositories/settings", () => ({
+const settingsMocks = vi.hoisted(() => ({
   getSetting: vi.fn(),
+  getEffectiveSettings: vi.fn(),
+}));
+
+vi.mock("../repositories/settings", () => settingsMocks);
+vi.mock("@server/repositories/settings", () => settingsMocks);
+vi.mock("@server/services/settings", () => ({
+  getEffectiveSettings: settingsMocks.getEffectiveSettings,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -35,6 +41,13 @@ describe("generateTailoring", () => {
     vi.clearAllMocks();
     getProviderMock.mockReturnValue("openrouter");
     getBaseUrlMock.mockReturnValue("https://openrouter.ai");
+    settingsMocks.getEffectiveSettings.mockResolvedValue({
+      model: { value: "gpt-4o-mini" },
+      llmProvider: { value: "openrouter" },
+      llmBaseUrl: { value: null },
+      llmPurposeOverrides: { value: {} },
+      modelTailoring: { value: null },
+    });
     callJsonMock.mockResolvedValue({
       success: true,
       data: {
@@ -120,6 +133,59 @@ describe("generateTailoring", () => {
     );
     expect(request?.messages?.[0]?.content).toContain(
       "Output language for summary and skills: German",
+    );
+  });
+
+  it("uses the detected job description language when configured", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "match-job-description",
+      manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring(
+      "Wir suchen Erfahrung mit Entwicklung und Verantwortung für APIs.",
+      {
+        basics: {
+          name: "Test User",
+          label: "Engineer",
+        },
+      },
+    );
+
+    const request = callJsonMock.mock.calls.at(-1)?.[0];
+    expect(request?.messages?.[0]?.content).toContain(
+      "Output language for summary and skills: German",
+    );
+  });
+
+  it("falls back to english when job description language detection is weak", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "match-job-description",
+      manualLanguage: "german",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring("Senior platform role with Kubernetes.", {
+      basics: {
+        name: "Test User",
+        label: "Engineer",
+      },
+    });
+
+    const request = callJsonMock.mock.calls.at(-1)?.[0];
+    expect(request?.messages?.[0]?.content).toContain(
+      "Output language for summary and skills: English",
     );
   });
 

@@ -28,7 +28,10 @@ import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { jsonrepair } from "jsonrepair";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
 import { parseErrorMessage, truncate } from "../llm/utils/string";
-import { replaceCurrentDesignResumeDocument } from "./index";
+import {
+  ensureImportedProjectIds,
+  replaceCurrentDesignResumeDocument,
+} from "./index";
 
 type SupportedImportMediaType =
   | "application/pdf"
@@ -1758,7 +1761,9 @@ export async function importDesignResumeFromFile(
     });
 
     try {
-      const resumeJson = parseReactiveResumeJsonFile(decoded.toString("utf8"));
+      const resumeJson = ensureImportedProjectIds(
+        parseReactiveResumeJsonFile(decoded.toString("utf8")),
+      );
       const saved = await replaceCurrentDesignResumeDocument({
         importedAt: new Date().toISOString(),
         resumeJson,
@@ -1949,7 +1954,9 @@ export async function importDesignResumeFromFile(
       totalElapsedMs: elapsedMs(importStartedAt),
     });
     const normalizeStartedAt = Date.now();
-    const normalized = sanitizeNormalizedResume(parsed);
+    const normalized = ensureImportedProjectIds(
+      sanitizeNormalizedResume(parsed),
+    );
     logger.info("Design resume file import normalized", {
       requestId: requestId ?? null,
       provider,

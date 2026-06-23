@@ -11,3 +11,4 @@ export { isAwaitingAiScore, ScoreRing } from "./ScoreRing";
 export { Stats } from "./Stats";
 export { StatusBadge } from "./StatusBadge";
 export { TailoredSummary } from "./TailoredSummary";
+export { Tip } from "./Tip";

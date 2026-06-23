@@ -13,6 +13,7 @@ const SCORING_CONCURRENCY = 4;
 
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
+  scoringInstructions?: string;
   shouldCancel?: () => boolean;
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
   logger.info("Running scoring step");
@@ -37,6 +38,7 @@ export async function scoreJobsStep(args: {
 
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
+  const scoringInstructions = args.scoringInstructions?.trim();
 
   await asyncPool({
     items: unprocessedJobs,
@@ -64,8 +66,11 @@ export async function scoreJobsStep(args: {
         return;
       }
 
+      const scoringResultPromise = scoringInstructions
+        ? scoreJobSuitability(job, args.profile, { scoringInstructions })
+        : scoreJobSuitability(job, args.profile);
       const [{ score, reason }, jobBrief] = await Promise.all([
-        scoreJobSuitability(job, args.profile),
+        scoringResultPromise,
         generateJobBrief(job.jobDescription, { jobId: job.id }),
       ]);
       if (args.shouldCancel?.()) return;

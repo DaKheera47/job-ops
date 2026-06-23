@@ -209,7 +209,7 @@ const {
 
   return {
     currentLanguageSettings: {
-      mode: "manual" as "manual" | "match-resume",
+      mode: "manual" as "manual" | "match-resume" | "match-job-description",
       manual: "english" as "english" | "german" | "french" | "spanish",
     },
     currentPdfRenderer: { value: "latex" as "latex" | "rxresume" | "typst" },
@@ -603,6 +603,44 @@ describe("PDF Service Tailoring Logic", () => {
         language: "french",
       }),
     );
+  });
+
+  it("detects the job description language for local LaTeX rendering", async () => {
+    currentLanguageSettings.mode = "match-job-description";
+
+    await generatePdf(
+      "job-german-jd-latex",
+      {},
+      "Wir suchen Erfahrung mit Entwicklung und Verantwortung für APIs.",
+    );
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-german-jd-latex",
+        language: "german",
+      }),
+    );
+  });
+
+  it("returns language-aware filenames for generated Design Resume PDFs", async () => {
+    currentLanguageSettings.mode = "manual";
+    currentLanguageSettings.manual = "german";
+
+    const designResume = await import("./design-resume");
+    vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
+      id: "design-resume-1",
+      title: "Müller Büro",
+      sourceResumeId: null,
+      sourceMode: "v5",
+      importedAt: "2026-05-02T00:00:00.000Z",
+      updatedAt: "2026-05-02T00:00:00.000Z",
+      revision: 1,
+      resumeJson: mockProfile,
+    } as any);
+
+    await expect(generateDesignResumePdf()).resolves.toMatchObject({
+      fileName: "Mueller_Buero.pdf",
+    });
   });
 
   it("uses the local Typst renderer with the default theme", async () => {

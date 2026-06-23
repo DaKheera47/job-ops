@@ -685,6 +685,46 @@ describe("salary penalty", () => {
       );
     });
 
+    it("uses per-run scoring instructions instead of global scoring settings", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: {
+          value: "Global instruction that should not be used.",
+          default: "",
+          override: "Global instruction that should not be used.",
+        },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      await scoreJobSuitability(
+        createJob({
+          id: "test-job-per-run-instructions",
+          title: "Software Engineer",
+        }),
+        {},
+        {
+          scoringInstructions:
+            "Prefer roles above GBP 60k and lower-score graduate programmes.",
+        },
+      );
+
+      const prompt =
+        callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+      expect(prompt).toContain(
+        "Prefer roles above GBP 60k and lower-score graduate programmes.",
+      );
+      expect(prompt).not.toContain(
+        "Global instruction that should not be used.",
+      );
+    });
+
     it("uses a custom scoring prompt template override", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({

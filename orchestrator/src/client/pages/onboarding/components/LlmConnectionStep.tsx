@@ -46,6 +46,11 @@ export const LlmConnectionStep: React.FC<{
   onProviderChange,
 }) => {
   const providerConfig = getLlmProviderConfig(selectedProvider);
+  const displayValidation =
+    !providerConfig.requiresApiKey &&
+    validation.message?.toLowerCase().includes("api key")
+      ? { ...validation, checked: false, message: null }
+      : validation;
 
   return (
     <div data-onboarding-target="model-form">
@@ -76,7 +81,7 @@ export const LlmConnectionStep: React.FC<{
         }}
         validationSlot={
           <InlineValidation
-            state={validation}
+            state={displayValidation}
             successMessage={`${providerConfig.label} connection verified.`}
           />
         }

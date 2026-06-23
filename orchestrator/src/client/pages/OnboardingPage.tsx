@@ -3,9 +3,11 @@ import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import type {
   OnboardingRequirement,
   OnboardingRequirementPrimaryAction,
+  OnboardingStatusResponse,
 } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Circle,
@@ -711,6 +713,10 @@ const LaunchOnboardingPage: React.FC = () => {
   });
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
+  const [actionStatus, setActionStatus] =
+    useState<OnboardingStatusResponse | null>(null);
+  const [userSelectedPanel, setUserSelectedPanel] =
+    useState<OnboardingPanelId | null>(null);
   const [coachReplayNonce, setCoachReplayNonce] = useState(0);
   const launchStartedAtRef = useRef(Date.now());
   const codexAutoSaveAttemptedRef = useRef(false);
@@ -733,23 +739,48 @@ const LaunchOnboardingPage: React.FC = () => {
       }),
     [showAccountStep, showModelStep],
   );
+  useEffect(() => {
+    if (!actionStatus || !onboarding.status) return;
+    if (
+      onboarding.status.complete === actionStatus.complete &&
+      onboarding.status.nextRequirementId === actionStatus.nextRequirementId
+    ) {
+      setActionStatus(null);
+    }
+  }, [actionStatus, onboarding.status]);
+
+  const latestStatus = actionStatus ?? onboarding.status;
+  const onboardingRequirements =
+    latestStatus?.requirements ?? onboarding.requirements;
+  const onboardingComplete = latestStatus?.complete ?? onboarding.complete;
+  const onboardingNextRequirementId =
+    latestStatus?.nextRequirementId ?? onboarding.nextRequirementId;
   const visibleRequirements = useMemo(
     () =>
-      onboarding.requirements.filter(
+      onboardingRequirements.filter(
         (requirement) => requirement.id !== "model" || showModelStep,
       ),
-    [onboarding.requirements, showModelStep],
+    [onboardingRequirements, showModelStep],
   );
   const fallbackPanel = useMemo<OnboardingPanelId>(() => {
     if (
-      onboarding.nextRequirementId &&
-      visiblePanels.includes(onboarding.nextRequirementId)
+      onboardingNextRequirementId &&
+      visiblePanels.includes(onboardingNextRequirementId)
     ) {
-      return onboarding.nextRequirementId;
+      return onboardingNextRequirementId;
     }
-    if (onboarding.complete) return "first-run";
+    if (onboardingComplete) return "first-run";
     return visiblePanels.includes("model") ? "model" : "resume";
-  }, [onboarding.complete, onboarding.nextRequirementId, visiblePanels]);
+  }, [onboardingComplete, onboardingNextRequirementId, visiblePanels]);
+  const selectOnboardingPanel = useCallback(
+    (panel: OnboardingPanelId) => {
+      if (!visiblePanels.includes(panel)) return;
+      if (panel === "first-run" && !onboardingComplete) return;
+      setUserSelectedPanel(panel);
+      setActivePanel(panel);
+    },
+    [onboardingComplete, visiblePanels],
+  );
 
   const modelRequirement = useMemo(
     () => getRequirement(visibleRequirements, "model"),
@@ -762,19 +793,19 @@ const LaunchOnboardingPage: React.FC = () => {
   const activeRequirement =
     activePanel === "account" || activePanel === "first-run"
       ? null
-      : getRequirement(onboarding.requirements, activePanel);
+      : getRequirement(onboardingRequirements, activePanel);
   const getActiveRequirementStatus = useCallback(
     () =>
       getRequirementAnalyticsStatus({
         panel: activePanel,
-        complete: onboarding.complete,
+        complete: onboardingComplete,
         requirement: activeRequirement,
       }),
-    [activePanel, activeRequirement, onboarding.complete],
+    [activePanel, activeRequirement, onboardingComplete],
   );
   const markOnboardingCompleted = useOnboardingDropoffAnalytics({
     activePanel,
-    complete: onboarding.complete,
+    complete: onboardingComplete,
     getRequirementStatus: getActiveRequirementStatus,
     hadErrorVisible:
       activeRequirement?.status === "invalid" ||
@@ -792,10 +823,10 @@ const LaunchOnboardingPage: React.FC = () => {
   }, [activePanel, getActiveRequirementStatus, isAppStatusLoading]);
 
   useEffect(() => {
-    if (!onboarding.status || onboarding.checking || isAppStatusLoading) return;
+    if (!latestStatus || onboarding.checking || isAppStatusLoading) return;
     trackProductEvent("onboarding_status_checked", {
-      complete: onboarding.complete,
-      next_step: getNextStep(onboarding.nextRequirementId, onboarding.complete),
+      complete: onboardingComplete,
+      next_step: getNextStep(onboardingNextRequirementId, onboardingComplete),
       model_status: getRequirementStatusOrMissing(modelRequirement),
       resume_status: getRequirementStatusOrMissing(resumeRequirement),
     });
@@ -803,9 +834,9 @@ const LaunchOnboardingPage: React.FC = () => {
     modelRequirement,
     isAppStatusLoading,
     onboarding.checking,
-    onboarding.complete,
-    onboarding.nextRequirementId,
-    onboarding.status,
+    onboardingComplete,
+    onboardingNextRequirementId,
+    latestStatus,
     resumeRequirement,
   ]);
 
@@ -855,31 +886,36 @@ const LaunchOnboardingPage: React.FC = () => {
   useEffect(() => {
     if (isAppStatusLoading) return;
     if (!visiblePanels.includes(activePanel)) {
+      setUserSelectedPanel(null);
       setActivePanel(fallbackPanel);
       return;
     }
-    if (
-      onboarding.nextRequirementId &&
-      visiblePanels.includes(onboarding.nextRequirementId)
-    ) {
-      setActivePanel(onboarding.nextRequirementId);
+    if (userSelectedPanel === activePanel) {
       return;
     }
-    if (onboarding.complete) {
+    if (
+      onboardingNextRequirementId &&
+      visiblePanels.includes(onboardingNextRequirementId)
+    ) {
+      setActivePanel(onboardingNextRequirementId);
+      return;
+    }
+    if (onboardingComplete) {
       setActivePanel("first-run");
     }
   }, [
     activePanel,
     fallbackPanel,
     isAppStatusLoading,
-    onboarding.complete,
-    onboarding.nextRequirementId,
+    onboardingComplete,
+    onboardingNextRequirementId,
+    userSelectedPanel,
     visiblePanels,
   ]);
 
   useEffect(() => {
     if (
-      !onboarding.complete ||
+      !onboardingComplete ||
       flow.demoMode ||
       activePanel !== "first-run" ||
       flow.settingsLoading ||
@@ -899,8 +935,26 @@ const LaunchOnboardingPage: React.FC = () => {
     flow.hasSavedSearchTerms,
     flow.isGeneratingSearchTerms,
     flow.settingsLoading,
-    onboarding.complete,
+    onboardingComplete,
   ]);
+
+  const applyReturnedStatus = useCallback(
+    (status: OnboardingStatusResponse) => {
+      setUserSelectedPanel(null);
+      setActionStatus(status);
+      if (status.complete) {
+        setActivePanel("first-run");
+        return;
+      }
+      if (
+        status.nextRequirementId &&
+        visiblePanels.includes(status.nextRequirementId)
+      ) {
+        setActivePanel(status.nextRequirementId);
+      }
+    },
+    [visiblePanels],
+  );
 
   const handleCodexAuthStatusChange = useCallback(
     (status: CodexAuthStatusResponse) => {
@@ -928,10 +982,10 @@ const LaunchOnboardingPage: React.FC = () => {
           codexAutoSaveAttemptedRef.current = false;
           return;
         }
-        if (nextStatus.complete) setActivePanel("first-run");
+        applyReturnedStatus(nextStatus);
       });
     },
-    [flow, modelRequirement?.status],
+    [applyReturnedStatus, flow, modelRequirement?.status],
   );
 
   if (flow.demoMode) {
@@ -970,12 +1024,17 @@ const LaunchOnboardingPage: React.FC = () => {
     visibleRequirements.filter((requirement) => requirement.status === "ready")
       .length +
     (showAccountStep ? 1 : 0) +
-    (onboarding.complete ? 1 : 0);
+    (onboardingComplete ? 1 : 0);
   const totalSteps = visiblePanels.length;
   const activePrimaryAction =
     isHostedMode && activePanel === "resume"
       ? "upload_resume"
       : (activeRequirement?.primaryAction ?? "none");
+  const previousPanel = (() => {
+    const currentIndex = visiblePanels.indexOf(activePanel);
+    if (currentIndex <= 0) return null;
+    return visiblePanels[currentIndex - 1] ?? null;
+  })();
 
   const submitActivePanel = async () => {
     if (activePanel === "account") {
@@ -988,13 +1047,13 @@ const LaunchOnboardingPage: React.FC = () => {
         return;
       }
       const status = await flow.handleSaveModel();
-      if (status?.complete) setActivePanel("first-run");
+      if (status) applyReturnedStatus(status);
       return;
     }
     if (activePanel === "resume") {
       if (allowReactiveResumeSetup && flow.resumeSetupMode === "rxresume") {
         const status = await flow.handleSaveRxresume();
-        if (status?.complete) setActivePanel("first-run");
+        if (status) applyReturnedStatus(status);
         return;
       }
       await onboarding.refetch();
@@ -1033,13 +1092,11 @@ const LaunchOnboardingPage: React.FC = () => {
         <OnboardingCoach
           activePanel={activePanel}
           allowReactiveResume={allowReactiveResumeSetup}
-          onPanelChange={(panel) => {
-            if (visiblePanels.includes(panel)) setActivePanel(panel);
-          }}
+          onPanelChange={selectOnboardingPanel}
           replayNonce={coachReplayNonce}
           showAccount={showAccountStep}
           showModel={showModelStep}
-          status={onboarding.status}
+          status={latestStatus}
         />
 
         <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -1059,9 +1116,9 @@ const LaunchOnboardingPage: React.FC = () => {
             <CardContent className="space-y-3">
               <OnboardingStepRail
                 activePanel={activePanel}
-                complete={onboarding.complete}
-                nextRequirementId={onboarding.nextRequirementId}
-                onPanelSelect={setActivePanel}
+                complete={onboardingComplete}
+                nextRequirementId={onboardingNextRequirementId}
+                onPanelSelect={selectOnboardingPanel}
                 requirements={visibleRequirements}
                 showAccount={showAccountStep}
                 showModel={showModelStep}
@@ -1302,22 +1359,35 @@ const LaunchOnboardingPage: React.FC = () => {
                 </CardContent>
 
                 <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void onboarding.refetch()}
-                    disabled={flow.isBusy || onboarding.checking}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Recheck
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void onboarding.refetch()}
+                      disabled={flow.isBusy || onboarding.checking}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Recheck
+                    </Button>
+                    {previousPanel ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => selectOnboardingPanel(previousPanel)}
+                        disabled={flow.isBusy || onboarding.checking}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Previous step
+                      </Button>
+                    ) : null}
+                  </div>
 
                   <Button
                     type="submit"
                     disabled={
                       flow.isBusy ||
                       flow.isGeneratingSearchTerms ||
-                      (activePanel === "first-run" && !onboarding.complete)
+                      (activePanel === "first-run" && !onboardingComplete)
                     }
                     data-onboarding-target="primary-action"
                   >

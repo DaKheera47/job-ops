@@ -12,9 +12,20 @@ import type {
 } from "@shared/types";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
-import { getActiveTenantId } from "../tenancy/context";
+import {
+  getPrivateDataScope,
+  privateDataScopeFilter,
+} from "../tenancy/private-scope";
 
 const { jobs, pipelineRuns } = schema;
+
+function pipelineRunsScopeFilter() {
+  return privateDataScopeFilter(pipelineRuns);
+}
+
+function jobsScopeFilter() {
+  return privateDataScopeFilter(jobs);
+}
 
 function mapRowToPipelineRun(
   row: typeof schema.pipelineRuns.$inferSelect,
@@ -75,11 +86,12 @@ export async function createPipelineRun(args?: {
 }): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
 
   await db.insert(pipelineRuns).values({
     id,
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     startedAt: now,
     status: "running",
     configSnapshot: serializeConfigSnapshot(args?.configSnapshot ?? null),
@@ -116,7 +128,6 @@ export async function updatePipelineRun(
   }>,
 ): Promise<void> {
   const { configSnapshot, resultSummary, ...rest } = update;
-  const tenantId = getActiveTenantId();
   await db
     .update(pipelineRuns)
     .set({
@@ -130,18 +141,17 @@ export async function updatePipelineRun(
         ? { resultSummary: resultSummary ?? null }
         : {}),
     })
-    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)));
+    .where(and(pipelineRunsScopeFilter(), eq(pipelineRuns.id, id)));
 }
 
 /**
  * Get the latest pipeline run.
  */
 export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
-    .where(eq(pipelineRuns.tenantId, tenantId))
+    .where(pipelineRunsScopeFilter())
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(1);
 
@@ -156,11 +166,10 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
 export async function getRecentPipelineRuns(
   limit: number = 10,
 ): Promise<PipelineRun[]> {
-  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(pipelineRuns)
-    .where(eq(pipelineRuns.tenantId, tenantId))
+    .where(pipelineRunsScopeFilter())
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(limit);
 
@@ -170,11 +179,10 @@ export async function getRecentPipelineRuns(
 export async function getPipelineRunById(
   id: string,
 ): Promise<PipelineRun | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
-    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)))
+    .where(and(pipelineRunsScopeFilter(), eq(pipelineRuns.id, id)))
     .limit(1);
 
   return row ? mapRowToPipelineRun(row) : null;
@@ -183,11 +191,10 @@ export async function getPipelineRunById(
 export async function getPipelineRunInsights(
   id: string,
 ): Promise<PipelineRunInsights | null> {
-  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
-    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)))
+    .where(and(pipelineRunsScopeFilter(), eq(pipelineRuns.id, id)))
     .limit(1);
   if (!row) return null;
 
@@ -225,7 +232,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.createdAt, run.startedAt),
           lte(jobs.createdAt, run.completedAt),
-          eq(jobs.tenantId, tenantId),
+          jobsScopeFilter(),
         ),
       ),
     db
@@ -235,7 +242,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.updatedAt, run.startedAt),
           lte(jobs.updatedAt, run.completedAt),
-          eq(jobs.tenantId, tenantId),
+          jobsScopeFilter(),
         ),
       ),
     db
@@ -245,7 +252,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.processedAt, run.startedAt),
           lte(jobs.processedAt, run.completedAt),
-          eq(jobs.tenantId, tenantId),
+          jobsScopeFilter(),
         ),
       ),
   ]);

@@ -177,6 +177,19 @@ describe("provider adapters", () => {
     expect(ollamaStrategy.extractText(response)).toBe("ok");
   });
 
+  it("sends optional bearer auth for Ollama chat requests", () => {
+    const request = ollamaStrategy.buildRequest({
+      mode: "none",
+      baseUrl: "http://localhost:11434",
+      apiKey: "local-token",
+      model: "llama3:latest",
+      messages,
+      jsonSchema: schema,
+    });
+
+    expect(request.headers.Authorization).toBe("Bearer local-token");
+  });
+
   it("builds validation URLs for GLM base URLs and endpoints", () => {
     expect(
       glmStrategy.getValidationUrls({
@@ -234,7 +247,7 @@ describe("provider adapters", () => {
     ).toBe("gemini");
   });
 
-  it("sends Gemini structured outputs through the JSON Schema responseFormat", () => {
+  it("sends Gemini structured outputs through the JSON Schema responseSchema", () => {
     const request = geminiStrategy.buildRequest({
       mode: "json_schema",
       baseUrl: "https://generativelanguage.googleapis.com",
@@ -272,12 +285,10 @@ describe("provider adapters", () => {
 
     const generationConfig = (request.body as Record<string, unknown>)
       .generationConfig as Record<string, unknown>;
-    const responseFormat = generationConfig.responseFormat as Record<
+    const responseSchema = generationConfig.responseSchema as Record<
       string,
       unknown
     >;
-    const textFormat = responseFormat.text as Record<string, unknown>;
-    const responseSchema = textFormat.schema as Record<string, unknown>;
     const skills = (responseSchema.properties as Record<string, unknown>)
       .skills as Record<string, unknown>;
     const bestMatchIndex = (
@@ -285,14 +296,14 @@ describe("provider adapters", () => {
     ).bestMatchIndex as Record<string, unknown>;
     const itemSchema = skills.items as Record<string, unknown>;
 
-    expect(textFormat.mimeType).toBe("application/json");
+    expect(generationConfig.responseMimeType).toBe("application/json");
     expect(bestMatchIndex.type).toEqual(["integer", "null"]);
-    expect(responseSchema.additionalProperties).toBe(false);
+    expect(responseSchema.additionalProperties).toBeUndefined();
     expect(responseSchema.propertyOrdering).toEqual([
       "bestMatchIndex",
       "skills",
     ]);
-    expect(itemSchema.additionalProperties).toBe(false);
+    expect(itemSchema.additionalProperties).toBeUndefined();
     expect(itemSchema.propertyOrdering).toEqual(["name", "keywords"]);
   });
 });

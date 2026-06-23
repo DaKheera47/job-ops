@@ -6,6 +6,8 @@ import type {
   PipelineProgressState,
   PipelineRun,
   PipelineRunInsights,
+  PipelineSearchPlanRequest,
+  PipelineSearchPlanResponse,
   PipelineSearchPreset,
   PipelineSearchPresetsResponse,
   PipelineStatusResponse,
@@ -118,17 +120,28 @@ export async function deletePipelineSearchPreset(
   );
 }
 
+export async function planPipelineSearch(
+  input: PipelineSearchPlanRequest,
+): Promise<PipelineSearchPlanResponse> {
+  return fetchApi<PipelineSearchPlanResponse>("/pipeline/search-plan", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function runPipeline(config?: {
   topN?: number;
   minSuitabilityScore?: number;
   sources?: JobSource[];
   runBudget?: number;
   searchTerms?: string[];
+  scoringInstructions?: string;
   country?: string;
   cityLocations?: string[];
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   searchScope?: LocationSearchScope;
   matchStrictness?: LocationMatchStrictness;
+  watchlistSelectedSourceIds?: string[];
 }): Promise<{ message: string }> {
   return fetchApi<{ message: string }>("/pipeline/run", {
     method: "POST",

@@ -22,6 +22,7 @@ type UsePipelineControlsArgs = {
   setIsPipelineRunning: (value: boolean) => void;
   pipelineTerminalEvent: { status: string; errorMessage: string | null } | null;
   pipelineSources: JobSource[];
+  watchlistSelectedSourceIds?: string[];
   loadJobs: () => Promise<void>;
   navigateWithContext: (
     newTab: string,
@@ -51,6 +52,7 @@ export function usePipelineControls(
     setIsPipelineRunning,
     pipelineTerminalEvent,
     pipelineSources,
+    watchlistSelectedSourceIds,
     loadJobs,
     navigateWithContext,
   } = args;
@@ -71,7 +73,7 @@ export function usePipelineControls(
         status: "cancelled",
         had_error_message: false,
       });
-      toast.message("Pipeline cancelled");
+      toast.message("Search cancelled");
       return;
     }
 
@@ -80,7 +82,7 @@ export function usePipelineControls(
         status: "failed",
         had_error_message: Boolean(pipelineTerminalEvent.errorMessage),
       });
-      toast.error(pipelineTerminalEvent.errorMessage || "Pipeline failed");
+      toast.error(pipelineTerminalEvent.errorMessage || "Search failed");
       return;
     }
 
@@ -88,7 +90,7 @@ export function usePipelineControls(
       status: "completed",
       had_error_message: false,
     });
-    toast.success("Pipeline completed");
+    toast.success("Search completed");
   }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
   const openRunMode = useCallback((mode: RunMode) => {
@@ -103,11 +105,13 @@ export function usePipelineControls(
       sources: JobSource[];
       runBudget: number;
       searchTerms: string[];
+      scoringInstructions: string;
       country: string;
       cityLocations: string[];
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
+      watchlistSelectedSourceIds?: string[];
     }) => {
       try {
         setIsPipelineRunning(true);
@@ -118,19 +122,21 @@ export function usePipelineControls(
           sources: config.sources,
           runBudget: config.runBudget,
           searchTerms: config.searchTerms,
+          scoringInstructions: config.scoringInstructions,
           country: config.country,
           cityLocations: config.cityLocations,
           workplaceTypes: config.workplaceTypes,
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
+          watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         });
-        toast.message("Pipeline started", {
+        toast.message("Search started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
         });
       } catch (error) {
         setIsPipelineRunning(false);
         setIsCancelling(false);
-        showErrorToast(error, "Failed to start pipeline");
+        showErrorToast(error, "Failed to start search");
       }
     },
     [setIsPipelineRunning],
@@ -148,7 +154,7 @@ export function usePipelineControls(
       toast.message(result.message);
     } catch (error) {
       setIsCancelling(false);
-      showErrorToast(error, "Failed to cancel pipeline");
+      showErrorToast(error, "Failed to cancel search");
     }
   }, [isCancelling, isPipelineRunning]);
 
@@ -211,10 +217,17 @@ export function usePipelineControls(
         sources: compatibleSources,
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
+        watchlistSelectedSourceIds:
+          values.watchlistSelectedSourceIds ?? watchlistSelectedSourceIds,
       });
       setIsRunModeModalOpen(false);
     },
-    [pipelineSources, refreshSettings, startPipelineRun],
+    [
+      pipelineSources,
+      refreshSettings,
+      startPipelineRun,
+      watchlistSelectedSourceIds,
+    ],
   );
 
   const handleManualImported = useCallback(

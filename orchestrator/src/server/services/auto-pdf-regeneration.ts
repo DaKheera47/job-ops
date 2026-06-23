@@ -4,7 +4,7 @@ import type { AutoPdfRegenerationReason } from "@server/infra/job-queue";
 import { getJobQueue } from "@server/infra/job-queue-registry";
 import * as jobsRepo from "@server/repositories/jobs";
 import type { SettingKey } from "@server/repositories/settings";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type { Job } from "@shared/types";
 import { generateFinalPdf } from "../pipeline";
 import {
@@ -100,6 +100,7 @@ async function drainQueue(): Promise<void> {
         await runWithRequestContext(
           {
             tenantId: queuedJob.payload.tenantId,
+            userId: queuedJob.payload.userId ?? undefined,
             jobId: queuedJob.payload.jobId,
           },
           async () => {
@@ -154,6 +155,7 @@ async function getStaleReadyGeneratedPdfJobs(limit: number): Promise<Job[]> {
 
 async function processQueuedAutoPdfRegeneration(input: {
   tenantId: string;
+  userId?: string | null;
   jobId: string;
   reason: AutoPdfRegenerationReason;
   requestedAt: string;
@@ -162,6 +164,7 @@ async function processQueuedAutoPdfRegeneration(input: {
   return runWithRequestContext(
     {
       tenantId: input.tenantId,
+      userId: input.userId ?? undefined,
       jobId: input.jobId,
     },
     async () => {
@@ -211,6 +214,7 @@ async function processQueuedAutoPdfRegeneration(input: {
 async function enqueueAutoPdfRegenerationPayload(
   payload: {
     tenantId: string;
+    userId?: string | null;
     jobId: string;
     reason: AutoPdfRegenerationReason;
     requestedAt: string;
@@ -219,7 +223,11 @@ async function enqueueAutoPdfRegenerationPayload(
   options?: { delayMs?: number },
 ): Promise<void> {
   await getJobQueue().enqueue("auto_pdf_regeneration", payload, {
-    dedupeKey: `${payload.tenantId}:${payload.jobId}`,
+    dedupeKey: [
+      payload.tenantId,
+      payload.userId ?? "tenant",
+      payload.jobId,
+    ].join(":"),
     delayMs: options?.delayMs,
   });
   scheduleWorker(options?.delayMs);
@@ -230,9 +238,10 @@ export async function enqueueAutoPdfRegenerationForJob(input: {
   reason: AutoPdfRegenerationReason;
   requestedBy: "system" | "user";
 }): Promise<void> {
-  const tenantId = getActiveTenantId();
+  const scope = getPrivateDataScope();
   await enqueueAutoPdfRegenerationPayload({
-    tenantId,
+    tenantId: scope.tenantId,
+    userId: scope.userId,
     jobId: input.jobId,
     reason: input.reason,
     requestedAt: new Date().toISOString(),

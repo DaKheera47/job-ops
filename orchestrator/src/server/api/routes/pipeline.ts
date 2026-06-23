@@ -36,6 +36,8 @@ import {
   ensureChallengeViewer,
 } from "@server/services/challenge-viewer";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
+import { reserveHostedUsage } from "@server/services/hosted-usage";
+import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
@@ -203,8 +205,15 @@ const pipelineSearchPresetConfigSchema = z.object({
   topN: z.number().int().min(1).max(50),
   minSuitabilityScore: z.number().int().min(0).max(100),
   runBudget: z.number().int().min(50).max(1000),
+  scoringInstructions: z.string().trim().max(4000).optional().default(""),
   automaticPresetId: z
     .enum(["fast", "balanced", "detailed", "custom"])
+    .optional(),
+  // Optional per-#621 Watchlist source selection persisted with the preset.
+  // Omitted = legacy behavior (include every saved Watchlist source).
+  watchlistSelectedSourceIds: z
+    .array(z.string().min(1).max(128))
+    .max(200)
     .optional(),
 });
 
@@ -224,6 +233,13 @@ const updatePipelineSearchPresetSchema = z
   .refine((value) => value.name !== undefined || value.config !== undefined, {
     message: "Provide a name or config update",
   });
+
+const pipelineSearchPlanSchema = z
+  .object({
+    prompt: z.string().trim().min(1).max(2000),
+    currentConfig: pipelineSearchPresetConfigSchema,
+  })
+  .strict();
 
 pipelineRouter.get("/search-presets", async (_req: Request, res: Response) => {
   try {
@@ -363,6 +379,25 @@ pipelineRouter.delete(
   },
 );
 
+pipelineRouter.post("/search-plan", async (req: Request, res: Response) => {
+  try {
+    const input = pipelineSearchPlanSchema.parse(req.body ?? {});
+    ok(res, await planPipelineSearch(input));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, badRequest(error.message, error.flatten()));
+    }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
 /**
  * GET /api/pipeline/runs/:id/insights - Get exact and inferred metrics for a run
  */
@@ -397,6 +432,7 @@ const runPipelineSchema = z.object({
   sources: z.array(pipelineSourceSchema).min(1).optional(),
   runBudget: z.number().min(50).max(1000).optional(),
   searchTerms: z.array(z.string().trim().min(1)).optional(),
+  scoringInstructions: z.string().trim().max(4000).optional(),
   country: z.string().trim().optional(),
   cityLocations: z.array(z.string().trim().min(1)).optional(),
   workplaceTypes: z
@@ -406,6 +442,12 @@ const runPipelineSchema = z.object({
     .optional(),
   searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES).optional(),
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES).optional(),
+  // Per-#621: optional client-supplied per-run Watchlist source filter.
+  // Omitted preserves the legacy "include every saved Watchlist source"
+  // behavior; [] disables Watchlist entirely; non-empty restricts to a
+  // subset. Cross-tenant safety is enforced by re-resolving IDs against
+  // the user's saved Watchlist sources inside discoverJobsStep.
+  watchlistSelectedSourceIds: z.array(z.string().min(1).max(128)).optional(),
 });
 
 pipelineRouter.post("/run", async (req: Request, res: Response) => {
@@ -478,23 +520,38 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         topN: config.topN,
         minSuitabilityScore: config.minSuitabilityScore,
         sources: config.sources,
+        scoringInstructions: config.scoringInstructions,
         locationIntent,
       });
       return okWithMeta(res, simulated, { simulated: true });
     }
 
+    if (getPipelineStatus().isRunning) {
+      return fail(res, conflict("Pipeline is already running"));
+    }
+
     const searchTermsState = await ensurePipelineSearchTerms({
       requestedSearchTerms: config.searchTerms,
+    });
+    const pipelineUsage = await reserveHostedUsage({
+      action: "pipeline_run",
     });
 
     // Start pipeline in background
     runWithRequestContext({}, () => {
-      runPipeline({
-        topN: config.topN,
-        minSuitabilityScore: config.minSuitabilityScore,
-        sources: config.sources,
-        locationIntent,
-      }).catch((error) => {
+      runPipeline(
+        {
+          topN: config.topN,
+          minSuitabilityScore: config.minSuitabilityScore,
+          sources: config.sources,
+          scoringInstructions: config.scoringInstructions,
+          locationIntent,
+          watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
+        },
+        {
+          hostedUsageReservationId: pipelineUsage.reservation?.id ?? null,
+        },
+      ).catch((error) => {
         logger.error("Background pipeline run failed", error);
       });
     });
@@ -511,19 +568,28 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
           : false,
         search_terms_count: searchTermsState.searchTermsCount,
         search_terms_source: searchTermsState.source,
+        // Count-only, never raw IDs (tenant safety / PII).
+        watchlist_source_filter_count: Array.isArray(
+          config.watchlistSelectedSourceIds,
+        )
+          ? config.watchlistSelectedSourceIds.length
+          : undefined,
       },
       {
         requestOrigin: resolveRequestOrigin(req),
         urlPath: "/jobs",
       },
     );
-    ok(res, { message: "Pipeline started" });
+    ok(res, { message: "Search started" });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(res, badRequest(error.message, error.flatten()));
     }
     if (error instanceof Error && error.name === "AbortError") {
       return fail(res, requestTimeout("Request timed out"));
+    }
+    if (error instanceof AppError) {
+      return fail(res, error);
     }
     fail(
       res,

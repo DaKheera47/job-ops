@@ -24,7 +24,10 @@ const { callJsonMock, MockGeminiCliClass } = vi.hoisted(() => {
 });
 
 vi.mock("@server/services/modelSelection", () => modelSelection);
-vi.mock("./index", () => designResumeService);
+vi.mock("./index", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./index")>()),
+  ...designResumeService,
+}));
 vi.mock("@server/infra/request-context", () => requestContext);
 vi.mock("pdf-parse", () => ({
   default: vi.fn().mockResolvedValue({ text: "Jane Doe\nSoftware Engineer" }),

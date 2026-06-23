@@ -12,6 +12,8 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
   "ukvisajobs",
 ];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
+export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
+  "jobops.pipeline.watchlist-sources";
 
 export const orderedSources: JobSource[] = [
   ...PIPELINE_EXTRACTOR_SOURCE_IDS,
@@ -210,10 +212,10 @@ export const tabs: Array<{
 ];
 
 export const emptyStateCopy: Record<FilterTab, string> = {
-  ready: "Run the pipeline to discover and process new jobs.",
+  ready: "Run a search to discover and process new jobs.",
   discovered: "All discovered jobs have been processed.",
   applied: "You have not applied to any jobs yet.",
-  all: "No jobs in the system yet. Run the pipeline to get started.",
+  all: "No jobs in the system yet. Run a search to get started.",
 };
 
 export const dateFilterDimensionLabels: Record<DateFilterDimension, string> = {
