@@ -26,10 +26,8 @@ Thumbs.db
 # local temp artifacts
 tmp/
 
-
-
 # Virtual environment for Python
 .venv
 
-
+# Runtime storage artifacts
 orchestrator/storage
