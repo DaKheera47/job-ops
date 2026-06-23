@@ -10,7 +10,7 @@ export const OrchestratorFilterBar: React.FC<OrchestratorFilterBarProps> = ({
 }) => (
   <div
     id="orchestrator-filter-bar"
-    className="flex flex-wrap items-center gap-2 rounded-full bg-muted p-2"
+    className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto rounded-full bg-muted p-2 [&>*]:shrink-0"
   >
     {children}
 
