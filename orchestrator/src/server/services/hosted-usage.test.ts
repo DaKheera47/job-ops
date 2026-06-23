@@ -255,6 +255,47 @@ describe.sequential("hosted usage service", () => {
     });
   });
 
+  it("wraps work with reservation settlement and partial refunds", async () => {
+    enableHostedQuotas();
+    await createUser("alice");
+    const service = await import("./hosted-usage");
+
+    await withUser("alice", async () => {
+      const result = await service.withHostedUsageReservation(
+        { action: "job_search", units: 4 },
+        async () => ({ result: "completed", usedUnits: 2 }),
+      );
+
+      expect(result).toBe("completed");
+      const summary = await service.getHostedUsageSummary();
+      expect(
+        summary.actions.find((action) => action.action === "job_search"),
+      ).toMatchObject({ usedUnits: 2, reservedUnits: 0, availableUnits: 98 });
+    });
+  });
+
+  it("refunds wrapped reservations when work throws", async () => {
+    enableHostedQuotas();
+    await createUser("alice");
+    const service = await import("./hosted-usage");
+
+    await withUser("alice", async () => {
+      await expect(
+        service.withHostedUsageReservation(
+          { action: "ghostwriter", units: 3 },
+          async () => {
+            throw new Error("generation failed");
+          },
+        ),
+      ).rejects.toThrow("generation failed");
+
+      const summary = await service.getHostedUsageSummary();
+      expect(
+        summary.actions.find((action) => action.action === "ghostwriter"),
+      ).toMatchObject({ usedUnits: 0, reservedUnits: 0, availableUnits: 250 });
+    });
+  });
+
   it("does not let another hosted user settle or refund a reservation", async () => {
     enableHostedQuotas();
     await createUser("alice");

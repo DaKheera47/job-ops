@@ -62,6 +62,11 @@ export type HostedUsageReservationResult = {
   reservation: HostedUsageReservation | null;
 };
 
+export type HostedUsageReservationWorkResult<T> = {
+  result: T;
+  usedUnits?: number;
+};
+
 function isHostedQuotaModeEnabled(): boolean {
   const config = getJobOpsAppConfig();
   return config.appMode === "hosted" && config.capabilities.quotas;
@@ -620,4 +625,39 @@ export async function refundHostedUsageReservation(
       updatedAt,
     };
   });
+}
+
+export async function withHostedUsageReservation<T>(
+  args: {
+    action: HostedUsageAction;
+    units?: number;
+    idempotencyKey?: string | null;
+    now?: Date;
+  },
+  work: () => Promise<HostedUsageReservationWorkResult<T>>,
+): Promise<T> {
+  const reserved = await reserveHostedUsage(args);
+  const reservationId = reserved.reservation?.id;
+  const reservedUnits = reserved.reservation?.reservedUnits ?? args.units ?? 1;
+
+  try {
+    const { result, usedUnits = reservedUnits } = await work();
+    if (reservationId) {
+      await settleHostedUsageReservation({
+        reservationId,
+        usedUnits: Math.min(Math.max(0, usedUnits), reservedUnits),
+      });
+    }
+    return result;
+  } catch (error) {
+    if (reservationId) {
+      try {
+        await refundHostedUsageReservation(reservationId);
+      } catch {
+        // Preserve the original work failure. A later summary still exposes
+        // the reserved units if refunding unexpectedly fails.
+      }
+    }
+    throw error;
+  }
 }

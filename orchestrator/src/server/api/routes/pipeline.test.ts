@@ -680,6 +680,9 @@ describe.sequential("Pipeline API routes", () => {
           matchStrictness: "flexible",
         }),
       }),
+      expect.objectContaining({
+        hostedUsageReservationId: null,
+      }),
     );
     expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
       "jobs_pipeline_run_started",
@@ -731,6 +734,9 @@ describe.sequential("Pipeline API routes", () => {
           matchStrictness: "exact_only",
         }),
       }),
+      expect.objectContaining({
+        hostedUsageReservationId: null,
+      }),
     );
 
     const naukriRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
@@ -752,6 +758,9 @@ describe.sequential("Pipeline API routes", () => {
           country: "india",
         }),
       }),
+      expect.objectContaining({
+        hostedUsageReservationId: null,
+      }),
     );
 
     const blockedNaukriRes = await fetch(`${baseUrl}/api/pipeline/run`, {
@@ -766,6 +775,77 @@ describe.sequential("Pipeline API routes", () => {
     expect(blockedNaukriRes.status).toBe(400);
     expect(blockedNaukriBody.ok).toBe(false);
     expect(blockedNaukriBody.error.message).toContain("incompatible");
+  });
+
+  it("returns a standard quota error when hosted pipeline runs are exhausted", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        JOBOPS_APP_MODE: "hosted",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+        JOBOPS_HOSTED_QUOTAS_ENABLED: "true",
+      },
+    }));
+
+    const { runWithRequestContext } = await import(
+      "@server/infra/request-context"
+    );
+    const { db, schema } = await import("@server/db");
+    const usage = await import("@server/services/hosted-usage");
+
+    await db
+      .insert(schema.users)
+      .values({
+        id: "test-user",
+        username: "test-user",
+        displayName: "Test User",
+        passwordHash: "hash",
+        passwordSalt: "salt",
+      })
+      .onConflictDoNothing()
+      .run();
+    await db
+      .insert(schema.tenantMemberships)
+      .values({
+        id: "membership-test-user",
+        userId: "test-user",
+        tenantId: "tenant_default",
+        role: "member",
+      })
+      .onConflictDoNothing()
+      .run();
+
+    await runWithRequestContext(
+      {
+        requestId: "seed-quota",
+        tenantId: "tenant_default",
+        userId: "test-user",
+        username: "test-user",
+      },
+      () => usage.consumeHostedUsage({ action: "pipeline_run", units: 25 }),
+    );
+
+    const res = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": "quota-pipeline-run",
+      },
+      body: JSON.stringify({ sources: ["gradcracker"] }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(422);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNPROCESSABLE_ENTITY");
+    expect(body.error.details).toMatchObject({
+      action: "pipeline_run",
+      limit: 25,
+      used: 25,
+      reserved: 0,
+      requested: 1,
+    });
+    expect(body.meta.requestId).toBe("quota-pipeline-run");
   });
 
   it("forwards Watchlist source filter to the pipeline runner (#621)", async () => {
@@ -796,6 +876,9 @@ describe.sequential("Pipeline API routes", () => {
     expect(runPipeline).toHaveBeenCalledWith(
       expect.objectContaining({
         watchlistSelectedSourceIds: ["watchlist-a", "watchlist-b"],
+      }),
+      expect.objectContaining({
+        hostedUsageReservationId: null,
       }),
     );
     // Analytics records the count only — never raw IDs (tenant safety).

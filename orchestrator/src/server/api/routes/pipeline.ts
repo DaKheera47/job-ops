@@ -36,6 +36,7 @@ import {
   ensureChallengeViewer,
 } from "@server/services/challenge-viewer";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
+import { reserveHostedUsage } from "@server/services/hosted-usage";
 import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
@@ -525,20 +526,32 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
       return okWithMeta(res, simulated, { simulated: true });
     }
 
+    if (getPipelineStatus().isRunning) {
+      return fail(res, conflict("Pipeline is already running"));
+    }
+
     const searchTermsState = await ensurePipelineSearchTerms({
       requestedSearchTerms: config.searchTerms,
+    });
+    const pipelineUsage = await reserveHostedUsage({
+      action: "pipeline_run",
     });
 
     // Start pipeline in background
     runWithRequestContext({}, () => {
-      runPipeline({
-        topN: config.topN,
-        minSuitabilityScore: config.minSuitabilityScore,
-        sources: config.sources,
-        scoringInstructions: config.scoringInstructions,
-        locationIntent,
-        watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
-      }).catch((error) => {
+      runPipeline(
+        {
+          topN: config.topN,
+          minSuitabilityScore: config.minSuitabilityScore,
+          sources: config.sources,
+          scoringInstructions: config.scoringInstructions,
+          locationIntent,
+          watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
+        },
+        {
+          hostedUsageReservationId: pipelineUsage.reservation?.id ?? null,
+        },
+      ).catch((error) => {
         logger.error("Background pipeline run failed", error);
       });
     });
@@ -574,6 +587,9 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     }
     if (error instanceof Error && error.name === "AbortError") {
       return fail(res, requestTimeout("Request timed out"));
+    }
+    if (error instanceof AppError) {
+      return fail(res, error);
     }
     fail(
       res,
