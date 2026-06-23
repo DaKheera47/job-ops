@@ -178,6 +178,39 @@ const migrations = [
     UNIQUE(user_id, tenant_id)
   )`,
 
+  `CREATE TABLE IF NOT EXISTS hosted_usage_counters (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    period TEXT NOT NULL,
+    action TEXT NOT NULL CHECK(action IN ('job_search', 'pipeline_run', 'tailoring', 'ghostwriter', 'pdf_export')),
+    used_units INTEGER NOT NULL DEFAULT 0,
+    reserved_units INTEGER NOT NULL DEFAULT 0,
+    limit_units INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id, period, action)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS hosted_usage_reservations (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    period TEXT NOT NULL,
+    action TEXT NOT NULL CHECK(action IN ('job_search', 'pipeline_run', 'tailoring', 'ghostwriter', 'pdf_export')),
+    reserved_units INTEGER NOT NULL,
+    used_units INTEGER NOT NULL DEFAULT 0,
+    refunded_units INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'reserved' CHECK(status IN ('reserved', 'settled', 'refunded')),
+    idempotency_key TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`,
+
   `CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
@@ -386,6 +419,14 @@ const migrations = [
 
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
     ON auth_sessions(revoked_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_hosted_usage_counters_tenant_user_period
+    ON hosted_usage_counters(tenant_id, user_id, period)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_hosted_usage_counters_tenant_user_period_action_unique
+    ON hosted_usage_counters(tenant_id, user_id, period, action)`,
+  `CREATE INDEX IF NOT EXISTS idx_hosted_usage_reservations_tenant_user_period
+    ON hosted_usage_reservations(tenant_id, user_id, period)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_hosted_usage_reservations_idempotency_unique
+    ON hosted_usage_reservations(tenant_id, user_id, period, action, idempotency_key)`,
 
   `CREATE TABLE IF NOT EXISTS pipeline_search_presets (
     id TEXT PRIMARY KEY,
