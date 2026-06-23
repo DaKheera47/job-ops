@@ -424,7 +424,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
           <div className="flex items-center gap-2 self-start lg:self-auto">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               aria-expanded={isFiltersOpen}
               aria-controls="orchestrator-filter-bar"
