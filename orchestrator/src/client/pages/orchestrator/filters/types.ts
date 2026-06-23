@@ -88,17 +88,13 @@ export type SortFilterPillProps = Pick<
 
 export type OrchestratorTabRowProps = Pick<
   OrchestratorFiltersProps,
-  "counts" | "onOpenCommandBar"
+  "counts" | "onOpenCommandBar" | "onResetFilters"
 > & {
   isFiltersOpen: boolean;
   onFiltersOpenChange: (open: boolean) => void;
   activeFilterCount: number;
 };
 
-export type OrchestratorFilterBarProps = Pick<
-  OrchestratorFiltersProps,
-  "onResetFilters"
-> & {
-  activeFilterCount: number;
+export type OrchestratorFilterBarProps = {
   children: React.ReactNode;
 };

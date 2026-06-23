@@ -1,7 +1,7 @@
 import { KbdHint } from "@client/components/KbdHint";
 import { Tip } from "@client/components/Tip";
 import { getDisplayKey, SHORTCUTS } from "@client/lib/shortcut-map";
-import { Filter, Search } from "lucide-react";
+import { Filter, RotateCcw, Search } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +16,7 @@ export const OrchestratorTabRow: React.FC<OrchestratorTabRowProps> = ({
   isFiltersOpen,
   onFiltersOpenChange,
   activeFilterCount,
+  onResetFilters,
 }) => {
   const commandShortcutLabel = getDisplayKey(SHORTCUTS.search);
 
@@ -58,6 +59,19 @@ export const OrchestratorTabRow: React.FC<OrchestratorTabRowProps> = ({
       </TabsList>
 
       <div className="flex items-center gap-2 self-start lg:self-auto">
+        {isFiltersOpen && activeFilterCount > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onResetFilters}
+            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </Button>
+        ) : null}
+
         <Button
           type="button"
           variant="ghost"

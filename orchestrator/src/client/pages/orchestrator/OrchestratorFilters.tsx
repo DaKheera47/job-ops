@@ -77,13 +77,11 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
           isFiltersOpen={isFiltersOpen}
           onFiltersOpenChange={onFiltersOpenChange}
           activeFilterCount={activeFilterCount}
+          onResetFilters={onResetFilters}
         />
 
         {isFiltersOpen ? (
-          <OrchestratorFilterBar
-            activeFilterCount={activeFilterCount}
-            onResetFilters={onResetFilters}
-          >
+          <OrchestratorFilterBar>
             <LocationFilterInput
               locationFilter={locationFilter}
               onLocationFilterChange={onLocationFilterChange}
