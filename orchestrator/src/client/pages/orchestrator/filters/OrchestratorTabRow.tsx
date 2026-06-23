@@ -5,6 +5,7 @@ import { Filter, Search } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { tabs } from "../constants";
 import { tabDescriptions } from "./filterOptions";
 import type { OrchestratorTabRowProps } from "./types";
@@ -64,7 +65,10 @@ export const OrchestratorTabRow: React.FC<OrchestratorTabRowProps> = ({
           aria-expanded={isFiltersOpen}
           aria-controls="orchestrator-filter-bar"
           onClick={() => onFiltersOpenChange(!isFiltersOpen)}
-          className="h-8 gap-1.5 text-xs"
+          className={cn(
+            "h-8 gap-1.5 text-xs",
+            isFiltersOpen && "bg-accent text-accent-foreground",
+          )}
         >
           <Filter className="h-3.5 w-3.5" />
           Filters
