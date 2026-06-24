@@ -13,7 +13,110 @@ The easiest way to run JobOps is via Docker Compose. The app is self-configuring
 
 ## 1) Start the stack
 
-No environment variables are required to boot:
+Example Docker Compose file:
+
+```yaml
+---
+services:
+  job-ops:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      secrets:
+        - github_token
+    image: ghcr.io/dakheera47/job-ops:latest
+    container_name: job-ops
+    ports:
+      - "3005:3001"
+    volumes:
+      # Persist database and generated PDFs
+      - ./data:/app/data
+      # Persist Codex login/session data for app-server provider
+      - codex-home:/app/codex-home
+    environment:
+      # Server config
+      - NODE_ENV=production
+      - PORT=3001
+
+      # Python path (uses system python in container)
+      - PYTHON_PATH=/usr/bin/python3
+      # Codex runtime home (stores auth and config)
+      - CODEX_HOME=/app/codex-home
+
+    env_file:
+      - path: ./.env
+        required: false
+    develop:
+      watch:
+        # Rebuild container when package.json changes
+        - path: ./orchestrator/package.json
+          action: rebuild
+        - path: ./orchestrator/package-lock.json
+          action: rebuild
+        # Sync source code changes and rebuild inside container
+        - path: ./orchestrator/src
+          target: /app/orchestrator/src
+          action: sync+restart
+        - path: ./visa-sponsor-providers
+          target: /app/visa-sponsor-providers
+          action: sync+restart
+        - path: ./career-boards/bamboohr/src
+          target: /app/career-boards/bamboohr/src
+          action: sync+restart
+        - path: ./career-boards/workday/src
+          target: /app/career-boards/workday/src
+          action: sync+restart
+        # Sync extractor changes
+        - path: ./extractors/gradcracker/src
+          target: /app/extractors/gradcracker/src
+          action: sync+restart
+        - path: ./extractors/hiringcafe/src
+          target: /app/extractors/hiringcafe/src
+          action: sync+restart
+        - path: ./extractors/ukvisajobs/src
+          target: /app/extractors/ukvisajobs/src
+          action: sync+restart
+        - path: ./extractors/workingnomads/src
+          target: /app/extractors/workingnomads/src
+          action: sync+restart
+        - path: ./extractors/golangjobs/src
+          target: /app/extractors/golangjobs/src
+          action: sync+restart
+        - path: ./extractors/jobindex/src
+          target: /app/extractors/jobindex/src
+          action: sync+restart
+        - path: ./extractors/seek/src
+          target: /app/extractors/seek/src
+          action: sync+restart
+        - path: ./extractors/jobspy
+          target: /app/extractors/jobspy
+          action: sync+restart
+        - path: ./extractors/naukri
+          target: /app/extractors/naukri
+          action: sync+restart
+        - path: ./extractors/fiveamsat
+          target: /app/extractors/fiveamsat
+          action: sync+restart
+        - path: ./extractors/wazzuf
+          target: /app/extractors/wazzuf
+          action: sync+restart
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
+
+volumes:
+  codex-home:
+```
+
+No environment variables are required to boot.
 
 ```bash
 docker compose up -d
