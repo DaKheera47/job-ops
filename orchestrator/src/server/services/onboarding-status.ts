@@ -66,6 +66,7 @@ export function normalizeLlmProviderValue(
   if (!provider) return undefined;
   const normalized = provider.trim().toLowerCase().replace(/[-.]/g, "_");
   const mapped = mapGlmProviderAlias(normalized);
+  if (mapped === "claude") return "anthropic";
   return (LLM_PROVIDER_VALUES as readonly string[]).includes(mapped)
     ? (mapped as LlmProviderId)
     : undefined;

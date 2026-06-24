@@ -109,7 +109,8 @@ function normalizeLlmProviderValue(
 ): string | undefined {
   if (!provider) return undefined;
   const normalized = provider.trim().toLowerCase().replace(/[-.]/g, "_");
-  return mapGlmProviderAlias(normalized);
+  const mapped = mapGlmProviderAlias(normalized);
+  return mapped === "claude" ? "anthropic" : mapped;
 }
 
 function getDefaultValidationBaseUrl(

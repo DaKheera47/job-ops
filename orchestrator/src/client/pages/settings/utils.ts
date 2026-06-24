@@ -25,6 +25,7 @@ export const LLM_PROVIDERS = [
   "lmstudio",
   "ollama",
   "openai",
+  "anthropic",
   "openai_compatible",
   "glm",
   "gemini",
@@ -35,6 +36,7 @@ export const LLM_PROVIDERS = [
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "openai",
+  "anthropic",
   "glm",
   "gemini",
   "gemini_cli",
@@ -46,6 +48,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   lmstudio: "LM Studio",
   ollama: "Ollama",
   openai: "OpenAI",
+  anthropic: "Claude (Anthropic)",
   openai_compatible: "OpenAI-compatible",
   glm: "GLM",
   gemini: "Gemini",
@@ -56,6 +59,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "openrouter",
   "openai",
+  "anthropic",
   "openai_compatible",
   "glm",
   "gemini",
@@ -77,6 +81,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   ollama:
     "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
   openai: "OpenAI uses the Responses API with structured outputs.",
+  anthropic:
+    "Claude uses Anthropic's native Messages API with your Anthropic API key.",
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
   glm: "GLM uses the Z.AI chat completions API (OpenAI-compatible) with your API key.",
@@ -102,6 +108,10 @@ const PROVIDER_KEY_HELPERS: Record<
   openai: {
     text: "Create a key at platform.openai.com",
     href: "https://platform.openai.com/api-keys",
+  },
+  anthropic: {
+    text: "Create a key at platform.claude.com",
+    href: "https://platform.claude.com/settings/keys",
   },
   openai_compatible: {
     text: "Use the bearer token issued by your compatible provider",
@@ -141,6 +151,7 @@ export function normalizeLlmProvider(
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return "openrouter";
   const normalizedId = normalized.replace(/[-.]/g, "_");
+  if (normalizedId === "claude") return "anthropic";
   if (normalizedId === "openai_compatible") return "openai_compatible";
   const mapped = mapGlmProviderAlias(normalizedId);
   return (LLM_PROVIDERS as readonly string[]).includes(mapped)

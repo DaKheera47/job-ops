@@ -106,6 +106,7 @@ JobOps works with the model provider you already use:
 
 - Codex (local app-server in Docker, authenticated with `codex login`)
 - OpenAI
+- Claude (Anthropic)
 - GLM / Zhipu AI
 - Google Gemini
 - OpenRouter

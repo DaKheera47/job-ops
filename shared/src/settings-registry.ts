@@ -69,11 +69,13 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
   const normalized = raw.trim().toLowerCase().replace(/[-.]/g, "_");
   const mapped = mapGlmProviderAlias(normalized);
+  if (mapped === "claude") return "anthropic";
   return mapped || null;
 }
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 export const DEFAULT_GLM_MODEL = "glm-5.1";
 export const DEFAULT_CODEX_MODEL = "gpt-5.4-mini";
 
@@ -90,6 +92,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "openai") {
     return DEFAULT_OPENAI_MODEL;
+  }
+
+  if (normalizedProvider === "anthropic") {
+    return DEFAULT_ANTHROPIC_MODEL;
   }
 
   if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {

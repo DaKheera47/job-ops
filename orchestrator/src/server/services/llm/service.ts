@@ -223,6 +223,7 @@ export class LlmService {
 
     if (
       this.provider !== "openai" &&
+      this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
       this.provider !== "ollama"
@@ -233,6 +234,9 @@ export class LlmService {
     const models = await (async () => {
       if (this.provider === "openai") {
         return this.listOpenAiModels();
+      }
+      if (this.provider === "anthropic") {
+        return this.listAnthropicModels();
       }
       if (this.provider === "gemini") {
         return this.listGeminiModels();
@@ -468,6 +472,29 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listAnthropicModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/v1/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Anthropic returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(isAnthropicTextGenerationModel)
+      .filter(Boolean);
+  }
+
   private async listGeminiModels(): Promise<string[]> {
     const url = addQueryParam(
       joinUrl(this.baseUrl, "/v1beta/models"),
@@ -571,6 +598,9 @@ function normalizeProvider(
     return "openai_compatible";
   }
   if (normalized === "openai") return "openai";
+  if (normalized === "anthropic" || normalized === "claude") {
+    return "anthropic";
+  }
   if (normalized === "glm") return "glm";
   if (normalized === "gemini") return "gemini";
   if (normalized === "gemini_cli") return "gemini_cli";
@@ -612,6 +642,7 @@ function normalizeGeminiModelName(value: string): string {
 
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "openai") return "gpt-5.4-mini";
+  if (provider === "anthropic") return "claude-sonnet-4-6";
   if (provider === "glm") return "glm-5.1";
   if (provider === "gemini" || provider === "gemini_cli") {
     return "google/gemini-3-flash-preview";
@@ -647,6 +678,11 @@ function isOpenAiTextGenerationModel(model: string): boolean {
   }
 
   return /^(gpt|o1|o3|o4|chatgpt|codex)/.test(normalized);
+}
+
+function isAnthropicTextGenerationModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return normalized.startsWith("claude-");
 }
 
 function isGeminiTextGenerationModel(model: string): boolean {

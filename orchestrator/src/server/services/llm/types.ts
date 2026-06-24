@@ -3,6 +3,7 @@ export type LlmProvider =
   | "lmstudio"
   | "ollama"
   | "openai"
+  | "anthropic"
   | "openai_compatible"
   | "glm"
   | "gemini"

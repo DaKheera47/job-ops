@@ -370,6 +370,51 @@ describe("Model Selection Logic", () => {
       );
     });
 
+    it("uses Anthropic defaults for a purpose-specific provider override", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "sk-global",
+        llmPurposeApiKeys: JSON.stringify({ tailoring: "sk-ant" }),
+      });
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "llama3.2",
+          default: "llama3.2",
+          override: "llama3.2",
+        },
+        modelScorer: { value: "llama3.2", override: null },
+        modelTailoring: { value: "claude-sonnet-4-6", override: null },
+        modelProjectSelection: { value: "llama3.2", override: null },
+        llmProvider: {
+          value: "ollama",
+          default: "ollama",
+          override: "ollama",
+        },
+        llmBaseUrl: {
+          value: "http://localhost:11434",
+          default: "http://localhost:11434",
+          override: null,
+        },
+        llmPurposeOverrides: {
+          value: {
+            tailoring: { provider: "anthropic" },
+          },
+          default: {},
+          override: {
+            tailoring: { provider: "anthropic" },
+          },
+        },
+      } as any);
+
+      await expect(
+        resolveLlmRuntimeSettings("tailoring"),
+      ).resolves.toMatchObject({
+        provider: "anthropic",
+        model: "claude-sonnet-4-6",
+        baseUrl: "https://api.anthropic.com",
+        apiKey: "sk-ant",
+      });
+    });
+
     it("uses the Codex default model when tailoring uses Codex with no model override", async () => {
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
       vi.mocked(getEffectiveSettings).mockResolvedValue({

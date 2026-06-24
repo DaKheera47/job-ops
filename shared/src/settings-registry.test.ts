@@ -352,8 +352,13 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.llmProvider.parse("bigmodel")).toBe("glm");
     });
 
+    it("accepts the Claude alias for Anthropic", () => {
+      expect(settingsRegistry.llmProvider.parse("claude")).toBe("anthropic");
+    });
+
     it("uses provider-specific default models", () => {
       expect(getDefaultModelForProvider("openai")).toBe("gpt-5.4-mini");
+      expect(getDefaultModelForProvider("anthropic")).toBe("claude-sonnet-4-6");
       expect(getDefaultModelForProvider("glm")).toBe("glm-5.1");
       expect(getDefaultModelForProvider("gemini")).toBe(
         "google/gemini-3-flash-preview",

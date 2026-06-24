@@ -41,10 +41,11 @@ orchestrator/
    Then open **Resume Studio** in the app and import your base resume once. JobOps will use that local Resume Studio document as the primary resume context for tailoring, scoring, and PDF generation.
 
 
-   OpenRouter is the default LLM provider, but OpenAI, GLM, LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.
+   OpenRouter is the default LLM provider, but OpenAI, Claude (Anthropic), GLM, LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.
 
    Use `LLM_API_KEY` / `llmApiKey` to configure providers that require an API key.
    To use the native OpenAI integration, set `LLM_PROVIDER=openai`.
+   To use Claude through Anthropic's native Messages API, set `LLM_PROVIDER=anthropic`.
    To use GLM through Z.AI, set `LLM_PROVIDER=glm`; the default base URL is `https://api.z.ai/api/paas/v4`.
    For third-party services that expose an OpenAI-style API but are not OpenAI itself, use `LLM_PROVIDER=openai-compatible`.
 
@@ -147,6 +148,6 @@ npm start
 
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
-- **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI via the dedicated `openai` provider, GLM, `openai-compatible` endpoints, Gemini, LM Studio, and Ollama)
+- **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI via the dedicated `openai` provider, Claude through Anthropic's native API, GLM, `openai-compatible` endpoints, Gemini, LM Studio, and Ollama)
 - **PDF Generation:** Reactive Resume v5 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler

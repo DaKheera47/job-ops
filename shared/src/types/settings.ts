@@ -28,6 +28,7 @@ export const LLM_PROVIDER_VALUES = [
   "lmstudio",
   "ollama",
   "openai",
+  "anthropic",
   "openai_compatible",
   "glm",
   "gemini",

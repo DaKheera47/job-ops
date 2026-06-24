@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { anthropicStrategy } from "./anthropic";
 import { geminiStrategy } from "./gemini";
 import { glmStrategy } from "./glm";
 import { lmStudioStrategy } from "./lmstudio";
@@ -44,6 +45,17 @@ describe("provider adapters", () => {
           model: "model-a",
         },
         expectedUrl: "https://api.openai.com/v1/responses",
+      },
+      {
+        name: "anthropic-json_schema",
+        strategy: anthropicStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.anthropic.com",
+          apiKey: "x",
+          model: "claude-sonnet-4-6",
+        },
+        expectedUrl: "https://api.anthropic.com/v1/messages",
       },
       {
         name: "openai-compatible-json_object",
@@ -231,6 +243,15 @@ describe("provider adapters", () => {
       "openai-direct",
     );
     expect(
+      anthropicStrategy.extractText({
+        content: [
+          { type: "text", text: "hello " },
+          { type: "thinking", thinking: "hidden" },
+          { type: "text", text: "claude" },
+        ],
+      }),
+    ).toBe("hello claude");
+    expect(
       openAiStrategy.extractText({
         output: [
           {
@@ -305,5 +326,63 @@ describe("provider adapters", () => {
     ]);
     expect(itemSchema.additionalProperties).toBeUndefined();
     expect(itemSchema.propertyOrdering).toEqual(["name", "keywords"]);
+  });
+
+  it("builds native Anthropic Messages API requests", () => {
+    const request = anthropicStrategy.buildRequest({
+      mode: "json_schema",
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "sk-ant",
+      model: "claude-sonnet-4-6",
+      messages: [
+        { role: "system", content: "You are concise." },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Read this image." },
+            {
+              type: "image",
+              imageUrl: "data:image/png;base64,abc123",
+              mediaType: "image/png",
+            },
+          ],
+        },
+      ],
+      jsonSchema: schema,
+    });
+
+    expect(request.url).toBe("https://api.anthropic.com/v1/messages");
+    expect(request.headers).toMatchObject({
+      "anthropic-version": "2023-06-01",
+      "x-api-key": "sk-ant",
+    });
+    expect(request.headers).not.toHaveProperty("Authorization");
+    expect(request.body).toMatchObject({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      system: "You are concise.",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Read this image." },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "abc123",
+              },
+            },
+          ],
+        },
+      ],
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: schema.schema,
+        },
+      },
+    });
   });
 });

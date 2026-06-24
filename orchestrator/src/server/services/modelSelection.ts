@@ -79,6 +79,9 @@ function getDefaultBaseUrlForProvider(
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") return "https://api.openai.com";
+  if (normalized === "anthropic" || normalized === "claude") {
+    return "https://api.anthropic.com";
+  }
   if (normalized === "openai_compatible") return "https://api.openai.com";
   if (normalized === "glm") return "https://api.z.ai/api/paas/v4";
   if (normalized === "gemini") {
