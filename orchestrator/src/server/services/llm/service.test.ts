@@ -80,6 +80,17 @@ describe("LlmService provider normalization", () => {
     expect(anthropic.getProvider()).toBe("anthropic");
     expect(anthropic.getBaseUrl()).toBe("https://api.anthropic.com");
     expect(claude.getProvider()).toBe("anthropic");
+    expect(claude.getBaseUrl()).toBe("https://api.anthropic.com");
+  });
+
+  it("ignores stale configured base URLs for native Anthropic", () => {
+    const llm = new LlmService({
+      provider: "anthropic",
+      baseUrl: "https://openrouter.ai",
+    });
+
+    expect(llm.getProvider()).toBe("anthropic");
+    expect(llm.getBaseUrl()).toBe("https://api.anthropic.com");
   });
 
   it("retries codex JSON parsing failures and succeeds on a later attempt", async () => {

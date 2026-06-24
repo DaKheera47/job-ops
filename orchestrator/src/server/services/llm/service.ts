@@ -54,7 +54,9 @@ export class LlmService {
     );
 
     const strategy = strategies[resolvedProvider];
-    const baseUrl = normalizedBaseUrl || strategy.defaultBaseUrl;
+    const baseUrl = providerUsesConfiguredBaseUrl(resolvedProvider)
+      ? normalizedBaseUrl || strategy.defaultBaseUrl
+      : strategy.defaultBaseUrl;
 
     const apiKey = resolveLlmApiKey({
       storedApiKey: options.apiKey,
@@ -619,6 +621,15 @@ function normalizeProviderName(raw: string | null): string | undefined {
   const normalized = raw?.trim().toLowerCase().replace(/[-.]/g, "_");
   if (!normalized) return normalized;
   return mapGlmProviderAlias(normalized);
+}
+
+function providerUsesConfiguredBaseUrl(provider: LlmProvider): boolean {
+  return (
+    provider === "lmstudio" ||
+    provider === "ollama" ||
+    provider === "openai_compatible" ||
+    provider === "glm"
+  );
 }
 
 function sleep(ms: number): Promise<void> {

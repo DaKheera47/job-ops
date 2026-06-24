@@ -91,6 +91,18 @@ function getDefaultBaseUrlForProvider(
   return "https://openrouter.ai";
 }
 
+function providerUsesConfiguredBaseUrl(
+  provider: string | null | undefined,
+): boolean {
+  const normalized = provider?.trim().toLowerCase().replace(/[-.]/g, "_");
+  return (
+    normalized === "lmstudio" ||
+    normalized === "ollama" ||
+    normalized === "openai_compatible" ||
+    normalized === "glm"
+  );
+}
+
 function readPurposeApiKeys(raw: string | null | undefined) {
   return settingsRegistry.llmPurposeApiKeys.parse(raw ?? undefined) ?? {};
 }
@@ -125,10 +137,11 @@ export async function resolveLlmRuntimeSettings(
     ? settings?.llmPurposeOverrides?.value?.[purpose]
     : undefined;
   const provider = purposeOverride?.provider?.trim() || defaultProvider;
-  const baseUrl =
-    purposeOverride?.baseUrl?.trim() ||
-    (provider === defaultProvider ? defaultBaseUrl : null) ||
-    getDefaultBaseUrlForProvider(provider);
+  const configuredBaseUrl = providerUsesConfiguredBaseUrl(provider)
+    ? purposeOverride?.baseUrl?.trim() ||
+      (provider === defaultProvider ? defaultBaseUrl : null)
+    : null;
+  const baseUrl = configuredBaseUrl || getDefaultBaseUrlForProvider(provider);
   const purposeApiKeys = readPurposeApiKeys(overrides?.llmPurposeApiKeys);
   const purposeApiKey =
     isLlmPurpose(purpose) && purposeApiKeys[purpose]?.trim()

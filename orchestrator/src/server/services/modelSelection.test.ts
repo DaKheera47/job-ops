@@ -415,6 +415,46 @@ describe("Model Selection Logic", () => {
       });
     });
 
+    it("does not carry stale OpenRouter base URLs into native Anthropic", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "sk-ant",
+      });
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "claude-sonnet-4-6",
+          default: "claude-sonnet-4-6",
+          override: null,
+        },
+        modelScorer: { value: "claude-sonnet-4-6", override: null },
+        modelTailoring: { value: "claude-sonnet-4-6", override: null },
+        modelProjectSelection: { value: "claude-sonnet-4-6", override: null },
+        llmProvider: {
+          value: "anthropic",
+          default: "anthropic",
+          override: "anthropic",
+        },
+        llmBaseUrl: {
+          value: "https://openrouter.ai",
+          default: "https://openrouter.ai",
+          override: "https://openrouter.ai",
+        },
+        llmPurposeOverrides: {
+          value: {},
+          default: {},
+          override: {},
+        },
+      } as any);
+
+      await expect(
+        resolveLlmRuntimeSettings("tailoring"),
+      ).resolves.toMatchObject({
+        provider: "anthropic",
+        model: "claude-sonnet-4-6",
+        baseUrl: "https://api.anthropic.com",
+        apiKey: "sk-ant",
+      });
+    });
+
     it("uses the Codex default model when tailoring uses Codex with no model override", async () => {
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
       vi.mocked(getEffectiveSettings).mockResolvedValue({
