@@ -43,7 +43,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `codex`)
+- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `anthropic`, `glm`, `gemini`, `gemini_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -53,16 +53,19 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
   - `openai` defaults to `gpt-5.4-mini`
+  - `anthropic` defaults to `claude-sonnet-4-6`
   - `codex` defaults to `gpt-5.4-mini`
   - `glm` defaults to `glm-5.1`
   - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`
 - The settings page shows provider-aware model pickers for:
   - `openai`: available text-generation models only
+  - `anthropic`: available Claude text-generation models only
   - `glm`: available GLM text-generation models from the configured BigModel-compatible endpoint
   - `gemini`: available Gemini text-generation models only
   - `gemini_cli`: a curated list of Gemini model ids the CLI typically supports (install [Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli), run `gemini` and complete Google sign-in, or set `GEMINI_API_KEY` for the CLI; JobOps spawns headless `gemini -p ...` with `--approval-mode plan` and no JobOps API key field). **Resume import** uses the CLI with extracted text: DOCX is parsed locally; PDF uses local text extraction then JSON extraction via the CLI (scanned PDFs without a text layer may not import well).
   - `ollama`: locally installed Ollama models
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
+- Resume import can upload Reactive Resume JSON directly. For PDF and DOCX, JobOps extracts readable text locally when the configured provider cannot accept the file directly, then asks the selected model to convert that text into a local Resume Studio document. Scanned PDFs without a text layer may not import well.
 - For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save

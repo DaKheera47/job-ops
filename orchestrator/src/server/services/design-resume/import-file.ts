@@ -13,8 +13,7 @@ import {
   extractPdfText,
   PdfTextExtractionError,
 } from "@server/services/document-text-extraction";
-import { CodexClient } from "@server/services/llm/codex/client";
-import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
+import { LlmService } from "@server/services/llm/service";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
 import { normalizeReactiveResumeV5Document } from "@server/services/rxresume/document";
@@ -41,6 +40,7 @@ type SupportedImportMediaType =
 type SupportedRuntimeProvider =
   | "openai"
   | "openrouter"
+  | "anthropic"
   | "glm"
   | "gemini"
   | "gemini_cli"
@@ -73,185 +73,6 @@ const DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA: JsonSchemaDefinition = {
   },
 };
 
-function strictSchemaObject(properties: Record<string, unknown>) {
-  return {
-    type: "object",
-    properties,
-    required: Object.keys(properties),
-    additionalProperties: false,
-  };
-}
-
-function schemaArrayOf(items: unknown) {
-  return { type: "array", items };
-}
-
-const STRING_SCHEMA = { type: "string" };
-const NUMBER_SCHEMA = { type: "number" };
-const URL_SCHEMA = strictSchemaObject({
-  url: STRING_SCHEMA,
-  label: STRING_SCHEMA,
-});
-
-function sectionSchema(itemSchema: unknown) {
-  return strictSchemaObject({
-    items: schemaArrayOf(itemSchema),
-  });
-}
-
-const DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA: JsonSchemaDefinition = {
-  name: "codex_output_schema",
-  schema: {
-    type: "object",
-    properties: {
-      picture: strictSchemaObject({}),
-      basics: strictSchemaObject({
-        name: STRING_SCHEMA,
-        headline: STRING_SCHEMA,
-        email: STRING_SCHEMA,
-        phone: STRING_SCHEMA,
-        location: STRING_SCHEMA,
-        website: URL_SCHEMA,
-        customFields: schemaArrayOf(
-          strictSchemaObject({
-            icon: STRING_SCHEMA,
-            text: STRING_SCHEMA,
-            link: STRING_SCHEMA,
-          }),
-        ),
-      }),
-      summary: strictSchemaObject({
-        content: STRING_SCHEMA,
-      }),
-      sections: strictSchemaObject({
-        profiles: sectionSchema(
-          strictSchemaObject({
-            network: STRING_SCHEMA,
-            username: STRING_SCHEMA,
-            website: URL_SCHEMA,
-          }),
-        ),
-        experience: sectionSchema(
-          strictSchemaObject({
-            company: STRING_SCHEMA,
-            position: STRING_SCHEMA,
-            location: STRING_SCHEMA,
-            period: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-            roles: schemaArrayOf(
-              strictSchemaObject({
-                position: STRING_SCHEMA,
-                period: STRING_SCHEMA,
-                description: STRING_SCHEMA,
-              }),
-            ),
-          }),
-        ),
-        education: sectionSchema(
-          strictSchemaObject({
-            school: STRING_SCHEMA,
-            degree: STRING_SCHEMA,
-            area: STRING_SCHEMA,
-            grade: STRING_SCHEMA,
-            location: STRING_SCHEMA,
-            period: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        projects: sectionSchema(
-          strictSchemaObject({
-            name: STRING_SCHEMA,
-            period: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        skills: sectionSchema(
-          strictSchemaObject({
-            icon: STRING_SCHEMA,
-            name: STRING_SCHEMA,
-            proficiency: STRING_SCHEMA,
-            level: NUMBER_SCHEMA,
-            keywords: schemaArrayOf(STRING_SCHEMA),
-          }),
-        ),
-        languages: sectionSchema(
-          strictSchemaObject({
-            language: STRING_SCHEMA,
-            fluency: STRING_SCHEMA,
-            level: NUMBER_SCHEMA,
-          }),
-        ),
-        interests: sectionSchema(
-          strictSchemaObject({
-            icon: STRING_SCHEMA,
-            name: STRING_SCHEMA,
-            keywords: schemaArrayOf(STRING_SCHEMA),
-          }),
-        ),
-        awards: sectionSchema(
-          strictSchemaObject({
-            title: STRING_SCHEMA,
-            awarder: STRING_SCHEMA,
-            date: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        certifications: sectionSchema(
-          strictSchemaObject({
-            title: STRING_SCHEMA,
-            issuer: STRING_SCHEMA,
-            date: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        publications: sectionSchema(
-          strictSchemaObject({
-            title: STRING_SCHEMA,
-            publisher: STRING_SCHEMA,
-            date: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        volunteer: sectionSchema(
-          strictSchemaObject({
-            organization: STRING_SCHEMA,
-            location: STRING_SCHEMA,
-            period: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-        references: sectionSchema(
-          strictSchemaObject({
-            name: STRING_SCHEMA,
-            position: STRING_SCHEMA,
-            website: URL_SCHEMA,
-            phone: STRING_SCHEMA,
-            description: STRING_SCHEMA,
-          }),
-        ),
-      }),
-      customSections: schemaArrayOf(strictSchemaObject({})),
-      metadata: strictSchemaObject({}),
-    },
-    required: [
-      "picture",
-      "basics",
-      "summary",
-      "sections",
-      "customSections",
-      "metadata",
-    ],
-    additionalProperties: false,
-  },
-};
-
 type ResumeImportFileInput = {
   fileName: string;
   mediaType?: string | null;
@@ -263,9 +84,6 @@ const OPENAI_DEFAULT_TIMEOUT_MS = 60_000;
 const OPENROUTER_DEFAULT_TIMEOUT_MS = 90_000;
 const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
 const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = 120_000;
-const CHAT_COMPLETIONS_SUFFIX = "/v1/chat/completions";
-const GLM_CHAT_COMPLETIONS_SUFFIX = "/chat/completions";
-const API_VERSION_SUFFIX = "/v1";
 
 const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
   string,
@@ -319,6 +137,9 @@ function normalizeRuntimeProvider(
 ): SupportedRuntimeProvider | null {
   const normalized = provider?.trim().toLowerCase().replace(/[-.]/g, "_");
   if (normalized === "openai") return "openai";
+  if (normalized === "anthropic" || normalized === "claude") {
+    return "anthropic";
+  }
   if (normalized === "openrouter" || normalized === "open_router") {
     return "openrouter";
   }
@@ -434,34 +255,6 @@ function buildDataUrl(
   dataBase64: string,
 ): string {
   return `data:${mediaType};base64,${dataBase64}`;
-}
-
-function normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint: string): string {
-  return baseUrlOrEndpoint.trim().replace(/\/+$/, "");
-}
-
-function appendVersionedPath(baseUrl: string, path: string): string {
-  if (baseUrl.endsWith(API_VERSION_SUFFIX)) {
-    return joinUrl(baseUrl.slice(0, -API_VERSION_SUFFIX.length), path);
-  }
-  return joinUrl(baseUrl, path);
-}
-
-function resolveChatCompletionsUrl(
-  baseUrlOrEndpoint: string,
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
-): string {
-  const normalized = normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint);
-  if (
-    normalized.endsWith(CHAT_COMPLETIONS_SUFFIX) ||
-    normalized.endsWith(GLM_CHAT_COMPLETIONS_SUFFIX)
-  ) {
-    return normalized;
-  }
-  if (provider === "glm") {
-    return joinUrl(normalized, GLM_CHAT_COMPLETIONS_SUFFIX);
-  }
-  return appendVersionedPath(normalized, CHAT_COMPLETIONS_SUFFIX);
 }
 
 function buildUserPrompt(): string {
@@ -826,29 +619,6 @@ ${buildUserPrompt()}
 `.trim();
 }
 
-function buildCodexTextExtractPrompt(
-  documentText: string,
-  fileName: string,
-  source: "DOCX" | "PDF",
-): string {
-  const sourceLine =
-    source === "DOCX"
-      ? "The resume file was uploaded as DOCX and converted locally to plain text before extraction."
-      : "The resume file was uploaded as PDF and converted locally to plain text before extraction.";
-  return `
-${sourceLine}
-File name: ${fileName}
-
-Extracted resume text:
-${documentText}
-
-Extract the resume into the provided structured output schema.
-Use empty strings, empty arrays, or empty objects for missing values.
-For rich text descriptions and summaries, use simple HTML tags only: <p>, <ul>, <li>, <strong>, <em>.
-Return normal JSON matching the schema, not JSON serialized inside a string.
-`.trim();
-}
-
 function buildDocumentTextPrompt(
   documentText: string,
   fileName: string,
@@ -945,22 +715,6 @@ function parseImportedResumeJson(content: string): unknown {
       );
     }
   }
-}
-
-function parseCodexResumeImportResponse(content: string): string {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (error) {
-    throw upstreamError(
-      `Codex returned malformed resume import JSON. ${error instanceof Error ? error.message : "Unknown parsing error."}`,
-    );
-  }
-
-  if (!asRecord(parsed)) {
-    throw upstreamError("Codex returned an invalid resume import payload.");
-  }
-  return JSON.stringify(parsed);
 }
 
 function filterRequiredItems(items: unknown, requiredField: string): unknown[] {
@@ -1091,7 +845,7 @@ function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Anthropic, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -1144,6 +898,7 @@ function shouldRetryOpenRouterPdfWithAlternateEngine(input: {
 
 function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
   return (
+    provider === "anthropic" ||
     provider === "openai_compatible" ||
     provider === "glm" ||
     provider === "ollama" ||
@@ -1156,6 +911,7 @@ function providerRequiresApiKey(provider: SupportedRuntimeProvider): boolean {
   return (
     provider === "openai" ||
     provider === "openrouter" ||
+    provider === "anthropic" ||
     provider === "gemini" ||
     provider === "glm"
   );
@@ -1478,17 +1234,8 @@ async function extractWithGemini(args: {
   return text;
 }
 
-function getDefaultChatCompletionsBaseUrl(
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
-): string {
-  if (provider === "ollama") return "http://localhost:11434";
-  if (provider === "lmstudio") return "http://localhost:1234";
-  if (provider === "glm") return "https://api.z.ai/api/paas/v4";
-  return "https://api.openai.com";
-}
-
-async function extractWithTextChatCompletions(args: {
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio";
+async function extractWithConfiguredLlmText(args: {
+  provider: SupportedRuntimeProvider;
   apiKey: string | null;
   baseUrl: string | null;
   model: string;
@@ -1497,174 +1244,63 @@ async function extractWithTextChatCompletions(args: {
   documentText: string;
   requestId: string | undefined;
 }): Promise<string> {
-  const url = resolveChatCompletionsUrl(
-    args.baseUrl || getDefaultChatCompletionsBaseUrl(args.provider),
-    args.provider,
-  );
-  const response = await fetch(url, {
-    method: "POST",
-    headers: buildHeaders({
-      apiKey: args.apiKey,
-      provider: args.provider,
-    }),
-    body: JSON.stringify({
-      model: args.model,
-      stream: false,
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: buildDocumentTextPrompt(
-            args.documentText,
-            args.fileName,
-            args.mediaType,
-          ),
-        },
-      ],
-    }),
+  const startedAt = Date.now();
+  const llm = new LlmService({
+    provider: args.provider,
+    baseUrl: args.baseUrl,
+    apiKey: args.apiKey,
+  });
+
+  logger.info("Design resume text import extraction started", {
+    requestId: args.requestId ?? null,
+    provider: args.provider,
+    model: args.model,
+    fileName: args.fileName,
+    mediaType: args.mediaType,
+    documentTextChars: args.documentText.length,
+  });
+
+  const result = await llm.callJson<DesignResumeJson>({
+    model: args.model,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: buildDocumentTextPrompt(
+          args.documentText,
+          args.fileName,
+          args.mediaType,
+        ),
+      },
+    ],
+    jsonSchema: DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA,
     signal: AbortSignal.timeout(LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS),
   });
 
-  if (!response.ok) {
-    const detail = parseErrorMessage(await getResponseDetail(response));
-    throw new AppError({
-      status: response.status >= 500 ? 502 : 503,
-      message: detail || `${args.provider} returned ${response.status}.`,
-      details: {
-        provider: args.provider,
-        model: args.model,
-        requestId: args.requestId ?? null,
-      },
-    });
-  }
-
-  const payload = await response.json();
-  const text = extractChatCompletionText(payload);
-  if (!text) {
+  if (!result.success) {
     throw upstreamError(
-      `${args.provider} returned an empty response for resume import.`,
+      truncate(result.error, 500),
+      args.requestId
+        ? {
+            provider: args.provider,
+            model: args.model,
+            requestId: args.requestId,
+          }
+        : { provider: args.provider, model: args.model },
     );
   }
+
+  const text = JSON.stringify(result.data);
+  logger.info("Design resume text import extraction completed", {
+    requestId: args.requestId ?? null,
+    provider: args.provider,
+    model: args.model,
+    fileName: args.fileName,
+    mediaType: args.mediaType,
+    durationMs: elapsedMs(startedAt),
+    resumeJsonChars: text.length,
+  });
   return text;
-}
-
-async function extractWithGeminiCli(args: {
-  model: string;
-  mediaType: SupportedImportMediaType;
-  fileName: string;
-  documentText: string;
-  requestId: string | undefined;
-}): Promise<string> {
-  const source: "DOCX" | "PDF" =
-    args.mediaType === "application/pdf" ? "PDF" : "DOCX";
-  const userContent = buildTextExtractPrompt(
-    args.documentText,
-    args.fileName,
-    source,
-  );
-  const client = new GeminiCliClient();
-  try {
-    const { text } = await client.callJson({
-      model: args.model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
-      jsonSchema: DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA,
-    });
-    if (!text?.trim()) {
-      throw upstreamError(
-        "Gemini CLI returned an empty response for resume import.",
-      );
-    }
-    return text;
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    throw upstreamError(
-      truncate(message, 500),
-      args.requestId
-        ? {
-            provider: "gemini_cli",
-            model: args.model,
-            requestId: args.requestId,
-          }
-        : { provider: "gemini_cli", model: args.model },
-    );
-  }
-}
-
-async function extractWithCodex(args: {
-  model: string;
-  mediaType: SupportedImportMediaType;
-  fileName: string;
-  documentText: string;
-  requestId: string | undefined;
-}): Promise<string> {
-  const source: "DOCX" | "PDF" =
-    args.mediaType === "application/pdf" ? "PDF" : "DOCX";
-  const startedAt = Date.now();
-  const userContent = buildCodexTextExtractPrompt(
-    args.documentText,
-    args.fileName,
-    source,
-  );
-  const client = new CodexClient();
-  try {
-    logger.info("Codex resume import extraction started", {
-      requestId: args.requestId ?? null,
-      provider: "codex",
-      model: args.model,
-      fileName: args.fileName,
-      mediaType: args.mediaType,
-      documentTextChars: args.documentText.length,
-    });
-    const { text } = await client.callJson({
-      model: args.model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
-      jsonSchema: DESIGN_RESUME_IMPORT_CODEX_JSON_SCHEMA,
-    });
-    if (!text?.trim()) {
-      throw upstreamError(
-        "Codex returned an empty response for resume import.",
-      );
-    }
-    const parsedText = parseCodexResumeImportResponse(text);
-    logger.info("Codex resume import extraction completed", {
-      requestId: args.requestId ?? null,
-      provider: "codex",
-      model: args.model,
-      fileName: args.fileName,
-      mediaType: args.mediaType,
-      durationMs: elapsedMs(startedAt),
-      responseChars: text.length,
-      resumeJsonChars: parsedText.length,
-    });
-    return parsedText;
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    throw upstreamError(
-      truncate(message, 500),
-      args.requestId
-        ? {
-            provider: "codex",
-            model: args.model,
-            requestId: args.requestId,
-          }
-        : { provider: "codex", model: args.model },
-    );
-  }
 }
 
 async function extractResumeFromProvider(args: {
@@ -1678,29 +1314,12 @@ async function extractResumeFromProvider(args: {
   documentText?: string | null;
   requestId: string | undefined;
 }): Promise<string> {
-  if (args.provider === "gemini_cli") {
-    const text = args.documentText?.trim();
-    if (!text) {
-      throw badRequest(
-        "Gemini CLI resume import requires plain-text resume content (DOCX or extracted PDF text).",
-      );
-    }
-    return extractWithGeminiCli({
-      model: args.model,
-      mediaType: args.mediaType,
-      fileName: args.fileName,
-      documentText: text,
-      requestId: args.requestId,
-    });
-  }
-  if (args.provider === "codex") {
-    const text = args.documentText?.trim();
-    if (!text) {
-      throw badRequest(
-        "Codex resume import requires plain-text resume content (DOCX or extracted PDF text).",
-      );
-    }
-    return extractWithCodex({
+  const text = args.documentText?.trim();
+  if (text) {
+    return extractWithConfiguredLlmText({
+      provider: args.provider,
+      apiKey: args.apiKey || null,
+      baseUrl: args.baseUrl,
       model: args.model,
       mediaType: args.mediaType,
       fileName: args.fileName,
@@ -1714,30 +1333,10 @@ async function extractResumeFromProvider(args: {
   if (args.provider === "openrouter") {
     return extractWithOpenRouter(args);
   }
-  if (
-    args.provider === "openai_compatible" ||
-    args.provider === "glm" ||
-    args.provider === "ollama" ||
-    args.provider === "lmstudio"
-  ) {
-    const text = args.documentText?.trim();
-    if (!text) {
-      throw badRequest(
-        `${args.provider} resume import requires plain-text resume content (DOCX or extracted PDF text).`,
-      );
-    }
-    return extractWithTextChatCompletions({
-      provider: args.provider,
-      apiKey: args.apiKey || null,
-      baseUrl: args.baseUrl,
-      model: args.model,
-      mediaType: args.mediaType,
-      fileName: args.fileName,
-      documentText: text,
-      requestId: args.requestId,
-    });
-  }
-  return extractWithGemini(args);
+  if (args.provider === "gemini") return extractWithGemini(args);
+  throw badRequest(
+    `${args.provider} resume import requires plain-text resume content (DOCX or extracted PDF text).`,
+  );
 }
 
 export async function importDesignResumeFromFile(

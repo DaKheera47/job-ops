@@ -45,7 +45,7 @@ function resolveModelsUrl(baseUrlOrEndpoint: string): string {
 export const openAiCompatibleStrategy = createProviderStrategy({
   provider: "openai_compatible",
   defaultBaseUrl: "https://api.openai.com",
-  requiresApiKey: true,
+  requiresApiKey: false,
   modes: ["json_schema", "json_object", "text", "none"],
   validationPaths: ["/v1/models"],
   getValidationUrls: ({ baseUrl }) => [resolveModelsUrl(baseUrl)],
