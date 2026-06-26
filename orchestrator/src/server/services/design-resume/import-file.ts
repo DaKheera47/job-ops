@@ -259,10 +259,23 @@ type ResumeImportFileInput = {
 };
 
 const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
-const OPENAI_DEFAULT_TIMEOUT_MS = 60_000;
-const OPENROUTER_DEFAULT_TIMEOUT_MS = 90_000;
-const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
-const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = 120_000;
+
+function getPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const OPENAI_DEFAULT_TIMEOUT_MS = () =>
+  getPositiveIntEnv("LLM_IMPORT_OPENAI_TIMEOUT_MS", 60_000);
+const OPENROUTER_DEFAULT_TIMEOUT_MS = () =>
+  getPositiveIntEnv("LLM_IMPORT_OPENROUTER_TIMEOUT_MS", 90_000);
+const GEMINI_DEFAULT_TIMEOUT_MS = () =>
+  getPositiveIntEnv("LLM_IMPORT_GEMINI_TIMEOUT_MS", 90_000);
+const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = () =>
+  getPositiveIntEnv("LLM_IMPORT_LOCAL_TIMEOUT_MS", 120_000);
 const CHAT_COMPLETIONS_SUFFIX = "/v1/chat/completions";
 const GLM_CHAT_COMPLETIONS_SUFFIX = "/chat/completions";
 const API_VERSION_SUFFIX = "/v1";
@@ -1258,7 +1271,7 @@ async function extractWithOpenAi(args: {
         },
       ],
     }),
-    signal: AbortSignal.timeout(OPENAI_DEFAULT_TIMEOUT_MS),
+    signal: AbortSignal.timeout(OPENAI_DEFAULT_TIMEOUT_MS()),
   });
 
   if (!response.ok) {
@@ -1356,7 +1369,7 @@ async function extractWithOpenRouter(args: {
             }
           : {}),
       }),
-      signal: AbortSignal.timeout(OPENROUTER_DEFAULT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(OPENROUTER_DEFAULT_TIMEOUT_MS()),
     });
 
     if (!response.ok) {
@@ -1454,7 +1467,7 @@ async function extractWithGemini(args: {
         responseMimeType: "application/json",
       },
     }),
-    signal: AbortSignal.timeout(GEMINI_DEFAULT_TIMEOUT_MS),
+    signal: AbortSignal.timeout(GEMINI_DEFAULT_TIMEOUT_MS()),
   });
 
   if (!response.ok) {
@@ -1525,7 +1538,7 @@ async function extractWithTextChatCompletions(args: {
         },
       ],
     }),
-    signal: AbortSignal.timeout(LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS),
+    signal: AbortSignal.timeout(LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS()),
   });
 
   if (!response.ok) {

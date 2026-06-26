@@ -50,7 +50,17 @@ type LlmRuntimeSettings = {
 };
 
 const abortControllers = new Map<string, AbortController>();
-const OPENROUTER_CAPABILITY_TIMEOUT_MS = 2500;
+
+function getPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const getCapabilityTimeoutMs = () =>
+  getPositiveIntEnv("LLM_GHOSTWRITER_CAPABILITY_TIMEOUT_MS", 2500);
 const OPENROUTER_CAPABILITY_CACHE_TTL_MS = 5 * 60 * 1000;
 const openRouterImageCapabilityCache = new Map<
   string,
@@ -224,7 +234,7 @@ async function getOpenRouterImageCapabilityReason(
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
-    OPENROUTER_CAPABILITY_TIMEOUT_MS,
+    getCapabilityTimeoutMs(),
   );
 
   try {

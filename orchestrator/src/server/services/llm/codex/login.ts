@@ -2,8 +2,18 @@ import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { logger } from "@infra/logger";
 import { truncate } from "../utils/string";
 
-const DEVICE_AUTH_TIMEOUT_MS = 15_000;
-const LOGOUT_TIMEOUT_MS = 10_000;
+function getPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const DEVICE_AUTH_TIMEOUT_MS = () =>
+  getPositiveIntEnv("CODEX_APP_SERVER_DEVICE_AUTH_TIMEOUT_MS", 15_000);
+const LOGOUT_TIMEOUT_MS = () =>
+  getPositiveIntEnv("CODEX_APP_SERVER_LOGOUT_TIMEOUT_MS", 10_000);
 const MAX_BUFFERED_LINES = 80;
 const DEVICE_CODE_REGEX = /\b[A-Z0-9]{4,}-[A-Z0-9]{4,}\b/;
 const URL_REGEX = /(https?:\/\/[^\s]+)/i;
@@ -176,7 +186,7 @@ async function waitForDeviceCode(
       stopSessionProcess(session);
       cleanup();
       reject(new Error(session.message));
-    }, DEVICE_AUTH_TIMEOUT_MS);
+    }, DEVICE_AUTH_TIMEOUT_MS());
 
     const cleanup = () => {
       proc.stdout.off("data", onStdout);
@@ -379,7 +389,7 @@ export async function disconnectCodexAuth(): Promise<CodexDeviceAuthSnapshot> {
     const timer = setTimeout(() => {
       proc.kill("SIGTERM");
       reject(new Error("Timed out while disconnecting Codex."));
-    }, LOGOUT_TIMEOUT_MS);
+    }, LOGOUT_TIMEOUT_MS());
 
     proc.stdout.on("data", appendOutput);
     proc.stderr.on("data", appendOutput);
