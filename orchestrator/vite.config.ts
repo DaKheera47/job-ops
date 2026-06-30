@@ -49,6 +49,7 @@ export default defineConfig({
       "../career-boards/**/*.test.ts",
       "../shared/src/**/*.test.ts",
       "../extractors/**/tests/**/*.test.ts",
+      "../visa-sponsor-providers/**/*.test.ts",
     ],
     exclude: ["node_modules/**", "dist/**"],
   },

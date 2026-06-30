@@ -239,8 +239,8 @@ export const VisaSponsorsPage: React.FC = () => {
     },
   });
 
-  const handleUpdate = async () => {
-    await updateListMutation.mutateAsync();
+  const handleUpdate = () => {
+    updateListMutation.mutate();
   };
 
   const handleSelectOrg = (resultKey: string) => {
