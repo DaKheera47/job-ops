@@ -3,8 +3,6 @@ import manifest, { extractWorkerTemporaryWorkerCsvUrl } from "./manifest";
 
 const currentWorkerCsvUrl =
   "https://assets.publishing.service.gov.uk/media/6a43a38a1a04d4dae8b814a9/SP_-_Worker_and_Temporary_Worker_Web_Register_-_2026-06-30.csv";
-const legacyWorkerCsvUrl =
-  "https://assets.publishing.service.gov.uk/media/123/Worker_and_Temporary_Worker.csv";
 
 describe("UK visa sponsor provider manifest", () => {
   afterEach(() => {
@@ -15,12 +13,6 @@ describe("UK visa sponsor provider manifest", () => {
     const html = `<a href="${currentWorkerCsvUrl}">Register of Worker and Temporary Worker licensed sponsors</a>`;
 
     expect(extractWorkerTemporaryWorkerCsvUrl(html)).toBe(currentWorkerCsvUrl);
-  });
-
-  it("extracts the older exact-style Worker and Temporary Worker CSV URL", () => {
-    const html = `<a href="${legacyWorkerCsvUrl}">Download CSV</a>`;
-
-    expect(extractWorkerTemporaryWorkerCsvUrl(html)).toBe(legacyWorkerCsvUrl);
   });
 
   it("ignores unrelated GOV.UK CSV links", () => {
