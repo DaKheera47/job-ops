@@ -194,33 +194,39 @@ export function usePipelineControls(
         searchTerms: values.searchTerms,
         sources: compatibleSources,
       });
-      const searchCities = serializeCityLocationsSetting(values.cityLocations);
-      await api.updateSettings({
-        searchTerms: values.searchTerms,
-        workplaceTypes: values.workplaceTypes,
-        locationSearchScope: values.searchScope,
-        locationMatchStrictness: values.matchStrictness,
-        jobspyResultsWanted: limits.jobspyResultsWanted,
-        gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
-        ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
-        adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
-        startupjobsMaxJobsPerTerm: limits.startupjobsMaxJobsPerTerm,
-        jobindexMaxJobsPerTerm: limits.jobindexMaxJobsPerTerm,
-        seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
-        naukriMaxJobsPerTerm: limits.naukriMaxJobsPerTerm,
-        jobspyCountryIndeed: values.country,
-        searchCities,
-      });
-      await refreshSettings();
-      await startPipelineRun({
-        ...values,
-        sources: compatibleSources,
-        topN: values.topN,
-        minSuitabilityScore: values.minSuitabilityScore,
-        watchlistSelectedSourceIds:
-          values.watchlistSelectedSourceIds ?? watchlistSelectedSourceIds,
-      });
-      setIsRunModeModalOpen(false);
+      try {
+        const searchCities = serializeCityLocationsSetting(
+          values.cityLocations,
+        );
+        await api.updateSettings({
+          searchTerms: values.searchTerms,
+          workplaceTypes: values.workplaceTypes,
+          locationSearchScope: values.searchScope,
+          locationMatchStrictness: values.matchStrictness,
+          jobspyResultsWanted: limits.jobspyResultsWanted,
+          gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
+          ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
+          adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
+          startupjobsMaxJobsPerTerm: limits.startupjobsMaxJobsPerTerm,
+          jobindexMaxJobsPerTerm: limits.jobindexMaxJobsPerTerm,
+          seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
+          naukriMaxJobsPerTerm: limits.naukriMaxJobsPerTerm,
+          jobspyCountryIndeed: values.country,
+          searchCities,
+        });
+        await refreshSettings();
+        await startPipelineRun({
+          ...values,
+          sources: compatibleSources,
+          topN: values.topN,
+          minSuitabilityScore: values.minSuitabilityScore,
+          watchlistSelectedSourceIds:
+            values.watchlistSelectedSourceIds ?? watchlistSelectedSourceIds,
+        });
+        setIsRunModeModalOpen(false);
+      } catch (error) {
+        showErrorToast(error, "Failed to start search");
+      }
     },
     [
       pipelineSources,

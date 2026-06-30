@@ -566,6 +566,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         ...values,
         watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
       });
+    } catch (error) {
+      showErrorToast(error, "Failed to start search");
     } finally {
       setIsSaving(false);
     }

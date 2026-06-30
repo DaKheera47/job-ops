@@ -1057,6 +1057,37 @@ describe("OrchestratorPage", () => {
     setIntervalSpy.mockRestore();
   });
 
+  it("shows an error when automatic settings fail to save", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    vi.mocked(api.updateSettings).mockRejectedValueOnce(
+      new Error("Search cities must be 3000 characters or fewer."),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Search cities must be 3000 characters or fewer.",
+      );
+    });
+    expect(api.runPipeline).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: "Something went wrong" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("swaps the dashboard for the full-screen search composer", async () => {
     window.matchMedia = createMatchMedia(
       true,

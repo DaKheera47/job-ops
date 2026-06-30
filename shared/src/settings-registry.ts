@@ -578,7 +578,7 @@ export const settingsRegistry = {
   },
   searchCities: {
     kind: "typed" as const,
-    schema: z.string().trim().max(100),
+    schema: z.string().trim().max(3000),
     default: (): string =>
       typeof process !== "undefined"
         ? process.env.SEARCH_CITIES || process.env.JOBSPY_LOCATION || ""
