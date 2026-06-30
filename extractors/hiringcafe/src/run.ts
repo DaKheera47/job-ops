@@ -333,6 +333,10 @@ function parseNextData(html: string, challengeUrl = BASE_URL): unknown {
   }
 }
 
+function isExpiredHiringCafeJobPage(html: string): boolean {
+  return /<title[^>]*>\s*HiringCafe\s*-\s*Expired Job\s*<\/title>/i.test(html);
+}
+
 export function parseHiringCafeSsrPage(html: string): HiringCafeSsrPage {
   const data = parseNextData(html);
 
@@ -360,6 +364,8 @@ export function parseHiringCafeJobDetailPage(
   html: string,
   challengeUrl = BASE_URL,
 ): HiringCafeRawJob | null {
+  if (isExpiredHiringCafeJobPage(html)) return null;
+
   const data = parseNextData(html, challengeUrl);
 
   const props = asRecord(asRecord(data)?.props);
