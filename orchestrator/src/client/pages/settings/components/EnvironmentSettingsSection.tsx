@@ -24,6 +24,7 @@ type EnvironmentSettingsSectionProps = {
 
 const workspaceUsersQueryKey = ["workspaces", "users"] as const;
 const currentAuthUserQueryKey = ["auth", "me"] as const;
+const appStatusQueryKey = ["app", "status"] as const;
 
 function AccountManagementSection() {
   const queryClient = useQueryClient();
@@ -39,10 +40,19 @@ function AccountManagementSection() {
     queryFn: api.getCurrentAuthUser,
     retry: false,
   });
+  const appStatusQuery = useQuery({
+    queryKey: appStatusQueryKey,
+    queryFn: api.getAppStatus,
+    retry: false,
+  });
+  const canManageWorkspaceUsers =
+    meQuery.data?.isSystemAdmin === true ||
+    (appStatusQuery.data?.appMode === "hosted" &&
+      meQuery.data?.workspaceRole === "owner");
   const usersQuery = useQuery({
     queryKey: workspaceUsersQueryKey,
     queryFn: api.listWorkspaceUsers,
-    enabled: meQuery.data?.isSystemAdmin === true,
+    enabled: canManageWorkspaceUsers,
   });
 
   const createUserMutation = useMutation({
@@ -86,7 +96,7 @@ function AccountManagementSection() {
     },
   });
 
-  if (!meQuery.data?.isSystemAdmin) {
+  if (!canManageWorkspaceUsers) {
     return (
       <div className="space-y-2">
         <div className="text-sm font-semibold">Workspace</div>
@@ -98,13 +108,17 @@ function AccountManagementSection() {
   }
 
   const users = usersQuery.data ?? [];
+  const userManagementDescription =
+    appStatusQuery.data?.appMode === "hosted"
+      ? "Users join this hosted workspace with private app data."
+      : "Each user gets a private workspace with isolated jobs and settings.";
 
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <div className="text-sm font-semibold">Workspace Users</div>
         <p className="text-sm text-muted-foreground">
-          Each user gets a private workspace with isolated jobs and settings.
+          {userManagementDescription}
         </p>
       </div>
 

@@ -63,6 +63,7 @@ vi.mock("../api", () => ({
     isDisabled: false,
     workspaceId: "tenant_default",
     workspaceName: "JobOps",
+    workspaceRole: "owner",
     createdAt: "2026-04-27T00:00:00.000Z",
     updatedAt: "2026-04-27T00:00:00.000Z",
   }),

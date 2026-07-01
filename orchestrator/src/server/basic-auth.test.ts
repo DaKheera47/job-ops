@@ -315,6 +315,7 @@ describe.sequential("Auth read-only enforcement", () => {
       isDisabled: false,
       workspaceId: "tenant-1",
       workspaceName: "Tenant 1",
+      workspaceRole: "member",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -354,6 +355,7 @@ describe.sequential("Auth read-only enforcement", () => {
       isDisabled: true,
       workspaceId: "tenant-1",
       workspaceName: "Tenant 1",
+      workspaceRole: "owner",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

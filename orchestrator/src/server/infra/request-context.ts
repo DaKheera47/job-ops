@@ -6,6 +6,7 @@ export type RequestContext = {
   jobId?: string;
   userId?: string;
   tenantId?: string;
+  workspaceRole?: "owner" | "member";
   username?: string;
   isSystemAdmin?: boolean;
   analyticsSessionId?: string;
@@ -53,4 +54,8 @@ export function getUserId(): string | undefined {
 
 export function isSystemAdmin(): boolean {
   return storage.getStore()?.isSystemAdmin === true;
+}
+
+export function getWorkspaceRole(): "owner" | "member" | undefined {
+  return storage.getStore()?.workspaceRole;
 }

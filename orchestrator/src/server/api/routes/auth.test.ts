@@ -162,6 +162,7 @@ describe.sequential("Auth routes", () => {
         isDisabled: false,
         workspaceId: "tenant_default",
         workspaceName: "JobOps",
+        workspaceRole: "member",
       });
 
       await expect(countTenants()).resolves.toBe(tenantsBefore);
@@ -183,6 +184,7 @@ describe.sequential("Auth routes", () => {
         username: "newuser",
         workspaceId: "tenant_default",
         isSystemAdmin: false,
+        workspaceRole: "member",
       });
     });
 
@@ -468,6 +470,7 @@ describe.sequential("Auth routes", () => {
         displayName: "Admin",
         isSystemAdmin: true,
         workspaceId: "tenant_default",
+        workspaceRole: "owner",
       });
     });
 

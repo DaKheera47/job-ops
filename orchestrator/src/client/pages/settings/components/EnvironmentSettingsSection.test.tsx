@@ -9,6 +9,7 @@ import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 
 vi.mock("@client/api", () => ({
   createWorkspaceUser: vi.fn(),
+  getAppStatus: vi.fn(),
   getCurrentAuthUser: vi.fn(),
   listWorkspaceUsers: vi.fn(),
   resetWorkspaceUserPassword: vi.fn(),
@@ -59,6 +60,17 @@ const EnvironmentSettingsHarness = () => {
 
 describe("EnvironmentSettingsSection", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.getAppStatus).mockResolvedValue({
+      appMode: "local",
+      capabilities: {
+        hostedSignups: false,
+        platformLlm: false,
+        quotas: false,
+        userEditableLlmSettings: true,
+      },
+      hostedTenantConfigured: false,
+    });
     vi.mocked(api.getCurrentAuthUser).mockResolvedValue({
       id: "admin-user",
       username: "admin",
@@ -67,6 +79,7 @@ describe("EnvironmentSettingsSection", () => {
       isDisabled: false,
       workspaceId: "tenant-admin",
       workspaceName: "Admin Workspace",
+      workspaceRole: "owner",
       createdAt: "2026-05-13T00:00:00.000Z",
       updatedAt: "2026-05-13T00:00:00.000Z",
     });
@@ -79,6 +92,7 @@ describe("EnvironmentSettingsSection", () => {
         isDisabled: false,
         workspaceId: "tenant-member",
         workspaceName: "Member Workspace",
+        workspaceRole: "member",
         createdAt: "2026-05-13T00:00:00.000Z",
         updatedAt: "2026-05-13T00:00:00.000Z",
       },
@@ -115,5 +129,71 @@ describe("EnvironmentSettingsSection", () => {
     });
 
     expect(resetPasswordInput).toHaveValue("new-password");
+  });
+
+  it("shows hosted workspace user management for tenant owners", async () => {
+    vi.mocked(api.getAppStatus).mockResolvedValue({
+      appMode: "hosted",
+      capabilities: {
+        hostedSignups: true,
+        platformLlm: false,
+        quotas: false,
+        userEditableLlmSettings: true,
+      },
+      hostedTenantConfigured: true,
+    });
+    vi.mocked(api.getCurrentAuthUser).mockResolvedValue({
+      id: "owner-user",
+      username: "owner",
+      displayName: "Owner User",
+      isSystemAdmin: false,
+      isDisabled: false,
+      workspaceId: "tenant-hosted",
+      workspaceName: "Hosted Workspace",
+      workspaceRole: "owner",
+      createdAt: "2026-05-13T00:00:00.000Z",
+      updatedAt: "2026-05-13T00:00:00.000Z",
+    });
+
+    render(<EnvironmentSettingsHarness />);
+
+    expect(await screen.findByText("Workspace Users")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Users join this hosted workspace with private app data.",
+      ),
+    ).toBeInTheDocument();
+    expect(api.listWorkspaceUsers).toHaveBeenCalled();
+  });
+
+  it("hides workspace user management for hosted members", async () => {
+    vi.mocked(api.getAppStatus).mockResolvedValue({
+      appMode: "hosted",
+      capabilities: {
+        hostedSignups: true,
+        platformLlm: false,
+        quotas: false,
+        userEditableLlmSettings: true,
+      },
+      hostedTenantConfigured: true,
+    });
+    vi.mocked(api.getCurrentAuthUser).mockResolvedValue({
+      id: "member-user",
+      username: "member",
+      displayName: "Member User",
+      isSystemAdmin: false,
+      isDisabled: false,
+      workspaceId: "tenant-hosted",
+      workspaceName: "Hosted Workspace",
+      workspaceRole: "member",
+      createdAt: "2026-05-13T00:00:00.000Z",
+      updatedAt: "2026-05-13T00:00:00.000Z",
+    });
+
+    render(<EnvironmentSettingsHarness />);
+
+    expect(await screen.findByText("Workspace")).toBeInTheDocument();
+    expect(screen.queryByText("Workspace Users")).not.toBeInTheDocument();
+    expect(api.listWorkspaceUsers).not.toHaveBeenCalled();
   });
 });

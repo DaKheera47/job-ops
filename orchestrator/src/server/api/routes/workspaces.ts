@@ -1,6 +1,12 @@
 import { badRequest, conflict, forbidden, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
-import { getUserId, isSystemAdmin } from "@infra/request-context";
+import {
+  getTenantId,
+  getUserId,
+  getWorkspaceRole,
+  isSystemAdmin,
+} from "@infra/request-context";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import * as usersRepo from "@server/repositories/users";
 import { type Request, type Response, Router } from "express";
@@ -27,10 +33,30 @@ const changeOwnPasswordSchema = z.object({
   password: z.string().min(8).max(500),
 });
 
-function requireSystemAdmin(res: Response): boolean {
-  if (isSystemAdmin()) return true;
-  fail(res, forbidden("System admin access is required"));
-  return false;
+type WorkspaceUserManagerScope =
+  | { kind: "system" }
+  | { kind: "tenant"; tenantId: string };
+
+function requireWorkspaceUserManager(
+  res: Response,
+): WorkspaceUserManagerScope | null {
+  const appConfig = getJobOpsAppConfig();
+  if (appConfig.appMode !== "hosted" && isSystemAdmin()) {
+    return { kind: "system" };
+  }
+
+  const tenantId = getTenantId();
+  if (
+    appConfig.appMode === "hosted" &&
+    tenantId &&
+    tenantId === appConfig.hostedTenantId &&
+    getWorkspaceRole() === "owner"
+  ) {
+    return { kind: "tenant", tenantId };
+  }
+
+  fail(res, forbidden("Workspace owner access is required"));
+  return null;
 }
 
 function isUsernameConflictError(error: unknown): boolean {
@@ -38,18 +64,36 @@ function isUsernameConflictError(error: unknown): boolean {
   return /UNIQUE constraint failed: users\.username/i.test(error.message);
 }
 
+function failIfTenantTargetIsNotMember(
+  scope: WorkspaceUserManagerScope,
+  user: usersRepo.PublicUser,
+  res: Response,
+): boolean {
+  if (scope.kind === "system" || user.workspaceRole === "member") {
+    return false;
+  }
+  fail(res, forbidden("Only workspace members can be managed"));
+  return true;
+}
+
 workspacesRouter.get(
   "/users",
   asyncRoute(async (_req: Request, res: Response) => {
-    if (!requireSystemAdmin(res)) return;
-    ok(res, { users: await usersRepo.listUsers() });
+    const scope = requireWorkspaceUserManager(res);
+    if (!scope) return;
+    const users =
+      scope.kind === "system"
+        ? await usersRepo.listUsers()
+        : await usersRepo.listUsersByTenant(scope.tenantId);
+    ok(res, { users });
   }),
 );
 
 workspacesRouter.post(
   "/users",
   asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSystemAdmin(res)) return;
+    const scope = requireWorkspaceUserManager(res);
+    if (!scope) return;
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
       fail(res, badRequest("Invalid request body", parsed.error.flatten()));
@@ -57,12 +101,24 @@ workspacesRouter.post(
     }
 
     try {
-      const user = await usersRepo.createPrivateWorkspaceUser({
-        username: parsed.data.username,
-        password: parsed.data.password,
-        displayName: parsed.data.displayName ?? parsed.data.username,
-        isSystemAdmin: parsed.data.isSystemAdmin ?? false,
-      });
+      const user =
+        scope.kind === "system"
+          ? await usersRepo.createPrivateWorkspaceUser({
+              username: parsed.data.username,
+              password: parsed.data.password,
+              displayName: parsed.data.displayName ?? parsed.data.username,
+              isSystemAdmin: parsed.data.isSystemAdmin ?? false,
+            })
+          : await usersRepo.createTenantMemberUser({
+              username: parsed.data.username,
+              password: parsed.data.password,
+              displayName: parsed.data.displayName ?? parsed.data.username,
+              tenantId: scope.tenantId,
+            });
+      if (!user) {
+        fail(res, notFound("Workspace not found"));
+        return;
+      }
       ok(res, { user }, 201);
       return;
     } catch (error) {
@@ -78,7 +134,8 @@ workspacesRouter.post(
 workspacesRouter.patch(
   "/users/:id/disabled",
   asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSystemAdmin(res)) return;
+    const scope = requireWorkspaceUserManager(res);
+    if (!scope) return;
     const parsed = disableUserSchema.safeParse(req.body);
     if (!parsed.success) {
       fail(res, badRequest("Invalid request body", parsed.error.flatten()));
@@ -95,10 +152,27 @@ workspacesRouter.patch(
       return;
     }
 
-    const user = await usersRepo.setUserDisabled(
-      userId,
-      parsed.data.isDisabled,
-    );
+    const existingUser =
+      scope.kind === "system"
+        ? await usersRepo.getUserById(userId)
+        : await usersRepo.getUserByIdInTenant({
+            id: userId,
+            tenantId: scope.tenantId,
+          });
+    if (!existingUser) {
+      fail(res, notFound("User not found"));
+      return;
+    }
+    if (failIfTenantTargetIsNotMember(scope, existingUser, res)) return;
+
+    const user =
+      scope.kind === "system"
+        ? await usersRepo.setUserDisabled(userId, parsed.data.isDisabled)
+        : await usersRepo.setUserDisabledInTenant({
+            id: userId,
+            tenantId: scope.tenantId,
+            isDisabled: parsed.data.isDisabled,
+          });
     if (!user) {
       fail(res, notFound("User not found"));
       return;
@@ -110,7 +184,8 @@ workspacesRouter.patch(
 workspacesRouter.post(
   "/users/:id/reset-password",
   asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSystemAdmin(res)) return;
+    const scope = requireWorkspaceUserManager(res);
+    if (!scope) return;
     const parsed = resetPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       fail(res, badRequest("Invalid request body", parsed.error.flatten()));
@@ -122,11 +197,18 @@ workspacesRouter.post(
       fail(res, badRequest("User id is required"));
       return;
     }
-    const user = await usersRepo.getUserById(userId);
+    const user =
+      scope.kind === "system"
+        ? await usersRepo.getUserById(userId)
+        : await usersRepo.getUserByIdInTenant({
+            id: userId,
+            tenantId: scope.tenantId,
+          });
     if (!user) {
       fail(res, notFound("User not found"));
       return;
     }
+    if (failIfTenantTargetIsNotMember(scope, user, res)) return;
 
     await usersRepo.updateUserPassword({
       id: userId,

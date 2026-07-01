@@ -165,6 +165,7 @@ export function createAuthGuard() {
   async function getAuthorizationContext(req: express.Request): Promise<{
     userId: string;
     tenantId: string;
+    workspaceRole: "owner" | "member";
     username: string;
     isSystemAdmin: boolean;
   } | null> {
@@ -180,6 +181,7 @@ export function createAuthGuard() {
       return {
         userId: user.id,
         tenantId: user.workspaceId,
+        workspaceRole: user.workspaceRole,
         username: user.username,
         isSystemAdmin: user.isSystemAdmin,
       };
@@ -300,6 +302,7 @@ export function createAuthGuard() {
           {
             userId: "test-user",
             tenantId: DEFAULT_TENANT_ID,
+            workspaceRole: "owner",
             username: "test",
             isSystemAdmin: true,
           },

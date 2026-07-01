@@ -27,6 +27,7 @@ vi.mock("@client/api", () => ({
     isDisabled: false,
     workspaceId: "tenant_default",
     workspaceName: "JobOps",
+    workspaceRole: "owner",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   })),
@@ -90,6 +91,7 @@ describe("SignInPage", () => {
       isDisabled: false,
       workspaceId: "tenant_default",
       workspaceName: "JobOps",
+      workspaceRole: "owner" as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -226,6 +228,7 @@ describe("SignInPage", () => {
       isDisabled: false,
       workspaceId: "tenant_hosted",
       workspaceName: "JobOps",
+      workspaceRole: "member",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

@@ -1,4 +1,5 @@
 import type { Server } from "node:http";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -29,6 +30,37 @@ async function signup(baseUrl: string, username: string, password: string) {
   const body = await res.json();
   expect(res.status).toBe(201);
   return body.data.token as string;
+}
+
+async function getCurrentUser(baseUrl: string, token: string) {
+  const res = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  expect(res.status).toBe(200);
+  expect(body.ok).toBe(true);
+  return body.data.user as {
+    id: string;
+    username: string;
+    workspaceId: string;
+    workspaceRole: "owner" | "member";
+  };
+}
+
+async function promoteUserToTenantOwner(input: {
+  userId: string;
+  tenantId: string;
+}) {
+  const { db, schema } = await import("@server/db");
+  await db
+    .update(schema.tenantMemberships)
+    .set({ role: "owner", updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(schema.tenantMemberships.userId, input.userId),
+        eq(schema.tenantMemberships.tenantId, input.tenantId),
+      ),
+    );
 }
 
 function authHeaders(token: string) {
@@ -353,5 +385,226 @@ describe.sequential("Hosted current-user isolation", () => {
     expect(aliceSearches.data.searches[0].id).not.toBe(
       bobSearches.data.searches[0].id,
     );
+  });
+
+  it("lets hosted tenant owners manage members in the configured tenant", async () => {
+    const ownerToken = await signup(baseUrl, "owner", "owner-secret");
+    const owner = await getCurrentUser(baseUrl, ownerToken);
+    await promoteUserToTenantOwner({
+      userId: owner.id,
+      tenantId: owner.workspaceId,
+    });
+
+    const listBeforeRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    });
+    expect(listBeforeRes.status).toBe(200);
+    const listBefore = await listBeforeRes.json();
+    expect(listBefore.data.users).toEqual([
+      expect.objectContaining({
+        id: owner.id,
+        username: "owner",
+        workspaceId: "tenant_default",
+        workspaceRole: "owner",
+      }),
+    ]);
+
+    const createMemberRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: authHeaders(ownerToken),
+      body: JSON.stringify({
+        username: "member",
+        displayName: "Member User",
+        password: "member-secret",
+        isSystemAdmin: true,
+      }),
+    });
+    expect(createMemberRes.status).toBe(201);
+    const createMemberBody = await createMemberRes.json();
+    expect(createMemberBody.data.user).toMatchObject({
+      username: "member",
+      displayName: "Member User",
+      isSystemAdmin: false,
+      workspaceId: "tenant_default",
+      workspaceRole: "member",
+    });
+    const memberId = createMemberBody.data.user.id as string;
+
+    const memberToken = await login(baseUrl, "member", "member-secret");
+    const resetRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${memberId}/reset-password`,
+      {
+        method: "POST",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ password: "member-secret-2" }),
+      },
+    );
+    expect(resetRes.status).toBe(200);
+
+    const oldSessionRes = await fetch(`${baseUrl}/api/jobs`, {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    });
+    expect(oldSessionRes.status).toBe(401);
+
+    const updatedMemberToken = await login(
+      baseUrl,
+      "member",
+      "member-secret-2",
+    );
+    const disableRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${memberId}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ isDisabled: true }),
+      },
+    );
+    expect(disableRes.status).toBe(200);
+    const disabledLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "member",
+        password: "member-secret-2",
+      }),
+    });
+    expect(disabledLoginRes.status).toBe(401);
+
+    const enableRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${memberId}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ isDisabled: false }),
+      },
+    );
+    expect(enableRes.status).toBe(200);
+    await login(baseUrl, "member", "member-secret-2");
+
+    const memberListRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      headers: { Authorization: `Bearer ${updatedMemberToken}` },
+    });
+    expect(memberListRes.status).toBe(403);
+
+    const memberCreateRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: authHeaders(updatedMemberToken),
+      body: JSON.stringify({
+        username: "other-member",
+        password: "other-member-secret",
+      }),
+    });
+    expect(memberCreateRes.status).toBe(403);
+
+    const memberDisableRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${owner.id}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(updatedMemberToken),
+        body: JSON.stringify({ isDisabled: true }),
+      },
+    );
+    expect(memberDisableRes.status).toBe(403);
+
+    const memberResetRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${owner.id}/reset-password`,
+      {
+        method: "POST",
+        headers: authHeaders(updatedMemberToken),
+        body: JSON.stringify({ password: "owner-secret-2" }),
+      },
+    );
+    expect(memberResetRes.status).toBe(403);
+
+    const selfDisableRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${owner.id}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ isDisabled: true }),
+      },
+    );
+    expect(selfDisableRes.status).toBe(400);
+  });
+
+  it("does not let hosted tenant owners manage users from another tenant", async () => {
+    const ownerToken = await signup(baseUrl, "owner", "owner-secret");
+    const owner = await getCurrentUser(baseUrl, ownerToken);
+    await promoteUserToTenantOwner({
+      userId: owner.id,
+      tenantId: owner.workspaceId,
+    });
+
+    const usersRepo = await import("@server/repositories/users");
+    const outsideUser = await usersRepo.createPrivateWorkspaceUser({
+      username: "outside",
+      displayName: "Outside User",
+      password: "outside-secret",
+    });
+
+    const listRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    });
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json();
+    expect(
+      listBody.data.users.map((user: { username: string }) => user.username),
+    ).not.toContain("outside");
+
+    const resetOutsideRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${outsideUser.id}/reset-password`,
+      {
+        method: "POST",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ password: "outside-secret-2" }),
+      },
+    );
+    expect(resetOutsideRes.status).toBe(404);
+
+    const disableOutsideRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${outsideUser.id}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ isDisabled: true }),
+      },
+    );
+    expect(disableOutsideRes.status).toBe(404);
+  });
+
+  it("does not let hosted tenant owners manage other tenant owners", async () => {
+    const ownerToken = await signup(baseUrl, "owner", "owner-secret");
+    const owner = await getCurrentUser(baseUrl, ownerToken);
+    await promoteUserToTenantOwner({
+      userId: owner.id,
+      tenantId: owner.workspaceId,
+    });
+
+    const coOwnerToken = await signup(baseUrl, "co-owner", "co-owner-secret");
+    const coOwner = await getCurrentUser(baseUrl, coOwnerToken);
+    await promoteUserToTenantOwner({
+      userId: coOwner.id,
+      tenantId: coOwner.workspaceId,
+    });
+
+    const resetCoOwnerRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${coOwner.id}/reset-password`,
+      {
+        method: "POST",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ password: "co-owner-secret-2" }),
+      },
+    );
+    expect(resetCoOwnerRes.status).toBe(403);
+
+    const disableCoOwnerRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${coOwner.id}/disabled`,
+      {
+        method: "PATCH",
+        headers: authHeaders(ownerToken),
+        body: JSON.stringify({ isDisabled: true }),
+      },
+    );
+    expect(disableCoOwnerRes.status).toBe(403);
   });
 });
