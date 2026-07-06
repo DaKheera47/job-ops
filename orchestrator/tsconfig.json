@@ -20,7 +20,9 @@
       "@career-boards/bamboohr": ["../career-boards/bamboohr/src/index.ts"],
       "@career-boards/bamboohr/*": ["../career-boards/bamboohr/src/*"],
       "@career-boards/workday": ["../career-boards/workday/src/index.ts"],
-      "@career-boards/workday/*": ["../career-boards/workday/src/*"]
+      "@career-boards/workday/*": ["../career-boards/workday/src/*"],
+      "@career-boards/greenhouse": ["../career-boards/greenhouse/src/index.ts"],
+      "@career-boards/greenhouse/*": ["../career-boards/greenhouse/src/*"]
     }
   },
   "include": ["src/**/*", "scripts/**/*", "../career-boards/**/*.ts"],

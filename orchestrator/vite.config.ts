@@ -69,6 +69,10 @@ export default defineConfig({
         __dirname,
         "../career-boards/workday/src/index.ts",
       ),
+      "@career-boards/greenhouse": path.resolve(
+        __dirname,
+        "../career-boards/greenhouse/src/index.ts",
+      ),
     },
   },
   server: {

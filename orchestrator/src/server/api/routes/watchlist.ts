@@ -350,7 +350,7 @@ watchlistRouter.put(
       }
 
       try {
-        const normalized = adapter.normalizeCustomSelection({
+        const normalized = await adapter.normalizeCustomSelection({
           label: selection.label,
           careersUrl: normalizedUrl,
         });

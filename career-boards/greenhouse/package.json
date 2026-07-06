@@ -1,0 +1,13 @@
+{
+  "name": "@career-boards/greenhouse",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./greenhouse-url": "./src/greenhouse-url.ts",
+    "./resolve-greenhouse-source": "./src/resolve-greenhouse-source.ts",
+    "./get-jobs-from-board": "./src/get-jobs-from-board.ts",
+    "./get-job-details": "./src/get-job-details.ts"
+  }
+}

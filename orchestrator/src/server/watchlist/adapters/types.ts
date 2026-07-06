@@ -21,10 +21,15 @@ export interface WatchlistCatalogSourceAdapter {
   normalizeCustomSelection(input: {
     label: string | null | undefined;
     careersUrl: string;
-  }): {
-    label: string;
-    careersUrl: string;
-  };
+  }):
+    | {
+        label: string;
+        careersUrl: string;
+      }
+    | Promise<{
+        label: string;
+        careersUrl: string;
+      }>;
   fetchJobs(input: {
     source: WatchlistSelectedSource;
     signal?: AbortSignal;
