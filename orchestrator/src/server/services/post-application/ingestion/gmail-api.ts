@@ -177,6 +177,16 @@ export function buildGmailQuery(searchDays: number): string {
     "hiring freeze",
     "position on hold",
     "withdrawn",
+    // Interview scheduling / calendar coordination
+    "invitation",
+    "updated invitation",
+    "reschedule",
+    "rescheduled",
+    "next steps",
+    "phone screen",
+    "screening call",
+    "let's chat",
+    "quick chat",
   ];
   const fromTerms = [
     "careers@",
@@ -194,6 +204,25 @@ export function buildGmailQuery(searchDays: number): string {
     "@workdaymail.com",
     "@greenhouse.io",
     "@ashbyhq.com",
+    // Scheduling / calendar providers
+    "@calendly.com",
+    "@savvycal.com",
+    "calendar-notification@google.com",
+  ];
+  // Full-text (subject OR body) terms. Recruiter follow-ups and calendar
+  // invites often carry a plain job-title or "First and Last" subject with no
+  // recruitment keyword and come from an arbitrary company/personal domain, so
+  // the only reliable signal lives in the body (booking links, thank-you
+  // phrasing). Keep these high-precision to avoid flooding busy inboxes.
+  const fullTextTerms = [
+    "thank you for applying",
+    "thanks for applying",
+    "book a time",
+    "book the best time",
+    "schedule a call",
+    "microsoft teams meeting",
+    "calendly.com",
+    "savvycal.com",
   ];
   const excludeSubjectTerms = [
     "newsletter",
@@ -212,11 +241,14 @@ export function buildGmailQuery(searchDays: number): string {
   const fromBlock = fromTerms
     .map((term) => `from:${quoteTerm(term)}`)
     .join(" OR ");
+  const fullTextBlock = fullTextTerms
+    .map((term) => quoteTerm(term))
+    .join(" OR ");
   const excludeClauses = excludeSubjectTerms
     .map((term) => `-subject:${quoteTerm(term)}`)
     .join(" ");
 
-  return `newer_than:${searchDays}d ((${subjectBlock}) OR (${fromBlock})) ${excludeClauses}`.trim();
+  return `newer_than:${searchDays}d ((${subjectBlock}) OR (${fromBlock}) OR (${fullTextBlock})) ${excludeClauses}`.trim();
 }
 
 export async function listMessageIds(
