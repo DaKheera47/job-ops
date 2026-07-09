@@ -41,5 +41,12 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"));
   }
 
+  if (
+    provider === "requesty" &&
+    toStringOrNull(getOriginalEnvValue("REQUESTY_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("REQUESTY_API_KEY"));
+  }
+
   return null;
 }

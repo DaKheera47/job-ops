@@ -25,6 +25,7 @@ export interface ResumeProjectsSettings {
 
 export const LLM_PROVIDER_VALUES = [
   "openrouter",
+  "requesty",
   "lmstudio",
   "ollama",
   "openai",

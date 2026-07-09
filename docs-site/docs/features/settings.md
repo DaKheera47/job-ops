@@ -43,7 +43,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `codex`)
+- Choose provider (`openrouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring

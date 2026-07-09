@@ -609,6 +609,7 @@ function normalizeProvider(
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
+  if (normalized === "requesty") return "requesty";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,
