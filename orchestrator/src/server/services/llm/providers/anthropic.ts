@@ -6,6 +6,79 @@ import { createProviderStrategy } from "./factory";
 
 const DEFAULT_MAX_TOKENS = 4096;
 
+/**
+ * Anthropic's structured output (`output_config.format.schema`) only supports a
+ * subset of JSON Schema. Validation/constraint keywords such as `maxItems`
+ * cause a 400 (e.g. "For 'array' type, property 'maxItems' is not supported").
+ * Schemas in this codebase are authored to work across providers (OpenAI /
+ * OpenRouter accept these keywords), so strip the unsupported keywords before
+ * sending to Anthropic instead of maintaining a separate schema per provider.
+ */
+const ANTHROPIC_UNSUPPORTED_SCHEMA_KEYWORDS = new Set([
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "format",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "minProperties",
+  "maxProperties",
+]);
+
+// Keys whose values are maps of (arbitrary) names to nested schemas. Their keys
+// must be preserved verbatim and only their values sanitized, so a property
+// legitimately named e.g. "format" or "pattern" is never dropped.
+const SCHEMA_NAME_MAP_KEYS = new Set([
+  "properties",
+  "patternProperties",
+  "$defs",
+  "definitions",
+]);
+
+function sanitizeAnthropicSchema(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    return node.map(sanitizeAnthropicSchema);
+  }
+  if (!node || typeof node !== "object") {
+    return node;
+  }
+
+  const source = node as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(source)) {
+    if (ANTHROPIC_UNSUPPORTED_SCHEMA_KEYWORDS.has(key)) {
+      continue;
+    }
+
+    if (
+      SCHEMA_NAME_MAP_KEYS.has(key) &&
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      const nested: Record<string, unknown> = {};
+      for (const [name, schema] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
+        nested[name] = sanitizeAnthropicSchema(schema);
+      }
+      result[key] = nested;
+      continue;
+    }
+
+    result[key] = sanitizeAnthropicSchema(value);
+  }
+
+  return result;
+}
+
 type AnthropicContentBlock =
   | { type: "text"; text: string }
   | {
@@ -39,7 +112,7 @@ export const anthropicStrategy = createProviderStrategy({
       body.output_config = {
         format: {
           type: "json_schema",
-          schema: jsonSchema.schema,
+          schema: sanitizeAnthropicSchema(jsonSchema.schema),
         },
       };
     } else if (mode === "json_object") {
