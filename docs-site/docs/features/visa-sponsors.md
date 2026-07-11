@@ -11,6 +11,13 @@ The Visa Sponsors page lets you search official licensed sponsor registers from 
 
 Each provider corresponds to a country's official register and is auto-discovered at startup from the `visa-sponsor-providers/` directory.
 
+Available providers:
+
+| Country | Source | What it lists |
+|---------|--------|---------------|
+| United Kingdom (`uk`) | [GOV.UK register of licensed sponsors](https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers) | Worker and Temporary Worker licensed sponsors, with routes and type/rating |
+| Canada (`ca`) | [ESDC positive LMIA employers list](https://open.canada.ca/data/en/dataset/90fed587-1364-4f33-a9ee-208181dc0b97) | Employers issued a positive Labour Market Impact Assessment in the latest published quarter, with program stream and approved positions |
+
 For each company, it shows:
 
 - Match score against your query

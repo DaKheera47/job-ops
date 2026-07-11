@@ -65,6 +65,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.38.2",
     "express": "^4.22.2",
+    "fflate": "^0.8.3",
     "framer-motion": "^12.40.0",
     "html-to-text": "^9.0.5",
     "jsdom": "^25.0.1",
