@@ -11,6 +11,13 @@ The Visa Sponsors page lets you search official licensed sponsor registers from 
 
 Each provider corresponds to a country's official register and is auto-discovered at startup from the `visa-sponsor-providers/` directory.
 
+Available providers:
+
+| Country | Source | What it lists |
+|---------|--------|---------------|
+| United Kingdom (`uk`) | [GOV.UK register of licensed sponsors](https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers) | Worker and Temporary Worker licensed sponsors, with routes and type/rating |
+| United States (`us`) | [USCIS H-1B Employer Data Hub](https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub) | Employers with H-1B approvals in the latest published fiscal year (sponsorship history signal) |
+
 For each company, it shows:
 
 - Match score against your query
