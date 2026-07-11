@@ -7,6 +7,12 @@ import { parseVisaSponsorsCsv } from "@shared/visa-sponsors/csv";
 const GOV_UK_PAGE_URL =
   "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers";
 
+// Same publication, served as structured JSON. The HTML page intermittently
+// renders without the direct CSV href, so the Content API is the primary
+// source and the HTML scrape below is kept as a fallback.
+const GOV_UK_CONTENT_API_URL =
+  "https://www.gov.uk/api/content/government/publications/register-of-licensed-sponsors-workers";
+
 const GOV_UK_ASSET_PREFIX = "https://assets.publishing.service.gov.uk/media/";
 const CSV_HREF_PATTERN = /href=(["'])([^"']+\.csv(?:\?[^"']*)?)\1/gi;
 const CSV_LINK_NOT_FOUND_MESSAGE =
@@ -48,7 +54,66 @@ export function extractWorkerTemporaryWorkerCsvUrl(
   return null;
 }
 
+function isWorkerTemporaryWorkerLabel(label: string): boolean {
+  const normalized = label.toLowerCase();
+  const withoutTemporaryWorker = normalized.replace(/temporary worker/g, "");
+  return (
+    normalized.includes("temporary worker") &&
+    withoutTemporaryWorker.includes("worker")
+  );
+}
+
+export function pickWorkerTemporaryWorkerCsvAttachment(
+  payload: unknown,
+): string | null {
+  const attachments = (
+    payload as { details?: { attachments?: unknown } } | null
+  )?.details?.attachments;
+  if (!Array.isArray(attachments)) return null;
+
+  for (const attachment of attachments) {
+    const {
+      url,
+      title,
+      content_type: contentType,
+    } = (attachment ?? {}) as {
+      url?: unknown;
+      title?: unknown;
+      content_type?: unknown;
+    };
+    if (typeof url !== "string" || url.length === 0) continue;
+
+    const isCsv =
+      contentType === "text/csv" || url.toLowerCase().endsWith(".csv");
+    if (!isCsv) continue;
+
+    const label = typeof title === "string" ? title : "";
+    if (
+      isWorkerTemporaryWorkerLabel(label) ||
+      isWorkerTemporaryWorkerLabel(normalizeCsvUrl(url))
+    ) {
+      return url;
+    }
+  }
+
+  return null;
+}
+
+async function fetchCsvUrlFromContentApi(): Promise<string | null> {
+  try {
+    const response = await fetch(GOV_UK_CONTENT_API_URL);
+    if (!response.ok) return null;
+    return pickWorkerTemporaryWorkerCsvAttachment(await response.json());
+  } catch {
+    // Any Content API failure falls through to the HTML scrape.
+    return null;
+  }
+}
+
 async function extractCsvUrl(): Promise<string> {
+  const apiCsvUrl = await fetchCsvUrlFromContentApi();
+  if (apiCsvUrl) return apiCsvUrl;
+
   const response = await fetch(GOV_UK_PAGE_URL);
   if (!response.ok) {
     throw new Error(
