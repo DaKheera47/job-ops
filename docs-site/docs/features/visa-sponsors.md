@@ -11,6 +11,13 @@ The Visa Sponsors page lets you search official licensed sponsor registers from 
 
 Each provider corresponds to a country's official register and is auto-discovered at startup from the `visa-sponsor-providers/` directory.
 
+Available providers:
+
+| Country | Source | What it lists |
+|---------|--------|---------------|
+| United Kingdom (`uk`) | [GOV.UK register of licensed sponsors](https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers) | Worker and Temporary Worker licensed sponsors, with routes and type/rating |
+| Netherlands (`nl`) | [IND public register of recognised sponsors](https://ind.nl/en/public-register-recognised-sponsors/public-register-work) | Recognised sponsors for the residence purposes work and highly skilled migrant, with KvK number |
+
 For each company, it shows:
 
 - Match score against your query
