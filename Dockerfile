@@ -76,6 +76,7 @@ COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -103,6 +104,7 @@ COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
 COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
@@ -151,6 +153,7 @@ COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -243,6 +246,7 @@ COPY --from=docs-build /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
 COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
