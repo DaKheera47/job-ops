@@ -126,6 +126,7 @@ const authUser = {
   isDisabled: false,
   workspaceId: "tenant_default",
   workspaceName: "JobOps",
+  workspaceRole: "owner" as const,
   createdAt: "2026-06-01T00:00:00.000Z",
   updatedAt: "2026-06-01T00:00:00.000Z",
 };

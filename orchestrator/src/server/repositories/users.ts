@@ -9,6 +9,8 @@ import { db, schema } from "../db";
 
 const { tenantMemberships, tenants, users } = schema;
 
+export type WorkspaceRole = "owner" | "member";
+
 export type AuthUser = {
   id: string;
   username: string;
@@ -19,6 +21,7 @@ export type AuthUser = {
   isDisabled: boolean;
   tenantId: string;
   tenantName: string;
+  workspaceRole: WorkspaceRole;
 };
 
 export type PublicUser = {
@@ -29,6 +32,7 @@ export type PublicUser = {
   isDisabled: boolean;
   workspaceId: string;
   workspaceName: string;
+  workspaceRole: WorkspaceRole;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +57,7 @@ function mapUser(row: {
   isDisabled: boolean;
   workspaceId: string;
   workspaceName: string;
+  workspaceRole: WorkspaceRole;
   createdAt: string;
   updatedAt: string;
 }): PublicUser {
@@ -64,6 +69,7 @@ function mapUser(row: {
     isDisabled: row.isDisabled,
     workspaceId: row.workspaceId,
     workspaceName: row.workspaceName,
+    workspaceRole: row.workspaceRole,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -88,6 +94,7 @@ export async function getUserForLogin(
       isDisabled: users.isDisabled,
       tenantId: tenantMemberships.tenantId,
       tenantName: tenants.name,
+      workspaceRole: tenantMemberships.role,
     })
     .from(users)
     .innerJoin(tenantMemberships, eq(tenantMemberships.userId, users.id))
@@ -108,6 +115,7 @@ export async function getUserById(id: string): Promise<PublicUser | null> {
       isDisabled: users.isDisabled,
       workspaceId: tenantMemberships.tenantId,
       workspaceName: tenants.name,
+      workspaceRole: tenantMemberships.role,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -130,12 +138,37 @@ export async function listUsers(): Promise<PublicUser[]> {
       isDisabled: users.isDisabled,
       workspaceId: tenantMemberships.tenantId,
       workspaceName: tenants.name,
+      workspaceRole: tenantMemberships.role,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
     .from(users)
     .innerJoin(tenantMemberships, eq(tenantMemberships.userId, users.id))
     .innerJoin(tenants, eq(tenants.id, tenantMemberships.tenantId));
+
+  return rows.map(mapUser);
+}
+
+export async function listUsersByTenant(
+  tenantId: string,
+): Promise<PublicUser[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      isSystemAdmin: users.isSystemAdmin,
+      isDisabled: users.isDisabled,
+      workspaceId: tenantMemberships.tenantId,
+      workspaceName: tenants.name,
+      workspaceRole: tenantMemberships.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .innerJoin(tenantMemberships, eq(tenantMemberships.userId, users.id))
+    .innerJoin(tenants, eq(tenants.id, tenantMemberships.tenantId))
+    .where(eq(tenantMemberships.tenantId, tenantId));
 
   return rows.map(mapUser);
 }
@@ -213,6 +246,15 @@ export async function createPrivateWorkspaceUser(input: {
 }
 
 export async function createHostedTenantUser(input: {
+  username: string;
+  password: string;
+  tenantId: string;
+  displayName?: string | null;
+}): Promise<PublicUser | null> {
+  return createTenantMemberUser(input);
+}
+
+export async function createTenantMemberUser(input: {
   username: string;
   password: string;
   tenantId: string;
@@ -338,6 +380,55 @@ export async function setUserDisabled(
     .set({ isDisabled, updatedAt: new Date().toISOString() })
     .where(eq(users.id, id));
   return getUserById(id);
+}
+
+export async function setUserDisabledInTenant(input: {
+  id: string;
+  tenantId: string;
+  isDisabled: boolean;
+}): Promise<PublicUser | null> {
+  const belongsToTenant = await userBelongsToTenant({
+    userId: input.id,
+    tenantId: input.tenantId,
+  });
+  if (!belongsToTenant) return null;
+
+  await db
+    .update(users)
+    .set({ isDisabled: input.isDisabled, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, input.id));
+  return getUserByIdInTenant({ id: input.id, tenantId: input.tenantId });
+}
+
+export async function getUserByIdInTenant(input: {
+  id: string;
+  tenantId: string;
+}): Promise<PublicUser | null> {
+  const [row] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      isSystemAdmin: users.isSystemAdmin,
+      isDisabled: users.isDisabled,
+      workspaceId: tenantMemberships.tenantId,
+      workspaceName: tenants.name,
+      workspaceRole: tenantMemberships.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .innerJoin(tenantMemberships, eq(tenantMemberships.userId, users.id))
+    .innerJoin(tenants, eq(tenants.id, tenantMemberships.tenantId))
+    .where(
+      and(
+        eq(users.id, input.id),
+        eq(tenantMemberships.tenantId, input.tenantId),
+      ),
+    )
+    .limit(1);
+
+  return row ? mapUser(row) : null;
 }
 
 export async function updateUserPassword(input: {

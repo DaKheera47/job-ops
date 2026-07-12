@@ -35,6 +35,7 @@ export type AuthUser = {
   isDisabled: boolean;
   workspaceId: string;
   workspaceName: string;
+  workspaceRole: "owner" | "member";
   createdAt: string;
   updatedAt: string;
 };
