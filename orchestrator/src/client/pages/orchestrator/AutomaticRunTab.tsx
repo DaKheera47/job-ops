@@ -12,14 +12,17 @@ import {
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
-import type {
-  AppSettings,
-  CreatePipelineSearchPresetInput,
-  JobSource,
-  PipelineSearchPreset,
-  PipelineSearchPresetConfig,
-  UpdatePipelineSearchPresetInput,
-  WatchlistSelectedSource,
+import {
+  type AppSettings,
+  type CreatePipelineSearchPresetInput,
+  type JobSource,
+  MAX_PIPELINE_RUN_BUDGET,
+  MIN_PIPELINE_RUN_BUDGET,
+  normalizePipelineRunBudget,
+  type PipelineSearchPreset,
+  type PipelineSearchPresetConfig,
+  type UpdatePipelineSearchPresetInput,
+  type WatchlistSelectedSource,
 } from "@shared/types";
 import { ArrowLeft, Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -88,7 +91,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
   scoringInstructions: "",
-  runBudget: 200,
+  runBudget: MIN_PIPELINE_RUN_BUDGET,
   country: "",
   cityLocations: [],
   workplaceTypes: ["remote", "hybrid", "onsite"],
@@ -112,9 +115,6 @@ interface AutomaticRunFormValues {
 }
 
 const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
-const MIN_RUN_BUDGET = 50;
-const MAX_RUN_BUDGET = 1000;
-
 function normalizeUiCountryKey(value: string): string {
   const normalized = normalizeCountryKey(value);
   if (normalized === "usa/ca") return "united states";
@@ -128,7 +128,7 @@ function toNumber(input: string, min: number, max: number, fallback: number) {
 }
 
 function normalizeRunBudget(value: number): number {
-  return Math.min(MAX_RUN_BUDGET, Math.max(MIN_RUN_BUDGET, Math.round(value)));
+  return normalizePipelineRunBudget(value);
 }
 
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
@@ -328,8 +328,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       ),
       runBudget: toNumber(
         runBudgetInput,
-        MIN_RUN_BUDGET,
-        MAX_RUN_BUDGET,
+        MIN_PIPELINE_RUN_BUDGET,
+        MAX_PIPELINE_RUN_BUDGET,
         DEFAULT_VALUES.runBudget,
       ),
       country: normalizedCountry || DEFAULT_VALUES.country,
@@ -579,7 +579,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     setValue("minSuitabilityScore", String(config.minSuitabilityScore), {
       shouldDirty: true,
     });
-    setValue("runBudget", String(config.runBudget), { shouldDirty: true });
+    setValue("runBudget", String(normalizeRunBudget(config.runBudget)), {
+      shouldDirty: true,
+    });
     setValue("country", normalizeUiCountryKey(config.country), {
       shouldDirty: true,
     });
@@ -813,8 +815,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               topNInput={topNInput}
               minScoreInput={minScoreInput}
               runBudgetInput={runBudgetInput}
-              minRunBudget={MIN_RUN_BUDGET}
-              maxRunBudget={MAX_RUN_BUDGET}
+              minRunBudget={MIN_PIPELINE_RUN_BUDGET}
+              maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
               onApplyPreset={applyPreset}
               onSelectCustomPreset={() => setSelectedPreset("custom")}
               onCountryChange={(country) =>
@@ -850,6 +852,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 setSelectedPreset("custom");
                 setValue("runBudget", value);
               }}
+              onRunBudgetInputBlur={() =>
+                setValue(
+                  "runBudget",
+                  String(
+                    normalizeRunBudget(
+                      Number.parseInt(runBudgetInput, 10) ||
+                        DEFAULT_VALUES.runBudget,
+                    ),
+                  ),
+                )
+              }
             />
 
             <AutomaticRankingPreferencesCard

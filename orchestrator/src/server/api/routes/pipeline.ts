@@ -52,6 +52,10 @@ import type {
   PipelineProgressState,
   PipelineStatusResponse,
 } from "@shared/types";
+import {
+  MAX_PIPELINE_RUN_BUDGET,
+  normalizePipelineRunBudget,
+} from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -63,6 +67,11 @@ const pipelineSourceSchema = z.enum(
     ...(typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number][],
   ],
 );
+const pipelineRunBudgetSchema = z
+  .number()
+  .int()
+  .max(MAX_PIPELINE_RUN_BUDGET)
+  .transform(normalizePipelineRunBudget);
 
 function toSelectedSourcesValue(
   sources: readonly string[] | undefined,
@@ -204,7 +213,7 @@ const pipelineSearchPresetConfigSchema = z.object({
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
   topN: z.number().int().min(1).max(50),
   minSuitabilityScore: z.number().int().min(0).max(100),
-  runBudget: z.number().int().min(50).max(1000),
+  runBudget: pipelineRunBudgetSchema,
   scoringInstructions: z.string().trim().max(4000).optional().default(""),
   automaticPresetId: z
     .enum(["fast", "balanced", "detailed", "custom"])
@@ -430,7 +439,7 @@ const runPipelineSchema = z.object({
   topN: z.number().min(1).max(50).optional(),
   minSuitabilityScore: z.number().min(0).max(100).optional(),
   sources: z.array(pipelineSourceSchema).min(1).optional(),
-  runBudget: z.number().min(50).max(1000).optional(),
+  runBudget: pipelineRunBudgetSchema.optional(),
   searchTerms: z.array(z.string().trim().min(1)).optional(),
   scoringInstructions: z.string().trim().max(4000).optional(),
   country: z.string().trim().optional(),
@@ -562,6 +571,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         selected_sources: toSelectedSourcesValue(config.sources),
         top_n: config.topN,
         min_suitability_score: config.minSuitabilityScore,
+        run_budget: config.runBudget,
         country: config.country,
         has_city_locations: Array.isArray(config.cityLocations)
           ? config.cityLocations.length > 0

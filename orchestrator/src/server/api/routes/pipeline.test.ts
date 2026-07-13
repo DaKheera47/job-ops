@@ -148,7 +148,10 @@ describe.sequential("Pipeline API routes", () => {
       expect.objectContaining({
         id: expect.any(String),
         name: "London backend",
-        config,
+        config: {
+          ...config,
+          runBudget: 300,
+        },
         lastUsedAt: null,
       }),
     );
@@ -344,7 +347,10 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.data).toEqual(
       expect.objectContaining({
         source: "fallback",
-        config: currentConfig,
+        config: {
+          ...currentConfig,
+          runBudget: 300,
+        },
       }),
     );
     expect(JSON.stringify(body)).not.toContain("super secret prompt");
@@ -691,6 +697,7 @@ describe.sequential("Pipeline API routes", () => {
         selected_sources: "gradcracker",
         top_n: 5,
         min_suitability_score: 65,
+        run_budget: 300,
         country: "united kingdom",
         has_city_locations: true,
         search_terms_count: 1,
