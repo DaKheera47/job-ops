@@ -99,6 +99,21 @@ describe("scoreJobsStep auto-skip behavior", () => {
     );
   });
 
+  it("uses the selected run country for visa sponsor matching", async () => {
+    const visaSponsors = await import("@server/services/visa-sponsors/index");
+
+    await scoreJobsStep({
+      profile: {},
+      visaSponsorCountryKey: "united kingdom",
+    });
+
+    expect(visaSponsors.searchSponsors).toHaveBeenCalledWith("Acme Corp", {
+      limit: 10,
+      minScore: 50,
+      countryKey: "united kingdom",
+    });
+  });
+
   it("passes per-run scoring instructions to the scorer", async () => {
     const scorer = await import("@server/services/scorer");
 

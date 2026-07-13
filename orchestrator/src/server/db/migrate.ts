@@ -1677,12 +1677,50 @@ function seedLegacyOwnerFromBasicAuth(): void {
   sqlite.exec("DELETE FROM auth_sessions");
 }
 
+function seedLegacyOnboardingMigration(): void {
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS app_data_migrations (
+    id TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+
+  const migrationId = "onboarding-markers-v1";
+  const applied = sqlite
+    .prepare("SELECT 1 FROM app_data_migrations WHERE id = ?")
+    .get(migrationId);
+  if (applied) return;
+
+  sqlite.exec(`INSERT OR IGNORE INTO settings(
+    tenant_id, user_id, key, value, created_at, updated_at
+  )
+  SELECT scopes.tenant_id, scopes.user_id, 'onboardingLegacyMigrationPending', '1', datetime('now'), datetime('now')
+  FROM (
+    SELECT tenant_id, user_id FROM settings WHERE key NOT LIKE 'onboarding%'
+    UNION
+    SELECT tenant_id, user_id FROM design_resume_documents
+  ) AS scopes
+  WHERE NOT EXISTS (
+    SELECT 1 FROM settings existing
+    WHERE existing.tenant_id = scopes.tenant_id
+      AND coalesce(existing.user_id, '') = coalesce(scopes.user_id, '')
+      AND existing.key IN (
+        'onboardingProfileCompleted',
+        'onboardingLlmCompleted',
+        'onboardingResumeConfirmedSource',
+        'onboardingLegacyMigrationPending'
+      )
+  )`);
+  sqlite
+    .prepare("INSERT INTO app_data_migrations(id) VALUES (?)")
+    .run(migrationId);
+}
+
 console.log("🔐 Applying tenancy compatibility migrations...");
 ensureTenantColumns();
 seedLegacyOwnerFromBasicAuth();
 ensurePrivateUserColumns();
 rebuildPostApplicationPrivateTables();
 rebuildSettingsTable();
+seedLegacyOnboardingMigration();
 ensureTracerLinksUniqueIndex();
 sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_key_unique");
 sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_user_key_unique");

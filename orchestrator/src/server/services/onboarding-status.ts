@@ -531,6 +531,48 @@ async function buildHostedResumeRequirement(): Promise<OnboardingRequirement> {
   });
 }
 
+async function migrateLegacyOnboardingState(args: {
+  hostedMode: boolean;
+  userEditableLlmSettings: boolean;
+}): Promise<void> {
+  if ((await getSetting("onboardingLegacyMigrationPending")) !== "1") return;
+
+  const update: UpdateSettingsInput = {
+    onboardingProfileCompleted: true,
+    onboardingLegacyMigrationPending: false,
+  };
+
+  if (args.userEditableLlmSettings) {
+    const [provider, model, validation] = await Promise.all([
+      getSetting("llmProvider"),
+      getSetting("model"),
+      validateLlm({}),
+    ]);
+    const normalizedProvider = normalizeLlmProviderValue(provider);
+    update.onboardingLlmCompleted =
+      validation.valid && !(normalizedProvider === "ollama" && !model?.trim());
+  }
+
+  if (!args.hostedMode) {
+    const localStatus = await getDesignResumeStatus();
+    if (localStatus.exists && localStatus.documentId) {
+      update.onboardingResumeConfirmedSource = `local:${localStatus.documentId}`;
+    } else {
+      const { resumeId } = await getConfiguredRxResumeBaseResumeId();
+      if (resumeId && (await validateResumeConfig()).valid) {
+        update.onboardingResumeConfirmedSource = `rxresume:${resumeId}`;
+      }
+    }
+  }
+
+  await applySettingsUpdates(update);
+  logger.info("Migrated legacy onboarding state", {
+    requestId: getRequestId() ?? null,
+    modelReady: update.onboardingLlmCompleted ?? null,
+    resumeReady: Boolean(update.onboardingResumeConfirmedSource),
+  });
+}
+
 export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
   const appStatus = getJobOpsAppStatus();
   const userEditableLlmSettings =
@@ -567,6 +609,11 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
     ];
     return { complete: true, nextRequirementId: null, requirements };
   }
+
+  await migrateLegacyOnboardingState({
+    hostedMode,
+    userEditableLlmSettings,
+  });
 
   const profileCompleted = await getSetting("onboardingProfileCompleted");
   const profileRequirement = buildRequirement({

@@ -5,12 +5,7 @@ import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
 import { queryKeys } from "@client/lib/queryKeys";
 import { normalizeLlmProvider } from "@client/pages/settings/utils";
-import type {
-  AppSettings,
-  OnboardingStatusResponse,
-  SearchTermsSuggestionResponse,
-} from "@shared/types";
-import { normalizeSearchTerms } from "@shared/utils/search-terms";
+import type { AppSettings, OnboardingStatusResponse } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -36,11 +31,6 @@ export function useOnboardingFlow() {
   const demoMode = demoInfo?.demoMode ?? false;
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isGeneratingSearchTerms, setIsGeneratingSearchTerms] = useState(false);
-  const [preparedSearchTerms, setPreparedSearchTerms] = useState<string[]>([]);
-  const [searchTermsSource, setSearchTermsSource] = useState<
-    SearchTermsSuggestionResponse["source"] | null
-  >(null);
   const [isImportingResume, setIsImportingResume] = useState(false);
   const [importingResumeFileName, setImportingResumeFileName] = useState<
     string | null
@@ -56,7 +46,7 @@ export function useOnboardingFlow() {
       llmBaseUrl: "",
       llmApiKey: "",
       model: "",
-      pdfRenderer: "latex",
+      pdfRenderer: "typst",
       rxresumeUrl: "",
       rxresumeApiKey: "",
       rxresumeBaseResumeId: null,
@@ -92,7 +82,7 @@ export function useOnboardingFlow() {
       llmBaseUrl: settings.llmBaseUrl?.value || "",
       llmApiKey: "",
       model: settings.model?.override ?? "",
-      pdfRenderer: selectedId ? "rxresume" : "latex",
+      pdfRenderer: selectedId ? "rxresume" : "typst",
       rxresumeUrl: settings.rxresumeUrl ?? "",
       rxresumeApiKey: "",
       rxresumeBaseResumeId: selectedId,
@@ -246,12 +236,12 @@ export function useOnboardingFlow() {
           updatedAt: document.updatedAt,
         });
 
-        if (settings?.pdfRenderer?.value !== "latex") {
+        if (settings?.pdfRenderer?.value !== "typst") {
           const nextSettings = await api.updateSettings({
-            pdfRenderer: "latex",
+            pdfRenderer: "typst",
           });
           syncSettingsCache(nextSettings);
-          setValue("pdfRenderer", "latex");
+          setValue("pdfRenderer", "typst");
         }
 
         await refreshOnboardingState();
@@ -268,9 +258,9 @@ export function useOnboardingFlow() {
         });
         toast.success("Resume uploaded", {
           description:
-            settings?.pdfRenderer?.value === "latex"
+            settings?.pdfRenderer?.value === "typst"
               ? "Your local Resume Studio document is ready."
-              : "Your local Resume Studio document is ready and PDF rendering was switched to LaTeX.",
+              : "Your local Resume Studio document is ready and PDF rendering was switched to Typst.",
         });
       } catch (error) {
         trackProductEvent("onboarding_resume_upload_completed", {
@@ -330,70 +320,16 @@ export function useOnboardingFlow() {
     [getValues, refreshOnboardingState, setBaseResumeId, setValue],
   );
 
-  const savedSearchTerms = normalizeSearchTerms(
-    settings?.searchTerms?.override ?? preparedSearchTerms,
-  );
-  const hasSavedSearchTerms = savedSearchTerms.length > 0;
-
-  const ensureSearchTerms = useCallback(
-    async (options?: { force?: boolean; trigger?: "auto" | "manual" }) => {
-      if (!options?.force && hasSavedSearchTerms) {
-        return true;
-      }
-
-      try {
-        trackProductEvent("onboarding_search_terms_started", {
-          trigger: options?.trigger ?? "manual",
-          had_existing_terms: hasSavedSearchTerms,
-        });
-        setIsGeneratingSearchTerms(true);
-        const suggestion = await api.suggestOnboardingSearchTerms();
-        const terms = normalizeSearchTerms(suggestion.terms);
-        if (terms.length === 0) {
-          throw new Error("No usable search terms were generated.");
-        }
-
-        const nextSettings = await api.updateSettings({ searchTerms: terms });
-        syncSettingsCache(nextSettings);
-        setPreparedSearchTerms(terms);
-        setSearchTermsSource(suggestion.source);
-        trackProductEvent("onboarding_search_terms_completed", {
-          result: "success",
-          source: suggestion.source,
-          terms_count: terms.length,
-        });
-        toast.success("Search terms prepared", {
-          description: `${terms.length} resume-based title${
-            terms.length === 1 ? "" : "s"
-          } saved for job discovery.`,
-        });
-        return true;
-      } catch (error) {
-        trackProductEvent("onboarding_search_terms_completed", {
-          result: "error",
-          error_category: getErrorCategory(error),
-        });
-        showErrorToast(error, "Failed to prepare search terms");
-        return false;
-      } finally {
-        setIsGeneratingSearchTerms(false);
-      }
-    },
-    [hasSavedSearchTerms, syncSettingsCache],
-  );
-
   const isBusy = isSaving || settingsLoading || isImportingResume;
 
   return {
     demoMode,
-    ensureSearchTerms,
     handleImportResumeFile,
     handleRxresumeSelfHostedChange,
     handleSaveModel,
     handleSaveRxresume,
     handleTemplateResumeChange,
     isBusy,
-    isGeneratingSearchTerms,
     isImportingResume,
     importingResumeFileName,
     isRxResumeSelfHosted,
@@ -403,9 +339,6 @@ export function useOnboardingFlow() {
     selectedProvider,
     settings,
     settingsLoading,
-    hasSavedSearchTerms,
-    savedSearchTerms,
-    searchTermsSource,
     setResumeSetupMode: handleResumeSetupModeChange,
     setValue,
     watch,

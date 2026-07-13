@@ -554,6 +554,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
           minSuitabilityScore: config.minSuitabilityScore,
           sources: config.sources,
           scoringInstructions: config.scoringInstructions,
+          runBudget: config.runBudget,
           locationIntent,
           watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         },

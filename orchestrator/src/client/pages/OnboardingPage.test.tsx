@@ -9,13 +9,23 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OnboardingPage } from "./OnboardingPage";
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
+const analyticsMocks = vi.hoisted(() => ({
+  trackProductEvent: vi.fn(),
+}));
+
 vi.mock("@/client/api", () => ({
   confirmOnboardingResume: vi.fn(),
   getAppStatus: vi.fn(),
   getAuthBootstrapStatus: vi.fn(),
+  hasAuthenticatedSession: vi.fn(() => true),
   getProfile: vi.fn(),
   saveOnboardingProfile: vi.fn(),
   setupFirstAdmin: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/analytics")>()),
+  trackProductEvent: analyticsMocks.trackProductEvent,
 }));
 
 vi.mock("@client/hooks/useOnboardingStatus", () => ({
@@ -156,7 +166,6 @@ function mockFlow() {
     handleSaveRxresume: vi.fn(),
     handleTemplateResumeChange: vi.fn(),
     isBusy: false,
-    isGeneratingSearchTerms: false,
     isImportingResume: false,
     importingResumeFileName: null,
     isRxResumeSelfHosted: false,
@@ -244,6 +253,12 @@ describe("OnboardingPage", () => {
         password: "password123",
       }),
     );
+    expect(analyticsMocks.trackProductEvent).toHaveBeenCalledWith(
+      "onboarding_account_create_submitted",
+      expect.objectContaining({
+        username_length_bucket: "4_10",
+      }),
+    );
   });
 
   it("saves location preferences and advances from the returned server status", async () => {
@@ -259,18 +274,40 @@ describe("OnboardingPage", () => {
     vi.mocked(api.saveOnboardingProfile).mockResolvedValue(resumeStatus);
 
     await renderPage();
-    fireEvent.change(await screen.findByPlaceholderText("United Kingdom"), {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Select country" }),
+    );
+    const countrySearch = screen.getByPlaceholderText("Search country...");
+    fireEvent.change(countrySearch, {
       target: { value: "United Kingdom" },
     });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("option", { name: "Afghanistan" }),
+      ).not.toBeInTheDocument(),
+    );
+    fireEvent.keyDown(countrySearch, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
 
     await waitFor(() =>
       expect(api.saveOnboardingProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          country: "United Kingdom",
+          country: "united kingdom",
           cities: [],
         }),
       ),
+    );
+    expect(analyticsMocks.trackProductEvent).toHaveBeenCalledWith(
+      "onboarding_profile_save_submitted",
+      expect.objectContaining({
+        has_country: true,
+        city_count: 0,
+        requires_visa_sponsorship: false,
+      }),
+    );
+    expect(analyticsMocks.trackProductEvent).toHaveBeenCalledWith(
+      "onboarding_profile_save_completed",
+      { result: "success" },
     );
     expect(await screen.findByText("Resume importer")).toBeInTheDocument();
   });
@@ -317,6 +354,10 @@ describe("OnboardingPage", () => {
     vi.mocked(api.confirmOnboardingResume).mockResolvedValue(completeStatus);
 
     await renderPage();
+
+    expect(
+      screen.getByRole("link", { name: /edit in resume studio/i }),
+    ).toHaveAttribute("href", "/design-resume");
     expect(await screen.findByText("Sam")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /use this resume/i }));
 
@@ -324,6 +365,14 @@ describe("OnboardingPage", () => {
       expect(api.confirmOnboardingResume).toHaveBeenCalledWith("local:doc-1"),
     );
     expect(api.confirmOnboardingResume).toHaveBeenCalledTimes(1);
+    expect(analyticsMocks.trackProductEvent).toHaveBeenCalledWith(
+      "onboarding_resume_confirm_completed",
+      { result: "success", source: "local" },
+    );
+    expect(analyticsMocks.trackProductEvent).toHaveBeenCalledWith(
+      "onboarding_completed",
+      expect.objectContaining({ completed_steps: 3 }),
+    );
   });
 
   it("reconciles onboarding when the shared Codex control disconnects", async () => {

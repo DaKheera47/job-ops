@@ -9,7 +9,11 @@ import {
   parseSearchCitiesSetting,
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
-import { type JobSource, normalizePipelineRunBudget } from "@shared/types";
+import {
+  deriveExtractorLimits,
+  type JobSource,
+  normalizePipelineRunBudget,
+} from "@shared/types";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
@@ -162,18 +166,6 @@ export function normalizeWorkplaceTypes(
   return out.length > 0 ? out : [...WORKPLACE_TYPE_OPTIONS];
 }
 
-export interface ExtractorLimits {
-  jobspyResultsWanted: number;
-  gradcrackerMaxJobsPerTerm: number;
-  ukvisajobsMaxJobs: number;
-  adzunaMaxJobsPerTerm: number;
-  startupjobsMaxJobsPerTerm: number;
-  workingnomadsMaxJobsPerTerm: number;
-  jobindexMaxJobsPerTerm: number;
-  seekMaxJobsPerTerm: number;
-  naukriMaxJobsPerTerm: number;
-}
-
 export function inferAutomaticPresetSelection(args: {
   topN: number;
   minSuitabilityScore: number;
@@ -210,69 +202,7 @@ export function inferAutomaticPresetSelection(args: {
   return "custom";
 }
 
-export function deriveExtractorLimits(args: {
-  budget: number;
-  searchTerms: string[];
-  sources: JobSource[];
-}): ExtractorLimits {
-  const budget = normalizePipelineRunBudget(args.budget);
-  const termCount = Math.max(1, args.searchTerms.length);
-  const includesIndeed = args.sources.includes("indeed");
-  const includesLinkedIn = args.sources.includes("linkedin");
-  const includesGlassdoor = args.sources.includes("glassdoor");
-  const includesGradcracker = args.sources.includes("gradcracker");
-  const includesUkVisaJobs = args.sources.includes("ukvisajobs");
-  const includesAdzuna = args.sources.includes("adzuna");
-  const includesHiringCafe = args.sources.includes("hiringcafe");
-  const includesStartupJobs = args.sources.includes("startupjobs");
-  const includesWorkingNomads = args.sources.includes("workingnomads");
-  const includesJobindex = args.sources.includes("jobindex");
-  const includesSeek = args.sources.includes("seek");
-  const includesNaukri = args.sources.includes("naukri");
-
-  const weightedContributors =
-    (includesIndeed ? termCount : 0) +
-    (includesLinkedIn ? termCount : 0) +
-    (includesGlassdoor ? termCount : 0) +
-    (includesGradcracker ? termCount : 0) +
-    (includesUkVisaJobs ? 1 : 0) +
-    (includesAdzuna ? termCount : 0) +
-    (includesHiringCafe ? termCount : 0) +
-    (includesStartupJobs ? termCount : 0) +
-    (includesWorkingNomads ? termCount : 0) +
-    (includesJobindex ? termCount : 0) +
-    (includesSeek ? termCount : 0) +
-    (includesNaukri ? termCount : 0);
-
-  if (weightedContributors <= 0) {
-    return {
-      jobspyResultsWanted: budget,
-      gradcrackerMaxJobsPerTerm: budget,
-      ukvisajobsMaxJobs: budget,
-      adzunaMaxJobsPerTerm: budget,
-      startupjobsMaxJobsPerTerm: budget,
-      workingnomadsMaxJobsPerTerm: budget,
-      jobindexMaxJobsPerTerm: budget,
-      seekMaxJobsPerTerm: budget,
-      naukriMaxJobsPerTerm: budget,
-    };
-  }
-
-  const perUnit = Math.max(1, Math.floor(budget / weightedContributors));
-  const remainder = Math.max(0, budget - perUnit * weightedContributors);
-
-  return {
-    jobspyResultsWanted: perUnit,
-    gradcrackerMaxJobsPerTerm: perUnit,
-    ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
-    adzunaMaxJobsPerTerm: perUnit,
-    startupjobsMaxJobsPerTerm: perUnit,
-    workingnomadsMaxJobsPerTerm: perUnit,
-    jobindexMaxJobsPerTerm: perUnit,
-    seekMaxJobsPerTerm: perUnit,
-    naukriMaxJobsPerTerm: perUnit,
-  };
-}
+export { deriveExtractorLimits };
 
 export function parseSearchTermsInput(input: string): string[] {
   return input

@@ -676,6 +676,7 @@ describe.sequential("Pipeline API routes", () => {
         minSuitabilityScore: 65,
         sources: ["gradcracker"],
         scoringInstructions: "Prefer backend API roles above GBP 60k.",
+        runBudget: 300,
         locationIntent: expect.objectContaining({
           selectedCountry: "united kingdom",
           country: "united kingdom",

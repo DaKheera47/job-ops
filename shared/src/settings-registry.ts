@@ -551,6 +551,13 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
+  onboardingLegacyMigrationPending: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
   blockedCompanyKeywords: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(200),

@@ -17,7 +17,11 @@ import {
 } from "@shared/location-domain.js";
 import { formatCountryLabel } from "@shared/location-support.js";
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
-import type { CreateJobInput, PipelineConfig } from "@shared/types";
+import {
+  type CreateJobInput,
+  deriveExtractorLimits,
+  type PipelineConfig,
+} from "@shared/types";
 import {
   type CrawlSource,
   type PendingChallenge,
@@ -179,6 +183,18 @@ export async function discoverJobsStep(args: {
   const compatibleSources = sourcePlans
     .filter(({ plan }) => plan.canRun)
     .map(({ source }) => source);
+  const runSettings =
+    args.mergedConfig.runBudget !== undefined
+      ? Object.fromEntries(
+          Object.entries(
+            deriveExtractorLimits({
+              budget: args.mergedConfig.runBudget,
+              searchTerms,
+              sources: compatibleSources,
+            }),
+          ).map(([key, value]) => [key, String(value)]),
+        )
+      : {};
   let existingJobUrlsPromise: Promise<string[]> | null = null;
   const getExistingJobUrls = (): Promise<string[]> => {
     if (!existingJobUrlsPromise) {
@@ -247,7 +263,7 @@ export async function discoverJobsStep(args: {
           : grouped.detail,
       run: async () => {
         const filteredSettings = Object.fromEntries(
-          Object.entries(settings).filter(
+          Object.entries({ ...settings, ...runSettings }).filter(
             ([, value]) =>
               typeof value === "string" || typeof value === "undefined",
           ),
