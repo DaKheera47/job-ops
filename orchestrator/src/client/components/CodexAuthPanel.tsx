@@ -1,7 +1,7 @@
 import * as api from "@client/api";
 import { CheckCircle2, Copy, ExternalLink, Loader2 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +27,25 @@ const defaultCodexAuthApi: CodexAuthApi = {
   getStatus: api.getCodexAuthStatus,
   start: api.startCodexAuth,
 };
+
+function isSameCodexAuthStatus(
+  previous: CodexAuthStatus | null,
+  next: CodexAuthStatus,
+): boolean {
+  if (!previous) return false;
+  return (
+    previous.authenticated === next.authenticated &&
+    previous.username === next.username &&
+    previous.validationMessage === next.validationMessage &&
+    previous.flowStatus === next.flowStatus &&
+    previous.loginInProgress === next.loginInProgress &&
+    previous.verificationUrl === next.verificationUrl &&
+    previous.userCode === next.userCode &&
+    previous.startedAt === next.startedAt &&
+    previous.expiresAt === next.expiresAt &&
+    previous.flowMessage === next.flowMessage
+  );
+}
 
 function formatRemaining(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
@@ -109,14 +128,19 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({
   const [codexAuthError, setCodexAuthError] = useState<string | null>(null);
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const codexAuthStatusRef = useRef<CodexAuthStatus | null>(null);
+  const onStatusChangeRef = useRef(onStatusChange);
 
-  const publishCodexAuthStatus = useCallback(
-    (status: CodexAuthStatus) => {
-      setCodexAuthStatus(status);
-      onStatusChange?.(status);
-    },
-    [onStatusChange],
-  );
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
+
+  const publishCodexAuthStatus = useCallback((status: CodexAuthStatus) => {
+    if (isSameCodexAuthStatus(codexAuthStatusRef.current, status)) return;
+    codexAuthStatusRef.current = status;
+    setCodexAuthStatus(status);
+    onStatusChangeRef.current?.(status);
+  }, []);
 
   const runCodexAuthAction = useCallback(
     async (

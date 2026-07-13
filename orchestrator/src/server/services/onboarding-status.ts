@@ -342,6 +342,25 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
   const providerLabel = normalizedProvider ?? "selected provider";
 
   if (completed === "1") {
+    if (normalizedProvider === "codex") {
+      const validation = await validateLlm({ provider: "codex" });
+      if (!validation.valid) {
+        return buildRequirement({
+          id: "model",
+          status: "needs_action",
+          title: "Reconnect Codex",
+          message:
+            validation.message ||
+            "The saved Codex sign-in is no longer usable. Sign in again before continuing.",
+          primaryAction: "connect_model",
+          details: {
+            provider: normalizedProvider,
+            baseUrl: null,
+          },
+        });
+      }
+    }
+
     if (normalizedProvider === "ollama" && !model?.trim()) {
       return buildRequirement({
         id: "model",

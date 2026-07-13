@@ -166,6 +166,37 @@ describe("onboarding status engine", () => {
     });
   });
 
+  it("does not trust a completed Codex marker when refreshed auth is invalid", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: null,
+        llmProvider: "codex",
+        llmBaseUrl: "",
+        model: "gpt-5.4-mini",
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: "1",
+        onboardingResumeConfirmedSource: "local:doc-1",
+      };
+      return values[key] ?? null;
+    });
+    mocks.validateLlmCredentials.mockResolvedValue({
+      valid: false,
+      message: "Access token expired. Please login again.",
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(status.complete).toBe(false);
+    expect(status.nextRequirementId).toBe("model");
+    expect(status.requirements[1]).toMatchObject({
+      id: "model",
+      status: "needs_action",
+      title: "Reconnect Codex",
+      primaryAction: "connect_model",
+    });
+    expect(status.requirements[1]?.message).toMatch(/access token expired/i);
+  });
+
   it("returns resume as next when no resume is ready", async () => {
     mocks.getDesignResumeStatus.mockResolvedValue({ exists: false });
 
