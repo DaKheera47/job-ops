@@ -13,6 +13,8 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Check,
+  Eye,
+  EyeOff,
   FileCheck2,
   MapPin,
   RefreshCw,
@@ -116,26 +118,18 @@ function LoadingState({ message }: { message: string }) {
 
 function AccountSetup({ onComplete }: { onComplete: () => void }) {
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (password !== confirmPassword) {
-      showErrorToast(
-        new Error("Passwords do not match."),
-        "Check your password",
-      );
-      return;
-    }
     try {
       setBusy(true);
       await api.setupFirstAdmin({
         username: username.trim(),
         password,
-        displayName: displayName.trim() || username.trim(),
+        displayName: username.trim(),
       });
       onComplete();
     } catch (error) {
@@ -156,37 +150,43 @@ function AccountSetup({ onComplete }: { onComplete: () => void }) {
         <Card className="mx-auto max-w-2xl border-border/60 shadow-none">
           <CardContent className="p-6 sm:p-8">
             <form className="space-y-5" onSubmit={submit}>
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-5">
                 <Field label="Username">
                   <Input
+                    aria-label="Username"
+                    autoComplete="username"
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     required
                   />
                 </Field>
-                <Field label="Display name">
-                  <Input
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                  />
-                </Field>
                 <Field label="Password">
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                    minLength={8}
-                  />
-                </Field>
-                <Field label="Confirm password">
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    required
-                    minLength={8}
-                  />
+                  <div className="relative">
+                    <Input
+                      aria-label="Password"
+                      autoComplete="new-password"
+                      className="pr-10"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </Field>
               </div>
               <div className="flex justify-end">

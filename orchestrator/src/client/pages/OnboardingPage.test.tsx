@@ -212,6 +212,40 @@ describe("OnboardingPage", () => {
     mockFlow();
   });
 
+  it("creates the workspace account with only username and password", async () => {
+    vi.mocked(api.getAuthBootstrapStatus).mockResolvedValue({
+      setupRequired: true,
+    });
+    vi.mocked(api.setupFirstAdmin).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <OnboardingPage />
+      </MemoryRouter>,
+    );
+
+    const username = await screen.findByLabelText("Username");
+    const password = screen.getByLabelText("Password");
+    expect(screen.queryByLabelText("Display name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Confirm password")).not.toBeInTheDocument();
+
+    fireEvent.change(username, { target: { value: "admin" } });
+    fireEvent.change(password, { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(password).toHaveAttribute("type", "text");
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(api.setupFirstAdmin).toHaveBeenCalledWith({
+        username: "admin",
+        displayName: "admin",
+        password: "password123",
+      }),
+    );
+  });
+
   it("saves location preferences and advances from the returned server status", async () => {
     vi.mocked(useOnboardingStatus).mockReturnValue({
       status: profileStatus,
