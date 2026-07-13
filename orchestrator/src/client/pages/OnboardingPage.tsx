@@ -281,13 +281,6 @@ function LaunchSetup() {
       .split(/[\n,]/)
       .map((city) => city.trim())
       .filter(Boolean);
-    if (parsedCities.length === 0) {
-      showErrorToast(
-        new Error("Add at least one city or region."),
-        "Location is required",
-      );
-      return;
-    }
     try {
       setProfileBusy(true);
       applyStatus(
@@ -548,7 +541,7 @@ function ProfileStep(props: {
             placeholder="United Kingdom"
           />
         </Field>
-        <Field label="Preferred cities or regions">
+        <Field label="Preferred cities or regions (optional)">
           <Input
             value={props.cities}
             onChange={(event) => props.onCitiesChange(event.target.value)}

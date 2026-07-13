@@ -31,7 +31,7 @@ const rxresumeActionSchema = z.object({
 
 const profileActionSchema = z.object({
   country: z.string().trim().max(100).optional().nullable(),
-  cities: z.array(z.string().trim().min(1).max(120)).min(1).max(20),
+  cities: z.array(z.string().trim().min(1).max(120)).max(20),
   workplaceTypes: z
     .array(z.enum(["remote", "hybrid", "onsite"]))
     .min(1)

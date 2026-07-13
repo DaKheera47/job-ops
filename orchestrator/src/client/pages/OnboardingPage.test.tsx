@@ -186,16 +186,13 @@ describe("OnboardingPage", () => {
     fireEvent.change(await screen.findByPlaceholderText("United Kingdom"), {
       target: { value: "United Kingdom" },
     });
-    fireEvent.change(screen.getByPlaceholderText("London, Manchester"), {
-      target: { value: "London, Manchester" },
-    });
     fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
 
     await waitFor(() =>
       expect(api.saveOnboardingProfile).toHaveBeenCalledWith(
         expect.objectContaining({
           country: "United Kingdom",
-          cities: ["London", "Manchester"],
+          cities: [],
         }),
       ),
     );

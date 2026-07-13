@@ -287,6 +287,23 @@ describe("onboarding status engine", () => {
     );
   });
 
+  it("allows country-wide or remote preferences without selected cities", async () => {
+    await saveOnboardingProfileAction({
+      country: "United Kingdom",
+      cities: [],
+      workplaceTypes: ["remote"],
+      requiresVisaSponsorship: false,
+    });
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchCities: "",
+        workplaceTypes: ["remote"],
+        onboardingProfileCompleted: true,
+      }),
+    );
+  });
+
   it("persists the model completion marker only after validation", async () => {
     await saveOnboardingModelAction({
       provider: "openrouter",

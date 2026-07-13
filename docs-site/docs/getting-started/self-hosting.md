@@ -151,7 +151,7 @@ Open:
 The onboarding flow saves three durable setup decisions:
 
 1. **Workspace account**: On brand-new installs, create the first username/password account directly in onboarding. This first account becomes the system admin and owns the initial private workspace.
-2. **Search preferences**: Save your country, preferred cities, workplace style, and whether you need visa sponsorship. JobOps applies these values as defaults for future runs and sponsor-aware features.
+2. **Search preferences**: Save your country, optional preferred cities, workplace style, and whether you need visa sponsorship. JobOps applies these values as defaults for future runs and sponsor-aware features.
 3. **LLM provider**: Choose OpenRouter by default, or connect another supported hosted or local provider. The step completes only after the server verifies and persists the connection.
 4. **Resume review**: Upload a PDF/DOCX/Reactive Resume JSON, or connect Reactive Resume. JobOps shows the parsed resume and requires confirmation of the current document before setup completes.
 
