@@ -1,3 +1,4 @@
+import NumberFlow from "@number-flow/react";
 import type { Job } from "@shared/types.js";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -9,7 +10,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { AnimatedNumber } from "./AnimatedNumber";
 import { FitAssessmentContent } from "./FitAssessmentContent";
 import { Tip } from "./Tip";
 
@@ -127,7 +127,7 @@ export const ScoreRing: React.FC<{
               ) : score === null ? (
                 tokens.value
               ) : (
-                <AnimatedNumber>{Math.round(score)}</AnimatedNumber>
+                <NumberFlow value={Math.round(score)} isolate />
               )}
             </div>
             {size === "lg" && (
@@ -191,7 +191,7 @@ export const ScoreRing: React.FC<{
                 ) : score === null ? (
                   tokens.value
                 ) : (
-                  <AnimatedNumber>{Math.round(score)}</AnimatedNumber>
+                  <NumberFlow value={Math.round(score)} isolate />
                 )}
               </div>
               {size === "lg" && (

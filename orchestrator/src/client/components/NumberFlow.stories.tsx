@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
+import NumberFlow from "@number-flow/react";
 import { Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
 import React from "react";
-import { AnimatedNumber } from "./AnimatedNumber";
 
 const CYCLE_VALUES = [92, 93, 99, 100, 8, 0, 42, 78, 122, 5, 87, 90];
 
@@ -41,11 +41,11 @@ export const Playground: Story = () => {
       <section className="mx-auto flex max-w-2xl flex-col gap-6 rounded-lg border border-border bg-card p-6 shadow-sm">
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            AnimatedNumber
+            NumberFlow
           </p>
           <div className="flex items-end justify-between gap-4">
             <div className="text-7xl font-semibold leading-none tabular-nums">
-              <AnimatedNumber>{value}</AnimatedNumber>
+              <NumberFlow value={value} isolate />
             </div>
             <button
               type="button"
