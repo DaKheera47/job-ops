@@ -1,6 +1,8 @@
 import { AlertTriangle, ExternalLink, Home, RotateCcw } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { ApiClientError } from "@/client/api/core";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { GITHUB_REPO, getCurrentAppVersion } from "../lib/version";
 
@@ -269,6 +271,15 @@ class ReactCrashBoundary extends React.Component<
   }
 }
 
+function isRecoverableApiError(reason: unknown): boolean {
+  return (
+    reason instanceof ApiClientError ||
+    (typeof reason === "object" &&
+      reason !== null &&
+      (reason as { name?: unknown }).name === "ApiClientError")
+  );
+}
+
 export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const route = `${location.pathname}${location.search}${location.hash}`;
@@ -281,17 +292,29 @@ export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
+      const reason = event.error ?? event.message;
+      if (isRecoverableApiError(reason)) {
+        event.preventDefault();
+        showErrorToast(reason, "API request failed");
+        return;
+      }
       event.preventDefault();
       setGlobalSnapshot(
-        createFatalErrorSnapshot(event.error ?? event.message, "runtime", {
+        createFatalErrorSnapshot(reason, "runtime", {
           route,
         }),
       );
     };
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      if (isRecoverableApiError(reason)) {
+        event.preventDefault();
+        showErrorToast(reason, "API request failed");
+        return;
+      }
       event.preventDefault();
       setGlobalSnapshot(
-        createFatalErrorSnapshot(event.reason, "unhandledrejection", {
+        createFatalErrorSnapshot(reason, "unhandledrejection", {
           route,
         }),
       );
