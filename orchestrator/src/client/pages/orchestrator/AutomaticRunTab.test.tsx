@@ -847,7 +847,7 @@ describe("AutomaticRunTab", () => {
     openConfigureDetails();
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
 
-    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(50);
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(300);
   });
 
   it("requires at least one workplace type", async () => {
@@ -971,12 +971,14 @@ describe("AutomaticRunTab", () => {
     fireEvent.change(screen.getByLabelText("Max jobs discovered"), {
       target: { value: "10" },
     });
+    fireEvent.blur(screen.getByLabelText("Max jobs discovered"));
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(300);
     fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
         expect.objectContaining({
-          runBudget: 50,
+          runBudget: 300,
         }),
       );
     });

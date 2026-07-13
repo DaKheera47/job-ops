@@ -5,7 +5,11 @@ import {
   createLocationIntent,
   planLocationSources,
 } from "@shared/location-intelligence.js";
-import type { AppSettings, JobSource } from "@shared/types.js";
+import {
+  type AppSettings,
+  type JobSource,
+  normalizePipelineRunBudget,
+} from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
@@ -160,12 +164,16 @@ export function usePipelineControls(
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
+      const normalizedValues = {
+        ...values,
+        runBudget: normalizePipelineRunBudget(values.runBudget),
+      };
       const locationIntent = createLocationIntent({
-        selectedCountry: values.country,
-        cityLocations: values.cityLocations,
-        workplaceTypes: values.workplaceTypes,
-        searchScope: values.searchScope,
-        matchStrictness: values.matchStrictness,
+        selectedCountry: normalizedValues.country,
+        cityLocations: normalizedValues.cityLocations,
+        workplaceTypes: normalizedValues.workplaceTypes,
+        searchScope: normalizedValues.searchScope,
+        matchStrictness: normalizedValues.matchStrictness,
       });
       const sourcePlan = planLocationSources({
         intent: locationIntent,
@@ -190,19 +198,19 @@ export function usePipelineControls(
       }
 
       const limits = deriveExtractorLimits({
-        budget: values.runBudget,
-        searchTerms: values.searchTerms,
+        budget: normalizedValues.runBudget,
+        searchTerms: normalizedValues.searchTerms,
         sources: compatibleSources,
       });
       try {
         const searchCities = serializeCityLocationsSetting(
-          values.cityLocations,
+          normalizedValues.cityLocations,
         );
         await api.updateSettings({
-          searchTerms: values.searchTerms,
-          workplaceTypes: values.workplaceTypes,
-          locationSearchScope: values.searchScope,
-          locationMatchStrictness: values.matchStrictness,
+          searchTerms: normalizedValues.searchTerms,
+          workplaceTypes: normalizedValues.workplaceTypes,
+          locationSearchScope: normalizedValues.searchScope,
+          locationMatchStrictness: normalizedValues.matchStrictness,
           jobspyResultsWanted: limits.jobspyResultsWanted,
           gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
           ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
@@ -211,12 +219,12 @@ export function usePipelineControls(
           jobindexMaxJobsPerTerm: limits.jobindexMaxJobsPerTerm,
           seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
           naukriMaxJobsPerTerm: limits.naukriMaxJobsPerTerm,
-          jobspyCountryIndeed: values.country,
+          jobspyCountryIndeed: normalizedValues.country,
           searchCities,
         });
         await refreshSettings();
         await startPipelineRun({
-          ...values,
+          ...normalizedValues,
           sources: compatibleSources,
           topN: values.topN,
           minSuitabilityScore: values.minSuitabilityScore,

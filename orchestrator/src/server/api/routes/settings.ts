@@ -14,7 +14,9 @@ import { getSetting } from "@server/repositories/settings";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { setBackupSettings } from "@server/services/backup/index";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resetCodexSession } from "@server/services/llm/codex/client";
 import {
+  consumeCompletedCodexDeviceAuth,
   disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
@@ -252,7 +254,17 @@ async function getCodexAuthResponseData(): Promise<{
   expiresAt: string | null;
   flowMessage: string | null;
 }> {
-  const flow = getCodexDeviceAuthSnapshot();
+  let flow = getCodexDeviceAuthSnapshot();
+  if (flow.status === "completed") {
+    const completedFlow = consumeCompletedCodexDeviceAuth();
+    if (completedFlow) {
+      await resetCodexSession();
+      clearCodexValidationCache();
+      flow = completedFlow;
+    } else {
+      flow = getCodexDeviceAuthSnapshot();
+    }
+  }
   const validation = flow.loginInProgress
     ? await getCachedCodexValidation()
     : await validateCodexCredentials();
@@ -481,6 +493,8 @@ settingsRouter.post(
 
     try {
       await disconnectCodexAuth();
+      await resetCodexSession();
+      await applySettingsUpdates({ onboardingLlmCompleted: false });
       clearCodexValidationCache();
       const data = await getCodexAuthResponseData();
       ok(res, data);

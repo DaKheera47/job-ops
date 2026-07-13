@@ -1,87 +1,50 @@
 import { PageHeader, PageMain } from "@client/components/layout";
+import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
 import type {
   OnboardingRequirement,
-  OnboardingRequirementPrimaryAction,
+  OnboardingRequirementId,
   OnboardingStatusResponse,
+  ResumeProfile,
 } from "@shared/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
-  Circle,
-  KeyRound,
-  LockKeyhole,
-  type LucideIcon,
+  BriefcaseBusiness,
+  Check,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  MapPin,
   RefreshCw,
-  RotateCcw,
   Sparkles,
   UserPlus,
 } from "lucide-react";
 import type React from "react";
-import type { FormEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import {
-  type AuthUser,
-  type CodexAuthStatusResponse,
-  getAppStatus,
-  getAuthBootstrapStatus,
-  hasAuthenticatedSession,
-  setupFirstAdmin,
-} from "@/client/api";
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import * as api from "@/client/api";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { bucketDurationMs, trackProductEvent } from "@/lib/analytics";
-import { rememberAuthUser } from "../lib/remembered-auth-users";
-import {
-  getEndpointMode,
-  getErrorCategory,
-  getModelSource,
-  getNextStep,
-  getRequirementAnalyticsStatus,
-  getRequirementStatusOrMissing,
-  getStepIndex,
-  getTextLengthBucket,
-  toAnalyticsStep,
-} from "./onboarding/analytics";
-import { OnboardingCoach } from "./onboarding/components/OnboardingCoach";
-import { OnboardingStepContent } from "./onboarding/components/OnboardingStepContent";
-import { OnboardingStepRail } from "./onboarding/components/OnboardingStepRail";
-import type {
-  OnboardingPanelId,
-  StepId,
-  ValidationState,
-} from "./onboarding/types";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { showErrorToast } from "../lib/error-toast";
+import { BaseResumeStep } from "./onboarding/components/BaseResumeStep";
+import { LlmConnectionStep } from "./onboarding/components/LlmConnectionStep";
+import type { ValidationState } from "./onboarding/types";
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
-const TOTAL_ONBOARDING_STEPS = 4;
-const DEFAULT_ONBOARDING_PANELS: OnboardingPanelId[] = [
-  "account",
-  "model",
-  "resume",
-  "first-run",
-];
-const ACCOUNT_PREVIEW_RAIL_ITEMS: Array<{
-  id: OnboardingPanelId;
-  label: string;
-  subtitle: string;
-  icon: LucideIcon;
-}> = [
-  { id: "account", label: "Account", subtitle: "Workspace", icon: UserPlus },
-  { id: "model", label: "Model", subtitle: "Connection", icon: Circle },
-  { id: "resume", label: "Resume", subtitle: "Source", icon: Circle },
-  { id: "first-run", label: "First run", subtitle: "Launch", icon: Circle },
-];
+const STEP_ORDER: OnboardingRequirementId[] = ["profile", "model", "resume"];
 
 function getRequirement(
-  requirements: OnboardingRequirement[],
-  id: OnboardingRequirement["id"],
-) {
-  return requirements.find((requirement) => requirement.id === id) ?? null;
+  status: OnboardingStatusResponse | null,
+  id: OnboardingRequirementId,
+): OnboardingRequirement | null {
+  return status?.requirements.find((item) => item.id === id) ?? null;
 }
 
 function toValidationState(
@@ -97,1315 +60,685 @@ function toValidationState(
   };
 }
 
-function getActionLabel(action: OnboardingRequirementPrimaryAction): string {
-  switch (action) {
-    case "connect_model":
-      return "Verify LLM connection";
-    case "connect_rxresume":
-      return "Connect Reactive Resume";
-    case "select_rxresume_template":
-      return "Save template";
-    case "upload_resume":
-      return "Upload or recheck";
-    case "recheck":
-      return "Recheck";
-    case "none":
-      return "Continue";
-  }
-}
-
-function getPanelStepLabel(
-  panel: OnboardingPanelId,
-  panels = DEFAULT_ONBOARDING_PANELS,
-): string {
-  const stepIndex = panels.indexOf(panel);
-  return `Step ${Math.max(stepIndex, 0) + 1} of ${panels.length}`;
-}
-
-function useOnboardingDropoffAnalytics(args: {
-  activePanel: OnboardingPanelId;
-  complete: boolean;
-  getRequirementStatus: () => ReturnType<typeof getRequirementAnalyticsStatus>;
-  hadErrorVisible: boolean;
-}) {
-  const startedAtRef = useRef(Date.now());
-  const activePanelRef = useRef(args.activePanel);
-  const completeRef = useRef(args.complete);
-  const getRequirementStatusRef = useRef(args.getRequirementStatus);
-  const hadErrorVisibleRef = useRef(args.hadErrorVisible);
-  const finishedRef = useRef(false);
-  const exitTrackedRef = useRef(false);
-  const inactiveTrackedRef = useRef(new Set<"2m" | "5m" | "10m">());
-
-  useEffect(() => {
-    activePanelRef.current = args.activePanel;
-    completeRef.current = args.complete;
-    getRequirementStatusRef.current = args.getRequirementStatus;
-    hadErrorVisibleRef.current = args.hadErrorVisible;
-  }, [
-    args.activePanel,
-    args.complete,
-    args.getRequirementStatus,
-    args.hadErrorVisible,
-  ]);
-
-  const markCompleted = useCallback(() => {
-    finishedRef.current = true;
-  }, []);
-
-  const trackExit = useCallback(
-    (exitType: "route_change" | "tab_hidden" | "unload") => {
-      if (
-        finishedRef.current ||
-        completeRef.current ||
-        exitTrackedRef.current
-      ) {
-        return;
-      }
-      exitTrackedRef.current = true;
-      trackProductEvent("onboarding_exited", {
-        last_step: toAnalyticsStep(activePanelRef.current),
-        last_requirement_status: getRequirementStatusRef.current(),
-        duration_bucket: bucketDurationMs(Date.now() - startedAtRef.current),
-        exit_type: exitType,
-      });
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        trackExit("tab_hidden");
-      }
-    };
-    const handleBeforeUnload = () => trackExit("unload");
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      trackExit("route_change");
-    };
-  }, [trackExit]);
-
-  useEffect(() => {
-    const thresholds: Array<{ bucket: "2m" | "5m" | "10m"; ms: number }> = [
-      { bucket: "2m", ms: 120_000 },
-      { bucket: "5m", ms: 300_000 },
-      { bucket: "10m", ms: 600_000 },
-    ];
-    let timeouts: number[] = [];
-
-    const schedule = () => {
-      for (const timeout of timeouts) window.clearTimeout(timeout);
-      timeouts = thresholds.map(({ bucket, ms }) =>
-        window.setTimeout(() => {
-          if (
-            finishedRef.current ||
-            completeRef.current ||
-            inactiveTrackedRef.current.has(bucket)
-          ) {
-            return;
-          }
-          inactiveTrackedRef.current.add(bucket);
-          trackProductEvent("onboarding_inactive", {
-            last_step: toAnalyticsStep(activePanelRef.current),
-            idle_bucket: bucket,
-            had_error_visible: hadErrorVisibleRef.current,
-          });
-        }, ms),
-      );
-    };
-
-    const reset = () => schedule();
-    schedule();
-    window.addEventListener("click", reset);
-    window.addEventListener("keydown", reset);
-    window.addEventListener("input", reset);
-    return () => {
-      for (const timeout of timeouts) window.clearTimeout(timeout);
-      window.removeEventListener("click", reset);
-      window.removeEventListener("keydown", reset);
-      window.removeEventListener("input", reset);
-    };
-  }, []);
-
-  return markCompleted;
+function stepTitle(id: OnboardingRequirementId): string {
+  if (id === "profile") return "Your search";
+  if (id === "model") return "AI connection";
+  return "Your resume";
 }
 
 export const OnboardingPage: React.FC = () => {
-  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [bootstrapState, setBootstrapState] = useState<
-    | { status: "checking" }
-    | { status: "account_required" }
-    | { status: "launch" }
-    | { status: "error"; message: string }
-  >({ status: "checking" });
-  const startedTrackedRef = useRef(false);
+    "checking" | "account" | "launch" | "error"
+  >("checking");
 
   useEffect(() => {
     let cancelled = false;
-    const attempt = bootstrapAttempt;
-
-    void (async () => {
-      try {
-        const bootstrap = await getAuthBootstrapStatus();
-        if (cancelled || attempt !== bootstrapAttempt) return;
-        setBootstrapState({
-          status: bootstrap.setupRequired ? "account_required" : "launch",
-        });
-      } catch (error) {
-        if (cancelled || attempt !== bootstrapAttempt) return;
-        setBootstrapState({
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to check onboarding setup.",
-        });
-      }
-    })();
-
+    void api
+      .getAuthBootstrapStatus()
+      .then((status) => {
+        if (!cancelled)
+          setBootstrapState(status.setupRequired ? "account" : "launch");
+      })
+      .catch(() => {
+        if (!cancelled) setBootstrapState("error");
+      });
     return () => {
       cancelled = true;
     };
-  }, [bootstrapAttempt]);
+  }, []);
 
-  useEffect(() => {
-    if (
-      startedTrackedRef.current ||
-      (bootstrapState.status !== "account_required" &&
-        bootstrapState.status !== "launch")
-    ) {
-      return;
-    }
-
-    startedTrackedRef.current = true;
-    trackProductEvent("onboarding_started", {
-      entry_state: bootstrapState.status,
-      next_step:
-        bootstrapState.status === "account_required" ? "account" : "none",
-      has_session: hasAuthenticatedSession(),
-      demo_mode: false,
-    });
-  }, [bootstrapState.status]);
-
-  if (bootstrapState.status === "checking") {
+  if (bootstrapState === "checking") {
+    return <LoadingState message="Preparing your workspace…" />;
+  }
+  if (bootstrapState === "error") {
     return (
-      <>
-        <PageHeader
-          icon={Sparkles}
-          title="Launch Console"
-          subtitle="Create your account, then load the model and resume Job Ops needs."
-        />
-        <PageMain>
-          <Card className="border-border/60 bg-card shadow-none">
-            <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
-              Loading launch console...
-            </CardContent>
-          </Card>
-        </PageMain>
-      </>
+      <LoadingState message="Job Ops could not check the workspace setup. Refresh the page to try again." />
     );
   }
-
-  if (bootstrapState.status === "error") {
-    return (
-      <>
-        <PageHeader
-          icon={Sparkles}
-          title="Launch Console"
-          subtitle="Create your account, then load the model and resume Job Ops needs."
-        />
-        <PageMain>
-          <Card className="border-border/60 bg-card shadow-none">
-            <CardContent className="space-y-4 p-6">
-              <p className="text-sm text-destructive" role="alert">
-                {bootstrapState.message}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setBootstrapState({ status: "checking" });
-                  setBootstrapAttempt((attempt) => attempt + 1);
-                }}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        </PageMain>
-      </>
-    );
+  if (bootstrapState === "account") {
+    return <AccountSetup onComplete={() => setBootstrapState("launch")} />;
   }
-
-  if (bootstrapState.status === "account_required") {
-    return (
-      <AccountSetupOnboarding
-        onAccountCreated={(user) => {
-          rememberAuthUser({
-            username: user.username,
-            displayName: user.displayName,
-          });
-          setBootstrapState({ status: "launch" });
-        }}
-      />
-    );
-  }
-
-  return <LaunchOnboardingPage />;
+  return <LaunchSetup />;
 };
 
-const AccountSetupOnboarding: React.FC<{
-  onAccountCreated: (user: AuthUser) => void;
-}> = ({ onAccountCreated }) => {
-  const [activePanel, setActivePanel] = useState<OnboardingPanelId>("account");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
-  const [isBusy, setIsBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [coachReplayNonce, setCoachReplayNonce] = useState(0);
-  const getActiveRequirementStatus = useCallback(
-    () =>
-      getRequirementAnalyticsStatus({
-        panel: activePanel,
-        complete: false,
-        requirement: null,
-      }),
-    [activePanel],
+function LoadingState({ message }: { message: string }) {
+  return (
+    <>
+      <PageHeader icon={Sparkles} title="Set up Job Ops" subtitle={message} />
+      <PageMain>
+        <Card className="border-border/60 shadow-none">
+          <CardContent className="flex min-h-72 items-center justify-center text-sm text-muted-foreground">
+            {message}
+          </CardContent>
+        </Card>
+      </PageMain>
+    </>
   );
-  const markOnboardingCompleted = useOnboardingDropoffAnalytics({
-    activePanel,
-    complete: false,
-    getRequirementStatus: getActiveRequirementStatus,
-    hadErrorVisible: Boolean(errorMessage),
-  });
+}
 
-  useEffect(() => {
-    trackProductEvent("onboarding_step_viewed", {
-      step: toAnalyticsStep(activePanel),
-      step_index: getStepIndex(activePanel),
-      requirement_status: getActiveRequirementStatus(),
-    });
-  }, [activePanel, getActiveRequirementStatus]);
+function AccountSetup({ onComplete }: { onComplete: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!errorMessage) return;
-    trackProductEvent("onboarding_error_shown", {
-      step: toAnalyticsStep(activePanel),
-      error_category: "account",
-    });
-  }, [activePanel, errorMessage]);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (activePanel !== "account") {
-      setActivePanel("account");
-      return;
-    }
-
-    const normalizedUsername = username.trim();
-    if (!normalizedUsername || !password) {
-      setErrorMessage("Enter both username and password.");
-      return;
-    }
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters.");
-      return;
-    }
-
-    setIsBusy(true);
-    setErrorMessage(null);
-    trackProductEvent("onboarding_account_create_submitted", {
-      has_display_name: Boolean(displayName.trim()),
-      username_length_bucket: getTextLengthBucket(normalizedUsername),
-    });
-
     try {
-      const user = await setupFirstAdmin({
-        username: normalizedUsername,
+      setBusy(true);
+      await api.setupFirstAdmin({
+        username: username.trim(),
         password,
-        displayName: displayName.trim() || normalizedUsername,
+        displayName: username.trim(),
       });
-      trackProductEvent("onboarding_account_create_completed", {
-        result: "success",
-        credential_length_bucket: getTextLengthBucket(password),
-      });
-      markOnboardingCompleted();
-      onAccountCreated(user);
+      onComplete();
     } catch (error) {
-      trackProductEvent("onboarding_account_create_completed", {
-        result: "error",
-        credential_length_bucket: getTextLengthBucket(password),
-        error_category: getErrorCategory(error),
-      });
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unable to create account",
-      );
-      setIsBusy(false);
+      showErrorToast(error, "Could not create the workspace account");
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <>
       <PageHeader
-        icon={Sparkles}
-        title="Launch Console"
-        subtitle="Create your workspace account, then load the model and resume Job Ops needs."
+        icon={UserPlus}
+        title="Create your workspace account"
+        subtitle="This private account owns your Job Ops workspace."
       />
-
-      <PageMain className="space-y-4">
-        <OnboardingCoach
-          activePanel={activePanel}
-          onPanelChange={setActivePanel}
-          replayNonce={coachReplayNonce}
-          scope="account"
-          status={null}
-        />
-
-        <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
-          <Card className="border-border/60 bg-card shadow-none">
-            <CardHeader className="space-y-1.5 pb-4">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-base">Launch checks</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  0/{TOTAL_ONBOARDING_STEPS}
-                </span>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">
-                Start with a private workspace account, then connect the
-                services Job Ops needs.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-3" data-onboarding-target="launch-rail">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Progress</span>
-                  <span>0%</span>
-                </div>
-                <div className="space-y-1">
-                  {ACCOUNT_PREVIEW_RAIL_ITEMS.map((item) => (
+      <PageMain>
+        <Card className="mx-auto max-w-2xl border-border/60 shadow-none">
+          <CardContent className="p-6 sm:p-8">
+            <form className="space-y-5" onSubmit={submit}>
+              <div className="space-y-5">
+                <Field label="Username">
+                  <Input
+                    aria-label="Username"
+                    autoComplete="username"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    required
+                  />
+                </Field>
+                <Field label="Password">
+                  <div className="relative">
+                    <Input
+                      aria-label="Password"
+                      autoComplete="new-password"
+                      className="pr-10"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      minLength={8}
+                    />
                     <button
-                      key={item.id}
                       type="button"
-                      onClick={() => setActivePanel(item.id)}
-                      data-onboarding-target={`account-rail-${item.id}`}
-                      className={`flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors ${
-                        activePanel === item.id
-                          ? "bg-muted/40"
-                          : "text-muted-foreground hover:bg-muted/25"
-                      }`}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword((visible) => !visible)}
                     >
-                      <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
-                          activePanel === item.id
-                            ? "border-primary/70 bg-transparent text-primary"
-                            : "border-border/60 bg-muted/40 text-muted-foreground"
-                        }`}
-                      >
-                        <item.icon
-                          className={
-                            item.id === "account" || activePanel === item.id
-                              ? "h-4 w-4"
-                              : "h-3 w-3"
-                          }
-                        />
-                      </span>
-                      <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-                        <span className="block text-sm font-medium">
-                          {item.label}
-                        </span>
-                        <span className="block text-xs leading-5">
-                          {item.subtitle}
-                        </span>
-                      </span>
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
-                  ))}
-                </div>
+                  </div>
+                </Field>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-muted-foreground"
-                onClick={() => {
-                  trackProductEvent("onboarding_coach_interacted", {
-                    action: "replay",
-                    scope: "account",
-                    step: toAnalyticsStep(activePanel),
-                  });
-                  setCoachReplayNonce((value) => value + 1);
-                }}
-              >
-                <RotateCcw className="h-4 w-4" />
-                Replay guide
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-card shadow-none">
-            <form
-              className="flex min-h-[30rem] flex-col"
-              onSubmit={handleSubmit}
-            >
-              <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span>{getPanelStepLabel(activePanel)}</span>
-                </div>
-                <div className="space-y-1.5">
-                  <CardTitle className="text-2xl leading-tight">
-                    {activePanel === "account"
-                      ? "Create your workspace account"
-                      : activePanel === "model"
-                        ? "Connect your model"
-                        : activePanel === "resume"
-                          ? "Load your resume"
-                          : "Prepare the first run"}
-                  </CardTitle>
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {activePanel === "account"
-                      ? "This account owns the first private Job Ops workspace and can manage users later from Settings."
-                      : "This step unlocks after the workspace account exists, but you can preview how the setup will continue."}
-                  </p>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
-                {activePanel === "account" ? (
-                  <div
-                    className="space-y-5"
-                    data-onboarding-target="account-form"
-                  >
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium"
-                          htmlFor="onboarding-display-name"
-                        >
-                          Name
-                        </label>
-                        <Input
-                          id="onboarding-display-name"
-                          autoComplete="name"
-                          value={displayName}
-                          onChange={(event) =>
-                            setDisplayName(event.currentTarget.value)
-                          }
-                          placeholder="Your name"
-                          disabled={isBusy}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium"
-                          htmlFor="onboarding-username"
-                        >
-                          Username
-                        </label>
-                        <Input
-                          id="onboarding-username"
-                          autoComplete="username"
-                          value={username}
-                          onChange={(event) =>
-                            setUsername(event.currentTarget.value)
-                          }
-                          placeholder="admin"
-                          disabled={isBusy}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="onboarding-password"
-                      >
-                        Password
-                      </label>
-                      <Input
-                        id="onboarding-password"
-                        type="password"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(event) =>
-                          setPassword(event.currentTarget.value)
-                        }
-                        placeholder="At least 8 characters"
-                        disabled={isBusy}
-                      />
-                    </div>
-                    {errorMessage ? (
-                      <p className="text-sm text-destructive" role="alert">
-                        {errorMessage}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div
-                    className="rounded-lg border border-border/60 bg-muted/10 p-4"
-                    data-onboarding-target={
-                      activePanel === "model"
-                        ? "model-form"
-                        : activePanel === "resume"
-                          ? "resume-options"
-                          : "first-run"
-                    }
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground">
-                        <LockKeyhole className="h-4 w-4" />
-                      </span>
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium">
-                          Account required first
-                        </div>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          {activePanel === "model"
-                            ? "After account creation, this panel will verify the LLM provider, base URL, API key, and model Job Ops should use."
-                            : activePanel === "resume"
-                              ? "After account creation, this panel will let you upload a resume or connect Reactive Resume as the matching baseline."
-                              : "After model and resume checks pass, Job Ops will prepare search terms and open the ready queue."}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-
-              <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <KeyRound className="h-4 w-4" />
-                  {activePanel === "account"
-                    ? "Passwords stay in this Job Ops instance."
-                    : "Create the workspace account to unlock this setup step."}
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isBusy}
-                  data-onboarding-target="primary-action"
-                >
-                  {activePanel === "account"
-                    ? isBusy
-                      ? "Creating account..."
-                      : "Create account"
-                    : "Create account first"}
+              <div className="flex justify-end">
+                <Button type="submit" disabled={busy}>
+                  {busy ? "Creating account…" : "Create account"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
       </PageMain>
     </>
   );
-};
+}
 
-const LaunchOnboardingPage: React.FC = () => {
-  const flow = useOnboardingFlow();
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function LaunchSetup() {
+  const queryClient = useQueryClient();
   const onboarding = useOnboardingStatus();
-  const appStatusQuery = useQuery({
+  const flow = useOnboardingFlow();
+  const designResume = useDesignResume();
+  const appStatus = useQuery({
     queryKey: queryKeys.app.status(),
-    queryFn: getAppStatus,
+    queryFn: api.getAppStatus,
   });
-  const navigate = useNavigate();
-  const [activePanel, setActivePanel] = useState<OnboardingPanelId>("model");
-  const [actionStatus, setActionStatus] =
-    useState<OnboardingStatusResponse | null>(null);
-  const [userSelectedPanel, setUserSelectedPanel] =
-    useState<OnboardingPanelId | null>(null);
-  const [coachReplayNonce, setCoachReplayNonce] = useState(0);
-  const launchStartedAtRef = useRef(Date.now());
-  const codexAutoSaveAttemptedRef = useRef(false);
-  const searchTermsAttemptedRef = useRef(false);
-  const trackedModelConfigFieldsRef = useRef(
-    new Set<"provider" | "endpoint" | "api_key" | "model">(),
-  );
-  const isAppStatusLoading = appStatusQuery.isLoading && !appStatusQuery.data;
-  const isHostedMode = appStatusQuery.data?.appMode === "hosted";
-  const showAccountStep = !isHostedMode;
-  const showModelStep =
-    appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true;
-  const allowReactiveResumeSetup = !isHostedMode;
-  const visiblePanels = useMemo(
-    () =>
-      DEFAULT_ONBOARDING_PANELS.filter((panel) => {
-        if (panel === "account") return showAccountStep;
-        if (panel === "model") return showModelStep;
-        return true;
-      }),
-    [showAccountStep, showModelStep],
-  );
-  useEffect(() => {
-    if (!actionStatus || !onboarding.status) return;
-    if (
-      onboarding.status.complete === actionStatus.complete &&
-      onboarding.status.nextRequirementId === actionStatus.nextRequirementId
-    ) {
-      setActionStatus(null);
-    }
-  }, [actionStatus, onboarding.status]);
-
-  const latestStatus = actionStatus ?? onboarding.status;
-  const onboardingRequirements =
-    latestStatus?.requirements ?? onboarding.requirements;
-  const onboardingComplete = latestStatus?.complete ?? onboarding.complete;
-  const onboardingNextRequirementId =
-    latestStatus?.nextRequirementId ?? onboarding.nextRequirementId;
-  const visibleRequirements = useMemo(
-    () =>
-      onboardingRequirements.filter(
-        (requirement) => requirement.id !== "model" || showModelStep,
-      ),
-    [onboardingRequirements, showModelStep],
-  );
-  const fallbackPanel = useMemo<OnboardingPanelId>(() => {
-    if (
-      onboardingNextRequirementId &&
-      visiblePanels.includes(onboardingNextRequirementId)
-    ) {
-      return onboardingNextRequirementId;
-    }
-    if (onboardingComplete) return "first-run";
-    return visiblePanels.includes("model") ? "model" : "resume";
-  }, [onboardingComplete, onboardingNextRequirementId, visiblePanels]);
-  const selectOnboardingPanel = useCallback(
-    (panel: OnboardingPanelId) => {
-      if (!visiblePanels.includes(panel)) return;
-      if (panel === "first-run" && !onboardingComplete) return;
-      setUserSelectedPanel(panel);
-      setActivePanel(panel);
-    },
-    [onboardingComplete, visiblePanels],
-  );
-
-  const modelRequirement = useMemo(
-    () => getRequirement(visibleRequirements, "model"),
-    [visibleRequirements],
-  );
-  const resumeRequirement = useMemo(
-    () => getRequirement(visibleRequirements, "resume"),
-    [visibleRequirements],
-  );
-  const activeRequirement =
-    activePanel === "account" || activePanel === "first-run"
-      ? null
-      : getRequirement(onboardingRequirements, activePanel);
-  const getActiveRequirementStatus = useCallback(
-    () =>
-      getRequirementAnalyticsStatus({
-        panel: activePanel,
-        complete: onboardingComplete,
-        requirement: activeRequirement,
-      }),
-    [activePanel, activeRequirement, onboardingComplete],
-  );
-  const markOnboardingCompleted = useOnboardingDropoffAnalytics({
-    activePanel,
-    complete: onboardingComplete,
-    getRequirementStatus: getActiveRequirementStatus,
-    hadErrorVisible:
-      activeRequirement?.status === "invalid" ||
-      activeRequirement?.status === "checking_unavailable" ||
-      Boolean(onboarding.error),
+  const profileQuery = useQuery<ResumeProfile>({
+    queryKey: queryKeys.profile.current(),
+    queryFn: api.getProfile,
+    enabled: Boolean(
+      designResume.status?.exists ||
+        getRequirement(onboarding.status, "resume")?.details?.resumeId,
+    ),
+    retry: false,
   });
+  const [selectedStep, setSelectedStep] =
+    useState<OnboardingRequirementId | null>(null);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [country, setCountry] = useState("");
+  const [cities, setCities] = useState("");
+  const [workplaceTypes, setWorkplaceTypes] = useState<
+    Array<"remote" | "hybrid" | "onsite">
+  >(["remote", "hybrid"]);
+  const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(false);
 
-  useEffect(() => {
-    if (isAppStatusLoading) return;
-    trackProductEvent("onboarding_step_viewed", {
-      step: toAnalyticsStep(activePanel),
-      step_index: getStepIndex(activePanel),
-      requirement_status: getActiveRequirementStatus(),
-    });
-  }, [activePanel, getActiveRequirementStatus, isAppStatusLoading]);
+  const showModel =
+    appStatus.data?.capabilities.userEditableLlmSettings ?? true;
+  const visibleSteps = showModel
+    ? STEP_ORDER
+    : STEP_ORDER.filter((step) => step !== "model");
+  const status = onboarding.status;
+  const activeStep = selectedStep ?? status?.nextRequirementId ?? "profile";
 
-  useEffect(() => {
-    if (!latestStatus || onboarding.checking || isAppStatusLoading) return;
-    trackProductEvent("onboarding_status_checked", {
-      complete: onboardingComplete,
-      next_step: getNextStep(onboardingNextRequirementId, onboardingComplete),
-      model_status: getRequirementStatusOrMissing(modelRequirement),
-      resume_status: getRequirementStatusOrMissing(resumeRequirement),
-    });
-  }, [
-    modelRequirement,
-    isAppStatusLoading,
-    onboarding.checking,
-    onboardingComplete,
-    onboardingNextRequirementId,
-    latestStatus,
-    resumeRequirement,
-  ]);
+  const applyStatus = (next: OnboardingStatusResponse) => {
+    queryClient.setQueryData(queryKeys.onboarding.status(), next);
+    setSelectedStep(next.nextRequirementId);
+  };
 
-  useEffect(() => {
-    if (
-      activePanel === "account" ||
-      activePanel === "first-run" ||
-      !activeRequirement ||
-      (activeRequirement.status !== "invalid" &&
-        activeRequirement.status !== "checking_unavailable")
-    ) {
-      return;
-    }
-    trackProductEvent("onboarding_error_shown", {
-      step: toAnalyticsStep(activePanel),
-      error_category:
-        activeRequirement.status === "checking_unavailable"
-          ? "unavailable"
-          : "validation",
-    });
-  }, [activePanel, activeRequirement]);
-
-  const trackModelConfigChanged = useCallback(
-    (
-      changedField: "provider" | "endpoint" | "api_key" | "model",
-      next?: {
-        provider?: string;
-        endpoint?: string;
-        model?: string;
-      },
-    ) => {
-      if (trackedModelConfigFieldsRef.current.has(changedField)) return;
-      trackedModelConfigFieldsRef.current.add(changedField);
-      trackProductEvent("onboarding_model_config_changed", {
-        provider: next?.provider ?? flow.selectedProvider,
-        changed_field: changedField,
-        endpoint_mode: getEndpointMode(
-          next?.endpoint ?? flow.watch("llmBaseUrl"),
-        ),
-        has_saved_key: Boolean(flow.llmKeyHint),
-        model_source: getModelSource(next?.model ?? flow.watch("model")),
-      });
-    },
-    [flow],
-  );
-
-  useEffect(() => {
-    if (isAppStatusLoading) return;
-    if (!visiblePanels.includes(activePanel)) {
-      setUserSelectedPanel(null);
-      setActivePanel(fallbackPanel);
-      return;
-    }
-    if (userSelectedPanel === activePanel) {
-      return;
-    }
-    if (
-      onboardingNextRequirementId &&
-      visiblePanels.includes(onboardingNextRequirementId)
-    ) {
-      setActivePanel(onboardingNextRequirementId);
-      return;
-    }
-    if (onboardingComplete) {
-      setActivePanel("first-run");
-    }
-  }, [
-    activePanel,
-    fallbackPanel,
-    isAppStatusLoading,
-    onboardingComplete,
-    onboardingNextRequirementId,
-    userSelectedPanel,
-    visiblePanels,
-  ]);
-
-  useEffect(() => {
-    if (
-      !onboardingComplete ||
-      flow.demoMode ||
-      activePanel !== "first-run" ||
-      flow.settingsLoading ||
-      flow.hasSavedSearchTerms ||
-      flow.isGeneratingSearchTerms ||
-      searchTermsAttemptedRef.current
-    ) {
-      return;
-    }
-
-    searchTermsAttemptedRef.current = true;
-    void flow.ensureSearchTerms({ trigger: "auto" });
-  }, [
-    activePanel,
-    flow.demoMode,
-    flow.ensureSearchTerms,
-    flow.hasSavedSearchTerms,
-    flow.isGeneratingSearchTerms,
-    flow.settingsLoading,
-    onboardingComplete,
-  ]);
-
-  const applyReturnedStatus = useCallback(
-    (status: OnboardingStatusResponse) => {
-      setUserSelectedPanel(null);
-      setActionStatus(status);
-      if (status.complete) {
-        setActivePanel("first-run");
-        return;
-      }
-      if (
-        status.nextRequirementId &&
-        visiblePanels.includes(status.nextRequirementId)
-      ) {
-        setActivePanel(status.nextRequirementId);
-      }
-    },
-    [visiblePanels],
-  );
-
-  const handleCodexAuthStatusChange = useCallback(
-    (status: CodexAuthStatusResponse) => {
-      if (flow.selectedProvider !== "codex") {
-        codexAutoSaveAttemptedRef.current = false;
-        return;
-      }
-
-      if (!status.authenticated) {
-        if (!status.loginInProgress) codexAutoSaveAttemptedRef.current = false;
-        return;
-      }
-
-      if (
-        codexAutoSaveAttemptedRef.current ||
-        flow.isBusy ||
-        modelRequirement?.status === "ready"
-      ) {
-        return;
-      }
-
-      codexAutoSaveAttemptedRef.current = true;
-      void flow.handleSaveModel().then((nextStatus) => {
-        if (!nextStatus) {
-          codexAutoSaveAttemptedRef.current = false;
-          return;
-        }
-        applyReturnedStatus(nextStatus);
-      });
-    },
-    [applyReturnedStatus, flow, modelRequirement?.status],
-  );
-
-  if (flow.demoMode) {
+  if (flow.demoMode || status?.complete) {
     return <Navigate to="/jobs/ready" replace />;
   }
-
-  if (isAppStatusLoading) {
-    return (
-      <>
-        <PageHeader
-          icon={Sparkles}
-          title="Launch Console"
-          subtitle="Loading the launch checks Job Ops needs before it can work your search."
-        />
-        <PageMain>
-          <Card className="border-border/60 bg-card shadow-none">
-            <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
-              Loading launch console...
-            </CardContent>
-          </Card>
-        </PageMain>
-      </>
-    );
+  if (onboarding.checking || appStatus.isLoading) {
+    return <LoadingState message="Loading your setup…" />;
   }
 
-  const llmValidation = toValidationState(modelRequirement);
-  const baseResumeValidation = toValidationState(resumeRequirement);
-  const rxresumeValidation: ValidationState = {
-    ...baseResumeValidation,
-    valid:
-      resumeRequirement?.primaryAction === "select_rxresume_template" ||
-      Boolean(flow.rxresumeApiKeyHint) ||
-      baseResumeValidation.valid,
-  };
-  const completedCount =
-    visibleRequirements.filter((requirement) => requirement.status === "ready")
-      .length +
-    (showAccountStep ? 1 : 0) +
-    (onboardingComplete ? 1 : 0);
-  const totalSteps = visiblePanels.length;
-  const activePrimaryAction =
-    isHostedMode && activePanel === "resume"
-      ? "upload_resume"
-      : (activeRequirement?.primaryAction ?? "none");
-  const previousPanel = (() => {
-    const currentIndex = visiblePanels.indexOf(activePanel);
-    if (currentIndex <= 0) return null;
-    return visiblePanels[currentIndex - 1] ?? null;
-  })();
+  const modelRequirement = getRequirement(status, "model");
+  const resumeRequirement = getRequirement(status, "resume");
+  const resumeSource =
+    typeof resumeRequirement?.details?.confirmationSource === "string"
+      ? resumeRequirement.details.confirmationSource
+      : designResume.document?.id
+        ? `local:${designResume.document.id}`
+        : null;
 
-  const submitActivePanel = async () => {
-    if (activePanel === "account") {
-      setActivePanel(fallbackPanel);
-      return;
+  const saveProfile = async () => {
+    const parsedCities = cities
+      .split(/[\n,]/)
+      .map((city) => city.trim())
+      .filter(Boolean);
+    try {
+      setProfileBusy(true);
+      applyStatus(
+        await api.saveOnboardingProfile({
+          country: country.trim() || null,
+          cities: parsedCities,
+          workplaceTypes,
+          requiresVisaSponsorship,
+        }),
+      );
+    } catch (error) {
+      showErrorToast(error, "Could not save search preferences");
+    } finally {
+      setProfileBusy(false);
     }
-    if (activePanel === "model") {
-      if (!showModelStep) {
-        setActivePanel(fallbackPanel);
-        return;
-      }
-      const status = await flow.handleSaveModel();
-      if (status) applyReturnedStatus(status);
-      return;
+  };
+
+  const saveModel = async () => {
+    const next = await flow.handleSaveModel();
+    if (next) applyStatus(next);
+  };
+
+  const confirmResume = async () => {
+    if (!resumeSource) return;
+    try {
+      setConfirmBusy(true);
+      applyStatus(await api.confirmOnboardingResume(resumeSource));
+    } catch (error) {
+      showErrorToast(error, "Could not confirm this resume");
+    } finally {
+      setConfirmBusy(false);
     }
-    if (activePanel === "resume") {
-      if (allowReactiveResumeSetup && flow.resumeSetupMode === "rxresume") {
-        const status = await flow.handleSaveRxresume();
-        if (status) applyReturnedStatus(status);
-        return;
-      }
-      await onboarding.refetch();
-      return;
-    }
-    if (activePanel === "first-run") {
-      const ready = await flow.ensureSearchTerms({ trigger: "manual" });
-      if (!ready) return;
-    }
-    markOnboardingCompleted();
-    trackProductEvent("onboarding_completed", {
-      duration_bucket: bucketDurationMs(
-        Date.now() - launchStartedAtRef.current,
-      ),
-      completed_steps: completedCount,
-      search_terms_source:
-        flow.searchTermsSource ??
-        (flow.hasSavedSearchTerms ? "existing" : "unknown"),
-    });
-    navigate("/jobs/ready", { replace: true });
   };
 
   return (
     <>
       <PageHeader
         icon={Sparkles}
-        title="Launch Console"
-        subtitle={
-          showModelStep
-            ? "Load the LLM and resume Job Ops needs before it can work your search."
-            : "Load the resume Job Ops needs before it can work your search."
-        }
+        title="Set up Job Ops"
+        subtitle="Three focused choices, then you’re in. Search terms wait until your first run."
       />
-
-      <PageMain className="space-y-4">
-        <OnboardingCoach
-          activePanel={activePanel}
-          allowReactiveResume={allowReactiveResumeSetup}
-          onPanelChange={selectOnboardingPanel}
-          replayNonce={coachReplayNonce}
-          showAccount={showAccountStep}
-          showModel={showModelStep}
-          status={latestStatus}
-        />
-
-        <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
-          <Card className="border-border/60 bg-card shadow-none">
-            <CardHeader className="space-y-1.5 pb-4">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-base">Launch checks</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  {completedCount}/{totalSteps}
-                </span>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">
-                These checks unlock scoring, matching, tailoring, and email
-                classification.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <OnboardingStepRail
-                activePanel={activePanel}
-                complete={onboardingComplete}
-                nextRequirementId={onboardingNextRequirementId}
-                onPanelSelect={selectOnboardingPanel}
-                requirements={visibleRequirements}
-                showAccount={showAccountStep}
-                showModel={showModelStep}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-muted-foreground"
-                onClick={() => {
-                  trackProductEvent("onboarding_coach_interacted", {
-                    action: "replay",
-                    scope: "launch",
-                    step: toAnalyticsStep(activePanel),
-                  });
-                  setCoachReplayNonce((value) => value + 1);
-                }}
-              >
-                <RotateCcw className="h-4 w-4" />
-                Replay guide
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-card shadow-none">
-            {onboarding.checking ||
-            flow.settingsLoading ||
-            isAppStatusLoading ? (
-              <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
-                Loading launch console...
-              </CardContent>
-            ) : (
-              <form
-                className="flex min-h-[30rem] flex-col"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitActivePanel();
-                }}
-              >
-                <CardHeader className="space-y-3 border-b border-border/60 px-6 py-5">
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                    <span>{getPanelStepLabel(activePanel, visiblePanels)}</span>
-                    {activePanel === "account" ||
-                    activeRequirement?.status === "ready" ? (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Complete
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="space-y-1.5">
-                    <CardTitle className="text-2xl leading-tight">
-                      {activePanel === "account"
-                        ? "Workspace account created"
-                        : activePanel === "first-run"
-                          ? "Ready for the first run"
-                          : isHostedMode && activePanel === "resume"
-                            ? "Upload your existing resume, PDF or DOCX"
-                            : activeRequirement?.title}
-                    </CardTitle>
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      {activePanel === "account"
-                        ? "Your private workspace is ready. Finish the model and resume checks so Job Ops can work from the right account context."
-                        : activePanel === "first-run"
-                          ? showModelStep
-                            ? "Your model and resume are loaded. Job Ops can start turning job leads into ranked, actionable work."
-                            : "Your resume is loaded. Job Ops can start turning job leads into ranked, actionable work."
-                          : isHostedMode && activePanel === "resume"
-                            ? "Upload your existing resume as a PDF or DOCX. Job Ops will use it as the baseline for matching, fit assessment, search terms, and application workflows."
-                            : activeRequirement?.status === "ready"
-                              ? activeRequirement.message
-                              : "Complete this setup check to unlock the next part of your job-search workflow."}
-                    </p>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex flex-1 flex-col gap-5 px-6 pt-5">
-                  {showAccountStep &&
-                  activePanel !== "account" &&
-                  activePanel !== "first-run" ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>Workspace account created</span>
-                    </div>
-                  ) : null}
-
-                  {showModelStep &&
-                  modelRequirement?.status === "ready" &&
-                  activePanel !== "model" &&
-                  activePanel !== "first-run" ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>{modelRequirement.title}</span>
-                    </div>
-                  ) : null}
-
-                  {resumeRequirement?.status === "ready" &&
-                  activePanel !== "resume" &&
-                  activePanel !== "first-run" ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>{resumeRequirement.title}</span>
-                    </div>
-                  ) : null}
-
-                  {activePanel === "account" ? (
-                    <div
-                      className="rounded-lg border border-border/60 bg-muted/10 p-4"
-                      data-onboarding-target="account-complete"
-                    >
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium">
-                          Account is set
-                        </div>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          This workspace is now tied to your Job Ops account.
-                          Continue with the LLM and resume setup checks to
-                          unlock scoring, tailoring, and application workflows.
-                        </p>
-                      </div>
-                    </div>
-                  ) : activePanel === "model" || activePanel === "resume" ? (
-                    <OnboardingStepContent
-                      allowReactiveResume={allowReactiveResumeSetup}
-                      baseResumeValidation={baseResumeValidation}
-                      baseResumeValue={flow.watch("rxresumeBaseResumeId")}
-                      currentStep={activePanel as StepId}
-                      defaultModel={flow.settings?.model?.default}
-                      effectiveModel={flow.settings?.model?.value}
-                      isBusy={flow.isBusy}
-                      importingResumeFileName={flow.importingResumeFileName}
-                      isImportingResume={flow.isImportingResume}
-                      isResumeReady={baseResumeValidation.valid}
-                      isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
-                      llmApiKey={flow.watch("llmApiKey")}
-                      llmBaseUrl={flow.watch("llmBaseUrl")}
-                      llmKeyHint={flow.llmKeyHint}
-                      llmValidation={llmValidation}
-                      model={flow.watch("model")}
-                      resumeSetupMode={flow.resumeSetupMode}
-                      rxresumeApiKey={flow.watch("rxresumeApiKey")}
-                      rxresumeApiKeyHint={flow.rxresumeApiKeyHint}
-                      rxresumeUrl={flow.watch("rxresumeUrl")}
-                      rxresumeValidation={rxresumeValidation}
-                      savedBaseUrl={flow.settings?.llmBaseUrl?.value}
-                      savedProvider={flow.settings?.llmProvider?.value}
-                      selectedProvider={flow.selectedProvider}
-                      onLlmApiKeyChange={(value) => {
-                        trackModelConfigChanged("api_key");
-                        flow.setValue("llmApiKey", value, {
-                          shouldDirty: true,
-                        });
-                      }}
-                      onLlmBaseUrlChange={(value) => {
-                        trackModelConfigChanged("endpoint", {
-                          endpoint: value,
-                        });
-                        flow.setValue("llmBaseUrl", value, {
-                          shouldDirty: true,
-                        });
-                      }}
-                      onLlmModelChange={(value) => {
-                        trackModelConfigChanged("model", { model: value });
-                        flow.setValue("model", value, { shouldDirty: true });
-                      }}
-                      onCodexAuthStatusChange={handleCodexAuthStatusChange}
-                      onLlmProviderChange={(value) => {
-                        trackModelConfigChanged("provider", {
-                          provider: value,
-                        });
-                        flow.setValue("llmProvider", value, {
-                          shouldDirty: true,
-                        });
-                      }}
-                      onImportResumeFile={flow.handleImportResumeFile}
-                      onResumeSetupModeChange={flow.setResumeSetupMode}
-                      onRxresumeApiKeyChange={(value) =>
-                        flow.setValue("rxresumeApiKey", value)
-                      }
-                      onRxresumeSelfHostedChange={
-                        flow.handleRxresumeSelfHostedChange
-                      }
-                      onRxresumeUrlChange={(value) =>
-                        flow.setValue("rxresumeUrl", value)
-                      }
-                      onTemplateResumeChange={flow.handleTemplateResumeChange}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-lg border border-border/60 bg-muted/10 p-4"
-                      data-onboarding-target="first-run"
-                    >
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium">
-                          Command centre is loaded
-                        </div>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          Job Ops prepares search terms from your resume before
-                          opening the ready queue. You can still tune advanced
-                          search controls later from the run modal or Settings.
-                        </p>
-                      </div>
-                      <div className="mt-4 space-y-3">
-                        {flow.isGeneratingSearchTerms ? (
-                          <p className="text-sm text-muted-foreground">
-                            Preparing resume-based search terms...
-                          </p>
-                        ) : flow.savedSearchTerms.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {flow.savedSearchTerms.map((term) => (
-                              <span
-                                key={term}
-                                className="rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-muted-foreground"
-                              >
-                                {term}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={flow.isBusy}
-                            onClick={() =>
-                              void flow.ensureSearchTerms({
-                                force: true,
-                                trigger: "manual",
-                              })
-                            }
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                            Prepare search terms
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+      <PageMain>
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <nav className="space-y-2" aria-label="Setup progress">
+            {visibleSteps.map((step, index) => {
+              const requirement = getRequirement(status, step);
+              const complete = requirement?.status === "ready";
+              const selected = step === activeStep;
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => {
+                    if (complete || step === status?.nextRequirementId)
+                      setSelectedStep(step);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+                    selected
+                      ? "bg-foreground text-background"
+                      : complete
+                        ? "hover:bg-muted"
+                        : "text-muted-foreground",
                   )}
-                </CardContent>
-
-                <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => void onboarding.refetch()}
-                      disabled={flow.isBusy || onboarding.checking}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Recheck
-                    </Button>
-                    {previousPanel ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => selectOnboardingPanel(previousPanel)}
-                        disabled={flow.isBusy || onboarding.checking}
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Previous step
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={
-                      flow.isBusy ||
-                      flow.isGeneratingSearchTerms ||
-                      (activePanel === "first-run" && !onboardingComplete)
-                    }
-                    data-onboarding-target="primary-action"
+                >
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full border text-xs",
+                      selected && "border-background/30",
+                    )}
                   >
-                    {activePanel === "account"
-                      ? "Continue setup"
-                      : activePanel === "first-run"
-                        ? flow.isGeneratingSearchTerms
-                          ? "Preparing search terms..."
-                          : "Open ready queue"
-                        : getActionLabel(activePrimaryAction)}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </form>
-            )}
+                    {complete ? <Check className="h-4 w-4" /> : index + 1}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium">
+                      {stepTitle(step)}
+                    </span>
+                    <span
+                      className={cn(
+                        "block text-xs",
+                        selected
+                          ? "text-background/70"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {complete
+                        ? "Complete"
+                        : step === status?.nextRequirementId
+                          ? "Up next"
+                          : "Locked"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <Card className="min-w-0 border-border/60 shadow-none">
+            <CardContent className="p-6 sm:p-8">
+              {activeStep === "profile" ? (
+                <ProfileStep
+                  country={country}
+                  cities={cities}
+                  workplaceTypes={workplaceTypes}
+                  requiresVisaSponsorship={requiresVisaSponsorship}
+                  busy={profileBusy}
+                  onCountryChange={setCountry}
+                  onCitiesChange={setCities}
+                  onWorkplaceTypesChange={setWorkplaceTypes}
+                  onVisaChange={setRequiresVisaSponsorship}
+                  onContinue={saveProfile}
+                />
+              ) : activeStep === "model" ? (
+                <StepShell
+                  eyebrow="AI connection"
+                  title="Choose how Job Ops should think"
+                  description="Pick a provider first. Job Ops saves the configuration only after the server verifies the connection."
+                >
+                  <LlmConnectionStep
+                    apiKey={flow.watch("llmApiKey")}
+                    baseUrl={flow.watch("llmBaseUrl")}
+                    defaultModel={flow.settings?.model.default}
+                    effectiveModel={flow.settings?.model.value}
+                    isBusy={flow.isBusy}
+                    llmKeyHint={flow.llmKeyHint}
+                    model={flow.watch("model")}
+                    savedBaseUrl={flow.settings?.llmBaseUrl.value}
+                    savedProvider={flow.settings?.llmProvider.value}
+                    selectedProvider={flow.selectedProvider}
+                    validation={toValidationState(modelRequirement)}
+                    onCodexAuthStatusChange={(codexStatus) => {
+                      if (codexStatus.authenticated) return;
+                      setSelectedStep("model");
+                      void onboarding.refetch();
+                    }}
+                    onApiKeyChange={(value) =>
+                      flow.setValue("llmApiKey", value)
+                    }
+                    onBaseUrlChange={(value) =>
+                      flow.setValue("llmBaseUrl", value)
+                    }
+                    onModelChange={(value) => flow.setValue("model", value)}
+                    onProviderChange={(value) =>
+                      flow.setValue("llmProvider", value)
+                    }
+                  />
+                  <StepActions
+                    onBack={() => setSelectedStep("profile")}
+                    onContinue={saveModel}
+                    busy={flow.isBusy}
+                    label="Connect and continue"
+                  />
+                </StepShell>
+              ) : (
+                <ResumeStep
+                  flow={flow}
+                  requirement={resumeRequirement}
+                  profile={profileQuery.data ?? null}
+                  hasResume={Boolean(resumeSource)}
+                  busy={confirmBusy}
+                  onBack={() =>
+                    setSelectedStep(showModel ? "model" : "profile")
+                  }
+                  onConfirm={confirmResume}
+                  onRefresh={() => void profileQuery.refetch()}
+                />
+              )}
+            </CardContent>
           </Card>
         </div>
       </PageMain>
     </>
   );
-};
+}
+
+function StepShell({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-7">
+      <div className="space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {eyebrow}
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StepActions({
+  onBack,
+  onContinue,
+  busy,
+  label,
+}: {
+  onBack?: () => void;
+  onContinue: () => void | Promise<void>;
+  busy: boolean;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center justify-between border-t pt-6">
+      {onBack ? (
+        <Button type="button" variant="ghost" onClick={onBack} disabled={busy}>
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      ) : (
+        <span />
+      )}
+      <Button type="button" onClick={() => void onContinue()} disabled={busy}>
+        {busy ? "Saving…" : label}
+        <ArrowRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+function ProfileStep(props: {
+  country: string;
+  cities: string;
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  requiresVisaSponsorship: boolean;
+  busy: boolean;
+  onCountryChange: (value: string) => void;
+  onCitiesChange: (value: string) => void;
+  onWorkplaceTypesChange: (
+    value: Array<"remote" | "hybrid" | "onsite">,
+  ) => void;
+  onVisaChange: (value: boolean) => void;
+  onContinue: () => void;
+}) {
+  const toggle = (value: "remote" | "hybrid" | "onsite") =>
+    props.onWorkplaceTypesChange(
+      props.workplaceTypes.includes(value)
+        ? props.workplaceTypes.filter((item) => item !== value)
+        : [...props.workplaceTypes, value],
+    );
+  return (
+    <StepShell
+      eyebrow="Your search"
+      title="Where do you want to work?"
+      description="These preferences seed new runs and help Job Ops prioritize location-aware and visa-sponsor sources. You can change them later."
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Country or market">
+          <Input
+            value={props.country}
+            onChange={(event) => props.onCountryChange(event.target.value)}
+            placeholder="United Kingdom"
+          />
+        </Field>
+        <Field label="Preferred cities or regions (optional)">
+          <Input
+            value={props.cities}
+            onChange={(event) => props.onCitiesChange(event.target.value)}
+            placeholder="London, Manchester"
+          />
+        </Field>
+      </div>
+      <div className="space-y-3">
+        <Label>Workplace style</Label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(["remote", "hybrid", "onsite"] as const).map((value) => (
+            <Label
+              key={value}
+              htmlFor={`workplace-${value}`}
+              className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 p-4 capitalize"
+            >
+              <Checkbox
+                id={`workplace-${value}`}
+                checked={props.workplaceTypes.includes(value)}
+                onCheckedChange={() => toggle(value)}
+              />
+              {value}
+            </Label>
+          ))}
+        </div>
+      </div>
+      <Label
+        htmlFor="visa-sponsorship"
+        className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/40 p-4"
+      >
+        <Checkbox
+          id="visa-sponsorship"
+          checked={props.requiresVisaSponsorship}
+          onCheckedChange={(value) => props.onVisaChange(value === true)}
+        />
+        <span>
+          <span className="block text-sm font-medium">
+            I need employer visa sponsorship
+          </span>
+          <span className="block text-sm text-muted-foreground">
+            Job Ops will show sponsor information and favor sponsor-aware
+            sources when available.
+          </span>
+        </span>
+      </Label>
+      <StepActions
+        onContinue={props.onContinue}
+        busy={props.busy || props.workplaceTypes.length === 0}
+        label="Save and continue"
+      />
+    </StepShell>
+  );
+}
+
+function ResumeStep({
+  flow,
+  requirement,
+  profile,
+  hasResume,
+  busy,
+  onBack,
+  onConfirm,
+  onRefresh,
+}: {
+  flow: ReturnType<typeof useOnboardingFlow>;
+  requirement: OnboardingRequirement | null;
+  profile: ResumeProfile | null;
+  hasResume: boolean;
+  busy: boolean;
+  onBack: () => void;
+  onConfirm: () => void;
+  onRefresh: () => void;
+}) {
+  const experience = profile?.sections?.experience?.items ?? [];
+  if (!hasResume) {
+    return (
+      <StepShell
+        eyebrow="Your resume"
+        title="Load the resume Job Ops should use"
+        description="Upload a file or connect Reactive Resume. After parsing, you’ll review the result before anything is marked complete."
+      >
+        <BaseResumeStep
+          allowReactiveResume
+          baseResumeValidation={toValidationState(requirement)}
+          baseResumeValue={flow.watch("rxresumeBaseResumeId")}
+          hasRxResumeAccess={Boolean(flow.rxresumeApiKeyHint)}
+          importingResumeFileName={flow.importingResumeFileName}
+          isBusy={flow.isBusy}
+          isImportingResume={flow.isImportingResume}
+          isResumeReady={false}
+          isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
+          resumeSetupMode={flow.resumeSetupMode}
+          rxresumeApiKey={flow.watch("rxresumeApiKey")}
+          rxresumeApiKeyHint={flow.rxresumeApiKeyHint}
+          rxresumeUrl={flow.watch("rxresumeUrl")}
+          rxresumeValidation={toValidationState(requirement)}
+          selectedProvider={flow.selectedProvider}
+          onImportResumeFile={flow.handleImportResumeFile}
+          onResumeSetupModeChange={flow.setResumeSetupMode}
+          onRxresumeApiKeyChange={(value) =>
+            flow.setValue("rxresumeApiKey", value)
+          }
+          onRxresumeSelfHostedChange={flow.handleRxresumeSelfHostedChange}
+          onRxresumeUrlChange={(value) => flow.setValue("rxresumeUrl", value)}
+          onTemplateResumeChange={flow.handleTemplateResumeChange}
+        />
+        <div className="border-t pt-6">
+          <Button type="button" variant="ghost" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+      </StepShell>
+    );
+  }
+  return (
+    <StepShell
+      eyebrow="Resume review"
+      title="Is this the right resume?"
+      description="Confirm the parsed identity and recent experience. Completion is tied to this exact resume source, so replacing it requires confirmation again."
+    >
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_15rem]">
+        <div className="min-h-80 rounded-xl border border-border/60 bg-muted/15 p-6">
+          <div className="mb-6 border-b pb-5">
+            <h3 className="text-2xl font-semibold">
+              {profile?.basics?.name || "Parsed resume"}
+            </h3>
+            <p className="text-muted-foreground">
+              {profile?.basics?.headline ||
+                profile?.basics?.label ||
+                "Review the imported details"}
+            </p>
+            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              {profile?.basics?.location?.city ||
+                profile?.basics?.location?.region ||
+                "No location detected"}
+            </p>
+          </div>
+          <div className="space-y-4">
+            {experience.slice(0, 4).map((item) => (
+              <div key={item.id} className="grid gap-1 sm:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="font-medium">{item.position}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {item.company}
+                    {item.location ? ` · ${item.location}` : ""}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">{item.date}</div>
+              </div>
+            ))}
+            {experience.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No experience entries were detected. Open Resume Studio to
+                correct the document before confirming.
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-xl bg-muted/40 p-4">
+            <FileCheck2 className="mb-3 h-5 w-5" />
+            <div className="text-sm font-medium">Parsed successfully</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {experience.length} experience{" "}
+              {experience.length === 1 ? "entry" : "entries"}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={onRefresh}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh preview
+          </Button>
+          <Button type="button" variant="outline" className="w-full" asChild>
+            <a href="/resume/design">
+              <BriefcaseBusiness className="h-4 w-4" />
+              Edit in Resume Studio
+            </a>
+          </Button>
+        </div>
+      </div>
+      <StepActions
+        onBack={onBack}
+        onContinue={onConfirm}
+        busy={busy}
+        label="Use this resume"
+      />
+    </StepShell>
+  );
+}

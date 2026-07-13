@@ -146,9 +146,9 @@ describe("automatic-run utilities", () => {
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
 
-    expect(estimate.discovered.cap).toBe(100);
-    expect(estimate.discovered.min).toBe(35);
-    expect(estimate.discovered.max).toBe(75);
+    expect(estimate.discovered.cap).toBe(300);
+    expect(estimate.discovered.min).toBe(105);
+    expect(estimate.discovered.max).toBe(225);
     expect(estimate.processed.min).toBe(10);
     expect(estimate.processed.max).toBe(10);
   });
@@ -174,7 +174,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(limits.startupjobsMaxJobsPerTerm).toBeGreaterThan(0);
-    expect(limits.startupjobsMaxJobsPerTerm).toBeLessThanOrEqual(120);
+    expect(limits.startupjobsMaxJobsPerTerm).toBe(150);
   });
 
   it("assigns a dedicated Jobindex max-jobs limit", () => {
@@ -185,7 +185,21 @@ describe("automatic-run utilities", () => {
     });
 
     expect(limits.jobindexMaxJobsPerTerm).toBeGreaterThan(0);
-    expect(limits.jobindexMaxJobsPerTerm).toBeLessThanOrEqual(120);
+    expect(limits.jobindexMaxJobsPerTerm).toBe(150);
+  });
+
+  it("raises legacy custom budgets to the 300-job minimum", () => {
+    ensureStorage().setItem(
+      RUN_MEMORY_STORAGE_KEY,
+      JSON.stringify({
+        topN: 5,
+        minSuitabilityScore: 65,
+        runBudget: 25,
+        presetId: "custom",
+      }),
+    );
+
+    expect(loadAutomaticRunMemory()?.runBudget).toBe(300);
   });
 
   it("infers the balanced preset from legacy memory without an explicit preset id", () => {
@@ -344,7 +358,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 
   it("includes hiringcafe in estimate caps using the shared term budget", () => {
@@ -365,7 +379,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 
   it("includes startupjobs in estimate caps using the shared term budget", () => {
@@ -386,7 +400,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 
   it("includes workingnomads in estimate caps using the shared term budget", () => {
@@ -407,7 +421,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 
   it("includes seek in estimate caps using the shared term budget", () => {
@@ -428,7 +442,7 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 
   it("includes naukri in estimate caps using the shared term budget", () => {
@@ -449,6 +463,6 @@ describe("automatic-run utilities", () => {
     });
 
     expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+    expect(estimate.discovered.cap).toBe(300);
   });
 });

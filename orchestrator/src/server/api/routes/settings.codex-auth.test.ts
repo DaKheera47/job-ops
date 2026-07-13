@@ -3,18 +3,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   startCodexDeviceAuthMock,
+  consumeCompletedCodexDeviceAuthMock,
   disconnectCodexAuthMock,
   getCodexDeviceAuthSnapshotMock,
+  resetCodexSessionMock,
   validateCredentialsMock,
 } = vi.hoisted(() => ({
   startCodexDeviceAuthMock: vi.fn(),
+  consumeCompletedCodexDeviceAuthMock: vi.fn(),
   disconnectCodexAuthMock: vi.fn(),
   getCodexDeviceAuthSnapshotMock: vi.fn(),
+  resetCodexSessionMock: vi.fn(),
   validateCredentialsMock: vi.fn(),
+}));
+
+vi.mock("@server/services/llm/codex/client", () => ({
+  resetCodexSession: resetCodexSessionMock,
 }));
 
 vi.mock("@server/services/llm/codex/login", () => ({
   startCodexDeviceAuth: startCodexDeviceAuthMock,
+  consumeCompletedCodexDeviceAuth: consumeCompletedCodexDeviceAuthMock,
   disconnectCodexAuth: disconnectCodexAuthMock,
   getCodexDeviceAuthSnapshot: getCodexDeviceAuthSnapshotMock,
 }));
@@ -53,7 +62,9 @@ describe.sequential("Settings codex auth routes", () => {
       message: "Codex not authenticated",
     });
     startCodexDeviceAuthMock.mockResolvedValue(undefined);
+    consumeCompletedCodexDeviceAuthMock.mockReturnValue(null);
     disconnectCodexAuthMock.mockResolvedValue(undefined);
+    resetCodexSessionMock.mockResolvedValue(undefined);
 
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
@@ -94,6 +105,37 @@ describe.sequential("Settings codex auth routes", () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(validateCredentialsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("restarts the app-server before validating a completed device login", async () => {
+    const completedFlow = {
+      status: "completed",
+      loginInProgress: false,
+      verificationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-EFGH",
+      startedAt: "2026-04-14T16:00:00.000Z",
+      expiresAt: "2026-04-14T16:15:00.000Z",
+      message: "Codex login completed.",
+    };
+    getCodexDeviceAuthSnapshotMock.mockReturnValue(completedFlow);
+    consumeCompletedCodexDeviceAuthMock.mockReturnValueOnce(completedFlow);
+    validateCredentialsMock.mockImplementationOnce(async () => {
+      expect(resetCodexSessionMock).toHaveBeenCalledOnce();
+      return {
+        valid: true,
+        message: null,
+        username: "dev@example.com",
+      };
+    });
+
+    const res = await fetch(`${baseUrl}/api/settings/codex-auth`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data.authenticated).toBe(true);
+    expect(body.data.flowStatus).toBe("completed");
+    expect(body.data.username).toBe("dev@example.com");
+    expect(consumeCompletedCodexDeviceAuthMock).toHaveBeenCalledOnce();
   });
 
   it("starts codex device auth and returns flow details", async () => {
@@ -168,5 +210,6 @@ describe.sequential("Settings codex auth routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.authenticated).toBe(false);
     expect(disconnectCodexAuthMock).toHaveBeenCalledOnce();
+    expect(resetCodexSessionMock).toHaveBeenCalledOnce();
   });
 });

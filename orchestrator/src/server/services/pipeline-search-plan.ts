@@ -31,13 +31,15 @@ import type {
   PipelineSearchPlanResponse,
   PipelineSearchPresetConfig,
 } from "@shared/types";
+import {
+  MAX_PIPELINE_RUN_BUDGET,
+  MIN_PIPELINE_RUN_BUDGET,
+} from "@shared/types";
 import { normalizeSearchTerms } from "@shared/utils/search-terms";
 import type { JsonSchemaDefinition } from "./llm/types";
 
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 const PRESET_VALUES = ["fast", "balanced", "detailed", "custom"] as const;
-const MIN_RUN_BUDGET = 50;
-const MAX_RUN_BUDGET = 1000;
 const MAX_WARNINGS = 6;
 
 type WorkplaceType = (typeof WORKPLACE_TYPE_VALUES)[number];
@@ -380,8 +382,8 @@ export function normalizePipelineSearchPlanConfig(args: {
     ),
     runBudget: clampNumber(
       candidate?.runBudget,
-      MIN_RUN_BUDGET,
-      MAX_RUN_BUDGET,
+      MIN_PIPELINE_RUN_BUDGET,
+      MAX_PIPELINE_RUN_BUDGET,
       currentConfig.runBudget,
     ),
     scoringInstructions: normalizeScoringInstructions(

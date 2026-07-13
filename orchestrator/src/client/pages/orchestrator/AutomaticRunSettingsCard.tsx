@@ -66,6 +66,7 @@ interface AutomaticRunSettingsCardProps {
   onTopNInputChange: (value: string) => void;
   onMinScoreInputChange: (value: string) => void;
   onRunBudgetInputChange: (value: string) => void;
+  onRunBudgetInputBlur: () => void;
 }
 
 export function AutomaticRunSettingsCard({
@@ -99,6 +100,7 @@ export function AutomaticRunSettingsCard({
   onTopNInputChange,
   onMinScoreInputChange,
   onRunBudgetInputChange,
+  onRunBudgetInputBlur,
 }: AutomaticRunSettingsCardProps) {
   return (
     <Card>
@@ -139,6 +141,7 @@ export function AutomaticRunSettingsCard({
           onTopNInputChange={onTopNInputChange}
           onMinScoreInputChange={onMinScoreInputChange}
           onRunBudgetInputChange={onRunBudgetInputChange}
+          onRunBudgetInputBlur={onRunBudgetInputBlur}
         />
       </CardContent>
     </Card>
@@ -453,6 +456,7 @@ interface RunSettingsProps {
   onTopNInputChange: (value: string) => void;
   onMinScoreInputChange: (value: string) => void;
   onRunBudgetInputChange: (value: string) => void;
+  onRunBudgetInputBlur: () => void;
 }
 
 function RunSettings({
@@ -466,6 +470,7 @@ function RunSettings({
   onTopNInputChange,
   onMinScoreInputChange,
   onRunBudgetInputChange,
+  onRunBudgetInputBlur,
 }: RunSettingsProps) {
   return (
     <Accordion
@@ -511,6 +516,7 @@ function RunSettings({
                 max={maxRunBudget}
                 value={runBudgetInput}
                 onChange={(event) => onRunBudgetInputChange(event.target.value)}
+                onBlur={onRunBudgetInputBlur}
               />
             </div>
           </div>

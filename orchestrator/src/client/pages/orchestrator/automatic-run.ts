@@ -9,7 +9,7 @@ import {
   parseSearchCitiesSetting,
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
-import type { JobSource } from "@shared/types";
+import { type JobSource, normalizePipelineRunBudget } from "@shared/types";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
@@ -215,7 +215,7 @@ export function deriveExtractorLimits(args: {
   searchTerms: string[];
   sources: JobSource[];
 }): ExtractorLimits {
-  const budget = Math.max(1, Math.round(args.budget));
+  const budget = normalizePipelineRunBudget(args.budget);
   const termCount = Math.max(1, args.searchTerms.length);
   const includesIndeed = args.sources.includes("indeed");
   const includesLinkedIn = args.sources.includes("linkedin");
@@ -436,7 +436,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     );
     const runBudget =
       typeof parsed.runBudget === "number"
-        ? Math.max(50, Math.round(parsed.runBudget))
+        ? normalizePipelineRunBudget(parsed.runBudget)
         : undefined;
     const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
       ? parsed.presetId
@@ -491,7 +491,17 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
 
 export function saveAutomaticRunMemory(memory: AutomaticRunMemory): void {
   try {
-    localStorage.setItem(getRunMemoryStorageKey(), JSON.stringify(memory));
+    localStorage.setItem(
+      getRunMemoryStorageKey(),
+      JSON.stringify(
+        memory.runBudget === undefined
+          ? memory
+          : {
+              ...memory,
+              runBudget: normalizePipelineRunBudget(memory.runBudget),
+            },
+      ),
+    );
   } catch {
     // Ignore localStorage failures
   }

@@ -36,9 +36,9 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding launch console to connect your LLM provider and select or import your resume. Search terms are prepared automatically from that resume before the first pipeline run; advanced search controls remain available in the run modal and settings.
+   After the server starts, onboarding saves your location and workplace defaults, verifies your LLM provider, and imports your resume. The parsed resume is shown for confirmation before setup completes. Search terms are chosen later when you start a run.
 
-   Then open **Resume Studio** in the app and import your base resume once. JobOps will use that local Resume Studio document as the primary resume context for tailoring, scoring, and PDF generation.
+   You can edit the confirmed document later in **Resume Studio**. JobOps uses that document as the primary context for tailoring, scoring, and PDF generation.
 
 
    OpenRouter is the default LLM provider, but OpenAI, Claude (Anthropic), GLM, LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.

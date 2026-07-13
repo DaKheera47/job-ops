@@ -148,12 +148,14 @@ Open:
 
 - **Dashboard**: `http://localhost:3005`
 
-The onboarding launch console helps you validate and save:
+The onboarding flow saves three durable setup decisions:
 
 1. **Workspace account**: On brand-new installs, create the first username/password account directly in onboarding. This first account becomes the system admin and owns the initial private workspace.
-2. **LLM Provider**: OpenRouter by default (or OpenAI/GLM/Gemini/local URL).
-3. **Import your current resume**: Either upload a PDF/DOCX into JobOps or choose the Reactive Resume option and connect with your v5 API key.
-4. **First run readiness**: JobOps prepares search terms from the loaded resume automatically before the first pipeline run. You can still edit advanced search controls later from the run modal or Settings.
+2. **Search preferences**: Save your country, optional preferred cities, workplace style, and whether you need visa sponsorship. JobOps applies these values as defaults for future runs and sponsor-aware features.
+3. **LLM provider**: Choose OpenRouter by default, or connect another supported hosted or local provider. The step completes only after the server verifies and persists the connection.
+4. **Resume review**: Upload a PDF/DOCX/Reactive Resume JSON, or connect Reactive Resume. JobOps shows the parsed resume and requires confirmation of the current document before setup completes.
+
+Search terms are not part of onboarding. Choose or edit them when starting your first run.
 
 Settings and user accounts are saved to the local database. If you are upgrading an older single-user install, JobOps migrates existing rows into one default private workspace. When `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are present during that migration, they seed the first system admin account; otherwise onboarding requires first-run account setup before private APIs are usable.
 

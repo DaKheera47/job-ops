@@ -189,7 +189,7 @@ export interface SearchTermsSuggestionResponse {
   source: "ai" | "fallback";
 }
 
-export type OnboardingRequirementId = "model" | "resume";
+export type OnboardingRequirementId = "profile" | "model" | "resume";
 
 export type OnboardingRequirementStatus =
   | "ready"
@@ -199,6 +199,8 @@ export type OnboardingRequirementStatus =
 
 export type OnboardingRequirementPrimaryAction =
   | "connect_model"
+  | "save_profile"
+  | "confirm_resume"
   | "upload_resume"
   | "connect_rxresume"
   | "select_rxresume_template"
@@ -252,6 +254,9 @@ export interface AppSettings {
   jobindexMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
   workplaceTypes: Resolved<Array<"remote" | "hybrid" | "onsite">>;
+  onboardingProfileCompleted: Resolved<boolean>;
+  onboardingLlmCompleted: Resolved<boolean>;
+  onboardingResumeConfirmedSource: Resolved<string>;
   blockedCompanyKeywords: Resolved<string[]>;
   scoringInstructions: Resolved<string>;
   ghostwriterSystemPromptTemplate: Resolved<string>;

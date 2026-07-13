@@ -7,6 +7,16 @@ import type { Job, JobStatus } from "./jobs";
 import type { LocationIntent } from "./location";
 import type { PdfRenderer } from "./settings";
 
+export const MIN_PIPELINE_RUN_BUDGET = 300;
+export const MAX_PIPELINE_RUN_BUDGET = 1000;
+
+export function normalizePipelineRunBudget(value: number): number {
+  return Math.min(
+    MAX_PIPELINE_RUN_BUDGET,
+    Math.max(MIN_PIPELINE_RUN_BUDGET, Math.round(value)),
+  );
+}
+
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
   minSuitabilityScore: number; // Minimum score to auto-process

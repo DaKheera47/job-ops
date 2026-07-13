@@ -529,6 +529,28 @@ export const settingsRegistry = {
     parse: parseWorkplaceTypesOrNull,
     serialize: serializeNullableJsonArray,
   },
+  onboardingProfileCompleted: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  onboardingLlmCompleted: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  onboardingResumeConfirmedSource: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(300),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
   blockedCompanyKeywords: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(200),
