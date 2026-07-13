@@ -1,8 +1,4 @@
-import type {
-  OnboardingRequirementId,
-  PdfRenderer,
-  ValidationResult,
-} from "@shared/types.js";
+import type { PdfRenderer, ValidationResult } from "@shared/types.js";
 
 export type ValidationState = ValidationResult & {
   checked: boolean;
@@ -20,14 +16,4 @@ export type OnboardingFormData = {
   rxresumeBaseResumeId: string | null;
 };
 
-export type StepId = OnboardingRequirementId;
-export type OnboardingPanelId = "account" | StepId | "first-run";
 export type ResumeSetupMode = "upload" | "rxresume";
-
-export type OnboardingStep = {
-  id: StepId;
-  label: string;
-  subtitle: string;
-  complete: boolean;
-  disabled: boolean;
-};

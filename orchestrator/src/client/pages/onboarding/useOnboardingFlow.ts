@@ -76,7 +76,6 @@ export function useOnboardingFlow() {
         queryClient.setQueryData(queryKeys.onboarding.status(), status);
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.settings.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.designResume.all }),
       ]);

@@ -43,6 +43,17 @@ export type OnboardingModelActionInput = {
   model?: string | null;
 };
 
+export type OnboardingProfileActionInput = {
+  country?: string | null;
+  cities: string[];
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  requiresVisaSponsorship: boolean;
+};
+
+export type OnboardingResumeConfirmActionInput = {
+  source: string;
+};
+
 export type OnboardingRxResumeActionInput = {
   apiKey?: string | null;
   baseUrl?: string | null;
@@ -321,16 +332,16 @@ function buildRequirement(args: {
 }
 
 async function buildModelRequirement(): Promise<OnboardingRequirement> {
-  const [provider, baseUrl, model] = await Promise.all([
+  const [provider, baseUrl, model, completed] = await Promise.all([
     getSetting("llmProvider"),
     getSetting("llmBaseUrl"),
     getSetting("model"),
+    getSetting("onboardingLlmCompleted"),
   ]);
-  const validation = await validateLlm({});
   const normalizedProvider = normalizeLlmProviderValue(provider);
   const providerLabel = normalizedProvider ?? "selected provider";
 
-  if (validation.valid) {
+  if (completed === "1") {
     if (normalizedProvider === "ollama" && !model?.trim()) {
       return buildRequirement({
         id: "model",
@@ -359,24 +370,12 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
       },
     });
   }
-
-  const status = classifyValidation(validation);
   return buildRequirement({
     id: "model",
-    status,
-    title:
-      status === "checking_unavailable"
-        ? "Model check is unavailable"
-        : status === "invalid"
-          ? "Model connection needs attention"
-          : "Connect your LLM",
-    message: getModelValidationMessage({
-      validation,
-      provider: normalizedProvider,
-      providerLabel,
-    }),
-    primaryAction:
-      status === "checking_unavailable" ? "recheck" : "connect_model",
+    status: "needs_action",
+    title: "Connect your AI provider",
+    message: `Choose and verify ${providerLabel}. The connection is saved only after the server confirms it can be used.`,
+    primaryAction: "connect_model",
     details: {
       provider: normalizedProvider ?? null,
       baseUrl: baseUrl?.trim() || null,
@@ -385,17 +384,25 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
 }
 
 async function buildResumeRequirement(): Promise<OnboardingRequirement> {
-  const localStatus = await getDesignResumeStatus();
+  const [localStatus, confirmedSource] = await Promise.all([
+    getDesignResumeStatus(),
+    getSetting("onboardingResumeConfirmedSource"),
+  ]);
   if (localStatus.exists) {
+    const source = `local:${localStatus.documentId}`;
     return buildRequirement({
       id: "resume",
-      status: "ready",
-      title: "Resume loaded",
+      status: confirmedSource === source ? "ready" : "needs_action",
+      title:
+        confirmedSource === source ? "Resume confirmed" : "Review your resume",
       message:
-        "Your resume is ready to drive job matching, fit assessment, search terms, and application workflows.",
-      primaryAction: "none",
+        confirmedSource === source
+          ? "You confirmed the resume Job Ops should use for matching and applications."
+          : "Check the parsed resume, then confirm that Job Ops loaded the correct document.",
+      primaryAction: confirmedSource === source ? "none" : "confirm_resume",
       details: {
         source: "local",
+        confirmationSource: source,
         documentId: localStatus.documentId ?? null,
         updatedAt: localStatus.updatedAt ?? null,
       },
@@ -433,14 +440,22 @@ async function buildResumeRequirement(): Promise<OnboardingRequirement> {
 
   const validation = await validateResumeConfig();
   if (validation.valid) {
+    const source = `rxresume:${resumeId}`;
     return buildRequirement({
       id: "resume",
-      status: "ready",
-      title: "Resume loaded",
+      status: confirmedSource === source ? "ready" : "needs_action",
+      title:
+        confirmedSource === source ? "Resume confirmed" : "Review your resume",
       message:
-        "The selected Reactive Resume template is ready to drive matching, fit assessment, search terms, and application workflows.",
-      primaryAction: "none",
-      details: { source: "rxresume", resumeId },
+        confirmedSource === source
+          ? "You confirmed the Reactive Resume template Job Ops should use."
+          : "Check the selected Reactive Resume document, then confirm it before continuing.",
+      primaryAction: confirmedSource === source ? "none" : "confirm_resume",
+      details: {
+        source: "rxresume",
+        resumeId,
+        confirmationSource: source,
+      },
     });
   }
 
@@ -505,6 +520,13 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
 
   if (isDemoMode()) {
     const requirements: OnboardingRequirement[] = [
+      buildRequirement({
+        id: "profile",
+        status: "ready",
+        title: "Search preferences saved",
+        message: "Demo mode includes search preferences.",
+        primaryAction: "none",
+      }),
       ...(userEditableLlmSettings
         ? [
             buildRequirement({
@@ -527,14 +549,30 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
     return { complete: true, nextRequirementId: null, requirements };
   }
 
+  const profileCompleted = await getSetting("onboardingProfileCompleted");
+  const profileRequirement = buildRequirement({
+    id: "profile",
+    status: profileCompleted === "1" ? "ready" : "needs_action",
+    title:
+      profileCompleted === "1"
+        ? "Search preferences saved"
+        : "Tell us where you want to work",
+    message:
+      profileCompleted === "1"
+        ? "Your location and workplace preferences will seed future runs."
+        : "Add your preferred locations and workplace style so Job Ops can prepare sensible run defaults and sponsor-focused sources.",
+    primaryAction: profileCompleted === "1" ? "none" : "save_profile",
+  });
   const requirements = userEditableLlmSettings
     ? [
+        profileRequirement,
         await buildModelRequirement(),
         hostedMode
           ? await buildHostedResumeRequirement()
           : await buildResumeRequirement(),
       ]
     : [
+        profileRequirement,
         hostedMode
           ? await buildHostedResumeRequirement()
           : await buildResumeRequirement(),
@@ -632,8 +670,51 @@ export async function saveOnboardingModelAction(
   if (input.baseUrl !== undefined) update.llmBaseUrl = input.baseUrl ?? "";
   if (input.apiKey?.trim()) update.llmApiKey = input.apiKey.trim();
   if (input.model?.trim()) update.model = input.model.trim();
+  update.onboardingLlmCompleted = true;
 
   await persistOnboardingSettings(update, route);
+  return getOnboardingStatus();
+}
+
+export async function saveOnboardingProfileAction(
+  input: OnboardingProfileActionInput,
+): Promise<OnboardingStatusResponse> {
+  const route = "POST /api/onboarding/actions/profile";
+  await persistOnboardingSettings(
+    {
+      searchCities: input.cities.join("|"),
+      workplaceTypes: input.workplaceTypes,
+      jobspyCountryIndeed: input.country?.trim() || null,
+      showSponsorInfo: input.requiresVisaSponsorship,
+      onboardingProfileCompleted: true,
+    },
+    route,
+  );
+  return getOnboardingStatus();
+}
+
+export async function confirmOnboardingResumeAction(
+  input: OnboardingResumeConfirmActionInput,
+): Promise<OnboardingStatusResponse> {
+  const localStatus = await getDesignResumeStatus();
+  const { resumeId } = await getConfiguredRxResumeBaseResumeId();
+  const validSources = new Set<string>();
+  if (localStatus.exists && localStatus.documentId) {
+    validSources.add(`local:${localStatus.documentId}`);
+  }
+  if (resumeId && (await validateResumeConfig()).valid) {
+    validSources.add(`rxresume:${resumeId}`);
+  }
+  if (!validSources.has(input.source)) {
+    throw unprocessableEntity(
+      "The selected resume changed before it could be confirmed. Review the current resume and try again.",
+      { source: input.source },
+    );
+  }
+  await persistOnboardingSettings(
+    { onboardingResumeConfirmedSource: input.source },
+    "POST /api/onboarding/actions/resume/confirm",
+  );
   return getOnboardingStatus();
 }
 

@@ -187,6 +187,21 @@ export const createAppSettings = (
     default: ["remote", "hybrid", "onsite"],
     override: null,
   },
+  onboardingProfileCompleted: {
+    value: false,
+    default: false,
+    override: null,
+  },
+  onboardingLlmCompleted: {
+    value: false,
+    default: false,
+    override: null,
+  },
+  onboardingResumeConfirmedSource: {
+    value: "",
+    default: "",
+    override: null,
+  },
   blockedCompanyKeywords: {
     value: [],
     default: [],
