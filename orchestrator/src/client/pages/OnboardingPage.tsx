@@ -411,6 +411,11 @@ function LaunchSetup() {
                     savedProvider={flow.settings?.llmProvider.value}
                     selectedProvider={flow.selectedProvider}
                     validation={toValidationState(modelRequirement)}
+                    onCodexAuthStatusChange={(codexStatus) => {
+                      if (codexStatus.authenticated) return;
+                      setSelectedStep("model");
+                      void onboarding.refetch();
+                    }}
                     onApiKeyChange={(value) =>
                       flow.setValue("llmApiKey", value)
                     }

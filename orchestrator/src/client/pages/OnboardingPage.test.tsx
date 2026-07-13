@@ -31,7 +31,21 @@ vi.mock("./onboarding/useOnboardingFlow", () => ({
 }));
 
 vi.mock("./onboarding/components/LlmConnectionStep", () => ({
-  LlmConnectionStep: () => <div>LLM configuration</div>,
+  LlmConnectionStep: (props: {
+    onCodexAuthStatusChange?: (status: { authenticated: boolean }) => void;
+  }) => (
+    <div>
+      LLM configuration
+      <button
+        type="button"
+        onClick={() =>
+          props.onCodexAuthStatusChange?.({ authenticated: false })
+        }
+      >
+        Mock Codex disconnect
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("./onboarding/components/BaseResumeStep", () => ({
@@ -91,6 +105,34 @@ const resumeStatus: OnboardingStatusResponse = {
       message: "Confirm it.",
       primaryAction: "confirm_resume",
       details: { source: "local", confirmationSource: "local:doc-1" },
+    },
+  ],
+};
+
+const modelStatus: OnboardingStatusResponse = {
+  complete: false,
+  nextRequirementId: "model",
+  requirements: [
+    {
+      id: "profile",
+      status: "ready",
+      title: "Saved",
+      message: "Saved",
+      primaryAction: "none",
+    },
+    {
+      id: "model",
+      status: "needs_action",
+      title: "Connect AI",
+      message: "Connect AI.",
+      primaryAction: "connect_model",
+    },
+    {
+      id: "resume",
+      status: "needs_action",
+      title: "Load resume",
+      message: "Load resume.",
+      primaryAction: "upload_resume",
     },
   ],
 };
@@ -248,5 +290,24 @@ describe("OnboardingPage", () => {
       expect(api.confirmOnboardingResume).toHaveBeenCalledWith("local:doc-1"),
     );
     expect(api.confirmOnboardingResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles onboarding when the shared Codex control disconnects", async () => {
+    const refetch = vi.fn();
+    vi.mocked(useOnboardingStatus).mockReturnValue({
+      status: modelStatus,
+      complete: false,
+      nextRequirementId: "model",
+      requirements: modelStatus.requirements,
+      checking: false,
+      error: null,
+      refetch,
+    } as unknown as ReturnType<typeof useOnboardingStatus>);
+
+    await renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Mock Codex disconnect" }),
+    );
+    expect(refetch).toHaveBeenCalledOnce();
   });
 });

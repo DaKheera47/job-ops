@@ -204,6 +204,7 @@ describe("CodexClient", () => {
   });
 
   it("returns username when codex auth status includes identity data", async () => {
+    let authParams: unknown = null;
     mockSpawn((request, helpers) => {
       if (request.method === "initialize") {
         helpers.respond({
@@ -215,6 +216,7 @@ describe("CodexClient", () => {
         return;
       }
       if (request.method === "getAuthStatus") {
+        authParams = request.params;
         helpers.respond({
           authMethod: "openai",
           requiresOpenaiAuth: false,
@@ -231,6 +233,34 @@ describe("CodexClient", () => {
     const result = await client.validateCredentials();
     expect(result.valid).toBe(true);
     expect(result.username).toBe("dev@example.com");
+    expect(authParams).toEqual({
+      includeToken: false,
+      refreshToken: true,
+    });
+  });
+
+  it("rejects stale codex auth when token refresh fails", async () => {
+    mockSpawn((request, helpers) => {
+      if (request.method === "initialize") {
+        helpers.respond({
+          userAgent: "test",
+          codexHome: "/tmp/codex",
+          platformFamily: "unix",
+          platformOs: "linux",
+        });
+        return;
+      }
+      if (request.method === "getAuthStatus") {
+        helpers.reject("Access token expired. Please login again.");
+        return;
+      }
+      helpers.respond({});
+    });
+
+    const client = new CodexClient();
+    const result = await client.validateCredentials();
+    expect(result.valid).toBe(false);
+    expect(result.message).toMatch(/access token expired/i);
   });
 
   it("paginates model/list and deduplicates model names", async () => {

@@ -271,7 +271,8 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({
         <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-300/60 bg-emerald-500/10 px-3 py-2">
           <p className="text-sm text-foreground">
             <span className="font-medium">Connected</span>
-            {displayUsername ? ` as ${displayUsername}` : ""}.
+            {displayUsername ? ` as ${displayUsername}` : ""}. Existing Codex
+            credentials were found in this runtime.
           </p>
           <button
             type="button"

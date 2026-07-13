@@ -14,6 +14,7 @@ import { getSetting } from "@server/repositories/settings";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { setBackupSettings } from "@server/services/backup/index";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resetCodexSession } from "@server/services/llm/codex/client";
 import {
   disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
@@ -481,6 +482,8 @@ settingsRouter.post(
 
     try {
       await disconnectCodexAuth();
+      await resetCodexSession();
+      await applySettingsUpdates({ onboardingLlmCompleted: false });
       clearCodexValidationCache();
       const data = await getCodexAuthResponseData();
       ok(res, data);

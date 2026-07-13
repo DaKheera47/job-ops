@@ -5,12 +5,18 @@ const {
   startCodexDeviceAuthMock,
   disconnectCodexAuthMock,
   getCodexDeviceAuthSnapshotMock,
+  resetCodexSessionMock,
   validateCredentialsMock,
 } = vi.hoisted(() => ({
   startCodexDeviceAuthMock: vi.fn(),
   disconnectCodexAuthMock: vi.fn(),
   getCodexDeviceAuthSnapshotMock: vi.fn(),
+  resetCodexSessionMock: vi.fn(),
   validateCredentialsMock: vi.fn(),
+}));
+
+vi.mock("@server/services/llm/codex/client", () => ({
+  resetCodexSession: resetCodexSessionMock,
 }));
 
 vi.mock("@server/services/llm/codex/login", () => ({
@@ -54,6 +60,7 @@ describe.sequential("Settings codex auth routes", () => {
     });
     startCodexDeviceAuthMock.mockResolvedValue(undefined);
     disconnectCodexAuthMock.mockResolvedValue(undefined);
+    resetCodexSessionMock.mockResolvedValue(undefined);
 
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
@@ -168,5 +175,6 @@ describe.sequential("Settings codex auth routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.authenticated).toBe(false);
     expect(disconnectCodexAuthMock).toHaveBeenCalledOnce();
+    expect(resetCodexSessionMock).toHaveBeenCalledOnce();
   });
 });
