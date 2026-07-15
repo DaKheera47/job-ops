@@ -1,3 +1,4 @@
+import NumberFlow from "@number-flow/react";
 import type {
   PipelineFanoutProgress,
   PipelineFanoutRoleProgress,
@@ -22,8 +23,6 @@ import { cn } from "@/lib/utils";
 
 const getRoleTotal = (role: PipelineFanoutRoleProgress) =>
   role.complete + role.running + role.check + role.queued;
-
-const formatNumber = (value: number) => value.toLocaleString("en-GB");
 
 const Segment = ({
   className,
@@ -101,6 +100,7 @@ const RoleRow = ({ role }: { role: PipelineFanoutRoleProgress }) => {
 export interface PipelineFanoutCardProps {
   fanout: PipelineFanoutProgress;
   elapsedSeconds: number;
+  currentCombination?: string;
   challenges?: PipelinePendingChallenge[];
   solvingExtractor: string | null;
   onSolveChallenge: (extractorId: string) => void;
@@ -112,6 +112,7 @@ const formatElapsed = (seconds: number) =>
 export const PipelineFanoutCard = ({
   fanout,
   elapsedSeconds,
+  currentCombination,
   challenges = [],
   solvingExtractor,
   onSolveChallenge,
@@ -128,7 +129,7 @@ export const PipelineFanoutCard = ({
     <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="gap-6 p-6 sm:p-8">
         <div className="flex flex-col gap-2">
-          <CardTitle className="text-3xl tracking-tight sm:text-4xl">
+          <CardTitle className="text-2xl tracking-tight">
             Searching {fanout.total} combinations
             <span className="ml-3 font-mono text-xs tabular-nums text-muted-foreground">
               ({formatElapsed(elapsedSeconds)} elapsed)
@@ -142,6 +143,12 @@ export const PipelineFanoutCard = ({
             <strong className="text-foreground">{fanout.sourceCount}</strong>{" "}
             job boards
           </CardDescription>
+          {currentCombination ? (
+            <p className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+              <span className="size-1.5 animate-pulse rounded-full bg-amber-400" />
+              {currentCombination}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -159,14 +166,20 @@ export const PipelineFanoutCard = ({
               <span className="font-sans text-muted-foreground">queued</span>
             </div>
             <div className="flex items-baseline gap-2 font-mono text-xs tabular-nums">
-              <span className="font-semibold">
-                {formatNumber(fanout.results)}
-              </span>
+              <NumberFlow
+                className="font-semibold"
+                value={fanout.results}
+                locales="en-GB"
+                isolate
+              />
               <span className="font-sans text-muted-foreground">results</span>
               <span className="text-muted-foreground/50">·</span>
-              <span className="font-semibold">
-                {formatNumber(fanout.unique)}
-              </span>
+              <NumberFlow
+                className="font-semibold"
+                value={fanout.unique}
+                locales="en-GB"
+                isolate
+              />
               <span className="font-sans text-muted-foreground">unique</span>
             </div>
           </div>
