@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { AutomaticChoiceCardGroup } from "./AutomaticChoiceCardGroup";
 import {
   type AutomaticPresetId,
   type AutomaticPresetSelection,
@@ -67,67 +67,39 @@ export function AutomaticSearchTermsCard({
 
         <div className="flex flex-col gap-3">
           <Label>Search depth</Label>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <PresetOption
-              id="fast"
-              label="Fast"
-              description="A quicker first pass."
-              selected={selectedPreset === "fast"}
-              onSelect={() => onApplyPreset("fast")}
-            />
-            <PresetOption
-              id="balanced"
-              label="Balanced"
-              description="Strong everyday coverage."
-              selected={selectedPreset === "balanced"}
-              onSelect={() => onApplyPreset("balanced")}
-            />
-            <PresetOption
-              id="detailed"
-              label="Detailed"
-              description="Broader, deeper discovery."
-              selected={selectedPreset === "detailed"}
-              onSelect={() => onApplyPreset("detailed")}
-            />
-            <PresetOption
-              id="custom"
-              label="Custom"
-              description="Keep your own run settings."
-              selected={selectedPreset === "custom"}
-              onSelect={onSelectCustomPreset}
-            />
-          </div>
+          <AutomaticChoiceCardGroup
+            ariaLabel="Search depth"
+            value={selectedPreset}
+            columns={4}
+            options={[
+              {
+                value: "fast",
+                label: "Fast",
+                description: "A quicker first pass.",
+              },
+              {
+                value: "balanced",
+                label: "Balanced",
+                description: "Strong everyday coverage.",
+              },
+              {
+                value: "detailed",
+                label: "Detailed",
+                description: "Broader, deeper discovery.",
+              },
+              {
+                value: "custom",
+                label: "Custom",
+                description: "Keep your own run settings.",
+              },
+            ]}
+            onValueChange={(preset) => {
+              if (preset === "custom") onSelectCustomPreset();
+              else onApplyPreset(preset as AutomaticPresetId);
+            }}
+          />
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function PresetOption({
-  id,
-  label,
-  description,
-  selected,
-  onSelect,
-}: {
-  id: AutomaticPresetSelection;
-  label: string;
-  description: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant={selected ? "default" : "outline"}
-      aria-label={label}
-      aria-pressed={selected}
-      data-preset={id}
-      className="h-auto min-h-20 flex-col items-start justify-start gap-1 whitespace-normal p-3 text-left"
-      onClick={onSelect}
-    >
-      <span className="font-semibold">{label}</span>
-      <span className="text-xs font-normal opacity-75">{description}</span>
-    </Button>
   );
 }

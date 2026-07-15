@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { cn } from "@/lib/utils";
+import { AutomaticChoiceCardGroup } from "./AutomaticChoiceCardGroup";
 import {
   type AutomaticRunValues,
   MATCH_STRICTNESS_OPTIONS,
@@ -179,46 +180,24 @@ function LocationPreferences({
 
       <div className="flex flex-col gap-2">
         <Label className="text-base font-semibold">Search area</Label>
-        <RadioGroup
+        <AutomaticChoiceCardGroup
+          ariaLabel="Search area"
           value={values.locationMode}
-          onValueChange={(value) =>
-            onLocationModeChange(value as LocationInputMode)
-          }
-          className="grid gap-2 sm:grid-cols-2"
-        >
-          <label
-            htmlFor="location-mode-radius"
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-          >
-            <RadioGroupItem
-              id="location-mode-radius"
-              value="radius"
-              className="mt-0.5"
-            />
-            <span className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Map radius</span>
-              <span className="text-xs text-muted-foreground">
-                Search around a point you choose on the map.
-              </span>
-            </span>
-          </label>
-          <label
-            htmlFor="location-mode-cities"
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-          >
-            <RadioGroupItem
-              id="location-mode-cities"
-              value="cities"
-              className="mt-0.5"
-            />
-            <span className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Manual cities</span>
-              <span className="text-xs text-muted-foreground">
-                Enter the exact cities each source should search.
-              </span>
-            </span>
-          </label>
-        </RadioGroup>
+          columns={2}
+          options={[
+            {
+              value: "radius",
+              label: "Map radius",
+              description: "Search around a point you choose on the map.",
+            },
+            {
+              value: "cities",
+              label: "Manual cities",
+              description: "Enter the exact cities each source should search.",
+            },
+          ]}
+          onValueChange={onLocationModeChange}
+        />
       </div>
 
       {values.locationMode === "cities" ? (

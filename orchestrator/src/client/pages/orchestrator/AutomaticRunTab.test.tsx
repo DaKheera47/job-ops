@@ -1101,7 +1101,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
     fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
@@ -1150,10 +1150,7 @@ describe("AutomaticRunTab", () => {
 
     openConfigureDetails();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Balanced" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(screen.getByRole("radio", { name: /Balanced/i })).toBeChecked();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
@@ -1196,8 +1193,8 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Custom/i }));
     fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
@@ -1241,10 +1238,7 @@ describe("AutomaticRunTab", () => {
 
     openConfigureDetails();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Custom" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(screen.getByRole("radio", { name: /Custom/i })).toBeChecked();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
@@ -1370,10 +1364,7 @@ describe("AutomaticRunTab", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("backend engineer").length).toBeGreaterThan(0);
     expect(screen.getAllByText("London").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Fast" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("radio", { name: /Fast/i })).toBeChecked();
     expect(onSetPipelineSources).toHaveBeenCalledWith([
       "linkedin",
       "glassdoor",
