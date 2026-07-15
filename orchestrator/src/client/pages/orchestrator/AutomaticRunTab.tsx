@@ -805,9 +805,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   <ArrowLeft data-icon="inline-start" />
                   Describe search
                 </Button>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  Configure details
-                </p>
                 <h1 className="text-3xl font-semibold tracking-tight">
                   Configure your search
                 </h1>
