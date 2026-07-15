@@ -107,6 +107,18 @@ function CountryView({
   return null;
 }
 
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() =>
+      map.invalidateSize({ pan: false }),
+    );
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function RadiusHandle({
   center,
   position,
@@ -159,7 +171,7 @@ export default function LocationRadiusMap({
     <MapContainer
       center={view.center}
       zoom={view.zoom}
-      className="h-72 w-full"
+      className="aspect-square w-full"
       scrollWheelZoom
     >
       <TileLayer
@@ -170,6 +182,7 @@ export default function LocationRadiusMap({
         onCenterChange={onCenterChange}
         onViewportCenterChange={onViewportCenterChange}
       />
+      <ResizeMap />
       <CountryView country={country} hasCenter={Boolean(center)} />
       <Recenter center={center} radiusMiles={radiusMiles} />
       {visibleCenter ? (
