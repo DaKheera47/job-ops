@@ -205,21 +205,31 @@ export const PipelineFanoutCard = ({
 
       <CardContent className="flex flex-col gap-4 border-t p-4 sm:p-5">
         {fixture.browserCheck ? (
-          <Alert
-            variant="warning"
-            className="flex flex-col gap-3 pr-4 sm:flex-row sm:items-center sm:justify-between"
+          <div
+            key={challenge.extractorId}
+            className="flex items-center justify-between rounded-md border border-orange-500/20 bg-orange-500/10 p-3"
           >
-            <TriangleAlert />
-            <div className="min-w-0 flex-1">
-              <AlertTitle>
-                {fixture.browserCheck.source} needs a quick browser check
-              </AlertTitle>
-              <AlertDescription>
-                One search is paused. Everything else is still running.
-              </AlertDescription>
+            <div className="flex items-center gap-2 text-sm text-orange-400">
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <span>{challenge.extractorName}</span>
             </div>
-            <Button size="sm">Open now</Button>
-          </Alert>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
+              disabled={solvingExtractor === challenge.extractorId}
+              onClick={() => handleSolveChallenge(challenge.extractorId)}
+            >
+              {solvingExtractor === challenge.extractorId ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  Solving…
+                </>
+              ) : (
+                "Solve"
+              )}
+            </Button>
+          </div>
         ) : null}
 
         <section className="overflow-hidden rounded-xl border">
