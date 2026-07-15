@@ -1,3 +1,4 @@
+import { normalizeCountryKey } from "@shared/location-support.js";
 import type { LocationProximity } from "@shared/types/location.js";
 
 const METRES_PER_MILE = 1609.344;
@@ -16,6 +17,50 @@ type OverpassElement = {
   center?: { lat?: number; lon?: number };
   tags?: Record<string, string | undefined>;
 };
+
+async function reverseGeocodeAddress(
+  point: Pick<LocationProximity, "latitude" | "longitude">,
+  fetchImpl: typeof fetch,
+): Promise<Record<string, string | undefined> | null> {
+  try {
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      lat: String(point.latitude),
+      lon: String(point.longitude),
+      zoom: "10",
+      addressdetails: "1",
+      "accept-language": "en",
+    });
+    const response = await fetchImpl(
+      `https://nominatim.openstreetmap.org/reverse?${params}`,
+      {
+        headers: { "user-agent": "job-ops/1.0 proximity-search" },
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      address?: Record<string, string | undefined>;
+    };
+    return payload.address ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveCountryAtPoint(
+  point: Pick<LocationProximity, "latitude" | "longitude">,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string> {
+  const address = await reverseGeocodeAddress(point, fetchImpl);
+  const countryCode = address?.country_code?.trim().toUpperCase();
+  const countryName = countryCode
+    ? new Intl.DisplayNames(["en"], { type: "region" }).of(countryCode)
+    : address?.country;
+  const country = normalizeCountryKey(countryName);
+  if (country) return country;
+  throw new Error("Unable to detect the country at the selected map point.");
+}
 
 export function distanceMiles(
   from: Pick<LocationProximity, "latitude" | "longitude">,
@@ -104,36 +149,14 @@ export async function resolveNearbyPlaceNames(
 
   if (result.length > 0) return result;
 
-  try {
-    const params = new URLSearchParams({
-      format: "jsonv2",
-      lat: String(proximity.latitude),
-      lon: String(proximity.longitude),
-      zoom: "10",
-      addressdetails: "1",
-    });
-    const response = await fetchImpl(
-      `https://nominatim.openstreetmap.org/reverse?${params}`,
-      {
-        headers: { "user-agent": "job-ops/1.0 proximity-search" },
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
-    if (response.ok) {
-      const reverse = (await response.json()) as {
-        address?: Record<string, string | undefined>;
-      };
-      const name =
-        reverse.address?.city ??
-        reverse.address?.town ??
-        reverse.address?.village ??
-        reverse.address?.municipality ??
-        reverse.address?.county;
-      if (name?.trim()) return [name.trim()];
-    }
-  } catch {
-    // Return the same sanitized error used for unavailable Overpass endpoints.
-  }
+  const address = await reverseGeocodeAddress(proximity, fetchImpl);
+  const name =
+    address?.city ??
+    address?.town ??
+    address?.village ??
+    address?.municipality ??
+    address?.county;
+  if (name?.trim()) return [name.trim()];
 
   throw new Error("Unable to resolve nearby places for the selected map area.");
 }

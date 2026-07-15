@@ -69,14 +69,14 @@ saved budget when you start the run.
 
 **Map radius** is the default search-area mode. It does not require an address or postcode.
 
-1. Select a country.
-2. Click the map to place the centre, or move the map and select **Use map centre**.
-3. Drag the centre marker to move the area.
+1. Click the map to place the centre, or move the map and select **Use map centre**.
+2. JobOps detects the country at that point and shows it below the map.
+3. Drag the centre marker to move the area and detect the new country.
 4. Drag the circle's edge handle, or edit **Radius in miles**, to resize it.
 
-The default radius is `50` miles. The supported range is `1` to `200` miles. Changing the country clears the selected point so that a centre from the previous country is not reused accidentally.
+The default radius is `50` miles. The supported range is `1` to `200` miles. In Map radius mode, the map point is authoritative and there is no separate country selector.
 
-Select **Manual cities** when you prefer the previous multi-city input. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
+Select **Manual cities** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
 
 Map-radius support is applied consistently even when an extractor has no native radius option:
 
@@ -87,11 +87,11 @@ Map-radius support is applied consistently even when an extractor has no native 
 
 The last two behaviors are an approximation. For example, a role labelled `Wakefield` can match a 25-mile Leeds search after Wakefield is expanded from the map area. A role labelled only `West Yorkshire` may be rejected because the listing does not provide coordinates or a matching settlement name. Villages are not included in the full-radius Overpass query because those queries regularly time out; reverse geocoding still preserves the locality at the selected centre. The 25-place cap protects extractor request budgets but can omit smaller settlements in a large or dense radius.
 
-When you run a radius search, JobOps sends the centre and radius to the OpenStreetMap Overpass service to resolve nearby place names. If Overpass is unavailable, the centre is sent to OpenStreetMap Nominatim for reverse geocoding. OpenStreetMap tile servers also receive normal map-tile requests while the map is visible. If Hiring Cafe is selected, its search request receives the same centre and radius. Coordinates are stored in tenant-scoped settings and are not written to application logs.
+When you place or move the centre, JobOps sends it to OpenStreetMap Nominatim to detect the country. When you run a radius search, JobOps sends the centre and radius to the OpenStreetMap Overpass service to resolve nearby place names. OpenStreetMap tile servers also receive normal map-tile requests while the map is visible. If Hiring Cafe is selected, its search request receives the same centre and radius. Coordinates are stored in tenant-scoped settings and are not written to application logs.
 
 #### Country and source compatibility
 
-- Country selection affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
+- The detected map country—or the country selected in Manual cities mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
 - Each extractor declares its own supported countries. A country can be selectable even when JobSpy-backed sources do not support it, as long as another selected source can run or locally filter for that country.
 - UK-only sources are disabled for non-UK countries.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.

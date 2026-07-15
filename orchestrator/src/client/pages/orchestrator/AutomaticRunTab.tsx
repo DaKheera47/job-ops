@@ -861,7 +861,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               onSelectCustomPreset={() => setSelectedPreset("custom")}
               onCountryChange={(country) => {
                 setValue("country", country, { shouldDirty: true });
-                if (normalizeUiCountryKey(country) !== values.country) {
+                if (
+                  values.locationMode === "cities" &&
+                  normalizeUiCountryKey(country) !== values.country
+                ) {
                   setValue("proximity", null, { shouldDirty: true });
                 }
               }}

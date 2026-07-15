@@ -1,6 +1,8 @@
+import { detectLocationCountry } from "@client/api";
+import { formatCountryLabel } from "@shared/location-support.js";
 import type { LocationProximity } from "@shared/types";
 import { LocateFixed, MapPin } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +22,7 @@ interface LocationRadiusPickerProps {
   value: LocationProximity | null;
   radiusMiles: number;
   onChange: (value: LocationProximity) => void;
+  onCountryChange: (country: string) => void;
 }
 
 function getCountryCenter(country: string): MapPoint {
@@ -33,7 +36,10 @@ export function LocationRadiusPicker({
   value,
   radiusMiles,
   onChange,
+  onCountryChange,
 }: LocationRadiusPickerProps) {
+  const detectionRequest = useRef(0);
+  const [isDetectingCountry, setIsDetectingCountry] = useState(false);
   const [viewportCenter, setViewportCenter] = useState<MapPoint>(
     value ?? getCountryCenter(country),
   );
@@ -44,6 +50,25 @@ export function LocationRadiusPicker({
 
   const setCenter = (center: MapPoint) => {
     onChange({ ...center, radiusMiles: value?.radiusMiles ?? radiusMiles });
+    onCountryChange("");
+    setIsDetectingCountry(true);
+    const request = ++detectionRequest.current;
+    void detectLocationCountry(center)
+      .then(({ country: detectedCountry }) => {
+        if (request === detectionRequest.current) {
+          onCountryChange(detectedCountry);
+        }
+      })
+      .catch(() => {
+        if (request === detectionRequest.current) {
+          toast.error("The country at this map point could not be detected.");
+        }
+      })
+      .finally(() => {
+        if (request === detectionRequest.current) {
+          setIsDetectingCountry(false);
+        }
+      });
   };
 
   const setRadius = (nextRadius: number) => {
@@ -124,6 +149,22 @@ export function LocationRadiusPicker({
           <FieldError>Select a centre point on the map.</FieldError>
         ) : null}
       </Field>
+
+      {value ? (
+        <div
+          className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
+          aria-live="polite"
+        >
+          <span className="text-muted-foreground">Detected country</span>
+          <span className="font-medium">
+            {isDetectingCountry
+              ? "Detecting…"
+              : country
+                ? formatCountryLabel(country)
+                : "Not detected"}
+          </span>
+        </div>
+      ) : null}
 
       <Field>
         <FieldLabel htmlFor="location-radius-miles">Radius in miles</FieldLabel>

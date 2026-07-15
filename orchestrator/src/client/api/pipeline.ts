@@ -24,6 +24,16 @@ export async function getPipelineProgressSnapshot(): Promise<PipelineProgressSta
   return fetchApi<PipelineProgressState>("/pipeline/progress/snapshot");
 }
 
+export async function detectLocationCountry(point: {
+  latitude: number;
+  longitude: number;
+}): Promise<{ country: string }> {
+  return fetchApi<{ country: string }>("/pipeline/location-country", {
+    method: "POST",
+    body: JSON.stringify(point),
+  });
+}
+
 export async function getPipelineRuns(): Promise<PipelineRun[]> {
   return fetchApi<PipelineRun[]>("/pipeline/runs");
 }

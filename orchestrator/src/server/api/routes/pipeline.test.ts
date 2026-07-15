@@ -3,8 +3,9 @@ import type { PipelineSearchPresetConfig } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-const { mockCallJson } = vi.hoisted(() => ({
+const { mockCallJson, mockResolveCountryAtPoint } = vi.hoisted(() => ({
   mockCallJson: vi.fn(),
+  mockResolveCountryAtPoint: vi.fn().mockResolvedValue("united kingdom"),
 }));
 
 vi.mock("@server/services/modelSelection", () => ({
@@ -12,6 +13,13 @@ vi.mock("@server/services/modelSelection", () => ({
   createConfiguredLlmService: vi.fn().mockResolvedValue({
     callJson: mockCallJson,
   }),
+}));
+
+vi.mock("@server/services/proximity-search", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@server/services/proximity-search")
+  >()),
+  resolveCountryAtPoint: mockResolveCountryAtPoint,
 }));
 
 describe.sequential("Pipeline API routes", () => {
@@ -35,6 +43,32 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.isRunning).toBe(false);
     expect(body.data.lastRun).toBeNull();
+  });
+
+  it("detects the country at a selected map point", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/location-country`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 53.8, longitude: -1.55 }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      data: { country: "united kingdom" },
+    });
+    expect(mockResolveCountryAtPoint).toHaveBeenCalledWith({
+      latitude: 53.8,
+      longitude: -1.55,
+    });
+
+    const invalidRes = await fetch(`${baseUrl}/api/pipeline/location-country`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 100, longitude: -1.55 }),
+    });
+    expect(invalidRes.status).toBe(400);
   });
 
   it("returns the current pipeline progress snapshot in the API envelope", async () => {

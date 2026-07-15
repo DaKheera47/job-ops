@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { distanceMiles, resolveNearbyPlaceNames } from "./proximity-search";
+import {
+  distanceMiles,
+  resolveCountryAtPoint,
+  resolveNearbyPlaceNames,
+} from "./proximity-search";
 
 describe("proximity search", () => {
   it("calculates distance and plans nearby places around the clicked point", async () => {
@@ -114,5 +118,20 @@ describe("proximity search", () => {
     expect(fetchImpl.mock.calls[2]?.[0]).toContain(
       "https://nominatim.openstreetmap.org/reverse?",
     );
+  });
+
+  it("detects the country at the selected point", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          address: { country: "United Kingdom", country_code: "gb" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      resolveCountryAtPoint({ latitude: 53.8, longitude: -1.55 }, fetchImpl),
+    ).resolves.toBe("united kingdom");
   });
 });

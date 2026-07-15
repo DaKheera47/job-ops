@@ -278,7 +278,7 @@ function LocationPreferences({
           </div>
         </AccordionTrigger>
         <AccordionContent className="space-y-4 pt-4">
-          {countrySuggestion ? (
+          {values.locationMode === "cities" && countrySuggestion ? (
             <Alert className="border-sky-500/20 bg-sky-500/5">
               <Info className="h-4 w-4" />
               <AlertTitle>Detected from your browser</AlertTitle>
@@ -350,33 +350,33 @@ function LocationPreferences({
             </RadioGroup>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-            <div className="space-y-2">
-              <Label className="text-base font-semibold">Country</Label>
-              <SearchableDropdown
-                value={values.country}
-                options={countryOptions}
-                onValueChange={onCountryChange}
-                placeholder="Select country"
-                searchPlaceholder="Search country..."
-                emptyText="No matching countries."
-                triggerClassName="h-10 w-full"
-                ariaLabel={
-                  values.country
-                    ? formatCountryLabel(values.country)
-                    : "Select country"
-                }
-              />
-              {countrySelectionInvalid ? (
-                <p className="text-xs text-destructive">
-                  {countrySuggestion
-                    ? "Select a country or use the browser suggestion."
-                    : "Select a country."}
-                </p>
-              ) : null}
-            </div>
+          {values.locationMode === "cities" ? (
+            <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Country</Label>
+                <SearchableDropdown
+                  value={values.country}
+                  options={countryOptions}
+                  onValueChange={onCountryChange}
+                  placeholder="Select country"
+                  searchPlaceholder="Search country..."
+                  emptyText="No matching countries."
+                  triggerClassName="h-10 w-full"
+                  ariaLabel={
+                    values.country
+                      ? formatCountryLabel(values.country)
+                      : "Select country"
+                  }
+                />
+                {countrySelectionInvalid ? (
+                  <p className="text-xs text-destructive">
+                    {countrySuggestion
+                      ? "Select a country or use the browser suggestion."
+                      : "Select a country."}
+                  </p>
+                ) : null}
+              </div>
 
-            {values.locationMode === "cities" ? (
               <div className="space-y-2">
                 <Label
                   htmlFor="city-locations-input"
@@ -395,8 +395,8 @@ function LocationPreferences({
                   removeLabelPrefix="Remove city"
                 />
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {values.locationMode === "radius" ? (
             <LocationRadiusPicker
@@ -404,6 +404,7 @@ function LocationPreferences({
               value={values.proximity}
               radiusMiles={values.proximity?.radiusMiles ?? 50}
               onChange={onProximityChange}
+              onCountryChange={onCountryChange}
             />
           ) : null}
 

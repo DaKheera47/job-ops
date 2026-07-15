@@ -71,6 +71,7 @@ vi.mock("@/lib/user-location", () => ({
 }));
 
 vi.mock("@client/api", () => ({
+  detectLocationCountry: vi.fn(),
   planPipelineSearch: vi.fn(),
 }));
 
@@ -152,6 +153,10 @@ describe("AutomaticRunTab", () => {
   beforeEach(() => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
+    vi.mocked(api.detectLocationCountry).mockReset();
+    vi.mocked(api.detectLocationCountry).mockResolvedValue({
+      country: "united kingdom",
+    });
     vi.mocked(api.planPipelineSearch).mockReset();
     ensureStorage().clear();
     Element.prototype.hasPointerCapture ??= vi.fn(() => false);
@@ -290,6 +295,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "Select country" }),
@@ -317,6 +323,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     fireEvent.click(screen.getByRole("button", { name: "Use suggestion" }));
 
     expect(
@@ -327,7 +334,7 @@ describe("AutomaticRunTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not default the country picker to United Kingdom", () => {
+  it("hides the manual country picker in the default map mode", () => {
     render(
       <AutomaticRunTab
         open
@@ -344,8 +351,8 @@ describe("AutomaticRunTab", () => {
     openConfigureDetails();
 
     expect(
-      screen.getByRole("button", { name: "Select country" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Select country" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
@@ -372,14 +379,28 @@ describe("AutomaticRunTab", () => {
     openConfigureDetails();
 
     expect(screen.getByRole("radio", { name: /Map radius/i })).toBeChecked();
+    expect(
+      screen.queryByRole("button", { name: "United Kingdom" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Use map centre" }),
     );
-    expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
+    await waitFor(() => {
+      expect(api.detectLocationCountry).toHaveBeenCalledWith({
+        latitude: 54.5,
+        longitude: -3,
+      });
+      expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
+    });
+    expect(screen.getByText("Detected country")).toBeInTheDocument();
+    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
+    expect(
+      screen.getByRole("button", { name: "United Kingdom" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Cities")).toBeInTheDocument();
     expect(screen.queryByLabelText("Radius in miles")).not.toBeInTheDocument();
   });
@@ -411,6 +432,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -444,6 +466,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),

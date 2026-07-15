@@ -39,6 +39,7 @@ import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { reserveHostedUsage } from "@server/services/hosted-usage";
 import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
+import { resolveCountryAtPoint } from "@server/services/proximity-search";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
   createLocationIntent,
@@ -73,6 +74,10 @@ const pipelineRunBudgetSchema = z
   .int()
   .max(MAX_PIPELINE_RUN_BUDGET)
   .transform(normalizePipelineRunBudget);
+const locationCountrySchema = z.object({
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+});
 
 function toSelectedSourcesValue(
   sources: readonly string[] | undefined,
@@ -137,6 +142,26 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
     );
   }
 });
+
+pipelineRouter.post(
+  "/location-country",
+  async (req: Request, res: Response) => {
+    try {
+      const point = locationCountrySchema.parse(req.body);
+      const country = await resolveCountryAtPoint(point);
+      ok(res, { country });
+    } catch (error) {
+      fail(
+        res,
+        error instanceof z.ZodError
+          ? badRequest("Invalid map point.", error.flatten())
+          : serviceUnavailable(
+              "Unable to detect the country at the selected map point.",
+            ),
+      );
+    }
+  },
+);
 
 /**
  * GET /api/pipeline/progress/snapshot - Get the current pipeline progress state
