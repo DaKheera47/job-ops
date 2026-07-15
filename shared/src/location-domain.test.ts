@@ -181,6 +181,27 @@ describe("location-domain", () => {
     });
   });
 
+  it("matches structured country evidence using codes and localized names", () => {
+    const intent = {
+      selectedCountry: "netherlands",
+      cityLocations: [],
+      workplaceTypes: ["onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+    } as const;
+
+    expect(matchLocationIntent(intent, { country: "NL" })).toMatchObject({
+      matched: true,
+      countryMatched: true,
+    });
+    expect(matchLocationIntent(intent, { country: "Nederland" })).toMatchObject(
+      {
+        matched: true,
+        countryMatched: true,
+      },
+    );
+  });
+
   it("keeps flexible city matching available after country matches", () => {
     expect(
       matchLocationIntent(

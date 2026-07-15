@@ -704,10 +704,10 @@ export function matchLocationIntent(
     };
   }
 
-  const countryMatched =
-    normalizedEvidence.country !== null
-      ? normalizeCountryKey(normalizedEvidence.country) === selectedCountry
-      : matchesRequestedCountry(evidenceLocation, selectedCountry);
+  const countryMatched = matchesRequestedCountry(
+    normalizedEvidence.country ?? evidenceLocation,
+    selectedCountry,
+  );
 
   if (countryMatched) {
     if (requestedCities.length === 0) {
