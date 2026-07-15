@@ -6,8 +6,8 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
 ];
-// ponytail: cap expansion to protect source budgets; add spatial coverage
-// selection if searches show meaningful gaps around dense areas.
+// ponytail: cities/towns keep large-radius Overpass queries bounded; add a
+// local place dataset if village-level coverage becomes worth the dependency.
 const MAX_QUERY_PLACES = 25;
 
 type OverpassElement = {
@@ -39,7 +39,7 @@ export async function resolveNearbyPlaceNames(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string[]> {
   const radiusMetres = Math.round(proximity.radiusMiles * METRES_PER_MILE);
-  const query = `[out:json][timeout:12];nwr(around:${radiusMetres},${proximity.latitude},${proximity.longitude})[place~"^(city|town|village)$"][name];out center ${MAX_OVERPASS_ELEMENTS};`;
+  const query = `[out:json][timeout:12];node(around:${radiusMetres},${proximity.latitude},${proximity.longitude})[place~"^(city|town)$"][name];out body ${MAX_OVERPASS_ELEMENTS};`;
   let payload: { elements?: OverpassElement[] } | null = null;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
@@ -61,18 +61,12 @@ export async function resolveNearbyPlaceNames(
     }
   }
 
-  if (!payload) {
-    throw new Error(
-      "Unable to resolve nearby places for the selected map area.",
-    );
-  }
-
   const places = new Map<
     string,
     { name: string; distance: number; population: number }
   >();
 
-  for (const element of payload.elements ?? []) {
+  for (const element of payload?.elements ?? []) {
     const name = element.tags?.["name:en"] ?? element.tags?.name;
     const latitude = element.lat ?? element.center?.lat;
     const longitude = element.lon ?? element.center?.lon;
@@ -108,10 +102,38 @@ export async function resolveNearbyPlaceNames(
     .slice(0, MAX_QUERY_PLACES)
     .map((place) => place.name);
 
-  if (result.length === 0) {
-    throw new Error(
-      "No nearby places were found inside the selected map area.",
+  if (result.length > 0) return result;
+
+  try {
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      lat: String(proximity.latitude),
+      lon: String(proximity.longitude),
+      zoom: "10",
+      addressdetails: "1",
+    });
+    const response = await fetchImpl(
+      `https://nominatim.openstreetmap.org/reverse?${params}`,
+      {
+        headers: { "user-agent": "job-ops/1.0 proximity-search" },
+        signal: AbortSignal.timeout(15_000),
+      },
     );
+    if (response.ok) {
+      const reverse = (await response.json()) as {
+        address?: Record<string, string | undefined>;
+      };
+      const name =
+        reverse.address?.city ??
+        reverse.address?.town ??
+        reverse.address?.village ??
+        reverse.address?.municipality ??
+        reverse.address?.county;
+      if (name?.trim()) return [name.trim()];
+    }
+  } catch {
+    // Return the same sanitized error used for unavailable Overpass endpoints.
   }
-  return result;
+
+  throw new Error("Unable to resolve nearby places for the selected map area.");
 }

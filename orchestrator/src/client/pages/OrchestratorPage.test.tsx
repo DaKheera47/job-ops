@@ -1219,6 +1219,31 @@ describe("OrchestratorPage", () => {
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
   });
 
+  it("shows pipeline progress instead of the composer during a first run", () => {
+    mockJobs = [];
+    mockSelectedJob = null;
+    mockIsPipelineRunning = true;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("summary")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens manual import from the first-run search composer state", () => {
     mockJobs = [];
     mockSelectedJob = null;

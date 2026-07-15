@@ -82,12 +82,12 @@ Map-radius support is applied consistently even when an extractor has no native 
 
 - Hiring Cafe receives the selected coordinates and radius directly.
 - JobSpy-backed sources receive the nearest named place plus their native distance option.
-- Sources that accept location strings receive up to 25 nearby OpenStreetMap city, town, or village names, ranked by proximity and population.
+- Sources that accept location strings receive up to 25 nearby OpenStreetMap city or town names, ranked by proximity and population. If the Overpass service is unavailable, JobOps uses the locality nearest the selected centre instead of failing the whole run.
 - Broad sources that cannot accept a location filter are filtered centrally against those nearby place names after discovery.
 
-The last two behaviors are an approximation. For example, a role labelled `Wakefield` can match a 25-mile Leeds search after Wakefield is expanded from the map area. A role labelled only `West Yorkshire` may be rejected because the listing does not provide coordinates or a matching settlement name. The 25-place cap protects extractor request budgets but can omit smaller settlements in a large or dense radius.
+The last two behaviors are an approximation. For example, a role labelled `Wakefield` can match a 25-mile Leeds search after Wakefield is expanded from the map area. A role labelled only `West Yorkshire` may be rejected because the listing does not provide coordinates or a matching settlement name. Villages are not included in the full-radius Overpass query because those queries regularly time out; reverse geocoding still preserves the locality at the selected centre. The 25-place cap protects extractor request budgets but can omit smaller settlements in a large or dense radius.
 
-When you run a radius search, JobOps sends the centre and radius to the OpenStreetMap Overpass service to resolve nearby place names. OpenStreetMap tile servers also receive normal map-tile requests while the map is visible. If Hiring Cafe is selected, its search request receives the same centre and radius. Coordinates are stored in tenant-scoped settings and are not written to application logs.
+When you run a radius search, JobOps sends the centre and radius to the OpenStreetMap Overpass service to resolve nearby place names. If Overpass is unavailable, the centre is sent to OpenStreetMap Nominatim for reverse geocoding. OpenStreetMap tile servers also receive normal map-tile requests while the map is visible. If Hiring Cafe is selected, its search request receives the same centre and radius. Coordinates are stored in tenant-scoped settings and are not written to application logs.
 
 #### Country and source compatibility
 

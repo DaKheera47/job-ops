@@ -38,9 +38,12 @@ describe("proximity search", () => {
     ).resolves.toEqual(["Leeds", "Wakefield"]);
     expect(fetchImpl).toHaveBeenCalledOnce();
     const request = fetchImpl.mock.calls[0]?.[1];
-    expect(decodeURIComponent(String(request?.body))).toContain(
-      "out center 500",
-    );
+    const query = decodeURIComponent(String(request?.body));
+    expect(query).toContain("node(around:");
+    expect(query).toContain('place~"^(city|town)$"');
+    expect(query).toContain("out body 500");
+    expect(query).not.toContain("nwr(");
+    expect(query).not.toContain("village");
   });
 
   it("does not expose upstream response bodies when place lookup fails", async () => {
@@ -58,7 +61,7 @@ describe("proximity search", () => {
     ).rejects.toThrow(
       "Unable to resolve nearby places for the selected map area.",
     );
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("falls back when the primary Overpass endpoint is unavailable", async () => {
@@ -88,6 +91,28 @@ describe("proximity search", () => {
     ).resolves.toEqual(["Leeds"]);
     expect(fetchImpl.mock.calls[1]?.[0]).toBe(
       "https://overpass.kumi.systems/api/interpreter",
+    );
+  });
+
+  it("uses the centre locality when Overpass is unavailable", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ address: { village: "Haworth" } }), {
+          status: 200,
+        }),
+      );
+
+    await expect(
+      resolveNearbyPlaceNames(
+        { latitude: 53.83, longitude: -1.95, radiusMiles: 50 },
+        fetchImpl,
+      ),
+    ).resolves.toEqual(["Haworth"]);
+    expect(fetchImpl.mock.calls[2]?.[0]).toContain(
+      "https://nominatim.openstreetmap.org/reverse?",
     );
   });
 });

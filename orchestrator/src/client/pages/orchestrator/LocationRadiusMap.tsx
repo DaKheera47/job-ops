@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 
 import { divIcon, type LeafletMouseEvent } from "leaflet";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Circle,
   MapContainer,
@@ -118,15 +118,18 @@ export default function LocationRadiusMap({
   onRadiusChange,
   onViewportCenterChange,
 }: LocationRadiusMapProps) {
+  const [dragCenter, setDragCenter] = useState<MapPoint | null>(null);
+  const visibleCenter = dragCenter ?? center;
   const view = initialView(country);
   const radiusMetres = radiusMiles * 1609.344;
   const handlePosition = useMemo<[number, number] | null>(() => {
-    if (!center) return null;
+    if (!visibleCenter) return null;
     const longitudeOffset =
       radiusMiles /
-      (69.172 * Math.max(0.1, Math.cos((center.latitude * Math.PI) / 180)));
-    return [center.latitude, center.longitude + longitudeOffset];
-  }, [center, radiusMiles]);
+      (69.172 *
+        Math.max(0.1, Math.cos((visibleCenter.latitude * Math.PI) / 180)));
+    return [visibleCenter.latitude, visibleCenter.longitude + longitudeOffset];
+  }, [visibleCenter, radiusMiles]);
 
   return (
     <MapContainer
@@ -145,10 +148,10 @@ export default function LocationRadiusMap({
       />
       <CountryView country={country} hasCenter={Boolean(center)} />
       <Recenter center={center} />
-      {center ? (
+      {visibleCenter ? (
         <>
           <Circle
-            center={[center.latitude, center.longitude]}
+            center={[visibleCenter.latitude, visibleCenter.longitude]}
             radius={radiusMetres}
             pathOptions={{
               color: "var(--primary)",
@@ -158,22 +161,31 @@ export default function LocationRadiusMap({
             }}
           />
           <Marker
-            position={[center.latitude, center.longitude]}
+            position={[visibleCenter.latitude, visibleCenter.longitude]}
             icon={centreIcon}
             draggable
             eventHandlers={{
-              dragend(event) {
+              drag(event) {
                 const point = event.target.getLatLng();
-                onCenterChange({
+                setDragCenter({
                   latitude: point.lat,
                   longitude: point.lng,
                 });
+              },
+              dragend(event) {
+                const point = event.target.getLatLng();
+                const nextCenter = {
+                  latitude: point.lat,
+                  longitude: point.lng,
+                };
+                setDragCenter(null);
+                onCenterChange(nextCenter);
               },
             }}
           />
           {handlePosition ? (
             <RadiusHandle
-              center={center}
+              center={visibleCenter}
               position={handlePosition}
               onRadiusChange={onRadiusChange}
             />
