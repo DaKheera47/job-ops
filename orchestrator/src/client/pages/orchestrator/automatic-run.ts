@@ -117,32 +117,39 @@ function migrateLegacyRunMemoryStorage(raw: string): void {
 export const SEARCH_SCOPE_OPTIONS: Array<{
   value: LocationSearchScope;
   label: string;
+  description: string;
 }> = [
   {
     value: "selected_only",
     label: "Only selected locations",
+    description: "Limit results to your chosen map area or cities.",
   },
   {
     value: "selected_plus_remote_worldwide",
     label: "Selected locations + remote worldwide",
+    description: "Also include remote roles available worldwide.",
   },
   {
     value: "remote_worldwide_prioritize_selected",
     label: "Remote worldwide",
+    description: "Search globally and prioritise your selected locations.",
   },
 ];
 
 export const MATCH_STRICTNESS_OPTIONS: Array<{
   value: LocationMatchStrictness;
   label: string;
+  description: string;
 }> = [
   {
     value: "exact_only",
     label: "Exact matches only",
+    description: "Only jobs explicitly matching your selected location.",
   },
   {
     value: "flexible",
     label: "Include likely matches",
+    description: "Include nearby and plausibly compatible locations.",
   },
 ];
 

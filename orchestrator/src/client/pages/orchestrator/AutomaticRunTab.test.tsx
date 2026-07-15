@@ -396,7 +396,7 @@ describe("AutomaticRunTab", () => {
       expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
     });
     expect(screen.getByText("Detected country")).toBeInTheDocument();
-    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("United Kingdom")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     expect(

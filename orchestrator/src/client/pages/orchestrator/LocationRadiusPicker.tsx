@@ -13,6 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { MapPoint } from "./LocationRadiusMap";
 
 const LocationRadiusMap = lazy(() => import("./LocationRadiusMap"));
@@ -150,39 +151,47 @@ export function LocationRadiusPicker({
         ) : null}
       </Field>
 
-      {value ? (
-        <div
-          className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
-          aria-live="polite"
-        >
-          <span className="text-muted-foreground">Detected country</span>
-          <span className="font-medium">
-            {isDetectingCountry
-              ? "Detecting…"
-              : country
-                ? formatCountryLabel(country)
-                : "Not detected"}
-          </span>
-        </div>
-      ) : null}
+      <div className={cn("grid gap-4", value && "sm:grid-cols-2")}>
+        {value ? (
+          <Field>
+            <FieldLabel htmlFor="location-detected-country">
+              Detected country
+            </FieldLabel>
+            <Input
+              id="location-detected-country"
+              value={
+                isDetectingCountry
+                  ? "Detecting…"
+                  : country
+                    ? formatCountryLabel(country)
+                    : "Not detected"
+              }
+              readOnly
+              aria-live="polite"
+            />
+          </Field>
+        ) : null}
 
-      <Field>
-        <FieldLabel htmlFor="location-radius-miles">Radius in miles</FieldLabel>
-        <Input
-          id="location-radius-miles"
-          type="number"
-          min={1}
-          max={200}
-          value={value?.radiusMiles ?? radiusMiles}
-          onChange={(event) => {
-            const next = Number.parseInt(event.target.value, 10);
-            if (Number.isFinite(next)) {
-              setRadius(Math.min(200, Math.max(1, next)));
-            }
-          }}
-          disabled={!value}
-        />
-      </Field>
+        <Field>
+          <FieldLabel htmlFor="location-radius-miles">
+            Radius in miles
+          </FieldLabel>
+          <Input
+            id="location-radius-miles"
+            type="number"
+            min={1}
+            max={200}
+            value={value?.radiusMiles ?? radiusMiles}
+            onChange={(event) => {
+              const next = Number.parseInt(event.target.value, 10);
+              if (Number.isFinite(next)) {
+                setRadius(Math.min(200, Math.max(1, next)));
+              }
+            }}
+            disabled={!value}
+          />
+        </Field>
+      </div>
     </FieldGroup>
   );
 }

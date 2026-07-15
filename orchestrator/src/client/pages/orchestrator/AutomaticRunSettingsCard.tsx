@@ -21,13 +21,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
-import { cn } from "@/lib/utils";
-import { AutomaticChoiceCardGroup } from "./AutomaticChoiceCardGroup";
+import {
+  AutomaticChoiceCardGroup,
+  AutomaticMultiChoiceCardGroup,
+} from "./AutomaticChoiceCardGroup";
 import {
   type AutomaticRunValues,
   MATCH_STRICTNESS_OPTIONS,
@@ -260,41 +260,21 @@ function LocationPreferences({
 
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium">Work arrangement</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
-            const checkboxId = `workplace-type-${workplaceType}`;
-            const checked = workplaceTypes.includes(workplaceType);
-
-            return (
-              <label
-                key={workplaceType}
-                htmlFor={checkboxId}
-                className="flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-              >
-                <Checkbox
-                  id={checkboxId}
-                  aria-label={
-                    workplaceType === "onsite"
-                      ? "Onsite"
-                      : formatWorkplaceTypeLabel(workplaceType)
-                  }
-                  checked={checked}
-                  onCheckedChange={(nextChecked) => {
-                    onToggleWorkplaceType(workplaceType, nextChecked === true);
-                  }}
-                />
-                <span className="flex flex-col gap-1">
-                  <span className="font-medium">
-                    {formatWorkplaceTypeLabel(workplaceType)}
-                  </span>
-                  <span className="text-xs leading-4 text-muted-foreground">
-                    {formatWorkplaceTypeDescription(workplaceType)}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <AutomaticMultiChoiceCardGroup
+          ariaLabel="Work arrangement"
+          values={workplaceTypes}
+          columns={3}
+          options={WORKPLACE_TYPE_OPTIONS.map((workplaceType) => ({
+            value: workplaceType,
+            label: formatWorkplaceTypeLabel(workplaceType),
+            description: formatWorkplaceTypeDescription(workplaceType),
+            ariaLabel:
+              workplaceType === "onsite"
+                ? "Onsite"
+                : formatWorkplaceTypeLabel(workplaceType),
+          }))}
+          onValueChange={onToggleWorkplaceType}
+        />
         {workplaceTypeSelectionInvalid ? (
           <p className="text-xs text-destructive">
             Select at least one workplace type.
@@ -308,13 +288,13 @@ function LocationPreferences({
 interface RadioOption {
   value: string;
   label: string;
+  description: string;
 }
 
 interface RadioOptionGroupProps {
   label: string;
   value: string;
   options: RadioOption[];
-  idPrefix: string;
   onChange: (value: string) => void;
 }
 
@@ -322,7 +302,6 @@ function RadioOptionGroup({
   label,
   value,
   options,
-  idPrefix,
   onChange,
 }: RadioOptionGroupProps) {
   return (
@@ -330,22 +309,13 @@ function RadioOptionGroup({
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
-      <RadioGroup value={value} onValueChange={onChange} className="gap-2">
-        {options.map((option) => {
-          const id = `${idPrefix}-${option.value}`;
-          const selected = value === option.value;
-          return (
-            <label
-              key={option.value}
-              htmlFor={id}
-              className={getRadioOptionClassName(selected)}
-            >
-              <RadioGroupItem value={option.value} id={id} />
-              <span className="text-sm font-medium">{option.label}</span>
-            </label>
-          );
-        })}
-      </RadioGroup>
+      <AutomaticChoiceCardGroup
+        ariaLabel={label}
+        value={value}
+        options={options}
+        columns={1}
+        onValueChange={onChange}
+      />
     </div>
   );
 }
@@ -407,7 +377,6 @@ export function AutomaticRunAdvancedSettings({
                   label="Location scope"
                   value={searchScope}
                   options={SEARCH_SCOPE_OPTIONS}
-                  idPrefix="search-scope"
                   onChange={(value) =>
                     onSearchScopeChange(value as LocationSearchScope)
                   }
@@ -416,7 +385,6 @@ export function AutomaticRunAdvancedSettings({
                   label="Match strictness"
                   value={matchStrictness}
                   options={MATCH_STRICTNESS_OPTIONS}
-                  idPrefix="match-strictness"
                   onChange={(value) =>
                     onMatchStrictnessChange(value as LocationMatchStrictness)
                   }
@@ -480,13 +448,4 @@ function formatWorkplaceTypeDescription(workplaceType: WorkplaceType): string {
   if (workplaceType === "remote") return "Work away from an office.";
   if (workplaceType === "hybrid") return "Split home and office time.";
   return "Primarily based at the workplace.";
-}
-
-function getRadioOptionClassName(selected: boolean): string {
-  return cn(
-    "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-sm transition-colors",
-    selected
-      ? "border-border/70 bg-muted/20 text-foreground"
-      : "border-border/60 text-foreground hover:bg-muted/20",
-  );
 }
