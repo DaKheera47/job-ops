@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import LocationRadiusMap from "./LocationRadiusMap";
 
+const { fitBoundsMock } = vi.hoisted(() => ({ fitBoundsMock: vi.fn() }));
+
 vi.mock("leaflet", () => ({
   divIcon: ({ className }: { className: string }) => ({ className }),
+  latLng: () => ({ toBounds: (metres: number) => metres }),
 }));
 
 vi.mock("react-leaflet", () => ({
@@ -40,6 +43,7 @@ vi.mock("react-leaflet", () => ({
   },
   useMap: () => ({
     distance: () => 1609.344,
+    fitBounds: fitBoundsMock,
     panTo: vi.fn(),
     setView: vi.fn(),
   }),
@@ -49,6 +53,23 @@ vi.mock("react-leaflet", () => ({
 }));
 
 describe("LocationRadiusMap", () => {
+  it("frames the saved radius on initial load", () => {
+    render(
+      <LocationRadiusMap
+        center={{ latitude: 47.0776, longitude: 8.02 }}
+        country="switzerland"
+        radiusMiles={43}
+        onCenterChange={vi.fn()}
+        onRadiusChange={vi.fn()}
+        onViewportCenterChange={vi.fn()}
+      />,
+    );
+
+    expect(fitBoundsMock).toHaveBeenCalledWith(43 * 1609.344 * 2, {
+      padding: [24, 24],
+    });
+  });
+
   it("moves the radius and handle with the centre marker before committing", () => {
     const onCenterChange = vi.fn();
     render(

@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 
-import { divIcon, type LeafletMouseEvent } from "leaflet";
-import { useEffect, useMemo, useState } from "react";
+import { divIcon, type LeafletMouseEvent, latLng } from "leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Circle,
   MapContainer,
@@ -59,11 +59,35 @@ function MapEvents({
   return null;
 }
 
-function Recenter({ center }: { center: MapPoint | null }) {
+function Recenter({
+  center,
+  radiusMiles,
+}: {
+  center: MapPoint | null;
+  radiusMiles: number;
+}) {
   const map = useMap();
+  const previousCenter = useRef<MapPoint | null>(null);
   useEffect(() => {
-    if (center) map.panTo([center.latitude, center.longitude]);
-  }, [center, map]);
+    if (!center) {
+      previousCenter.current = null;
+      return;
+    }
+    if (!previousCenter.current) {
+      map.fitBounds(
+        latLng(center.latitude, center.longitude).toBounds(
+          radiusMiles * 1609.344 * 2,
+        ),
+        { padding: [24, 24] },
+      );
+    } else if (
+      previousCenter.current.latitude !== center.latitude ||
+      previousCenter.current.longitude !== center.longitude
+    ) {
+      map.panTo([center.latitude, center.longitude]);
+    }
+    previousCenter.current = center;
+  }, [center, map, radiusMiles]);
   return null;
 }
 
@@ -147,7 +171,7 @@ export default function LocationRadiusMap({
         onViewportCenterChange={onViewportCenterChange}
       />
       <CountryView country={country} hasCenter={Boolean(center)} />
-      <Recenter center={center} />
+      <Recenter center={center} radiusMiles={radiusMiles} />
       {visibleCenter ? (
         <>
           <Circle
