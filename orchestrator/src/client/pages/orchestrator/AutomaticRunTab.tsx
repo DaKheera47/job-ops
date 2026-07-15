@@ -94,6 +94,8 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   runBudget: MIN_PIPELINE_RUN_BUDGET,
   country: "",
   cityLocations: [],
+  locationMode: "radius",
+  proximity: null,
   workplaceTypes: ["remote", "hybrid", "onsite"],
   searchScope: "selected_only",
   matchStrictness: "exact_only",
@@ -106,6 +108,8 @@ interface AutomaticRunFormValues {
   country: string;
   cityLocations: string[];
   cityLocationDraft: string;
+  locationMode: AutomaticRunValues["locationMode"];
+  proximity: AutomaticRunValues["proximity"];
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -187,6 +191,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       country: DEFAULT_VALUES.country,
       cityLocations: [],
       cityLocationDraft: "",
+      locationMode: DEFAULT_VALUES.locationMode,
+      proximity: DEFAULT_VALUES.proximity,
       workplaceTypes: DEFAULT_VALUES.workplaceTypes,
       searchScope: DEFAULT_VALUES.searchScope,
       matchStrictness: DEFAULT_VALUES.matchStrictness,
@@ -202,6 +208,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const countryInput = watch("country");
   const cityLocations = watch("cityLocations");
   const cityLocationDraft = watch("cityLocationDraft");
+  const locationMode = watch("locationMode");
+  const proximity = watch("proximity");
   const workplaceTypes = watch("workplaceTypes");
   const searchScope = watch("searchScope");
   const matchStrictness = watch("matchStrictness");
@@ -266,6 +274,21 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const rememberedMatchStrictness =
       settings?.locationMatchStrictness?.value ??
       DEFAULT_VALUES.matchStrictness;
+    const rememberedLocationMode =
+      settings?.locationSearchMode?.override ??
+      (rememberedLocations.length > 0 ? "cities" : DEFAULT_VALUES.locationMode);
+    const rememberedProximity =
+      settings?.locationLatitude?.value != null &&
+      settings?.locationLongitude?.value != null
+        ? {
+            latitude: settings.locationLatitude.value,
+            longitude: settings.locationLongitude.value,
+            radiusMiles:
+              settings.locationRadiusMiles?.value ??
+              DEFAULT_VALUES.proximity?.radiusMiles ??
+              50,
+          }
+        : null;
 
     setBrowserCountrySuggestion(suggestion);
     reset({
@@ -275,6 +298,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       country: countryValue,
       cityLocations: rememberedLocations,
       cityLocationDraft: "",
+      locationMode: rememberedLocationMode,
+      proximity: rememberedProximity,
       workplaceTypes: rememberedWorkplaceTypes,
       searchScope: rememberedSearchScope,
       matchStrictness: rememberedMatchStrictness,
@@ -334,6 +359,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       ),
       country: normalizedCountry || DEFAULT_VALUES.country,
       cityLocations,
+      locationMode,
+      proximity: locationMode === "radius" ? proximity : null,
       workplaceTypes: normalizeWorkplaceTypes(workplaceTypes),
       searchScope,
       matchStrictness,
@@ -346,6 +373,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     runBudgetInput,
     countryInput,
     cityLocations,
+    locationMode,
+    proximity,
     workplaceTypes,
     searchScope,
     matchStrictness,
@@ -360,6 +389,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       createLocationIntent({
         selectedCountry: values.country,
         cityLocations: values.cityLocations,
+        proximity: values.proximity,
         workplaceTypes: values.workplaceTypes,
         searchScope: values.searchScope,
         matchStrictness: values.matchStrictness,
@@ -370,6 +400,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       values.matchStrictness,
       values.searchScope,
       values.workplaceTypes,
+      values.proximity,
     ],
   );
 
@@ -500,6 +531,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       sources: pipelineSources as PipelineSearchPresetConfig["sources"],
       country: values.country,
       cityLocations: values.cityLocations,
+      locationMode: values.locationMode,
+      proximity: values.proximity,
       workplaceTypes: values.workplaceTypes,
       searchScope: values.searchScope,
       matchStrictness: values.matchStrictness,
@@ -519,6 +552,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     compatiblePipelineSources.length === 0 ||
     values.searchTerms.length === 0 ||
     countrySelectionInvalid ||
+    (values.locationMode === "radius" && !values.proximity) ||
     workplaceTypeSelectionInvalid;
 
   const toggleWorkplaceType = (
@@ -587,6 +621,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     });
     setValue("cityLocations", config.cityLocations, { shouldDirty: true });
     setValue("cityLocationDraft", "");
+    setValue(
+      "locationMode",
+      config.locationMode ?? (config.proximity ? "radius" : "cities"),
+      { shouldDirty: true },
+    );
+    setValue("proximity", config.proximity ?? null, { shouldDirty: true });
     setValue("workplaceTypes", normalizeWorkplaceTypes(config.workplaceTypes), {
       shouldDirty: true,
     });
@@ -819,18 +859,28 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
               onApplyPreset={applyPreset}
               onSelectCustomPreset={() => setSelectedPreset("custom")}
-              onCountryChange={(country) =>
-                setValue("country", country, { shouldDirty: true })
-              }
+              onCountryChange={(country) => {
+                setValue("country", country, { shouldDirty: true });
+                if (normalizeUiCountryKey(country) !== values.country) {
+                  setValue("proximity", null, { shouldDirty: true });
+                }
+              }}
               onUseCountrySuggestion={() => {
                 if (!countrySuggestion) return;
                 setValue("country", countrySuggestion, { shouldDirty: true });
+                setValue("proximity", null, { shouldDirty: true });
               }}
               onCityLocationDraftChange={(value) =>
                 setValue("cityLocationDraft", value)
               }
               onCityLocationsChange={(value) =>
                 setValue("cityLocations", value, { shouldDirty: true })
+              }
+              onLocationModeChange={(value) =>
+                setValue("locationMode", value, { shouldDirty: true })
+              }
+              onProximityChange={(value) =>
+                setValue("proximity", value, { shouldDirty: true })
               }
               onToggleWorkplaceType={toggleWorkplaceType}
               onSearchScopeChange={(value) =>

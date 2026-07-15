@@ -98,6 +98,7 @@ def _scrape_for_sites(
     country_indeed: str,
     linkedin_fetch_description: bool,
     is_remote: bool,
+    distance: int,
 ) -> pd.DataFrame:
     kwargs: dict[str, object] = {
         "site_name": sites,
@@ -106,6 +107,7 @@ def _scrape_for_sites(
         "hours_old": hours_old,
         "linkedin_fetch_description": linkedin_fetch_description,
         "is_remote": is_remote,
+        "distance": distance,
     }
     if country_indeed and country_indeed.strip():
         kwargs["country_indeed"] = country_indeed
@@ -134,6 +136,7 @@ def _append_site_frame(
     country_indeed: str,
     linkedin_fetch_description: bool,
     is_remote: bool,
+    distance: int,
 ) -> None:
     try:
         frames.append(
@@ -146,6 +149,7 @@ def _append_site_frame(
                 country_indeed=country_indeed,
                 linkedin_fetch_description=linkedin_fetch_description,
                 is_remote=is_remote,
+                distance=distance,
             )
         )
     except Exception as error:
@@ -179,6 +183,7 @@ def main() -> int:
     country_indeed = _env_str("JOBSPY_COUNTRY_INDEED", "")
     linkedin_fetch_description = _env_bool("JOBSPY_LINKEDIN_FETCH_DESCRIPTION", True)
     is_remote = _env_bool("JOBSPY_IS_REMOTE", False)
+    distance = _env_int("JOBSPY_DISTANCE", 50)
     term_index = _env_int("JOBSPY_TERM_INDEX", 1)
     term_total = _env_int("JOBSPY_TERM_TOTAL", 1)
 
@@ -219,6 +224,7 @@ def main() -> int:
             country_indeed="",
             linkedin_fetch_description=linkedin_fetch_description,
             is_remote=is_remote,
+            distance=distance,
         )
 
     if "indeed" in sites:
@@ -233,6 +239,7 @@ def main() -> int:
             country_indeed=country_indeed,
             linkedin_fetch_description=linkedin_fetch_description,
             is_remote=is_remote,
+            distance=distance,
         )
 
     if "glassdoor" in sites:
@@ -261,6 +268,7 @@ def main() -> int:
             country_indeed=country_indeed,
             linkedin_fetch_description=linkedin_fetch_description,
             is_remote=is_remote,
+            distance=distance,
         )
 
     if source_errors and not frames:

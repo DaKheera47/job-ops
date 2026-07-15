@@ -8,6 +8,8 @@ import {
 import {
   type AppSettings,
   type JobSource,
+  type LocationInputMode,
+  type LocationProximity,
   normalizePipelineRunBudget,
 } from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
@@ -112,6 +114,8 @@ export function usePipelineControls(
       scoringInstructions: string;
       country: string;
       cityLocations: string[];
+      locationMode: LocationInputMode;
+      proximity: LocationProximity | null;
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
@@ -129,6 +133,7 @@ export function usePipelineControls(
           scoringInstructions: config.scoringInstructions,
           country: config.country,
           cityLocations: config.cityLocations,
+          proximity: config.locationMode === "radius" ? config.proximity : null,
           workplaceTypes: config.workplaceTypes,
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
@@ -171,6 +176,10 @@ export function usePipelineControls(
       const locationIntent = createLocationIntent({
         selectedCountry: normalizedValues.country,
         cityLocations: normalizedValues.cityLocations,
+        proximity:
+          normalizedValues.locationMode === "radius"
+            ? normalizedValues.proximity
+            : null,
         workplaceTypes: normalizedValues.workplaceTypes,
         searchScope: normalizedValues.searchScope,
         matchStrictness: normalizedValues.matchStrictness,
@@ -211,6 +220,10 @@ export function usePipelineControls(
           workplaceTypes: normalizedValues.workplaceTypes,
           locationSearchScope: normalizedValues.searchScope,
           locationMatchStrictness: normalizedValues.matchStrictness,
+          locationSearchMode: normalizedValues.locationMode,
+          locationLatitude: normalizedValues.proximity?.latitude ?? null,
+          locationLongitude: normalizedValues.proximity?.longitude ?? null,
+          locationRadiusMiles: normalizedValues.proximity?.radiusMiles ?? 50,
           jobspyResultsWanted: limits.jobspyResultsWanted,
           gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
           ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,

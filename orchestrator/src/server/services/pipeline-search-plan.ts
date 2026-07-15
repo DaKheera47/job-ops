@@ -366,6 +366,9 @@ export function normalizePipelineSearchPlanConfig(args: {
       25,
       100,
     ),
+    locationMode:
+      candidate?.locationMode ?? currentConfig.locationMode ?? "cities",
+    proximity: candidate?.proximity ?? currentConfig.proximity ?? null,
     workplaceTypes,
     searchScope: normalizeLocationSearchScope(
       candidate?.searchScope ?? currentConfig.searchScope,

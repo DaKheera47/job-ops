@@ -349,6 +349,41 @@ describe("AutomaticRunTab", () => {
     expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
+  it("uses a map radius by default and keeps manual cities available", async () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "united kingdom",
+            default: "",
+            override: "united kingdom",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    openConfigureDetails();
+
+    expect(screen.getByRole("radio", { name: /Map radius/i })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Use map centre" }),
+    );
+    expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
+    expect(screen.getByLabelText("Cities")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Radius in miles")).not.toBeInTheDocument();
+  });
+
   it("loads persisted country from settings", () => {
     render(
       <AutomaticRunTab
@@ -686,6 +721,11 @@ describe("AutomaticRunTab", () => {
             default: "UK",
             override: "UK",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -829,6 +869,11 @@ describe("AutomaticRunTab", () => {
             default: "",
             override: "croatia",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
           jobspyResultsWanted: {
             value: 25,
             default: 200,
@@ -859,6 +904,11 @@ describe("AutomaticRunTab", () => {
             value: "croatia",
             default: "",
             override: "croatia",
+          },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
           },
         })}
         enabledSources={["linkedin"]}
@@ -920,6 +970,11 @@ describe("AutomaticRunTab", () => {
             default: "",
             override: "croatia",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -955,6 +1010,11 @@ describe("AutomaticRunTab", () => {
             value: "croatia",
             default: "",
             override: "croatia",
+          },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
           },
         })}
         enabledSources={["linkedin"]}
@@ -1001,6 +1061,11 @@ describe("AutomaticRunTab", () => {
             default: 20,
             override: 80,
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -1044,6 +1109,11 @@ describe("AutomaticRunTab", () => {
             default: 20,
             override: 90,
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -1085,6 +1155,11 @@ describe("AutomaticRunTab", () => {
             value: 80,
             default: 20,
             override: 80,
+          },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
           },
         })}
         enabledSources={["linkedin"]}

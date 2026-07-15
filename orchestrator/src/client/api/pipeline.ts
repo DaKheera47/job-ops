@@ -2,6 +2,7 @@ import type {
   CreatePipelineSearchPresetInput,
   JobSource,
   LocationMatchStrictness,
+  LocationProximity,
   LocationSearchScope,
   PipelineProgressState,
   PipelineRun,
@@ -138,6 +139,7 @@ export async function runPipeline(config?: {
   scoringInstructions?: string;
   country?: string;
   cityLocations?: string[];
+  proximity?: LocationProximity | null;
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   searchScope?: LocationSearchScope;
   matchStrictness?: LocationMatchStrictness;

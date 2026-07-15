@@ -1,10 +1,11 @@
 import type { ExtractorSourceId } from "../extractors";
 import type {
+  LocationInputMode,
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
 import type { Job, JobStatus } from "./jobs";
-import type { LocationIntent } from "./location";
+import type { LocationIntent, LocationProximity } from "./location";
 import type { PdfRenderer } from "./settings";
 
 export const MIN_PIPELINE_RUN_BUDGET = 300;
@@ -153,6 +154,8 @@ export interface PipelineSearchPresetConfig {
   sources: ExtractorSourceId[];
   country: string;
   cityLocations: string[];
+  locationMode?: LocationInputMode;
+  proximity?: LocationProximity | null;
   workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;

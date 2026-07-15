@@ -1,8 +1,10 @@
 import type {
+  LocationInputMode,
   LocationMatchStrictness,
   LocationSearchScope,
 } from "@shared/location-preferences.js";
 import { formatCountryLabel } from "@shared/location-support.js";
+import type { LocationProximity } from "@shared/types";
 import { Info } from "lucide-react";
 import {
   Accordion,
@@ -30,6 +32,7 @@ import {
   WORKPLACE_TYPE_OPTIONS,
   type WorkplaceType,
 } from "./automatic-run";
+import { LocationRadiusPicker } from "./LocationRadiusPicker";
 import { TokenizedInput } from "./TokenizedInput";
 
 interface AutomaticRunSettingsCardProps {
@@ -56,6 +59,8 @@ interface AutomaticRunSettingsCardProps {
   onUseCountrySuggestion: () => void;
   onCityLocationDraftChange: (value: string) => void;
   onCityLocationsChange: (value: string[]) => void;
+  onLocationModeChange: (value: LocationInputMode) => void;
+  onProximityChange: (value: LocationProximity) => void;
   onToggleWorkplaceType: (
     workplaceType: WorkplaceType,
     checked: boolean,
@@ -93,6 +98,8 @@ export function AutomaticRunSettingsCard({
   onUseCountrySuggestion,
   onCityLocationDraftChange,
   onCityLocationsChange,
+  onLocationModeChange,
+  onProximityChange,
   onToggleWorkplaceType,
   onSearchScopeChange,
   onMatchStrictnessChange,
@@ -126,6 +133,8 @@ export function AutomaticRunSettingsCard({
           onUseCountrySuggestion={onUseCountrySuggestion}
           onCityLocationDraftChange={onCityLocationDraftChange}
           onCityLocationsChange={onCityLocationsChange}
+          onLocationModeChange={onLocationModeChange}
+          onProximityChange={onProximityChange}
           onToggleWorkplaceType={onToggleWorkplaceType}
           onSearchScopeChange={onSearchScopeChange}
           onMatchStrictnessChange={onMatchStrictnessChange}
@@ -204,6 +213,8 @@ interface LocationPreferencesProps {
   onUseCountrySuggestion: () => void;
   onCityLocationDraftChange: (value: string) => void;
   onCityLocationsChange: (value: string[]) => void;
+  onLocationModeChange: (value: LocationInputMode) => void;
+  onProximityChange: (value: LocationProximity) => void;
   onToggleWorkplaceType: (
     workplaceType: WorkplaceType,
     checked: boolean,
@@ -227,6 +238,8 @@ function LocationPreferences({
   onUseCountrySuggestion,
   onCityLocationDraftChange,
   onCityLocationsChange,
+  onLocationModeChange,
+  onProximityChange,
   onToggleWorkplaceType,
   onSearchScopeChange,
   onMatchStrictnessChange,
@@ -293,6 +306,50 @@ function LocationPreferences({
             </Alert>
           ) : null}
 
+          <div className="flex flex-col gap-2">
+            <Label className="text-base font-semibold">Search area</Label>
+            <RadioGroup
+              value={values.locationMode}
+              onValueChange={(value) =>
+                onLocationModeChange(value as LocationInputMode)
+              }
+              className="grid gap-2 sm:grid-cols-2"
+            >
+              <label
+                htmlFor="location-mode-radius"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+              >
+                <RadioGroupItem
+                  id="location-mode-radius"
+                  value="radius"
+                  className="mt-0.5"
+                />
+                <span className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Map radius</span>
+                  <span className="text-xs text-muted-foreground">
+                    Search around a point you choose on the map.
+                  </span>
+                </span>
+              </label>
+              <label
+                htmlFor="location-mode-cities"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+              >
+                <RadioGroupItem
+                  id="location-mode-cities"
+                  value="cities"
+                  className="mt-0.5"
+                />
+                <span className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Manual cities</span>
+                  <span className="text-xs text-muted-foreground">
+                    Enter the exact cities each source should search.
+                  </span>
+                </span>
+              </label>
+            </RadioGroup>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
             <div className="space-y-2">
               <Label className="text-base font-semibold">Country</Label>
@@ -319,25 +376,36 @@ function LocationPreferences({
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="city-locations-input"
-                className="text-base font-semibold"
-              >
-                Cities
-              </Label>
-              <TokenizedInput
-                id="city-locations-input"
-                values={values.cityLocations}
-                draft={cityLocationDraft}
-                parseInput={parseCityLocationsInput}
-                onDraftChange={onCityLocationDraftChange}
-                onValuesChange={onCityLocationsChange}
-                placeholder='e.g. "London"'
-                removeLabelPrefix="Remove city"
-              />
-            </div>
+            {values.locationMode === "cities" ? (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="city-locations-input"
+                  className="text-base font-semibold"
+                >
+                  Cities
+                </Label>
+                <TokenizedInput
+                  id="city-locations-input"
+                  values={values.cityLocations}
+                  draft={cityLocationDraft}
+                  parseInput={parseCityLocationsInput}
+                  onDraftChange={onCityLocationDraftChange}
+                  onValuesChange={onCityLocationsChange}
+                  placeholder='e.g. "London"'
+                  removeLabelPrefix="Remove city"
+                />
+              </div>
+            ) : null}
           </div>
+
+          {values.locationMode === "radius" ? (
+            <LocationRadiusPicker
+              country={values.country}
+              value={values.proximity}
+              radiusMiles={values.proximity?.radiusMiles ?? 50}
+              onChange={onProximityChange}
+            />
+          ) : null}
 
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">

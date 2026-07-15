@@ -1,5 +1,6 @@
 import {
   buildLocationPreferencesSummary,
+  type LocationInputMode,
   type LocationMatchStrictness,
   type LocationSearchScope,
   normalizeLocationMatchStrictness,
@@ -9,7 +10,11 @@ import {
   parseSearchCitiesSetting,
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
-import { type JobSource, normalizePipelineRunBudget } from "@shared/types";
+import {
+  type JobSource,
+  type LocationProximity,
+  normalizePipelineRunBudget,
+} from "@shared/types";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
@@ -29,6 +34,8 @@ export interface AutomaticRunValues {
   runBudget: number;
   country: string;
   cityLocations: string[];
+  locationMode: LocationInputMode;
+  proximity: LocationProximity | null;
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -309,6 +316,7 @@ export function summarizeLocationPreferences(
     AutomaticRunValues,
     | "country"
     | "cityLocations"
+    | "proximity"
     | "workplaceTypes"
     | "searchScope"
     | "matchStrictness"
@@ -317,6 +325,7 @@ export function summarizeLocationPreferences(
   return buildLocationPreferencesSummary({
     country: values.country,
     cityLocations: values.cityLocations,
+    proximity: values.proximity,
     workplaceTypes: values.workplaceTypes,
     searchScope: normalizeLocationSearchScope(values.searchScope),
     matchStrictness: normalizeLocationMatchStrictness(values.matchStrictness),

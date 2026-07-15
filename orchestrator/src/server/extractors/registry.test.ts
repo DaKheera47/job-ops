@@ -100,12 +100,14 @@ describe("extractor registry", () => {
       supportedCountryKeys: ["united kingdom", "russia"],
       requiresCityLocations: false,
       requiresSelectedCountry: false,
+      supportsNativeRadius: false,
     });
     expect(registry.locationCapabilitiesBySource.glassdoor).toEqual({
       source: "glassdoor",
       supportedCountryKeys: ["united states"],
       requiresCityLocations: true,
       requiresSelectedCountry: true,
+      supportsNativeRadius: false,
     });
   });
 

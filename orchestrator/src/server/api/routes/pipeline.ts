@@ -45,6 +45,7 @@ import {
   planLocationSources,
 } from "@shared/location-intelligence.js";
 import {
+  LOCATION_INPUT_MODE_VALUES,
   LOCATION_MATCH_STRICTNESS_VALUES,
   LOCATION_SEARCH_SCOPE_VALUES,
 } from "@shared/location-preferences.js";
@@ -208,6 +209,15 @@ const pipelineSearchPresetConfigSchema = z.object({
   sources: z.array(pipelineSourceSchema).min(1),
   country: z.string().trim().max(100),
   cityLocations: z.array(z.string().trim().min(1).max(100)).max(25),
+  locationMode: z.enum(LOCATION_INPUT_MODE_VALUES).optional(),
+  proximity: z
+    .object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+      radiusMiles: z.number().int().min(1).max(200),
+    })
+    .nullable()
+    .optional(),
   workplaceTypes: z.array(z.enum(WORKPLACE_TYPE_VALUES)).min(1).max(3),
   searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
@@ -444,6 +454,14 @@ const runPipelineSchema = z.object({
   scoringInstructions: z.string().trim().max(4000).optional(),
   country: z.string().trim().optional(),
   cityLocations: z.array(z.string().trim().min(1)).optional(),
+  proximity: z
+    .object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+      radiusMiles: z.number().int().min(1).max(200),
+    })
+    .nullable()
+    .optional(),
   workplaceTypes: z
     .array(z.enum(WORKPLACE_TYPE_VALUES))
     .min(1)
@@ -465,6 +483,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     const locationIntent = createLocationIntent({
       selectedCountry: config.country,
       cityLocations: config.cityLocations,
+      proximity: config.proximity,
       workplaceTypes: config.workplaceTypes,
       geoScope: config.searchScope,
       matchStrictness: config.matchStrictness,

@@ -167,6 +167,7 @@ export interface RunJobSpyOptions {
   countryIndeed?: string;
   linkedinFetchDescription?: boolean;
   isRemote?: boolean;
+  distance?: number;
   onProgress?: (event: JobSpyProgressEvent) => void;
 }
 
@@ -319,6 +320,9 @@ export async function runJobSpy(
                   deriveIsRemoteFlag(options.workplaceTypes) ??
                   process.env.JOBSPY_IS_REMOTE ??
                   "0",
+              ),
+              JOBSPY_DISTANCE: String(
+                options.distance ?? process.env.JOBSPY_DISTANCE ?? 50,
               ),
               JOBSPY_OUTPUT_CSV: outputCsv,
               JOBSPY_OUTPUT_JSON: outputJson,

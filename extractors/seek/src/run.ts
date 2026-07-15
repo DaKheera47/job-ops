@@ -24,6 +24,7 @@ export type SeekProgressEvent =
 export interface RunSeekOptions {
   searchTerms?: string[];
   location?: string;
+  locations?: string[];
   country?: string;
   maxJobsPerTerm?: number;
   onProgress?: (event: SeekProgressEvent) => void;
@@ -104,9 +105,12 @@ export async function runSeek(
       : ["software engineer"];
   const countryLabel =
     options.country === "new zealand" ? "New Zealand" : "Australia";
-  const location = options.location ?? `All ${countryLabel}`;
+  const locations =
+    options.locations && options.locations.length > 0
+      ? options.locations
+      : [options.location ?? `All ${countryLabel}`];
   const maxJobsPerTerm = options.maxJobsPerTerm ?? 50;
-  const termTotal = searchTerms.length;
+  const termTotal = searchTerms.length * locations.length;
 
   const client = new ApifyClient({ token });
 
@@ -114,49 +118,50 @@ export async function runSeek(
     const jobs: CreateJobInput[] = [];
     const seen = new Set<string>();
 
-    for (let i = 0; i < searchTerms.length; i += 1) {
-      if (options.shouldCancel?.()) break;
-
-      const searchTerm = searchTerms[i];
-      const termIndex = i + 1;
-
-      options.onProgress?.({
-        type: "term_start",
-        termIndex,
-        termTotal,
-        searchTerm,
-      });
-
-      const run = await client.actor(ACTOR_ID).call({
-        searchQuery: searchTerm,
-        location,
-        maxResults: maxJobsPerTerm,
-        fetchDetails: true,
-      });
-
-      const { items } = await client
-        .dataset(run.defaultDatasetId)
-        .listItems({ limit: maxJobsPerTerm });
-
-      let jobsFoundTerm = 0;
-      for (const item of items) {
+    let termIndex = 0;
+    for (const location of locations) {
+      for (const searchTerm of searchTerms) {
         if (options.shouldCancel?.()) break;
-        const mapped = mapSeekItem(item as SeekRawItem, countryLabel);
-        if (!mapped) continue;
-        const key = mapped.sourceJobId ?? mapped.jobUrl;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        jobs.push(mapped);
-        jobsFoundTerm += 1;
-      }
+        termIndex += 1;
 
-      options.onProgress?.({
-        type: "term_complete",
-        termIndex,
-        termTotal,
-        searchTerm,
-        jobsFoundTerm,
-      });
+        options.onProgress?.({
+          type: "term_start",
+          termIndex,
+          termTotal,
+          searchTerm,
+        });
+
+        const run = await client.actor(ACTOR_ID).call({
+          searchQuery: searchTerm,
+          location,
+          maxResults: maxJobsPerTerm,
+          fetchDetails: true,
+        });
+
+        const { items } = await client
+          .dataset(run.defaultDatasetId)
+          .listItems({ limit: maxJobsPerTerm });
+
+        let jobsFoundTerm = 0;
+        for (const item of items) {
+          if (options.shouldCancel?.()) break;
+          const mapped = mapSeekItem(item as SeekRawItem, countryLabel);
+          if (!mapped) continue;
+          const key = mapped.sourceJobId ?? mapped.jobUrl;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          jobs.push(mapped);
+          jobsFoundTerm += 1;
+        }
+
+        options.onProgress?.({
+          type: "term_complete",
+          termIndex,
+          termTotal,
+          searchTerm,
+          jobsFoundTerm,
+        });
+      }
     }
 
     return { success: true, jobs };

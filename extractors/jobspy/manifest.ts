@@ -22,11 +22,18 @@ export const manifest: ExtractorManifest = {
   providesSources: ["indeed", "linkedin", "glassdoor"],
   capabilities: { locationEvidence: true },
   locationCapabilities: {
-    indeed: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
-    linkedin: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
+    indeed: {
+      supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS,
+      supportsNativeRadius: true,
+    },
+    linkedin: {
+      supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS,
+      supportsNativeRadius: true,
+    },
     glassdoor: {
       supportedCountryKeys: GLASSDOOR_SUPPORTED_COUNTRY_KEYS,
       requiresCityLocations: true,
+      supportsNativeRadius: true,
     },
   },
   async run(context: ExtractorRuntimeContext) {
@@ -39,8 +46,12 @@ export const manifest: ExtractorManifest = {
     const result = await runJobSpy({
       sites,
       searchTerms: context.searchTerms,
+      locations: context.locationIntent?.proximity
+        ? context.sourceLocationPlan?.requestedCities.slice(0, 1)
+        : context.sourceLocationPlan?.requestedCities,
       location:
         context.settings.searchCities ?? context.settings.jobspyLocation,
+      distance: context.locationIntent?.proximity?.radiusMiles,
       resultsWanted: context.settings.jobspyResultsWanted
         ? parseInt(context.settings.jobspyResultsWanted, 10)
         : undefined,
