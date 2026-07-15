@@ -8,7 +8,10 @@ import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import { asyncPool } from "@server/utils/async-pool";
 import { listHydratedWatchlistSelectedSources } from "@server/watchlist/results";
 import type { ExtractorSourceId } from "@shared/extractors";
-import { matchJobLocationIntent } from "@shared/job-matching.js";
+import {
+  deduplicateJobsByTitleAndEmployer,
+  matchJobLocationIntent,
+} from "@shared/job-matching.js";
 import {
   buildLocationEvidence as buildSharedLocationEvidence,
   createLocationIntentFromLegacyInputs,
@@ -127,6 +130,8 @@ function buildLocationEvidence(args: {
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
   includeWatchlist?: boolean;
+  preserveFanout?: boolean;
+  fanoutSeedJobs?: CreateJobInput[];
   watchlistSelectedSourceIds?: string[] | null;
   shouldCancel?: () => boolean;
 }): Promise<{
@@ -286,6 +291,12 @@ export async function discoverJobsStep(args: {
           getExistingJobUrls,
           shouldCancel: args.shouldCancel,
           onProgress: (event) => {
+            if (event.termsProcessed !== undefined) {
+              progressHelpers.updateFanoutTaskTerms(
+                manifest.id,
+                event.termsProcessed,
+              );
+            }
             progressHelpers.crawlingUpdate({
               source: manifest.id,
               termsProcessed: event.termsProcessed,
@@ -384,7 +395,21 @@ export async function discoverJobsStep(args: {
   let completedSources = 0;
   let successfulSearchUnits = 0;
 
-  progressHelpers.startCrawling(totalSources);
+  progressHelpers.startCrawling(totalSources, args.preserveFanout);
+  if (!args.preserveFanout) {
+    progressHelpers.initializeFanout({
+      roles: searchTerms,
+      taskIds: [
+        ...sourceTasks.map((task) => task.source),
+        ...(watchlistSelectedSources.length > 0 ? ["watchlist"] : []),
+      ],
+      locationCount: Math.max(1, locationIntent.cityLocations.length),
+      sourceCount:
+        compatibleSources.length +
+        (watchlistSelectedSources.length > 0 ? 1 : 0),
+      capacity: DISCOVERY_CONCURRENCY,
+    });
+  }
 
   if (args.shouldCancel?.()) {
     return { discoveredJobs, sourceErrors, pendingChallenges: [] };
@@ -399,11 +424,43 @@ export async function discoverJobsStep(args: {
       units: totalSources,
     },
     async () => {
-      const sourceResults = await asyncPool({
+      const settledJobs: CreateJobInput[] = [...(args.fanoutSeedJobs ?? [])];
+      const liveBlockedKeywordsLowerCase = parseBlockedCompanyKeywords(
+        settings.blockedCompanyKeywords,
+      ).map((value) => value.toLowerCase());
+      const filterForFanout = (jobs: CreateJobInput[]) =>
+        jobs
+          .filter((job) => {
+            const evidence =
+              job.locationEvidence ??
+              buildLocationEvidence({
+                location: job.location,
+                isRemote: job.isRemote,
+                sourceNotes: [`source:${job.source}`],
+              });
+            job.locationEvidence = evidence;
+            return matchJobLocationIntent(job, locationIntent).matched;
+          })
+          .filter(
+            (job) =>
+              !isBlockedEmployer(job.employer, liveBlockedKeywordsLowerCase),
+          );
+      const updateFanoutResults = () => {
+        progressHelpers.updateFanoutResults(
+          settledJobs.length,
+          deduplicateJobsByTitleAndEmployer(filterForFanout(settledJobs))
+            .length,
+        );
+      };
+      const sourceResults = await asyncPool<
+        DiscoverySourceTask,
+        DiscoveryTaskResult
+      >({
         items: sourceTasks,
         concurrency: DISCOVERY_CONCURRENCY,
         shouldStop: args.shouldCancel,
         onTaskStarted: (sourceTask) => {
+          progressHelpers.startFanoutTask(sourceTask.source);
           progressHelpers.startSource(
             sourceTask.source,
             completedSources,
@@ -414,9 +471,19 @@ export async function discoverJobsStep(args: {
             },
           );
         },
-        onTaskSettled: () => {
+        onTaskSettled: (sourceTask, _index, outcome) => {
           completedSources += 1;
           progressHelpers.completeSource(completedSources, totalSources);
+          if (outcome.status === "fulfilled") {
+            settledJobs.push(...outcome.result.discoveredJobs);
+            progressHelpers.settleFanoutTask(
+              sourceTask.source,
+              outcome.result.challenge ? "check" : "complete",
+            );
+            updateFanoutResults();
+          } else {
+            progressHelpers.settleFanoutTask(sourceTask.source, "complete");
+          }
         },
         task: async (sourceTask) => {
           try {
@@ -453,6 +520,7 @@ export async function discoverJobsStep(args: {
       }
 
       if (watchlistSelectedSources.length > 0 && !args.shouldCancel?.()) {
+        progressHelpers.startFanoutTask("watchlist");
         progressHelpers.startSource(
           "watchlist",
           completedSources,
@@ -470,6 +538,9 @@ export async function discoverJobsStep(args: {
         progressHelpers.completeSource(completedSources, totalSources);
 
         discoveredJobs.push(...watchlistResult.discoveredJobs);
+        settledJobs.push(...watchlistResult.discoveredJobs);
+        progressHelpers.settleFanoutTask("watchlist", "complete");
+        updateFanoutResults();
         sourceErrors.push(...watchlistResult.sourceErrors);
         if (
           watchlistResult.failedSourceCount <

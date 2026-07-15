@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type {
+  PipelineFanoutProgress,
   PipelinePendingChallenge,
   PipelineProgressState,
   PipelineProgressStep,
@@ -50,6 +51,18 @@ const currentSourceStatsByTenant = new Map<
   string,
   Map<CrawlSource, SourceCrawlingStats>
 >();
+
+type FanoutUnitState = "queued" | "running" | "complete" | "check";
+type FanoutTracker = {
+  roles: string[];
+  tasks: Map<string, FanoutUnitState[]>;
+  locationCount: number;
+  sourceCount: number;
+  capacity: number;
+  results: number;
+  unique: number;
+};
+const fanoutTrackersByTenant = new Map<string, FanoutTracker>();
 
 function getProgressScopeKey(): string {
   return getPrivateDataScope().scopeKey;
@@ -163,6 +176,37 @@ function aggregateCrawlingStats(tenantId = getProgressScopeKey()) {
   };
 }
 
+function buildFanoutProgress(tracker: FanoutTracker): PipelineFanoutProgress {
+  const roles = tracker.roles.map((role, index) => {
+    const states = [...tracker.tasks.values()].map((task) => task[index]);
+    return {
+      role,
+      complete: states.filter((state) => state === "complete").length,
+      running: states.filter((state) => state === "running").length,
+      queued: states.filter((state) => state === "queued").length,
+      check: states.filter((state) => state === "check").length,
+    };
+  });
+  return {
+    termCount: tracker.roles.length,
+    locationCount: tracker.locationCount,
+    sourceCount: tracker.sourceCount,
+    total: tracker.roles.length * tracker.tasks.size,
+    capacity: tracker.capacity,
+    results: tracker.results,
+    unique: tracker.unique,
+    roles,
+  };
+}
+
+function emitFanout(tracker: FanoutTracker): void {
+  updateProgress({ fanout: buildFanoutProgress(tracker) });
+}
+
+function getFanoutTracker(): FanoutTracker | undefined {
+  return fanoutTrackersByTenant.get(getProgressScopeKey());
+}
+
 /**
  * Update the current progress and notify all listeners.
  */
@@ -212,6 +256,7 @@ export function subscribeToProgress(listener: ProgressListener): () => void {
 export function resetProgress(): void {
   const tenantId = getProgressScopeKey();
   currentSourceStatsByTenant.set(tenantId, new Map());
+  fanoutTrackersByTenant.delete(tenantId);
   currentProgress = createIdleProgress();
   currentProgressByTenant.set(tenantId, currentProgress);
 }
@@ -220,7 +265,72 @@ export function resetProgress(): void {
  * Helper to create progress updates for each step.
  */
 export const progressHelpers = {
-  startCrawling: (sourcesTotal = 0) =>
+  initializeFanout: (options: {
+    roles: string[];
+    taskIds: string[];
+    locationCount: number;
+    sourceCount: number;
+    capacity: number;
+  }) => {
+    const tracker: FanoutTracker = {
+      roles: options.roles,
+      tasks: new Map(
+        options.taskIds.map((taskId) => [
+          taskId,
+          options.roles.map(() => "queued" as const),
+        ]),
+      ),
+      locationCount: options.locationCount,
+      sourceCount: options.sourceCount,
+      capacity: options.capacity,
+      results: 0,
+      unique: 0,
+    };
+    fanoutTrackersByTenant.set(getProgressScopeKey(), tracker);
+    emitFanout(tracker);
+  },
+
+  startFanoutTask: (taskId: string) => {
+    const tracker = getFanoutTracker();
+    const states = tracker?.tasks.get(taskId);
+    if (!tracker || !states) return;
+    states.fill("running");
+    emitFanout(tracker);
+  },
+
+  updateFanoutTaskTerms: (taskId: string, termsProcessed: number) => {
+    const tracker = getFanoutTracker();
+    const states = tracker?.tasks.get(taskId);
+    if (!tracker || !states) return;
+    const processed = Math.max(0, Math.min(states.length, termsProcessed));
+    for (let index = 0; index < states.length; index += 1) {
+      states[index] =
+        index < processed
+          ? "complete"
+          : index === processed
+            ? "running"
+            : "queued";
+    }
+    emitFanout(tracker);
+  },
+
+  settleFanoutTask: (taskId: string, state: "complete" | "check") => {
+    const tracker = getFanoutTracker();
+    const states = tracker?.tasks.get(taskId);
+    if (!tracker || !states) return;
+    states.fill(state);
+    emitFanout(tracker);
+  },
+
+  updateFanoutResults: (results: number, unique: number) => {
+    const tracker = getFanoutTracker();
+    if (!tracker) return;
+    tracker.results = results;
+    tracker.unique = unique;
+    emitFanout(tracker);
+  },
+
+  startCrawling: (sourcesTotal = 0, preserveStartedAt = false) =>
     (() => {
       const tenantId = getProgressScopeKey();
       const crawlingStatsBySource = getCurrentSourceStatsForTenant(tenantId);
@@ -229,7 +339,9 @@ export const progressHelpers = {
         step: "crawling",
         message: "Fetching jobs from sources...",
         detail: "Starting crawler",
-        startedAt: new Date().toISOString(),
+        startedAt: preserveStartedAt
+          ? getProgress().startedAt
+          : new Date().toISOString(),
         crawlingSource: null,
         crawlingSourcesCompleted: 0,
         crawlingSourcesTotal: sourcesTotal,

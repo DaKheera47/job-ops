@@ -7,48 +7,53 @@ type SseHandlers = {
   onError?: () => void;
 };
 
-type MockSseInstance = {
-  url: string;
-  handlers: SseHandlers;
-  unsubscribe: ReturnType<typeof vi.fn>;
-};
-
 const sseMock = vi.hoisted(() => ({
-  instances: [] as MockSseInstance[],
+  handlers: null as SseHandlers | null,
   subscribeToEventSource: vi.fn(),
 }));
-
 const apiMock = vi.hoisted(() => ({
   getPipelineProgressSnapshot: vi.fn(),
+  prepareChallengeViewer: vi.fn(),
+  solvePipelineChallenge: vi.fn(),
 }));
 
-vi.mock("@client/api", () => ({
-  getPipelineProgressSnapshot: apiMock.getPipelineProgressSnapshot,
-}));
-
+vi.mock("@client/api", () => apiMock);
 vi.mock("@/client/lib/sse", () => ({
   subscribeToEventSource: sseMock.subscribeToEventSource,
 }));
 
 import { PipelineProgress } from "./PipelineProgress";
 
+const fanout = {
+  termCount: 2,
+  locationCount: 3,
+  sourceCount: 4,
+  total: 4,
+  capacity: 3,
+  results: 12,
+  unique: 9,
+  roles: [
+    { role: "Backend", complete: 1, running: 1, queued: 0, check: 0 },
+    { role: "Platform", complete: 0, running: 1, queued: 1, check: 0 },
+  ],
+};
+
 const baseProgress = {
   step: "crawling" as const,
   message: "Fetching jobs from sources...",
-  detail: "Running crawler",
-  crawlingSource: "jobspy" as const,
-  crawlingSourcesCompleted: 1,
-  crawlingSourcesTotal: 3,
-  crawlingTermsProcessed: 2,
-  crawlingTermsTotal: 4,
+  startedAt: "2026-07-15T12:00:00.000Z",
+  fanout,
+  crawlingSource: "jobspy",
+  crawlingSourcesCompleted: 0,
+  crawlingSourcesTotal: 2,
+  crawlingTermsProcessed: 0,
+  crawlingTermsTotal: 2,
   crawlingListPagesProcessed: 0,
   crawlingListPagesTotal: 0,
   crawlingJobCardsFound: 0,
   crawlingJobPagesEnqueued: 0,
   crawlingJobPagesSkipped: 0,
   crawlingJobPagesProcessed: 0,
-  crawlingPhase: "list" as const,
-  crawlingCurrentUrl: "engineer",
   jobsDiscovered: 0,
   jobsScored: 0,
   jobsProcessed: 0,
@@ -58,21 +63,19 @@ const baseProgress = {
 describe("PipelineProgress", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    sseMock.instances.length = 0;
+    vi.setSystemTime(new Date("2026-07-15T12:02:14.000Z"));
+    sseMock.handlers = null;
     sseMock.subscribeToEventSource.mockReset();
     sseMock.subscribeToEventSource.mockImplementation(
-      (url: string, handlers: SseHandlers) => {
-        const instance: MockSseInstance = {
-          url,
-          handlers,
-          unsubscribe: vi.fn(),
-        };
-        sseMock.instances.push(instance);
-        return instance.unsubscribe;
+      (_url: string, handlers: SseHandlers) => {
+        sseMock.handlers = handlers;
+        return vi.fn();
       },
     );
     apiMock.getPipelineProgressSnapshot.mockReset();
     apiMock.getPipelineProgressSnapshot.mockResolvedValue(baseProgress);
+    apiMock.prepareChallengeViewer.mockReset();
+    apiMock.solvePipelineChallenge.mockReset();
   });
 
   afterEach(() => {
@@ -80,92 +83,52 @@ describe("PipelineProgress", () => {
     vi.useRealTimers();
   });
 
-  const getSse = () => {
-    const instance = sseMock.instances[0];
-    if (!instance) {
-      throw new Error("Expected subscribeToEventSource to be called");
-    }
-    return {
-      emitOpen: () => instance.handlers.onOpen?.(),
-      emitMessage: (payload: unknown) => instance.handlers.onMessage(payload),
-      emitError: () => instance.handlers.onError?.(),
-      close: instance.unsubscribe,
-    };
-  };
-
-  it("renders renamed crawling labels and source/terms context", () => {
+  it("renders live fanout data from SSE", () => {
     render(<PipelineProgress isRunning />);
-    const sse = getSse();
+    act(() => sseMock.handlers?.onMessage(baseProgress));
 
-    act(() => {
-      sse.emitOpen();
-      sse.emitMessage({
-        ...baseProgress,
-        crawlingListPagesProcessed: 3,
-        crawlingListPagesTotal: 10,
-        crawlingJobPagesProcessed: 8,
-        crawlingJobPagesEnqueued: 30,
-        crawlingJobPagesSkipped: 4,
-      });
-    });
-
-    expect(screen.getByText("List pages")).toBeInTheDocument();
-    expect(screen.getByText("Job pages")).toBeInTheDocument();
-    expect(screen.getByText("Enqueued")).toBeInTheDocument();
-    expect(screen.getByText("Skipped")).toBeInTheDocument();
-    expect(screen.getByText("3/10")).toBeInTheDocument();
-    expect(screen.getByText("8/30")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Source:\s+JobSpy\s+\(1\/3\)\s+Terms:\s+2\/4/),
-    ).toBeInTheDocument();
-  });
-
-  it("uses fallback dashes for unknown page denominators", () => {
-    render(<PipelineProgress isRunning />);
-    const sse = getSse();
-
-    act(() => {
-      sse.emitOpen();
-      sse.emitMessage(baseProgress);
-    });
-
-    expect(screen.queryByText("0/0")).not.toBeInTheDocument();
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Searching 4 combinations")).toBeInTheDocument();
+    expect(screen.getByText("Backend")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("(02:14 elapsed)")).toBeInTheDocument();
   });
 
   it("falls back to snapshot polling when SSE does not open", async () => {
     render(<PipelineProgress isRunning />);
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
-    });
+    await act(async () => vi.advanceTimersByTimeAsync(1500));
 
     expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Updating…")).toBeInTheDocument();
-    expect(screen.getByText(baseProgress.message)).toBeInTheDocument();
+    expect(screen.getByText("Searching 4 combinations")).toBeInTheDocument();
   });
 
-  it("stops snapshot polling after a terminal snapshot state", async () => {
-    apiMock.getPipelineProgressSnapshot.mockResolvedValueOnce({
-      ...baseProgress,
-      step: "failed",
-      message: "Search failed",
-      error: "Boom",
-    });
-
+  it("hides the fanout card after discovery", () => {
     render(<PipelineProgress isRunning />);
+    act(() =>
+      sseMock.handlers?.onMessage({ ...baseProgress, step: "importing" }),
+    );
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
-    });
+    expect(screen.queryByText("Searching 4 combinations")).toBeNull();
+  });
 
-    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Search failed")).toBeInTheDocument();
+  it("renders browser challenges from live progress", () => {
+    render(<PipelineProgress isRunning />);
+    act(() =>
+      sseMock.handlers?.onMessage({
+        ...baseProgress,
+        step: "challenge_required",
+        pendingChallenges: [
+          {
+            extractorId: "gradcracker",
+            extractorName: "Gradcracker",
+            url: "https://example.com/challenge",
+            sources: ["gradcracker"],
+          },
+        ],
+      }),
+    );
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2500);
-    });
-
-    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Gradcracker")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Solve" })).toBeInTheDocument();
   });
 });

@@ -1,0 +1,63 @@
+import type { PipelineFanoutProgress } from "@shared/types";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { PipelineFanoutCard } from "./PipelineFanoutCard";
+
+const fanout: PipelineFanoutProgress = {
+  termCount: 5,
+  locationCount: 2,
+  sourceCount: 3,
+  total: 15,
+  capacity: 3,
+  results: 20,
+  unique: 12,
+  roles: ["One", "Two", "Three", "Four", "Five"].map((role) => ({
+    role,
+    complete: 1,
+    running: 1,
+    queued: 1,
+    check: 0,
+  })),
+};
+
+describe("PipelineFanoutCard", () => {
+  it("reveals roles beyond the first four", () => {
+    render(
+      <PipelineFanoutCard
+        fanout={fanout}
+        elapsedSeconds={134}
+        solvingExtractor={null}
+        onSolveChallenge={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Five")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: /1 more roles queued/ }),
+    );
+    expect(screen.getByText("Five")).toBeInTheDocument();
+  });
+
+  it("delegates browser challenge solving", () => {
+    const onSolveChallenge = vi.fn();
+    render(
+      <PipelineFanoutCard
+        fanout={fanout}
+        elapsedSeconds={0}
+        challenges={[
+          {
+            extractorId: "gradcracker",
+            extractorName: "Gradcracker",
+            url: "https://example.com/challenge",
+            sources: ["gradcracker"],
+          },
+        ]}
+        solvingExtractor={null}
+        onSolveChallenge={onSolveChallenge}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Solve" }));
+    expect(onSolveChallenge).toHaveBeenCalledWith("gradcracker");
+  });
+});

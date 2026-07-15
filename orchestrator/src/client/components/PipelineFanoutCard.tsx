@@ -1,42 +1,27 @@
+import type {
+  PipelineFanoutProgress,
+  PipelineFanoutRoleProgress,
+  PipelinePendingChallenge,
+} from "@shared/types";
+import { Loader2, ShieldAlert } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { TriangleAlert } from "lucide-react";
-
-export interface PipelineFanoutRoleProgress {
-  check?: number;
-  complete: number;
-  queued: number;
-  role: string;
-  running: number;
-}
-
-export interface PipelineFanoutFixture {
-  browserCheck?: { source: string };
-  capacity: number;
-  jobBoards: number;
-  locations: number;
-  results: number;
-  roles: PipelineFanoutRoleProgress[];
-  unique: number;
-}
 
 const getRoleTotal = (role: PipelineFanoutRoleProgress) =>
-  role.complete + role.running + (role.check ?? 0) + role.queued;
+  role.complete + role.running + role.check + role.queued;
 
 const formatNumber = (value: number) => value.toLocaleString("en-GB");
 
@@ -70,7 +55,7 @@ const RoleStatus = ({ role }: { role: PipelineFanoutRoleProgress }) => (
         <span className="font-sans text-muted-foreground">running</span>
       </>
     ) : null}
-    {(role.check ?? 0) > 0 ? (
+    {role.check > 0 ? (
       <>
         <span className="font-semibold text-amber-300">{role.check}</span>
         <span className="font-sans text-muted-foreground">check</span>
@@ -95,7 +80,7 @@ const RoleRow = ({ role }: { role: PipelineFanoutRoleProgress }) => {
       <div
         className="flex h-1.5 overflow-hidden rounded-full bg-muted"
         role="progressbar"
-        aria-label={`${role.role}: ${role.complete} complete, ${role.running} running, ${role.check ?? 0} need a check, ${role.queued} queued`}
+        aria-label={`${role.role}: ${role.complete} complete, ${role.running} running, ${role.check} need a check, ${role.queued} queued`}
         aria-valuemax={total}
         aria-valuemin={0}
         aria-valuenow={role.complete}
@@ -106,52 +91,56 @@ const RoleRow = ({ role }: { role: PipelineFanoutRoleProgress }) => {
           total={total}
         />
         <Segment className="bg-amber-500" count={role.running} total={total} />
-        <Segment
-          className="bg-amber-300"
-          count={role.check ?? 0}
-          total={total}
-        />
+        <Segment className="bg-amber-300" count={role.check} total={total} />
       </div>
       <RoleStatus role={role} />
     </div>
   );
 };
 
+export interface PipelineFanoutCardProps {
+  fanout: PipelineFanoutProgress;
+  elapsedSeconds: number;
+  challenges?: PipelinePendingChallenge[];
+  solvingExtractor: string | null;
+  onSolveChallenge: (extractorId: string) => void;
+}
+
+const formatElapsed = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
 export const PipelineFanoutCard = ({
-  fixture,
-}: {
-  fixture: PipelineFanoutFixture;
-}) => {
-  const combinations =
-    fixture.roles.length * fixture.locations * fixture.jobBoards;
-  const complete = fixture.roles.reduce((sum, role) => sum + role.complete, 0);
-  const checks = fixture.roles.reduce(
-    (sum, role) => sum + (role.check ?? 0),
-    0,
-  );
+  fanout,
+  elapsedSeconds,
+  challenges = [],
+  solvingExtractor,
+  onSolveChallenge,
+}: PipelineFanoutCardProps) => {
+  const complete = fanout.roles.reduce((sum, role) => sum + role.complete, 0);
+  const checks = fanout.roles.reduce((sum, role) => sum + role.check, 0);
   const running =
-    checks + fixture.roles.reduce((sum, role) => sum + role.running, 0);
-  const queued = fixture.roles.reduce((sum, role) => sum + role.queued, 0);
-  const visibleRoles = fixture.roles.slice(0, 4);
-  const remainingRoles = fixture.roles.slice(4);
+    checks + fanout.roles.reduce((sum, role) => sum + role.running, 0);
+  const queued = fanout.roles.reduce((sum, role) => sum + role.queued, 0);
+  const visibleRoles = fanout.roles.slice(0, 4);
+  const remainingRoles = fanout.roles.slice(4);
 
   return (
     <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="gap-6 p-6 sm:p-8">
         <div className="flex flex-col gap-2">
           <CardTitle className="text-3xl tracking-tight sm:text-4xl">
-            Searching {combinations} combinations
-            <span className="font-mono text-xs tabular-nums text-muted-foreground ml-3">
-              (02:14 elapsed)
+            Searching {fanout.total} combinations
+            <span className="ml-3 font-mono text-xs tabular-nums text-muted-foreground">
+              ({formatElapsed(elapsedSeconds)} elapsed)
             </span>
           </CardTitle>
           <CardDescription className="text-base">
-            <strong className="text-foreground">{fixture.roles.length}</strong>{" "}
-            roles ×{" "}
-            <strong className="text-foreground">{fixture.locations}</strong>{" "}
-            locations ×{" "}
-            <strong className="text-foreground">{fixture.jobBoards}</strong> job
-            boards
+            <strong className="text-foreground">{fanout.termCount}</strong>{" "}
+            roles ·{" "}
+            <strong className="text-foreground">{fanout.locationCount}</strong>{" "}
+            locations ·{" "}
+            <strong className="text-foreground">{fanout.sourceCount}</strong>{" "}
+            job boards
           </CardDescription>
         </div>
 
@@ -171,12 +160,12 @@ export const PipelineFanoutCard = ({
             </div>
             <div className="flex items-baseline gap-2 font-mono text-xs tabular-nums">
               <span className="font-semibold">
-                {formatNumber(fixture.results)}
+                {formatNumber(fanout.results)}
               </span>
               <span className="font-sans text-muted-foreground">results</span>
               <span className="text-muted-foreground/50">·</span>
               <span className="font-semibold">
-                {formatNumber(fixture.unique)}
+                {formatNumber(fanout.unique)}
               </span>
               <span className="font-sans text-muted-foreground">unique</span>
             </div>
@@ -185,32 +174,32 @@ export const PipelineFanoutCard = ({
             className="flex h-2 overflow-hidden rounded-full bg-muted"
             role="progressbar"
             aria-label={`${complete} complete, ${running} running, ${queued} queued`}
-            aria-valuemax={combinations}
+            aria-valuemax={fanout.total}
             aria-valuemin={0}
             aria-valuenow={complete}
           >
             <Segment
               className="bg-emerald-400"
               count={complete}
-              total={combinations}
+              total={fanout.total}
             />
             <Segment
               className="bg-amber-500"
               count={running}
-              total={combinations}
+              total={fanout.total}
             />
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4 border-t p-4 sm:p-5">
-        {fixture.browserCheck ? (
+        {challenges.map((challenge) => (
           <div
             key={challenge.extractorId}
             className="flex items-center justify-between rounded-md border border-orange-500/20 bg-orange-500/10 p-3"
           >
             <div className="flex items-center gap-2 text-sm text-orange-400">
-              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <ShieldAlert className="size-4 shrink-0" />
               <span>{challenge.extractorName}</span>
             </div>
             <Button
@@ -218,11 +207,11 @@ export const PipelineFanoutCard = ({
               variant="outline"
               className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
               disabled={solvingExtractor === challenge.extractorId}
-              onClick={() => handleSolveChallenge(challenge.extractorId)}
+              onClick={() => onSolveChallenge(challenge.extractorId)}
             >
               {solvingExtractor === challenge.extractorId ? (
                 <>
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  <Loader2 data-icon="inline-start" />
                   Solving…
                 </>
               ) : (
@@ -230,7 +219,7 @@ export const PipelineFanoutCard = ({
               )}
             </Button>
           </div>
-        ) : null}
+        ))}
 
         <section className="overflow-hidden rounded-xl border">
           <div className="flex flex-col gap-1 border-b px-4 py-4">

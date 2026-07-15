@@ -114,6 +114,22 @@ The footer estimate shows expected discovered jobs and resume-processing range.
 - no compatible sources are selected
 - no search terms are present
 
+#### Monitor a running search
+
+While discovery is running, the Jobs page shows live fanout progress grouped by
+search term. Each row reports extractor tasks that are queued, running,
+complete, or waiting for a browser check. Some job boards batch locations or
+search terms, so several logical units can advance together.
+
+- **Results** is the raw number of jobs returned by completed extractors.
+- **Unique** is the number remaining after location/company filters and
+  in-run title/employer deduplication.
+- A browser-check row pauses only the affected extractor. Use **Solve** to open
+  the challenge viewer; other extractors continue running.
+
+The fanout card is hidden after discovery. Importing, scoring, and processing
+continue in the background for now.
+
 ### Manual tab
 
 Manual mode opens direct import flow in the same modal.
