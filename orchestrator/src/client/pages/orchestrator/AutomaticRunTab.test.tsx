@@ -57,6 +57,7 @@ vi.mock("@/components/ui/select", () => ({
   SelectContent: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+  SelectGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SelectItem: ({
     value,
     children,
@@ -132,10 +133,10 @@ describe("AutomaticRunTab", () => {
 
   const openLocationPreferences = () => {
     openConfigureDetails();
-    const trigger = screen.getByRole("button", {
+    const trigger = screen.queryByRole("button", {
       name: "Review and edit location intent",
     });
-    if (trigger.getAttribute("aria-expanded") !== "true") {
+    if (trigger && trigger.getAttribute("aria-expanded") !== "true") {
       fireEvent.click(trigger);
     }
   };
@@ -1295,6 +1296,7 @@ describe("AutomaticRunTab", () => {
 
     openLocationPreferences();
     expect(screen.getByText("Work arrangement")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
     expect(screen.getByText("Location scope")).toBeInTheDocument();
     expect(screen.getByText("Match strictness")).toBeInTheDocument();
     expect(

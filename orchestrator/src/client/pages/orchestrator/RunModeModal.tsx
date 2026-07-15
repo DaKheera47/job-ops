@@ -103,7 +103,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
       <div
         className={cn(
           "mx-auto flex w-full flex-1 flex-col px-4 sm:px-6 lg:px-8",
-          isManualMode ? "max-w-6xl py-6" : "max-w-5xl py-8 sm:py-10",
+          isManualMode ? "max-w-6xl py-6" : "max-w-6xl py-8 sm:py-10",
         )}
       >
         {showTopHeader ? (

@@ -35,7 +35,10 @@ import { getDetectedCountryKey } from "@/lib/user-location";
 import { cn } from "@/lib/utils";
 import { AutomaticRankingPreferencesCard } from "./AutomaticRankingPreferencesCard";
 import { AutomaticRunFooter } from "./AutomaticRunFooter";
-import { AutomaticRunSettingsCard } from "./AutomaticRunSettingsCard";
+import {
+  AutomaticRunAdvancedSettings,
+  AutomaticRunSettingsCard,
+} from "./AutomaticRunSettingsCard";
 import { AutomaticSavedSearchControls } from "./AutomaticSavedSearchControls";
 import { AutomaticSaveSearchDialog } from "./AutomaticSaveSearchDialog";
 import { AutomaticSearchPrompt } from "./AutomaticSearchPrompt";
@@ -786,35 +789,64 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             />
           </TabsContent>
 
-          <TabsContent value="details" className="mt-0 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-2"
-                onClick={() => setAutomaticTab("describe")}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Describe search
-              </Button>
-              <p className="text-sm font-medium text-muted-foreground">
-                Configure details
-              </p>
-            </div>
+          <TabsContent
+            value="details"
+            className="mt-0 flex flex-col gap-6 pb-8"
+          >
+            <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => setAutomaticTab("describe")}
+                >
+                  <ArrowLeft data-icon="inline-start" />
+                  Describe search
+                </Button>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Configure details
+                </p>
+                <h1 className="text-3xl font-semibold tracking-tight">
+                  Configure your search
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Tell Job Ops what matters, review the plan, then search your
+                  selected sources.
+                </p>
+              </div>
+
+              {savedSearchSupportEnabled ? (
+                <AutomaticSavedSearchControls
+                  savedSearches={savedSearches}
+                  selectedSavedSearch={selectedSavedSearch}
+                  selectedSavedSearchId={selectedSavedSearchId}
+                  isLoading={isSavedSearchesLoading}
+                  canCreate={Boolean(onCreateSavedSearch)}
+                  canUpdate={Boolean(onUpdateSavedSearch)}
+                  canDelete={Boolean(onDeleteSavedSearch)}
+                  onApplySavedSearch={(preset) => void applySavedSearch(preset)}
+                  onOpenSaveDialog={openSaveDialog}
+                  onDeleteSelectedSearch={() =>
+                    void handleDeleteSelectedSearch()
+                  }
+                />
+              ) : null}
+            </header>
 
             {planSummary ? (
               <Alert>
-                <Info className="h-4 w-4" />
+                <Info />
                 <AlertTitle>
                   {planSource === "fallback"
                     ? "Current settings kept"
                     : "Review generated settings"}
                 </AlertTitle>
-                <AlertDescription className="space-y-2">
+                <AlertDescription className="flex flex-col gap-2">
                   <p>{planSummary}</p>
                   {planWarnings.length > 0 ? (
-                    <ul className="list-disc space-y-1 pl-5">
+                    <ul className="flex list-disc flex-col gap-1 pl-5">
                       {planWarnings.map((warning) => (
                         <li key={warning}>{warning}</li>
                       ))}
@@ -824,143 +856,144 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               </Alert>
             ) : null}
 
-            {savedSearchSupportEnabled ? (
-              <AutomaticSavedSearchControls
-                savedSearches={savedSearches}
-                selectedSavedSearch={selectedSavedSearch}
-                selectedSavedSearchId={selectedSavedSearchId}
-                isLoading={isSavedSearchesLoading}
-                canCreate={Boolean(onCreateSavedSearch)}
-                canUpdate={Boolean(onUpdateSavedSearch)}
-                canDelete={Boolean(onDeleteSavedSearch)}
-                onApplySavedSearch={(preset) => void applySavedSearch(preset)}
-                onOpenSaveDialog={openSaveDialog}
-                onDeleteSelectedSearch={() => void handleDeleteSelectedSearch()}
-              />
-            ) : null}
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="flex min-w-0 flex-col gap-4">
+                <AutomaticSearchTermsCard
+                  selectedPreset={selectedPreset}
+                  searchTerms={searchTerms}
+                  searchTermDraft={searchTermDraft}
+                  onApplyPreset={applyPreset}
+                  onSelectCustomPreset={() => setSelectedPreset("custom")}
+                  onSearchTermDraftChange={(value) =>
+                    setValue("searchTermDraft", value)
+                  }
+                  onSearchTermsChange={(value) =>
+                    setValue("searchTerms", value, { shouldDirty: true })
+                  }
+                />
 
-            <AutomaticRunSettingsCard
-              selectedPreset={selectedPreset}
-              values={values}
-              locationSummary={locationSummary}
-              countryOptions={countryOptions}
-              countrySuggestion={countrySuggestion}
-              countrySelectionInvalid={countrySelectionInvalid}
-              cityLocationDraft={cityLocationDraft}
-              workplaceTypes={workplaceTypes}
-              workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
-              searchScope={searchScope}
-              matchStrictness={matchStrictness}
-              advancedOpen={advancedOpen}
-              topNInput={topNInput}
-              minScoreInput={minScoreInput}
-              runBudgetInput={runBudgetInput}
-              minRunBudget={MIN_PIPELINE_RUN_BUDGET}
-              maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
-              onApplyPreset={applyPreset}
-              onSelectCustomPreset={() => setSelectedPreset("custom")}
-              onCountryChange={(country) => {
-                setValue("country", country, { shouldDirty: true });
-                if (
-                  values.locationMode === "cities" &&
-                  normalizeUiCountryKey(country) !== values.country
-                ) {
-                  setValue("proximity", null, { shouldDirty: true });
+                <AutomaticRunSettingsCard
+                  values={values}
+                  countryOptions={countryOptions}
+                  countrySuggestion={countrySuggestion}
+                  countrySelectionInvalid={countrySelectionInvalid}
+                  cityLocationDraft={cityLocationDraft}
+                  workplaceTypes={workplaceTypes}
+                  workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
+                  onCountryChange={(country) => {
+                    setValue("country", country, { shouldDirty: true });
+                    if (
+                      values.locationMode === "cities" &&
+                      normalizeUiCountryKey(country) !== values.country
+                    ) {
+                      setValue("proximity", null, { shouldDirty: true });
+                    }
+                  }}
+                  onUseCountrySuggestion={() => {
+                    if (!countrySuggestion) return;
+                    setValue("country", countrySuggestion, {
+                      shouldDirty: true,
+                    });
+                    setValue("proximity", null, { shouldDirty: true });
+                  }}
+                  onCityLocationDraftChange={(value) =>
+                    setValue("cityLocationDraft", value)
+                  }
+                  onCityLocationsChange={(value) =>
+                    setValue("cityLocations", value, { shouldDirty: true })
+                  }
+                  onLocationModeChange={(value) =>
+                    setValue("locationMode", value, { shouldDirty: true })
+                  }
+                  onProximityChange={(value) =>
+                    setValue("proximity", value, { shouldDirty: true })
+                  }
+                  onToggleWorkplaceType={toggleWorkplaceType}
+                />
+
+                <AutomaticRankingPreferencesCard
+                  scoringInstructions={scoringInstructions}
+                  onScoringInstructionsChange={(value) =>
+                    setValue("scoringInstructions", value, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+
+                <AutomaticSourcePickerCard
+                  sourceRows={sourceRows}
+                  selectedSourceRows={selectedSourceRows}
+                  readySourceRows={readySourceRows}
+                  unavailableSourceRows={unavailableSourceRows}
+                  watchlistSources={watchlistSources}
+                  selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+                  isWatchlistSourcesLoading={isWatchlistSourcesLoading}
+                  onSourceToggle={handleSourceToggle}
+                  onWatchlistSourceToggle={onToggleWatchlistSource}
+                />
+
+                <AutomaticRunAdvancedSettings
+                  searchScope={searchScope}
+                  matchStrictness={matchStrictness}
+                  advancedOpen={advancedOpen}
+                  topNInput={topNInput}
+                  minScoreInput={minScoreInput}
+                  runBudgetInput={runBudgetInput}
+                  minRunBudget={MIN_PIPELINE_RUN_BUDGET}
+                  maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
+                  onSearchScopeChange={(value) =>
+                    setValue("searchScope", value, { shouldDirty: true })
+                  }
+                  onMatchStrictnessChange={(value) =>
+                    setValue("matchStrictness", value, { shouldDirty: true })
+                  }
+                  onAdvancedOpenChange={setAdvancedOpen}
+                  onTopNInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("topN", value);
+                  }}
+                  onMinScoreInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("minSuitabilityScore", value);
+                  }}
+                  onRunBudgetInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("runBudget", value);
+                  }}
+                  onRunBudgetInputBlur={() =>
+                    setValue(
+                      "runBudget",
+                      String(
+                        normalizeRunBudget(
+                          Number.parseInt(runBudgetInput, 10) ||
+                            DEFAULT_VALUES.runBudget,
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </div>
+
+              <AutomaticRunFooter
+                discoveredMin={estimate.discovered.min}
+                discoveredMax={estimate.discovered.max}
+                resumeCount={values.topN}
+                searchTerms={values.searchTerms}
+                locationSummary={locationSummary}
+                workplaceTypes={values.workplaceTypes}
+                scoringInstructions={values.scoringInstructions}
+                selectedPreset={selectedPreset}
+                sourceCount={
+                  selectedSourceRows.length + selectedWatchlistSourceIds.length
                 }
-              }}
-              onUseCountrySuggestion={() => {
-                if (!countrySuggestion) return;
-                setValue("country", countrySuggestion, { shouldDirty: true });
-                setValue("proximity", null, { shouldDirty: true });
-              }}
-              onCityLocationDraftChange={(value) =>
-                setValue("cityLocationDraft", value)
-              }
-              onCityLocationsChange={(value) =>
-                setValue("cityLocations", value, { shouldDirty: true })
-              }
-              onLocationModeChange={(value) =>
-                setValue("locationMode", value, { shouldDirty: true })
-              }
-              onProximityChange={(value) =>
-                setValue("proximity", value, { shouldDirty: true })
-              }
-              onToggleWorkplaceType={toggleWorkplaceType}
-              onSearchScopeChange={(value) =>
-                setValue("searchScope", value, { shouldDirty: true })
-              }
-              onMatchStrictnessChange={(value) =>
-                setValue("matchStrictness", value, { shouldDirty: true })
-              }
-              onAdvancedOpenChange={setAdvancedOpen}
-              onTopNInputChange={(value) => {
-                setSelectedPreset("custom");
-                setValue("topN", value);
-              }}
-              onMinScoreInputChange={(value) => {
-                setSelectedPreset("custom");
-                setValue("minSuitabilityScore", value);
-              }}
-              onRunBudgetInputChange={(value) => {
-                setSelectedPreset("custom");
-                setValue("runBudget", value);
-              }}
-              onRunBudgetInputBlur={() =>
-                setValue(
-                  "runBudget",
-                  String(
-                    normalizeRunBudget(
-                      Number.parseInt(runBudgetInput, 10) ||
-                        DEFAULT_VALUES.runBudget,
-                    ),
-                  ),
-                )
-              }
-            />
-
-            <AutomaticRankingPreferencesCard
-              scoringInstructions={scoringInstructions}
-              onScoringInstructionsChange={(value) =>
-                setValue("scoringInstructions", value, { shouldDirty: true })
-              }
-            />
-
-            <AutomaticSearchTermsCard
-              searchTerms={searchTerms}
-              searchTermDraft={searchTermDraft}
-              onSearchTermDraftChange={(value) =>
-                setValue("searchTermDraft", value)
-              }
-              onSearchTermsChange={(value) =>
-                setValue("searchTerms", value, { shouldDirty: true })
-              }
-            />
-
-            <AutomaticSourcePickerCard
-              sourceRows={sourceRows}
-              selectedSourceRows={selectedSourceRows}
-              readySourceRows={readySourceRows}
-              unavailableSourceRows={unavailableSourceRows}
-              watchlistSources={watchlistSources}
-              selectedWatchlistSourceIds={selectedWatchlistSourceIds}
-              isWatchlistSourcesLoading={isWatchlistSourcesLoading}
-              onSourceToggle={handleSourceToggle}
-              onWatchlistSourceToggle={onToggleWatchlistSource}
-            />
+                isSaving={isSaving}
+                disabled={runDisabled}
+                onRunSearch={() => void handleSaveAndRun()}
+              />
+            </div>
           </TabsContent>
         </div>
       </Tabs>
-
-      {automaticTab === "details" ? (
-        <AutomaticRunFooter
-          discoveredMin={estimate.discovered.min}
-          discoveredMax={estimate.discovered.max}
-          resumeCount={values.topN}
-          isSaving={isSaving}
-          disabled={runDisabled}
-          onRunSearch={() => void handleSaveAndRun()}
-        />
-      ) : null}
     </div>
   );
 };
