@@ -45,7 +45,7 @@ export function AutomaticRunFooter({
   const presetLabel =
     selectedPreset.charAt(0).toUpperCase() + selectedPreset.slice(1);
   return (
-    <Card className="h-fit lg:sticky lg:top-4">
+    <Card className="h-fit">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <CardTitle>Your search</CardTitle>

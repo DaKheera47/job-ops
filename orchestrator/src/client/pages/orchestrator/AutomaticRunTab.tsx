@@ -769,8 +769,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto",
-            automaticTab === "details" && "pr-1",
+            "min-h-0 flex-1",
+            automaticTab === "details"
+              ? "overflow-visible pr-1"
+              : "overflow-y-auto",
           )}
         >
           <TabsContent
@@ -793,7 +795,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             value="details"
             className="mt-0 flex flex-col gap-6 pb-8"
           >
-            <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <header>
               <div className="flex flex-col gap-2">
                 <Button
                   type="button"
@@ -813,23 +815,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   selected sources.
                 </p>
               </div>
-
-              {savedSearchSupportEnabled ? (
-                <AutomaticSavedSearchControls
-                  savedSearches={savedSearches}
-                  selectedSavedSearch={selectedSavedSearch}
-                  selectedSavedSearchId={selectedSavedSearchId}
-                  isLoading={isSavedSearchesLoading}
-                  canCreate={Boolean(onCreateSavedSearch)}
-                  canUpdate={Boolean(onUpdateSavedSearch)}
-                  canDelete={Boolean(onDeleteSavedSearch)}
-                  onApplySavedSearch={(preset) => void applySavedSearch(preset)}
-                  onOpenSaveDialog={openSaveDialog}
-                  onDeleteSelectedSearch={() =>
-                    void handleDeleteSelectedSearch()
-                  }
-                />
-              ) : null}
             </header>
 
             {planSummary ? (
@@ -971,22 +956,44 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 />
               </div>
 
-              <AutomaticRunFooter
-                discoveredMin={estimate.discovered.min}
-                discoveredMax={estimate.discovered.max}
-                resumeCount={values.topN}
-                searchTerms={values.searchTerms}
-                locationSummary={locationSummary}
-                workplaceTypes={values.workplaceTypes}
-                scoringInstructions={values.scoringInstructions}
-                selectedPreset={selectedPreset}
-                sourceCount={
-                  selectedSourceRows.length + selectedWatchlistSourceIds.length
-                }
-                isSaving={isSaving}
-                disabled={runDisabled}
-                onRunSearch={() => void handleSaveAndRun()}
-              />
+              <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
+                {savedSearchSupportEnabled ? (
+                  <AutomaticSavedSearchControls
+                    savedSearches={savedSearches}
+                    selectedSavedSearch={selectedSavedSearch}
+                    selectedSavedSearchId={selectedSavedSearchId}
+                    isLoading={isSavedSearchesLoading}
+                    canCreate={Boolean(onCreateSavedSearch)}
+                    canUpdate={Boolean(onUpdateSavedSearch)}
+                    canDelete={Boolean(onDeleteSavedSearch)}
+                    onApplySavedSearch={(preset) =>
+                      void applySavedSearch(preset)
+                    }
+                    onOpenSaveDialog={openSaveDialog}
+                    onDeleteSelectedSearch={() =>
+                      void handleDeleteSelectedSearch()
+                    }
+                  />
+                ) : null}
+
+                <AutomaticRunFooter
+                  discoveredMin={estimate.discovered.min}
+                  discoveredMax={estimate.discovered.max}
+                  resumeCount={values.topN}
+                  searchTerms={values.searchTerms}
+                  locationSummary={locationSummary}
+                  workplaceTypes={values.workplaceTypes}
+                  scoringInstructions={values.scoringInstructions}
+                  selectedPreset={selectedPreset}
+                  sourceCount={
+                    selectedSourceRows.length +
+                    selectedWatchlistSourceIds.length
+                  }
+                  isSaving={isSaving}
+                  disabled={runDisabled}
+                  onRunSearch={() => void handleSaveAndRun()}
+                />
+              </aside>
             </div>
           </TabsContent>
         </div>
