@@ -1297,6 +1297,9 @@ describe("AutomaticRunTab", () => {
       screen.getByText("Selected locations + remote worldwide"),
     ).toBeInTheDocument();
     expect(screen.getByText("Include likely matches")).toBeInTheDocument();
+    expect(screen.getByTestId("search-count-summary")).toHaveTextContent(
+      "1 role · 1 location · 1 job board",
+    );
     expect(
       screen.getByText(
         /You'll get (hybrid and onsite|onsite and hybrid) jobs in Zagreb in Croatia plus remote jobs worldwide\. Likely matches are included\./i,

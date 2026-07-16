@@ -52,7 +52,6 @@ import {
   type AutomaticPresetId,
   type AutomaticPresetSelection,
   type AutomaticRunValues,
-  calculateAutomaticEstimate,
   loadAutomaticRunMemory,
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
@@ -498,15 +497,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     onSetPipelineSources,
     pipelineSources,
   ]);
-
-  const estimate = useMemo(
-    () =>
-      calculateAutomaticEstimate({
-        values,
-        sources: compatiblePipelineSources,
-      }),
-    [values, compatiblePipelineSources],
-  );
 
   const locationSummary = useMemo(
     () => summarizeLocationPreferences(values),
@@ -977,15 +967,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 ) : null}
 
                 <AutomaticRunFooter
-                  discoveredMin={estimate.discovered.min}
-                  discoveredMax={estimate.discovered.max}
-                  resumeCount={values.topN}
                   searchTerms={values.searchTerms}
+                  locationCount={
+                    values.locationMode === "radius"
+                      ? Number(Boolean(values.proximity))
+                      : values.cityLocations.length
+                  }
                   locationSummary={locationSummary}
                   workplaceTypes={values.workplaceTypes}
                   scoringInstructions={values.scoringInstructions}
                   selectedPreset={selectedPreset}
-                  sourceCount={
+                  jobBoardCount={
                     selectedSourceRows.length +
                     selectedWatchlistSourceIds.length
                   }

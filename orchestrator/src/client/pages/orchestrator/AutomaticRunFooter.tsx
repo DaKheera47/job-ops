@@ -14,30 +14,26 @@ import { cn } from "@/lib/utils";
 import type { AutomaticPresetSelection, WorkplaceType } from "./automatic-run";
 
 interface AutomaticRunFooterProps {
-  discoveredMin: number;
-  discoveredMax: number;
-  resumeCount: number;
   searchTerms: string[];
+  locationCount: number;
   locationSummary: string;
   workplaceTypes: WorkplaceType[];
   scoringInstructions: string;
   selectedPreset: AutomaticPresetSelection;
-  sourceCount: number;
+  jobBoardCount: number;
   isSaving: boolean;
   disabled: boolean;
   onRunSearch: () => void;
 }
 
 export function AutomaticRunFooter({
-  discoveredMin,
-  discoveredMax,
-  resumeCount,
   searchTerms,
+  locationCount,
   locationSummary,
   workplaceTypes,
   scoringInstructions,
   selectedPreset,
-  sourceCount,
+  jobBoardCount,
   isSaving,
   disabled,
   onRunSearch,
@@ -78,26 +74,25 @@ export function AutomaticRunFooter({
         <Separator />
         <SummaryRow
           label="Coverage"
-          value={`${presetLabel} · ${sourceCount} source${sourceCount === 1 ? "" : "s"}`}
+          value={`${presetLabel} · ${jobBoardCount} source${jobBoardCount === 1 ? "" : "s"}`}
         />
-        <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-lg border">
-          <div className="p-3">
-            <strong className="block text-base tabular-nums">
-              {discoveredMin}–{discoveredMax}
-            </strong>
-            <span className="text-xs text-muted-foreground">
-              estimated jobs
-            </span>
-          </div>
-          <div className="border-l p-3">
-            <strong className="block text-base tabular-nums">
-              ~{resumeCount}
-            </strong>
-            <span className="text-xs text-muted-foreground">
-              resumes tailored
-            </span>
-          </div>
-        </div>
+        <p
+          data-testid="search-count-summary"
+          className="mt-2 text-sm text-muted-foreground"
+        >
+          <strong className="font-semibold tabular-nums text-foreground">
+            {searchTerms.length}
+          </strong>{" "}
+          {searchTerms.length === 1 ? "role" : "roles"} ·{" "}
+          <strong className="font-semibold tabular-nums text-foreground">
+            {locationCount}
+          </strong>{" "}
+          {locationCount === 1 ? "location" : "locations"} ·{" "}
+          <strong className="font-semibold tabular-nums text-foreground">
+            {jobBoardCount}
+          </strong>{" "}
+          {jobBoardCount === 1 ? "job board" : "job boards"}
+        </p>
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-2">
         <Button type="button" disabled={disabled} onClick={onRunSearch}>
