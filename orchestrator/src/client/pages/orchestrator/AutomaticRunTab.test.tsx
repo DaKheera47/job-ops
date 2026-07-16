@@ -73,6 +73,7 @@ vi.mock("@/lib/user-location", () => ({
 
 vi.mock("@client/api", () => ({
   detectLocationCountry: vi.fn(),
+  previewLocationArea: vi.fn(),
   planPipelineSearch: vi.fn(),
 }));
 
@@ -157,6 +158,10 @@ describe("AutomaticRunTab", () => {
     vi.mocked(api.detectLocationCountry).mockReset();
     vi.mocked(api.detectLocationCountry).mockResolvedValue({
       country: "united kingdom",
+    });
+    vi.mocked(api.previewLocationArea).mockReset();
+    vi.mocked(api.previewLocationArea).mockResolvedValue({
+      locations: ["Leeds", "Bradford", "Wakefield"],
     });
     vi.mocked(api.planPipelineSearch).mockReset();
     ensureStorage().clear();
@@ -397,6 +402,13 @@ describe("AutomaticRunTab", () => {
     });
     expect(screen.getByText("Detected country")).toBeInTheDocument();
     expect(screen.getByDisplayValue("United Kingdom")).toBeInTheDocument();
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("search-count-summary")).toHaveTextContent(
+          "1 role · 3 locations · 1 job board",
+        ),
+      { timeout: 1500 },
+    );
 
     fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     expect(

@@ -15,7 +15,7 @@ import type { AutomaticPresetSelection, WorkplaceType } from "./automatic-run";
 
 interface AutomaticRunFooterProps {
   searchTerms: string[];
-  locationCount: number;
+  locationCount: number | null;
   locationSummary: string;
   workplaceTypes: WorkplaceType[];
   scoringInstructions: string;
@@ -85,7 +85,7 @@ export function AutomaticRunFooter({
           </strong>{" "}
           {searchTerms.length === 1 ? "role" : "roles"} ·{" "}
           <strong className="font-semibold tabular-nums text-foreground">
-            {locationCount}
+            {locationCount ?? "…"}
           </strong>{" "}
           {locationCount === 1 ? "location" : "locations"} ·{" "}
           <strong className="font-semibold tabular-nums text-foreground">

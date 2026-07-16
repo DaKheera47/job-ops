@@ -39,7 +39,10 @@ import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { reserveHostedUsage } from "@server/services/hosted-usage";
 import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
-import { resolveCountryAtPoint } from "@server/services/proximity-search";
+import {
+  resolveCountryAtPoint,
+  resolveNearbyPlaceNames,
+} from "@server/services/proximity-search";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
   createLocationIntent,
@@ -77,6 +80,9 @@ const pipelineRunBudgetSchema = z
 const locationCountrySchema = z.object({
   latitude: z.number().finite().min(-90).max(90),
   longitude: z.number().finite().min(-180).max(180),
+});
+const locationAreaSchema = locationCountrySchema.extend({
+  radiusMiles: z.number().int().min(1).max(200),
 });
 
 function toSelectedSourcesValue(
@@ -158,6 +164,24 @@ pipelineRouter.post(
           : serviceUnavailable(
               "Unable to detect the country at the selected map point.",
             ),
+      );
+    }
+  },
+);
+
+pipelineRouter.post(
+  "/location-area-preview",
+  async (req: Request, res: Response) => {
+    try {
+      const proximity = locationAreaSchema.parse(req.body);
+      const locations = await resolveNearbyPlaceNames(proximity);
+      ok(res, { locations });
+    } catch (error) {
+      fail(
+        res,
+        error instanceof z.ZodError
+          ? badRequest("Invalid map area.", error.flatten())
+          : serviceUnavailable("Unable to preview locations in this map area."),
       );
     }
   },

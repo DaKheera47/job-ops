@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   distanceMiles,
   resolveCountryAtPoint,
@@ -6,6 +6,8 @@ import {
 } from "./proximity-search";
 
 describe("proximity search", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("calculates distance and plans nearby places around the clicked point", async () => {
     expect(
       distanceMiles(
@@ -96,6 +98,28 @@ describe("proximity search", () => {
     expect(fetchImpl.mock.calls[1]?.[0]).toBe(
       "https://overpass.kumi.systems/api/interpreter",
     );
+  });
+
+  it("reuses a successful place preview for the pipeline run", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          elements: [{ lat: 51.5074, lon: -0.1278, tags: { name: "London" } }],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+    const proximity = {
+      latitude: 51.5074,
+      longitude: -0.1278,
+      radiusMiles: 12,
+    };
+
+    await resolveNearbyPlaceNames(proximity);
+    await resolveNearbyPlaceNames(proximity);
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
   it("uses the centre locality when Overpass is unavailable", async () => {

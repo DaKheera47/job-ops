@@ -34,6 +34,17 @@ export async function detectLocationCountry(point: {
   });
 }
 
+export async function previewLocationArea(
+  proximity: LocationProximity,
+  signal?: AbortSignal,
+): Promise<{ locations: string[] }> {
+  return fetchApi<{ locations: string[] }>("/pipeline/location-area-preview", {
+    method: "POST",
+    body: JSON.stringify(proximity),
+    signal,
+  });
+}
+
 export async function getPipelineRuns(): Promise<PipelineRun[]> {
   return fetchApi<PipelineRun[]>("/pipeline/runs");
 }

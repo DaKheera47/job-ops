@@ -159,6 +159,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   onApplySavedSearch,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [nearbyPlaceCount, setNearbyPlaceCount] = useState<number | null>(null);
   const [isPlanningSearch, setIsPlanningSearch] = useState(false);
   const [searchPrompt, setSearchPrompt] = useState("");
   const [automaticTab, setAutomaticTab] = useState<"describe" | "details">(
@@ -218,6 +219,29 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
   const scoringInstructions = watch("scoringInstructions");
+
+  useEffect(() => {
+    if (!open || locationMode !== "radius" || !proximity) {
+      setNearbyPlaceCount(null);
+      return;
+    }
+
+    setNearbyPlaceCount(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void api
+        .previewLocationArea(proximity, controller.signal)
+        .then(({ locations }) => setNearbyPlaceCount(locations.length))
+        .catch(() => {
+          if (!controller.signal.aborted) setNearbyPlaceCount(null);
+        });
+    }, 750);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [locationMode, open, proximity]);
 
   useEffect(() => {
     if (!open) return;
@@ -970,7 +994,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   searchTerms={values.searchTerms}
                   locationCount={
                     values.locationMode === "radius"
-                      ? Number(Boolean(values.proximity))
+                      ? nearbyPlaceCount
                       : values.cityLocations.length
                   }
                   locationSummary={locationSummary}

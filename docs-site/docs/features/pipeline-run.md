@@ -76,6 +76,8 @@ saved budget when you start the run.
 
 The default radius is `50` miles. The supported range is `1` to `200` miles. In Map radius mode, the map point is authoritative and there is no separate country selector.
 
+After you select or adjust an area, JobOps previews the named cities and towns inside the circle. The location count in **Your search** updates after this lookup and the same result is reused when the search starts.
+
 Select **Manual cities** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
 
 Map-radius support is applied consistently even when an extractor has no native radius option:

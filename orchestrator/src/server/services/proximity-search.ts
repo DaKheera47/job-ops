@@ -10,6 +10,7 @@ const OVERPASS_ENDPOINTS = [
 // ponytail: cities/towns keep large-radius Overpass queries bounded; add a
 // local place dataset if village-level coverage becomes worth the dependency.
 const MAX_QUERY_PLACES = 25;
+const nearbyPlacesCache = new Map<string, Promise<string[]>>();
 
 type OverpassElement = {
   lat?: number;
@@ -79,9 +80,9 @@ export function distanceMiles(
   return 3958.7613 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export async function resolveNearbyPlaceNames(
+async function fetchNearbyPlaceNames(
   proximity: LocationProximity,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch,
 ): Promise<string[]> {
   const radiusMetres = Math.round(proximity.radiusMiles * METRES_PER_MILE);
   const query = `[out:json][timeout:12];node(around:${radiusMetres},${proximity.latitude},${proximity.longitude})[place~"^(city|town)$"][name];out body ${MAX_OVERPASS_ELEMENTS};`;
@@ -159,4 +160,25 @@ export async function resolveNearbyPlaceNames(
   if (name?.trim()) return [name.trim()];
 
   throw new Error("Unable to resolve nearby places for the selected map area.");
+}
+
+export async function resolveNearbyPlaceNames(
+  proximity: LocationProximity,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string[]> {
+  if (fetchImpl !== fetch) return fetchNearbyPlaceNames(proximity, fetchImpl);
+
+  const key = `${proximity.latitude},${proximity.longitude},${proximity.radiusMiles}`;
+  const cached = nearbyPlacesCache.get(key);
+  if (cached) return cached;
+
+  const request = fetchNearbyPlaceNames(proximity, fetchImpl).catch((error) => {
+    nearbyPlacesCache.delete(key);
+    throw error;
+  });
+  nearbyPlacesCache.set(key, request);
+  if (nearbyPlacesCache.size > 100) {
+    nearbyPlacesCache.delete(nearbyPlacesCache.keys().next().value as string);
+  }
+  return request;
 }
