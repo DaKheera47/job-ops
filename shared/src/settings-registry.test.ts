@@ -346,6 +346,15 @@ describe("settingsRegistry helpers", () => {
       );
     });
 
+    it("accepts claude_cli including hyphenated alias", () => {
+      expect(settingsRegistry.llmProvider.parse("claude_cli")).toBe(
+        "claude_cli",
+      );
+      expect(settingsRegistry.llmProvider.parse("claude-cli")).toBe(
+        "claude_cli",
+      );
+    });
+
     it("accepts GLM provider aliases", () => {
       expect(settingsRegistry.llmProvider.parse("glm")).toBe("glm");
       expect(settingsRegistry.llmProvider.parse("zhipu-ai")).toBe("glm");
@@ -366,6 +375,7 @@ describe("settingsRegistry helpers", () => {
       expect(getDefaultModelForProvider("gemini_cli")).toBe(
         "google/gemini-3-flash-preview",
       );
+      expect(getDefaultModelForProvider("claude_cli")).toBe("claude-sonnet-5");
       expect(getDefaultModelForProvider("codex")).toBe("gpt-5.4-mini");
       expect(getDefaultModelForProvider("ollama")).toBe("");
       expect(getDefaultModelForProvider("openrouter")).toBe(

@@ -327,6 +327,12 @@ async function imageInputCapabilityReason(
       : `The selected Gemini model (${input.model}) is not recognized as image-capable.`;
   }
 
+  if (provider === "claude_cli") {
+    return /^claude/.test(model)
+      ? null
+      : `The selected Claude model (${input.model}) is not recognized as image-capable.`;
+  }
+
   if (
     provider === "openrouter" ||
     provider === "openai_compatible" ||

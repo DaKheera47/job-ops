@@ -30,6 +30,7 @@ export const LLM_PROVIDERS = [
   "glm",
   "gemini",
   "gemini_cli",
+  "claude_cli",
   "codex",
 ] as const;
 
@@ -40,6 +41,7 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "glm",
   "gemini",
   "gemini_cli",
+  "claude_cli",
   "ollama",
 ] as const;
 
@@ -53,6 +55,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   glm: "GLM",
   gemini: "Gemini",
   gemini_cli: "Gemini (CLI)",
+  claude_cli: "Claude (CLI)",
   codex: "Codex",
 };
 
@@ -89,6 +92,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   gemini: "Gemini uses the native AI Studio API and requires a key.",
   gemini_cli:
     "Gemini (CLI) runs the official Google Gemini CLI on this host using your OAuth session or CLI API key — no JobOps LLM key.",
+  claude_cli:
+    "Claude (CLI) runs the official Claude Code CLI on this host using your subscription token or API key — no JobOps LLM key.",
   codex:
     "Codex runs through a local app-server process and uses your Codex login session.",
 };
@@ -126,6 +131,9 @@ const PROVIDER_KEY_HELPERS: Record<
   },
   gemini_cli: {
     text: "Authenticate with the Gemini CLI (gemini login / OAuth); see docs link below",
+  },
+  claude_cli: {
+    text: "Authenticate with the Claude CLI (claude setup-token); see docs link below",
   },
   codex: { text: "No API key required when Codex is authenticated locally" },
 };

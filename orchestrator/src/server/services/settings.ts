@@ -50,6 +50,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "gemini_cli") {
     return "";
   }
+  if (normalized === "claude_cli") {
+    return "";
+  }
   if (normalized === "codex") {
     return "";
   }

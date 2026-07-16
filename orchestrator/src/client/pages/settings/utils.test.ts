@@ -35,6 +35,7 @@ describe("settings utils", () => {
     );
     expect(getLlmProviderConfig("ollama").keyHelperHref).toBeNull();
     expect(getLlmProviderConfig("gemini_cli").keyHelperHref).toBeNull();
+    expect(getLlmProviderConfig("claude_cli").keyHelperHref).toBeNull();
     expect(getLlmProviderConfig("codex").keyHelperHref).toBeNull();
   });
 
@@ -46,6 +47,12 @@ describe("settings utils", () => {
 
   it("treats gemini_cli as a local provider without API key and base URL inputs", () => {
     const config = getLlmProviderConfig("gemini_cli");
+    expect(config.showApiKey).toBe(false);
+    expect(config.showBaseUrl).toBe(false);
+  });
+
+  it("treats claude_cli as a local provider without API key and base URL inputs", () => {
+    const config = getLlmProviderConfig("claude_cli");
     expect(config.showApiKey).toBe(false);
     expect(config.showBaseUrl).toBe(false);
   });
@@ -109,6 +116,7 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("glm")).toBe(true);
     expect(supportsLlmModelSuggestions("gemini")).toBe(true);
     expect(supportsLlmModelSuggestions("gemini_cli")).toBe(true);
+    expect(supportsLlmModelSuggestions("claude_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("ollama")).toBe(true);
     expect(supportsLlmModelSuggestions("openrouter")).toBe(false);
   });

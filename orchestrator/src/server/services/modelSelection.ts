@@ -87,7 +87,12 @@ function getDefaultBaseUrlForProvider(
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }
-  if (normalized === "gemini_cli" || normalized === "codex") return null;
+  if (
+    normalized === "gemini_cli" ||
+    normalized === "claude_cli" ||
+    normalized === "codex"
+  )
+    return null;
   return "https://openrouter.ai";
 }
 
