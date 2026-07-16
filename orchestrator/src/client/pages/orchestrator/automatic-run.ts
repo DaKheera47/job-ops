@@ -50,18 +50,6 @@ export interface AutomaticPresetValues {
   runBudget: number;
 }
 
-export interface AutomaticEstimate {
-  discovered: {
-    min: number;
-    max: number;
-    cap: number;
-  };
-  processed: {
-    min: number;
-    max: number;
-  };
-}
-
 function isAutomaticPresetSelection(
   value: unknown,
 ): value is AutomaticPresetSelection {
@@ -341,97 +329,6 @@ export function summarizeLocationPreferences(
 
 export function stringifySearchTerms(terms: string[]): string {
   return terms.join("\n");
-}
-
-export function calculateAutomaticEstimate(args: {
-  values: AutomaticRunValues;
-  sources: JobSource[];
-}): AutomaticEstimate {
-  const { values, sources } = args;
-  if (values.searchTerms.length === 0) {
-    return {
-      discovered: {
-        min: 0,
-        max: 0,
-        cap: 0,
-      },
-      processed: {
-        min: 0,
-        max: 0,
-      },
-    };
-  }
-
-  const termCount = values.searchTerms.length;
-  const hasGradcracker = sources.includes("gradcracker");
-  const hasUkVisaJobs = sources.includes("ukvisajobs");
-  const hasIndeed = sources.includes("indeed");
-  const hasLinkedIn = sources.includes("linkedin");
-  const hasGlassdoor = sources.includes("glassdoor");
-  const hasAdzuna = sources.includes("adzuna");
-  const hasHiringCafe = sources.includes("hiringcafe");
-  const hasStartupJobs = sources.includes("startupjobs");
-  const hasWorkingNomads = sources.includes("workingnomads");
-  const hasJobindex = sources.includes("jobindex");
-  const hasSeek = sources.includes("seek");
-  const hasNaukri = sources.includes("naukri");
-  const limits = deriveExtractorLimits({
-    budget: values.runBudget,
-    searchTerms: values.searchTerms,
-    sources,
-  });
-
-  const jobspySitesCount = [hasIndeed, hasLinkedIn, hasGlassdoor].filter(
-    Boolean,
-  ).length;
-  const jobspyCap = jobspySitesCount * limits.jobspyResultsWanted * termCount;
-  const gradcrackerCap = hasGradcracker
-    ? limits.gradcrackerMaxJobsPerTerm * termCount
-    : 0;
-  const ukvisaCap = hasUkVisaJobs ? limits.ukvisajobsMaxJobs : 0;
-  const adzunaCap = hasAdzuna ? limits.adzunaMaxJobsPerTerm * termCount : 0;
-  const hiringCafeCap = hasHiringCafe
-    ? limits.jobspyResultsWanted * termCount
-    : 0;
-  const startupJobsCap = hasStartupJobs
-    ? limits.startupjobsMaxJobsPerTerm * termCount
-    : 0;
-  const workingNomadsCap = hasWorkingNomads
-    ? limits.workingnomadsMaxJobsPerTerm * termCount
-    : 0;
-  const jobindexCap = hasJobindex
-    ? limits.jobindexMaxJobsPerTerm * termCount
-    : 0;
-  const seekCap = hasSeek ? limits.seekMaxJobsPerTerm * termCount : 0;
-  const naukriCap = hasNaukri ? limits.naukriMaxJobsPerTerm * termCount : 0;
-
-  const discoveredCap =
-    jobspyCap +
-    gradcrackerCap +
-    ukvisaCap +
-    adzunaCap +
-    hiringCafeCap +
-    startupJobsCap +
-    workingNomadsCap +
-    jobindexCap +
-    seekCap +
-    naukriCap;
-  const discoveredMin = Math.round(discoveredCap * 0.35);
-  const discoveredMax = Math.round(discoveredCap * 0.75);
-  const processedMin = Math.min(values.topN, discoveredMin);
-  const processedMax = Math.min(values.topN, discoveredMax);
-
-  return {
-    discovered: {
-      min: discoveredMin,
-      max: discoveredMax,
-      cap: discoveredCap,
-    },
-    processed: {
-      min: processedMin,
-      max: processedMax,
-    },
-  };
 }
 
 export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
