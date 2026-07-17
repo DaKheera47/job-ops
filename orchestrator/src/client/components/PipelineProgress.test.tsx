@@ -91,7 +91,7 @@ describe("PipelineProgress", () => {
     act(() => sseMock.handlers?.onMessage(baseProgress));
 
     expect(
-      screen.getByText("Searching backend in leeds on glassdoor"),
+      screen.getByText("Searching glassdoor for “backend” in leeds"),
     ).toBeInTheDocument();
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
@@ -104,7 +104,9 @@ describe("PipelineProgress", () => {
     await act(async () => vi.advanceTimersByTimeAsync(1500));
 
     expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/^Searching .+ in .+ on .+$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Searching .+ for “.+” in .+$/),
+    ).toBeInTheDocument();
   });
 
   it("hides the fanout card after discovery", () => {
@@ -114,7 +116,7 @@ describe("PipelineProgress", () => {
     );
 
     expect(
-      screen.queryByText("Searching backend in leeds on glassdoor"),
+      screen.queryByText("Searching glassdoor for “backend” in leeds"),
     ).toBeNull();
   });
 
@@ -143,7 +145,7 @@ describe("PipelineProgress", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
     expect(
-      screen.queryByText("Searching backend in leeds on glassdoor"),
+      screen.queryByText("Searching glassdoor for “backend” in leeds"),
     ).toBeNull();
   });
 
