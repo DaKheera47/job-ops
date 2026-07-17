@@ -9,9 +9,11 @@ import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
+import { requestyStrategy } from "./requesty";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
   openrouter: openRouterStrategy,
+  requesty: requestyStrategy,
   lmstudio: lmStudioStrategy,
   ollama: ollamaStrategy,
   openai: openAiStrategy,
