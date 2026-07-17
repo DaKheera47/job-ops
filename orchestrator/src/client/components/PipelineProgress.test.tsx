@@ -91,7 +91,7 @@ describe("PipelineProgress", () => {
     act(() => sseMock.handlers?.onMessage(baseProgress));
 
     expect(
-      screen.getByText("Searching for backend in leeds on glassdoor"),
+      screen.getByText("Searching backend in leeds on glassdoor"),
     ).toBeInTheDocument();
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("PipelineProgress", () => {
     );
 
     expect(
-      screen.queryByText("Searching for backend in leeds on glassdoor"),
+      screen.queryByText("Searching backend in leeds on glassdoor"),
     ).toBeNull();
   });
 
@@ -143,7 +143,7 @@ describe("PipelineProgress", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
     expect(
-      screen.queryByText("Searching for backend in leeds on glassdoor"),
+      screen.queryByText("Searching backend in leeds on glassdoor"),
     ).toBeNull();
   });
 

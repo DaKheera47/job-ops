@@ -44,24 +44,48 @@ const LiveSearchTitle = ({ text }: { text: string }) => {
     <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
       <span className="sr-only">{label}</span>
       <span aria-hidden="true" className="contents">
-        {prefersReducedMotion ? (
-          label
-        ) : (
-          <>
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span>Searching for</span>
-              <SlotText text={role} options={combinationSlotOptions} />
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span>Searching</span>
+          {prefersReducedMotion ? (
+            <span className="inline-block font-bold">
+              {role}
             </span>
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span>in</span>
-              <SlotText text={location} options={combinationSlotOptions} />
+          ) : (
+            <SlotText
+              className="inline-block font-bold"
+              text={role}
+              options={combinationSlotOptions}
+            />
+          )}
+        </span>
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span>in</span>
+          {prefersReducedMotion ? (
+            <span className="inline-block font-bold">
+              {location}
             </span>
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span>on</span>
-              <SlotText text={source} options={combinationSlotOptions} />
+          ) : (
+            <SlotText
+              className="inline-block font-bold"
+              text={location}
+              options={combinationSlotOptions}
+            />
+          )}
+        </span>
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span>on</span>
+          {prefersReducedMotion ? (
+            <span className="inline-block font-bold">
+              {source}
             </span>
-          </>
-        )}
+          ) : (
+            <SlotText
+              className="inline-block font-bold"
+              text={source}
+              options={combinationSlotOptions}
+            />
+          )}
+        </span>
       </span>
     </span>
   );
@@ -175,7 +199,7 @@ export const PipelineFanoutCard = ({
       <CardHeader className="gap-5 p-4 @lg/fanout:p-6 @3xl/fanout:p-8">
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2 @lg/fanout:flex-row @lg/fanout:items-start @lg/fanout:justify-between">
-            <CardTitle className="min-w-0 text-lg tracking-tight @lg/fanout:text-xl">
+            <CardTitle className="min-w-0 text-base font-medium tracking-normal">
               {currentCombination ? (
                 <LiveSearchTitle text={currentCombination} />
               ) : (
