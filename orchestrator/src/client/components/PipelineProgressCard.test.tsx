@@ -36,7 +36,8 @@ describe("PipelineProgressCard", () => {
       "35",
     );
     expect(screen.getByText("Discovered")).toBeInTheDocument();
-    expect(screen.getByText("Remaining")).toBeInTheDocument();
+    expect(screen.getByText("Awaiting score")).toBeInTheDocument();
+    expect(screen.getByText("Selected")).toBeInTheDocument();
   });
 
   it("rolls the active job forward as stage progress changes", () => {

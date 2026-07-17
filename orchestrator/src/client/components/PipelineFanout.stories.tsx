@@ -243,7 +243,7 @@ export const Scoring: Story = () => (
       "scoring",
       "Ranking discovered jobs against your profile…",
       {
-        detail: "1,860 of 3,102 jobs scored.",
+        detail: "Evaluating role fit, experience, and preferences.",
         jobsScored: 1860,
       },
     )}

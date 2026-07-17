@@ -102,7 +102,7 @@ const getPercentage = (progress: PipelineProgressState): number => {
 };
 
 const Metric = ({ label, value }: { label: string; value: number }) => (
-  <div className="flex flex-col gap-1 px-4 py-4">
+  <div className="flex flex-col gap-1 px-4 py-3">
     <span className="text-xs text-muted-foreground">{label}</span>
     <NumberFlow
       className="font-mono text-lg font-semibold tabular-nums"
@@ -146,7 +146,7 @@ const RollingStageText = ({ text }: { text: string }) => {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <span data-live-job-title="">
+    <span className="font-medium text-foreground" data-live-job-title="">
       {prefersReducedMotion ? (
         text
       ) : (
@@ -195,6 +195,12 @@ export const PipelineProgressCard = ({
     progress.totalToProcess - progress.jobsProcessed,
     0,
   );
+  const awaitingScore = Math.max(
+    progress.jobsDiscovered - progress.jobsScored,
+    0,
+  );
+  const isScoring =
+    progress.step === "scoring" || progress.step === "configuration_required";
   const stageCopy = liveStageCopy(progress);
   const stageText = stageCopy
     ? `${stageCopy.before} ${stageCopy.title} ${stageCopy.after}`
@@ -209,20 +215,14 @@ export const PipelineProgressCard = ({
 
   return (
     <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
-      <CardHeader className="gap-6 p-6 sm:p-8">
+      <CardHeader className="gap-4 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">
             <CardTitle className="text-2xl tracking-tight">
               {stepTitles[progress.step]}
-              {elapsedSeconds !== undefined ? (
-                <span className="ml-3 font-mono text-xs tabular-nums text-muted-foreground">
-                  ({String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:
-                  {String(elapsedSeconds % 60).padStart(2, "0")} elapsed)
-                </span>
-              ) : null}
             </CardTitle>
             <CardDescription
-              className="overflow-hidden text-base"
+              className="overflow-hidden text-base leading-6"
               title={stageText ?? undefined}
             >
               {stageCopy ? (
@@ -238,9 +238,15 @@ export const PipelineProgressCard = ({
               <p className="text-xs text-muted-foreground">{progress.detail}</p>
             ) : null}
           </div>
-          <Badge className="shrink-0" variant={badgeVariant}>
-            {stepLabels[progress.step]}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-3">
+            {elapsedSeconds !== undefined ? (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:
+                {String(elapsedSeconds % 60).padStart(2, "0")} elapsed
+              </span>
+            ) : null}
+            <Badge variant={badgeVariant}>{stepLabels[progress.step]}</Badge>
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <span className="self-end font-mono text-xs tabular-nums text-muted-foreground">
@@ -259,13 +265,19 @@ export const PipelineProgressCard = ({
       {showMetrics || progress.error ? (
         <>
           <Separator />
-          <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+          <CardContent className="flex flex-col gap-4 p-6">
             {showMetrics ? (
-              <section className="grid overflow-hidden rounded-xl border sm:grid-cols-4 sm:divide-x">
+              <section className="grid overflow-hidden rounded-lg border divide-y sm:grid-cols-4 sm:divide-x sm:divide-y-0">
                 <Metric label="Discovered" value={progress.jobsDiscovered} />
                 <Metric label="Scored" value={progress.jobsScored} />
-                <Metric label="Processed" value={progress.jobsProcessed} />
-                <Metric label="Remaining" value={remaining} />
+                <Metric
+                  label={isScoring ? "Awaiting score" : "Prepared"}
+                  value={isScoring ? awaitingScore : progress.jobsProcessed}
+                />
+                <Metric
+                  label={isScoring ? "Selected" : "To prepare"}
+                  value={isScoring ? progress.totalToProcess : remaining}
+                />
               </section>
             ) : null}
 
