@@ -42,21 +42,32 @@ describe("PipelineFanoutCard", () => {
     expect(screen.getByText("15")).toBeInTheDocument();
   });
 
-  it("reveals roles beyond the first four", () => {
+  it("keeps active roles visible and groups queued and done roles", () => {
     render(
       <PipelineFanoutCard
-        fanout={fanout}
+        fanout={{
+          ...fanout,
+          roles: [
+            { role: "Active", complete: 1, running: 1, queued: 1, check: 0 },
+            { role: "Queued", complete: 0, running: 0, queued: 3, check: 0 },
+            { role: "Done", complete: 3, running: 0, queued: 0, check: 0 },
+          ],
+        }}
         elapsedSeconds={134}
         solvingExtractor={null}
         onSolveChallenge={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("Five")).toBeNull();
-    fireEvent.click(
-      screen.getByRole("button", { name: /1 more roles queued/ }),
-    );
-    expect(screen.getByText("Five")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.queryByText("Queued")).toBeNull();
+    expect(screen.queryByText("Done")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "1 role queued" }));
+    fireEvent.click(screen.getByRole("button", { name: "1 role done" }));
+
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
   it("delegates browser challenge solving", () => {

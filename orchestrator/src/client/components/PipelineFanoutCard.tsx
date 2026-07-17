@@ -47,9 +47,7 @@ const LiveSearchTitle = ({ text }: { text: string }) => {
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span>Searching</span>
           {prefersReducedMotion ? (
-            <span className="inline-block font-bold">
-              {role}
-            </span>
+            <span className="inline-block font-bold">{role}</span>
           ) : (
             <SlotText
               className="inline-block font-bold"
@@ -61,9 +59,7 @@ const LiveSearchTitle = ({ text }: { text: string }) => {
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span>in</span>
           {prefersReducedMotion ? (
-            <span className="inline-block font-bold">
-              {location}
-            </span>
+            <span className="inline-block font-bold">{location}</span>
           ) : (
             <SlotText
               className="inline-block font-bold"
@@ -75,9 +71,7 @@ const LiveSearchTitle = ({ text }: { text: string }) => {
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span>on</span>
           {prefersReducedMotion ? (
-            <span className="inline-block font-bold">
-              {source}
-            </span>
+            <span className="inline-block font-bold">{source}</span>
           ) : (
             <SlotText
               className="inline-block font-bold"
@@ -191,8 +185,15 @@ export const PipelineFanoutCard = ({
   const running =
     checks + fanout.roles.reduce((sum, role) => sum + role.running, 0);
   const queued = fanout.roles.reduce((sum, role) => sum + role.queued, 0);
-  const visibleRoles = fanout.roles.slice(0, 4);
-  const remainingRoles = fanout.roles.slice(4);
+  const doneRoles = fanout.roles.filter(
+    (role) => role.complete === getRoleTotal(role),
+  );
+  const queuedRoles = fanout.roles.filter(
+    (role) => role.queued === getRoleTotal(role),
+  );
+  const activeRoles = fanout.roles.filter(
+    (role) => !doneRoles.includes(role) && !queuedRoles.includes(role),
+  );
 
   return (
     <Card className="@container/fanout w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
@@ -308,24 +309,47 @@ export const PipelineFanoutCard = ({
             <h2 className="text-sm font-semibold">Progress by role</h2>
           </div>
 
-          {visibleRoles.map((role) => (
+          {activeRoles.map((role) => (
             <RoleRow key={role.role} role={role} />
           ))}
 
-          {remainingRoles.length > 0 ? (
-            <Accordion type="single" collapsible>
-              <AccordionItem value="queued-roles" className="border-b-0">
-                <AccordionTrigger className="min-h-14 px-4 py-3 hover:bg-muted/30 hover:no-underline">
-                  <span className="flex min-w-0 flex-1 items-center justify-between gap-4 pr-2 text-sm font-semibold">
-                    <span>{remainingRoles.length} more roles queued</span>
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent className="pb-0">
-                  {remainingRoles.map((role) => (
-                    <RoleRow key={role.role} role={role} />
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
+          {queuedRoles.length > 0 || doneRoles.length > 0 ? (
+            <Accordion type="multiple">
+              {queuedRoles.length > 0 ? (
+                <AccordionItem value="queued-roles" className="last:border-b-0">
+                  <AccordionTrigger className="min-h-14 px-4 py-3 hover:bg-muted/30 hover:no-underline">
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-4 pr-2 text-sm font-semibold">
+                      <span>
+                        {queuedRoles.length}{" "}
+                        {queuedRoles.length === 1 ? "role" : "roles"} queued
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    {queuedRoles.map((role) => (
+                      <RoleRow key={role.role} role={role} />
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+              ) : null}
+
+              {doneRoles.length > 0 ? (
+                <AccordionItem value="done-roles" className="last:border-b-0">
+                  <AccordionTrigger className="min-h-14 px-4 py-3 hover:bg-muted/30 hover:no-underline">
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-4 pr-2 text-sm font-semibold">
+                      <span>
+                        {doneRoles.length}{" "}
+                        {doneRoles.length === 1 ? "role" : "roles"} done
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    {doneRoles.map((role) => (
+                      <RoleRow key={role.role} role={role} />
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+              ) : null}
             </Accordion>
           ) : null}
         </section>
