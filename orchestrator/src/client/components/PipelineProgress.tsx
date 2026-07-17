@@ -3,7 +3,10 @@ import {
   prepareChallengeViewer,
   solvePipelineChallenge,
 } from "@client/api";
-import type { PipelineProgressState } from "@shared/types";
+import type {
+  PipelineFanoutProgress,
+  PipelineProgressState,
+} from "@shared/types";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { showErrorToast } from "@/client/lib/error-toast";
@@ -22,6 +25,26 @@ const TERMINAL_STEPS: ReadonlySet<PipelineProgressState["step"]> = new Set([
   "failed",
   "configuration_required",
 ]);
+
+const getCurrentCombination = (
+  fanout: PipelineFanoutProgress,
+  index: number,
+): string | undefined => {
+  if (
+    fanout.sources.length === 0 ||
+    fanout.roles.length === 0 ||
+    fanout.locations.length === 0
+  ) {
+    return undefined;
+  }
+
+  const source = fanout.sources[index % fanout.sources.length];
+  const role = fanout.roles[index % fanout.roles.length]?.role;
+  const location = fanout.locations[index % fanout.locations.length];
+  if (!source || !role || !location) return undefined;
+
+  return `${source.toLowerCase()} × ${role.toLowerCase()} × ${location.toLowerCase()}`;
+};
 
 export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   isRunning,
@@ -144,6 +167,10 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     <PipelineFanoutCard
       fanout={progress.fanout}
       elapsedSeconds={elapsedSeconds}
+      currentCombination={getCurrentCombination(
+        progress.fanout,
+        elapsedSeconds,
+      )}
       challenges={progress.pendingChallenges}
       solvingExtractor={solvingExtractor}
       onSolveChallenge={handleSolveChallenge}

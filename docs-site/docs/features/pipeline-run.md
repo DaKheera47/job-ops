@@ -119,7 +119,8 @@ The footer estimate shows expected discovered jobs and resume-processing range.
 While discovery is running, the Jobs page shows live fanout progress grouped by
 search term. Each row reports extractor tasks that are queued, running,
 complete, or waiting for a browser check. Some job boards batch locations or
-search terms, so several logical units can advance together.
+search terms, so several logical units can advance together. A small live line
+cycles through the configured job board, search term, and location combinations.
 
 - **Results** is the raw number of jobs returned by completed extractors.
 - **Unique** is the number remaining after location/company filters and

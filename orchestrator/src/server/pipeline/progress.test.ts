@@ -12,6 +12,8 @@ describe("pipeline fanout progress", () => {
       progressHelpers.initializeFanout({
         roles: ["Backend", "Platform"],
         taskIds: ["jobspy", "gradcracker"],
+        locations: ["Manchester", "London", "Leeds"],
+        sources: ["indeed", "linkedin", "glassdoor", "gradcracker"],
         locationCount: 3,
         sourceCount: 4,
         capacity: 3,
@@ -25,6 +27,8 @@ describe("pipeline fanout progress", () => {
         termCount: 2,
         locationCount: 3,
         sourceCount: 4,
+        locations: ["Manchester", "London", "Leeds"],
+        sources: ["indeed", "linkedin", "glassdoor", "gradcracker"],
         total: 4,
         capacity: 3,
         results: 12,
@@ -43,6 +47,8 @@ describe("pipeline fanout progress", () => {
       progressHelpers.initializeFanout({
         roles: ["Backend"],
         taskIds: ["jobspy"],
+        locations: ["Manchester"],
+        sources: ["indeed", "linkedin", "glassdoor"],
         locationCount: 1,
         sourceCount: 3,
         capacity: 3,

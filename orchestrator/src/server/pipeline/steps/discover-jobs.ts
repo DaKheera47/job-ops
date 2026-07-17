@@ -403,6 +403,14 @@ export async function discoverJobsStep(args: {
         ...sourceTasks.map((task) => task.source),
         ...(watchlistSelectedSources.length > 0 ? ["watchlist"] : []),
       ],
+      locations:
+        locationIntent.cityLocations.length > 0
+          ? locationIntent.cityLocations
+          : [getPrimaryLocationLabel(locationIntent)],
+      sources: [
+        ...compatibleSources,
+        ...(watchlistSelectedSources.length > 0 ? ["watchlist"] : []),
+      ],
       locationCount: Math.max(1, locationIntent.cityLocations.length),
       sourceCount:
         compatibleSources.length +

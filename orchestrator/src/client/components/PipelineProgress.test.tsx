@@ -28,6 +28,8 @@ const fanout = {
   termCount: 2,
   locationCount: 3,
   sourceCount: 4,
+  locations: ["Manchester", "London", "Leeds"],
+  sources: ["linkedin", "indeed", "glassdoor", "gradcracker"],
   total: 4,
   capacity: 3,
   results: 12,
@@ -91,6 +93,7 @@ describe("PipelineProgress", () => {
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("(02:14 elapsed)")).toBeInTheDocument();
+    expect(screen.getByText("glassdoor × backend × leeds")).toBeInTheDocument();
   });
 
   it("falls back to snapshot polling when SSE does not open", async () => {

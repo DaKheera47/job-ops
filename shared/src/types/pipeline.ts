@@ -306,6 +306,8 @@ export interface PipelineFanoutProgress {
   termCount: number;
   locationCount: number;
   sourceCount: number;
+  locations: string[];
+  sources: string[];
   total: number;
   capacity: number;
   results: number;

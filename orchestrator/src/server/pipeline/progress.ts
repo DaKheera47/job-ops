@@ -56,6 +56,8 @@ type FanoutUnitState = "queued" | "running" | "complete" | "check";
 type FanoutTracker = {
   roles: string[];
   tasks: Map<string, FanoutUnitState[]>;
+  locations: string[];
+  sources: string[];
   locationCount: number;
   sourceCount: number;
   capacity: number;
@@ -191,6 +193,8 @@ function buildFanoutProgress(tracker: FanoutTracker): PipelineFanoutProgress {
     termCount: tracker.roles.length,
     locationCount: tracker.locationCount,
     sourceCount: tracker.sourceCount,
+    locations: tracker.locations,
+    sources: tracker.sources,
     total: tracker.roles.length * tracker.tasks.size,
     capacity: tracker.capacity,
     results: tracker.results,
@@ -268,6 +272,8 @@ export const progressHelpers = {
   initializeFanout: (options: {
     roles: string[];
     taskIds: string[];
+    locations: string[];
+    sources: string[];
     locationCount: number;
     sourceCount: number;
     capacity: number;
@@ -280,6 +286,8 @@ export const progressHelpers = {
           options.roles.map(() => "queued" as const),
         ]),
       ),
+      locations: options.locations,
+      sources: options.sources,
       locationCount: options.locationCount,
       sourceCount: options.sourceCount,
       capacity: options.capacity,

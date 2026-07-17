@@ -7,6 +7,8 @@ const fanout: PipelineFanoutProgress = {
   termCount: 5,
   locationCount: 2,
   sourceCount: 3,
+  locations: ["Manchester", "London"],
+  sources: ["linkedin", "indeed", "glassdoor"],
   total: 15,
   capacity: 3,
   results: 20,
