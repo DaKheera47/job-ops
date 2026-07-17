@@ -35,26 +35,30 @@ const combinationSlotOptions = {
   interrupt: false,
 };
 
-const LiveCombination = ({ text }: { text: string }) => {
+const LiveSearchTitle = ({ text }: { text: string }) => {
   const prefersReducedMotion = useReducedMotion();
   const [source = "", role = "", location = ""] = text.split(" · ");
+  const label = `Searching ${role} in ${location} on ${source}`;
 
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
-      <span className="sr-only">{text}</span>
+    <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
+      <span className="sr-only">{label}</span>
       <span aria-hidden="true" className="contents">
         {prefersReducedMotion ? (
-          text
+          label
         ) : (
           <>
-            <SlotText text={source} options={combinationSlotOptions} />
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span>·</span>
+              <span>Searching for</span>
               <SlotText text={role} options={combinationSlotOptions} />
             </span>
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span>·</span>
+              <span>in</span>
               <SlotText text={location} options={combinationSlotOptions} />
+            </span>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span>on</span>
+              <SlotText text={source} options={combinationSlotOptions} />
             </span>
           </>
         )}
@@ -170,12 +174,16 @@ export const PipelineFanoutCard = ({
     <Card className="@container/fanout w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="gap-5 p-4 @lg/fanout:p-6 @3xl/fanout:p-8">
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <CardTitle className="text-xl tracking-tight @lg/fanout:text-2xl">
-              Searching {fanout.total} combinations
+          <div className="flex flex-col gap-2 @lg/fanout:flex-row @lg/fanout:items-start @lg/fanout:justify-between">
+            <CardTitle className="min-w-0 text-lg tracking-tight @lg/fanout:text-xl">
+              {currentCombination ? (
+                <LiveSearchTitle text={currentCombination} />
+              ) : (
+                "Searching jobs"
+              )}
             </CardTitle>
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              ({formatElapsed(elapsedSeconds)} elapsed)
+            <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+              {formatElapsed(elapsedSeconds)} elapsed
             </span>
           </div>
           <CardDescription className="text-base">
@@ -184,16 +192,10 @@ export const PipelineFanoutCard = ({
             <strong className="text-foreground">{fanout.locationCount}</strong>{" "}
             locations ·{" "}
             <strong className="text-foreground">{fanout.sourceCount}</strong>{" "}
-            job boards
+            job boards ·{" "}
+            <strong className="text-foreground">{fanout.total}</strong>{" "}
+            combinations
           </CardDescription>
-          {currentCombination ? (
-            <p className="flex min-w-0 items-start gap-2 font-mono text-[11px] text-muted-foreground">
-              <span className="mt-1 size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" />
-              <span className="min-w-0 break-words">
-                <LiveCombination text={currentCombination} />
-              </span>
-            </p>
-          ) : null}
         </div>
 
         <div className="flex flex-col gap-3">

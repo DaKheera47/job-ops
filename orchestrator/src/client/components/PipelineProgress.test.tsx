@@ -90,11 +90,12 @@ describe("PipelineProgress", () => {
     render(<PipelineProgress isRunning />);
     act(() => sseMock.handlers?.onMessage(baseProgress));
 
-    expect(screen.getByText("Searching 4 combinations")).toBeInTheDocument();
+    expect(
+      screen.getByText("Searching for backend in leeds on glassdoor"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("(02:14 elapsed)")).toBeInTheDocument();
-    expect(screen.getByText("glassdoor · backend · leeds")).toBeInTheDocument();
+    expect(screen.getByText("02:14 elapsed")).toBeInTheDocument();
   });
 
   it("falls back to snapshot polling when SSE does not open", async () => {
@@ -103,7 +104,7 @@ describe("PipelineProgress", () => {
     await act(async () => vi.advanceTimersByTimeAsync(1500));
 
     expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Searching 4 combinations")).toBeInTheDocument();
+    expect(screen.getByText(/^Searching .+ in .+ on .+$/)).toBeInTheDocument();
   });
 
   it("hides the fanout card after discovery", () => {
@@ -112,7 +113,9 @@ describe("PipelineProgress", () => {
       sseMock.handlers?.onMessage({ ...baseProgress, step: "importing" }),
     );
 
-    expect(screen.queryByText("Searching 4 combinations")).toBeNull();
+    expect(
+      screen.queryByText("Searching for backend in leeds on glassdoor"),
+    ).toBeNull();
   });
 
   it("renders the live scoring card after discovery", () => {
@@ -139,7 +142,9 @@ describe("PipelineProgress", () => {
       screen.getByTitle("Ranking Frontend Engineer against your profile"),
     ).toBeInTheDocument();
     expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
-    expect(screen.queryByText("Searching 4 combinations")).toBeNull();
+    expect(
+      screen.queryByText("Searching for backend in leeds on glassdoor"),
+    ).toBeNull();
   });
 
   it("renders browser challenges from live progress", () => {
