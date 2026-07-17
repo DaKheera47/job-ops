@@ -46,7 +46,7 @@ async function reverseGeocodeAddress(
       });
     const response =
       fetchImpl === fetch ? await nominatimQueue.add(request) : await request();
-    if (!response.ok) return null;
+    if (!response?.ok) return null;
     const payload = (await response.json()) as {
       address?: Record<string, string | undefined>;
     };
