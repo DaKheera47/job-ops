@@ -11,17 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
-
-type Transport = "connecting" | "live" | "polling";
 
 export interface PipelineProgressCardProps {
   progress: PipelineProgressState;
   elapsedSeconds?: number;
   currentCombination?: string;
-  transport?: Transport;
   solvingExtractor?: string | null;
   onSolveChallenge?: (extractorId: string) => void;
   resumingScoring?: boolean;
@@ -54,57 +50,6 @@ const stepLabels: Record<PipelineProgressState["step"], string> = {
   configuration_required: "Action needed",
 };
 
-const transportLabels: Record<Transport, string> = {
-  connecting: "Connecting…",
-  live: "Live",
-  polling: "Updating…",
-};
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
-
-const getPercentage = (progress: PipelineProgressState): number => {
-  switch (progress.step) {
-    case "challenge_required":
-      return 15;
-    case "crawling":
-      return progress.crawlingTermsTotal > 0
-        ? clamp(
-            5 +
-              (progress.crawlingTermsProcessed / progress.crawlingTermsTotal) *
-                10,
-            5,
-            15,
-          )
-        : 5;
-    case "importing":
-      return 20;
-    case "scoring":
-      return progress.jobsDiscovered > 0
-        ? clamp(
-            20 + (progress.jobsScored / progress.jobsDiscovered) * 30,
-            20,
-            50,
-          )
-        : 25;
-    case "processing":
-      return progress.totalToProcess > 0
-        ? clamp(
-            50 + (progress.jobsProcessed / progress.totalToProcess) * 50,
-            50,
-            100,
-          )
-        : 55;
-    case "completed":
-    case "cancelled":
-    case "failed":
-    case "configuration_required":
-      return 100;
-    default:
-      return 0;
-  }
-};
-
 const Metric = ({ label, value }: { label: string; value: number }) => (
   <div className="flex flex-col gap-1 px-4 py-4">
     <span className="text-xs text-muted-foreground">{label}</span>
@@ -121,7 +66,6 @@ export const PipelineProgressCard = ({
   progress,
   elapsedSeconds,
   currentCombination,
-  transport = "live",
   solvingExtractor = null,
   onSolveChallenge = () => {},
   resumingScoring = false,
@@ -143,7 +87,6 @@ export const PipelineProgressCard = ({
     );
   }
 
-  const percentage = getPercentage(progress);
   const remaining = Math.max(
     progress.totalToProcess - progress.jobsProcessed,
     0,
@@ -158,7 +101,7 @@ export const PipelineProgressCard = ({
 
   return (
     <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
-      <CardHeader className="gap-6 p-6 sm:p-8">
+      <CardHeader className="p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">
             <CardTitle className="text-2xl tracking-tight">
@@ -177,28 +120,9 @@ export const PipelineProgressCard = ({
               <p className="text-xs text-muted-foreground">{progress.detail}</p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Badge variant={badgeVariant}>{stepLabels[progress.step]}</Badge>
-            <span className="text-xs text-muted-foreground">
-              {transportLabels[transport]}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Overall progress</span>
-            <span className="font-mono tabular-nums">
-              {Math.round(percentage)}%
-            </span>
-          </div>
-          <Progress
-            value={percentage}
-            aria-label={`${stepLabels[progress.step]}: ${Math.round(percentage)}%`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(percentage)}
-          />
+          <Badge className="shrink-0" variant={badgeVariant}>
+            {stepLabels[progress.step]}
+          </Badge>
         </div>
       </CardHeader>
 

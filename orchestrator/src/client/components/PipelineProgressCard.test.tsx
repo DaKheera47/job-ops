@@ -28,10 +28,8 @@ describe("PipelineProgressCard", () => {
     render(<PipelineProgressCard progress={progress} elapsedSeconds={90} />);
 
     expect(screen.getByText("Scoring matches")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute(
-      "aria-valuenow",
-      "35",
-    );
+    expect(screen.queryByText("Overall progress")).toBeNull();
+    expect(screen.queryByText("Live")).toBeNull();
     expect(screen.getByText("Discovered")).toBeInTheDocument();
     expect(screen.getByText("Remaining")).toBeInTheDocument();
   });

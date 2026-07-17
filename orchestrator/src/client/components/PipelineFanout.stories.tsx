@@ -183,7 +183,6 @@ export const Connecting: Story = () => (
     progress={stageProgress("idle", "Connecting to pipeline progress…", {
       detail: undefined,
     })}
-    transport="connecting"
   />
 );
 Connecting.storyName = "Stage · connecting";
