@@ -62,4 +62,24 @@ describe("PipelineFanoutCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Solve" }));
     expect(onSolveChallenge).toHaveBeenCalledWith("gradcracker");
   });
+
+  it("keeps every busy-role status in the responsive row", () => {
+    render(
+      <PipelineFanoutCard
+        fanout={{
+          ...fanout,
+          roles: [{ ...fanout.roles[0], check: 1 }, ...fanout.roles.slice(1)],
+        }}
+        elapsedSeconds={0}
+        solvingExtractor={null}
+        onSolveChallenge={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("progressbar", {
+        name: "One: 1 complete, 1 running, 1 need a check, 1 queued",
+      }),
+    ).toBeInTheDocument();
+  });
 });
