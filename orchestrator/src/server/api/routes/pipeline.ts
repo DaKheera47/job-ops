@@ -39,12 +39,17 @@ import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { reserveHostedUsage } from "@server/services/hosted-usage";
 import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
+import {
+  resolveCountryAtPoint,
+  resolveNearbyPlaceNames,
+} from "@server/services/proximity-search";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
   createLocationIntent,
   planLocationSources,
 } from "@shared/location-intelligence.js";
 import {
+  LOCATION_INPUT_MODE_VALUES,
   LOCATION_MATCH_STRICTNESS_VALUES,
   LOCATION_SEARCH_SCOPE_VALUES,
 } from "@shared/location-preferences.js";
@@ -72,6 +77,13 @@ const pipelineRunBudgetSchema = z
   .int()
   .max(MAX_PIPELINE_RUN_BUDGET)
   .transform(normalizePipelineRunBudget);
+const locationCountrySchema = z.object({
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+});
+const locationAreaSchema = locationCountrySchema.extend({
+  radiusMiles: z.number().int().min(1).max(200),
+});
 
 function toSelectedSourcesValue(
   sources: readonly string[] | undefined,
@@ -136,6 +148,44 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
     );
   }
 });
+
+pipelineRouter.post(
+  "/location-country",
+  async (req: Request, res: Response) => {
+    try {
+      const point = locationCountrySchema.parse(req.body);
+      const country = await resolveCountryAtPoint(point);
+      ok(res, { country });
+    } catch (error) {
+      fail(
+        res,
+        error instanceof z.ZodError
+          ? badRequest("Invalid map point.", error.flatten())
+          : serviceUnavailable(
+              "Unable to detect the country at the selected map point.",
+            ),
+      );
+    }
+  },
+);
+
+pipelineRouter.post(
+  "/location-area-preview",
+  async (req: Request, res: Response) => {
+    try {
+      const proximity = locationAreaSchema.parse(req.body);
+      const locations = await resolveNearbyPlaceNames(proximity);
+      ok(res, { locations });
+    } catch (error) {
+      fail(
+        res,
+        error instanceof z.ZodError
+          ? badRequest("Invalid map area.", error.flatten())
+          : serviceUnavailable("Unable to preview locations in this map area."),
+      );
+    }
+  },
+);
 
 /**
  * GET /api/pipeline/progress/snapshot - Get the current pipeline progress state
@@ -208,6 +258,15 @@ const pipelineSearchPresetConfigSchema = z.object({
   sources: z.array(pipelineSourceSchema).min(1),
   country: z.string().trim().max(100),
   cityLocations: z.array(z.string().trim().min(1).max(100)).max(25),
+  locationMode: z.enum(LOCATION_INPUT_MODE_VALUES).optional(),
+  proximity: z
+    .object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+      radiusMiles: z.number().int().min(1).max(200),
+    })
+    .nullable()
+    .optional(),
   workplaceTypes: z.array(z.enum(WORKPLACE_TYPE_VALUES)).min(1).max(3),
   searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
@@ -444,6 +503,14 @@ const runPipelineSchema = z.object({
   scoringInstructions: z.string().trim().max(4000).optional(),
   country: z.string().trim().optional(),
   cityLocations: z.array(z.string().trim().min(1)).optional(),
+  proximity: z
+    .object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+      radiusMiles: z.number().int().min(1).max(200),
+    })
+    .nullable()
+    .optional(),
   workplaceTypes: z
     .array(z.enum(WORKPLACE_TYPE_VALUES))
     .min(1)
@@ -465,6 +532,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     const locationIntent = createLocationIntent({
       selectedCountry: config.country,
       cityLocations: config.cityLocations,
+      proximity: config.proximity,
       workplaceTypes: config.workplaceTypes,
       geoScope: config.searchScope,
       matchStrictness: config.matchStrictness,

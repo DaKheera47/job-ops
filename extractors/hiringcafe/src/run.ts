@@ -4,6 +4,7 @@ import {
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput, JobLocationEvidence } from "@shared/types/jobs";
+import type { LocationProximity } from "@shared/types/location.js";
 import {
   toNumberOrNull,
   toStringOrNull,
@@ -85,6 +86,7 @@ export interface RunHiringCafeOptions {
   locations?: string[];
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   locationRadiusMiles?: number;
+  proximity?: LocationProximity;
   maxJobsPerTerm?: number;
   fetchImpl?: typeof fetch;
   shouldCancel?: () => boolean;
@@ -620,8 +622,28 @@ async function resolveSearchStateLocation(args: {
   countryKey: string;
   radiusMiles: number;
   fetchImpl: typeof fetch;
+  proximity?: LocationProximity;
 }): Promise<CityLocationContext | null> {
-  if (!args.location || !args.countryLocation) return null;
+  if (!args.countryLocation) return null;
+  if (args.proximity) {
+    const city = args.location ?? "Selected map area";
+    const countryComponent = args.countryLocation.address_components[0];
+    const countryLong = countryComponent?.long_name ?? "";
+    return {
+      id: buildCityLocationId(city),
+      city,
+      regionLong: countryLong,
+      regionShort: countryComponent?.short_name ?? "",
+      countryLong,
+      countryShort: countryComponent?.short_name ?? "",
+      lat: args.proximity.latitude,
+      lon: args.proximity.longitude,
+      formattedAddress: city,
+      population: null,
+      radiusMiles: args.proximity.radiusMiles,
+    };
+  }
+  if (!args.location) return null;
   if (!shouldApplyStrictCityFilter(args.location, args.countryKey)) return null;
 
   const countryComponent = args.countryLocation.address_components[0];
@@ -678,7 +700,11 @@ export async function runHiringCafe(
     list: options.locations,
     env: process.env.HIRING_CAFE_LOCATION_QUERY,
   });
-  const runLocations = locations.length > 0 ? locations : [null];
+  const runLocations = options.proximity
+    ? [locations[0] ?? null]
+    : locations.length > 0
+      ? locations
+      : [null];
   const termTotal = searchTerms.length * runLocations.length;
   const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -698,6 +724,7 @@ export async function runHiringCafe(
         countryKey,
         radiusMiles: locationRadiusMiles,
         fetchImpl,
+        proximity: options.proximity,
       });
 
       for (let i = 0; i < searchTerms.length; i += 1) {

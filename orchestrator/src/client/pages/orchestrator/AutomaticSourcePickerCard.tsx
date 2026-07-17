@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { sourceLabel } from "@/lib/utils";
 
 const SOURCE_MOTION_EASE = [0.22, 1, 0.36, 1] as const;
@@ -74,10 +80,20 @@ export function AutomaticSourcePickerCard({
 
   return (
     <Card>
-      <CardHeader className="pb-1">
-        <CardTitle>Sources</CardTitle>
+      <CardHeader>
+        <div className="flex items-start gap-3">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold text-muted-foreground">
+            4
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <CardTitle>Where should Job Ops search?</CardTitle>
+            <CardDescription>
+              Review the sources that are ready for this location and search.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-3">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="sources" className="border-b-0">
             <AccordionTrigger
@@ -92,7 +108,7 @@ export function AutomaticSourcePickerCard({
                 <motion.div
                   layout
                   transition={sourceMotionTransition}
-                  className="min-w-0 space-y-1"
+                  className="flex min-w-0 flex-col gap-1"
                 >
                   <p className="text-sm font-semibold text-foreground">
                     {selectedCount === 0
@@ -124,7 +140,7 @@ export function AutomaticSourcePickerCard({
                 initial={sourceSectionInitial}
                 animate={sourceSectionAnimate}
                 transition={sourceMotionTransition}
-                className="space-y-5"
+                className="flex flex-col gap-5"
               >
                 <SourceGroup
                   label="Selected"

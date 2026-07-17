@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  LOCATION_INPUT_MODE_VALUES,
   LOCATION_MATCH_STRICTNESS_VALUES,
   LOCATION_SEARCH_SCOPE_VALUES,
 } from "./location-preferences";
@@ -29,6 +30,12 @@ function parseIntOrNull(raw: string | undefined): number | null {
   if (!raw) return null;
   const parsed = parseInt(raw, 10);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseNumberOrNull(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
@@ -615,6 +622,35 @@ export const settingsRegistry = {
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
+  },
+  locationSearchMode: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_INPUT_MODE_VALUES),
+    default: () => "radius" as const,
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  locationLatitude: {
+    kind: "typed" as const,
+    schema: z.number().min(-90).max(90).nullable(),
+    default: (): number | null => null,
+    parse: parseNumberOrNull,
+    serialize: serializeNullableNumber,
+  },
+  locationLongitude: {
+    kind: "typed" as const,
+    schema: z.number().min(-180).max(180).nullable(),
+    default: (): number | null => null,
+    parse: parseNumberOrNull,
+    serialize: serializeNullableNumber,
+  },
+  locationRadiusMiles: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(200),
+    default: (): number => 50,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
   },
   locationSearchScope: {
     kind: "typed" as const,

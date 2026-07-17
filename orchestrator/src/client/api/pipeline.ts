@@ -2,6 +2,7 @@ import type {
   CreatePipelineSearchPresetInput,
   JobSource,
   LocationMatchStrictness,
+  LocationProximity,
   LocationSearchScope,
   PipelineProgressState,
   PipelineRun,
@@ -21,6 +22,27 @@ export async function getPipelineStatus(): Promise<PipelineStatusResponse> {
 
 export async function getPipelineProgressSnapshot(): Promise<PipelineProgressState> {
   return fetchApi<PipelineProgressState>("/pipeline/progress/snapshot");
+}
+
+export async function detectLocationCountry(point: {
+  latitude: number;
+  longitude: number;
+}): Promise<{ country: string }> {
+  return fetchApi<{ country: string }>("/pipeline/location-country", {
+    method: "POST",
+    body: JSON.stringify(point),
+  });
+}
+
+export async function previewLocationArea(
+  proximity: LocationProximity,
+  signal?: AbortSignal,
+): Promise<{ locations: string[] }> {
+  return fetchApi<{ locations: string[] }>("/pipeline/location-area-preview", {
+    method: "POST",
+    body: JSON.stringify(proximity),
+    signal,
+  });
 }
 
 export async function getPipelineRuns(): Promise<PipelineRun[]> {
@@ -138,6 +160,7 @@ export async function runPipeline(config?: {
   scoringInstructions?: string;
   country?: string;
   cityLocations?: string[];
+  proximity?: LocationProximity | null;
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   searchScope?: LocationSearchScope;
   matchStrictness?: LocationMatchStrictness;

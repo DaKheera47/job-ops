@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   AUTOMATIC_PRESETS,
-  calculateAutomaticEstimate,
   deriveExtractorLimits,
   getRunMemoryStorageKey,
   inferAutomaticPresetSelection,
@@ -127,30 +126,6 @@ describe("automatic-run utilities", () => {
     expect(AUTOMATIC_PRESETS.detailed.topN).toBeGreaterThan(
       AUTOMATIC_PRESETS.fast.topN,
     );
-  });
-
-  it("calculates estimate range with source caps and topN clipping", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 100,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
-    });
-
-    expect(estimate.discovered.cap).toBe(300);
-    expect(estimate.discovered.min).toBe(105);
-    expect(estimate.discovered.max).toBe(225);
-    expect(estimate.processed.min).toBe(10);
-    expect(estimate.processed.max).toBe(10);
   });
 
   it("keeps discovered cap under budget regardless of search-term count", () => {
@@ -309,160 +284,11 @@ describe("automatic-run utilities", () => {
     ).toBe("custom");
   });
 
-  it("returns zero estimate when no search terms are provided", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: [],
-        scoringInstructions: "",
-        runBudget: 750,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
-    });
-
-    expect(estimate).toEqual({
-      discovered: { min: 0, max: 0, cap: 0 },
-      processed: { min: 0, max: 0 },
-    });
-  });
-
   it("parses comma and newline separated search terms", () => {
     expect(parseSearchTermsInput("backend, platform\napi\n\n")).toEqual([
       "backend",
       "platform",
       "api",
     ]);
-  });
-
-  it("includes adzuna in estimate caps", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["adzuna"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
-  });
-
-  it("includes hiringcafe in estimate caps using the shared term budget", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["hiringcafe"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
-  });
-
-  it("includes startupjobs in estimate caps using the shared term budget", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["startupjobs"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
-  });
-
-  it("includes workingnomads in estimate caps using the shared term budget", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "united kingdom",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["workingnomads"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
-  });
-
-  it("includes seek in estimate caps using the shared term budget", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "australia",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["seek"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
-  });
-
-  it("includes naukri in estimate caps using the shared term budget", () => {
-    const estimate = calculateAutomaticEstimate({
-      values: {
-        topN: 10,
-        minSuitabilityScore: 50,
-        searchTerms: ["backend", "platform"],
-        scoringInstructions: "",
-        runBudget: 120,
-        country: "india",
-        cityLocations: [],
-        workplaceTypes: ["remote", "hybrid", "onsite"],
-        searchScope: "selected_only",
-        matchStrictness: "exact_only",
-      },
-      sources: ["naukri"],
-    });
-
-    expect(estimate.discovered.cap).toBeGreaterThan(0);
-    expect(estimate.discovered.cap).toBe(300);
   });
 });

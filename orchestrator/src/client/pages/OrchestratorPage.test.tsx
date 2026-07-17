@@ -77,6 +77,8 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   runBudget: 150,
   country: "united kingdom",
   cityLocations: [],
+  locationMode: "cities",
+  proximity: null,
   workplaceTypes: ["remote", "hybrid", "onsite"],
   searchScope: "selected_only",
   matchStrictness: "exact_only",
@@ -174,6 +176,11 @@ vi.mock("../hooks/useSettings", () => ({
     settings: {
       ukvisajobsEmail: null,
       ukvisajobsPasswordHint: null,
+      locationSearchMode: {
+        value: "cities",
+        default: "radius",
+        override: "cities",
+      },
     },
     refreshSettings: vi.fn(),
   }),
@@ -535,6 +542,8 @@ describe("OrchestratorPage", () => {
       runBudget: 150,
       country: "united kingdom",
       cityLocations: [],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -1034,6 +1043,10 @@ describe("OrchestratorPage", () => {
         seekMaxJobsPerTerm: 300,
         jobspyCountryIndeed: "united kingdom",
         searchCities: null,
+        locationSearchMode: "cities",
+        locationLatitude: null,
+        locationLongitude: null,
+        locationRadiusMiles: 50,
         locationSearchScope: "selected_only",
         locationMatchStrictness: "exact_only",
       });
@@ -1047,6 +1060,7 @@ describe("OrchestratorPage", () => {
       scoringInstructions: "",
       country: "united kingdom",
       cityLocations: [],
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -1205,6 +1219,31 @@ describe("OrchestratorPage", () => {
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
   });
 
+  it("shows pipeline progress instead of the composer during a first run", () => {
+    mockJobs = [];
+    mockSelectedJob = null;
+    mockIsPipelineRunning = true;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("summary")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens manual import from the first-run search composer state", () => {
     mockJobs = [];
     mockSelectedJob = null;
@@ -1239,6 +1278,8 @@ describe("OrchestratorPage", () => {
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["London", "Manchester"],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -1278,6 +1319,8 @@ describe("OrchestratorPage", () => {
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -1317,6 +1360,8 @@ describe("OrchestratorPage", () => {
       runBudget: 150,
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -1428,6 +1473,8 @@ describe("OrchestratorPage", () => {
       runBudget: 150,
       country: "united states",
       cityLocations: [],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",

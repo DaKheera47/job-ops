@@ -74,9 +74,17 @@ export const manifest: ExtractorManifest = {
       };
     }
 
-    const maxJobsPerTerm = context.settings.adzunaMaxJobsPerTerm
+    const configuredMaxJobsPerTerm = context.settings.adzunaMaxJobsPerTerm
       ? parseInt(context.settings.adzunaMaxJobsPerTerm, 10)
       : 50;
+    const locationCount = Math.max(
+      1,
+      context.sourceLocationPlan?.requestedCities.length ?? 0,
+    );
+    const maxJobsPerTerm = Math.max(
+      1,
+      Math.ceil(configuredMaxJobsPerTerm / locationCount),
+    );
 
     let result: Awaited<ReturnType<typeof runAdzuna>>;
     try {
@@ -85,6 +93,7 @@ export const manifest: ExtractorManifest = {
         countryKey: context.selectedCountry,
         searchTerms: context.searchTerms,
         locations: resolveSearchCities({
+          list: context.sourceLocationPlan?.requestedCities,
           single:
             context.settings.searchCities ?? context.settings.jobspyLocation,
         }),

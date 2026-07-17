@@ -73,7 +73,8 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext: navigation.navigateWithContext,
   });
 
-  const isFirstRunWorkspace = !isLoading && jobs.length === 0;
+  const isFirstRunWorkspace =
+    !isLoading && jobs.length === 0 && !isPipelineRunning;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
   const canToggleSearchComposer = !isFirstRunWorkspace;
   const searchPresetProps = usePipelineSearchPresets({

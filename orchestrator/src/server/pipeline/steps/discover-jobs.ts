@@ -5,6 +5,7 @@ import { getUserId } from "@server/infra/request-context";
 import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { withHostedUsageReservation } from "@server/services/hosted-usage";
+import { resolveNearbyPlaceNames } from "@server/services/proximity-search";
 import { asyncPool } from "@server/utils/async-pool";
 import { listHydratedWatchlistSelectedSources } from "@server/watchlist/results";
 import type { ExtractorSourceId } from "@shared/extractors";
@@ -163,7 +164,7 @@ export async function discoverJobsStep(args: {
       .filter(Boolean);
   }
 
-  const locationIntent =
+  let locationIntent =
     args.mergedConfig.locationIntent ??
     createLocationIntentFromLegacyInputs({
       selectedCountry: settings.jobspyCountryIndeed ?? "",
@@ -171,7 +172,23 @@ export async function discoverJobsStep(args: {
       workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
       searchScope: settings.locationSearchScope,
       matchStrictness: settings.locationMatchStrictness,
+      proximity:
+        settings.locationSearchMode === "radius" &&
+        settings.locationLatitude != null &&
+        settings.locationLongitude != null
+          ? {
+              latitude: Number(settings.locationLatitude),
+              longitude: Number(settings.locationLongitude),
+              radiusMiles: Number(settings.locationRadiusMiles ?? 50),
+            }
+          : null,
     });
+  if (locationIntent.proximity) {
+    locationIntent = {
+      ...locationIntent,
+      cityLocations: await resolveNearbyPlaceNames(locationIntent.proximity),
+    };
+  }
   const sourcePlans = args.mergedConfig.sources.map((source) => ({
     source,
     plan: getSourceLocationPlan(
@@ -180,6 +197,9 @@ export async function discoverJobsStep(args: {
       registry.locationCapabilitiesBySource?.[source],
     ),
   }));
+  const sourcePlanBySource = new Map(
+    sourcePlans.map(({ source, plan }) => [source, plan]),
+  );
   const compatibleSources = sourcePlans
     .filter(({ plan }) => plan.canRun)
     .map(({ source }) => source);
@@ -207,7 +227,11 @@ export async function discoverJobsStep(args: {
   if (skippedSources.length > 0) {
     logger.info("Skipping incompatible sources for requested location intent", {
       step: "discover-jobs",
-      locationIntent,
+      locationIntent: {
+        selectedCountry: locationIntent.selectedCountry,
+        cityCount: locationIntent.cityLocations.length,
+        radiusMiles: locationIntent.proximity?.radiusMiles ?? null,
+      },
       primaryLocation: getPrimaryLocationLabel(locationIntent),
       requestedSources: args.mergedConfig.sources,
       skippedSources: skippedSources.map(({ source }) => source),
@@ -498,7 +522,11 @@ export async function discoverJobsStep(args: {
             sourceNotes: [`source:${job.source}`],
           });
         job.locationEvidence = evidence;
-        const match = matchJobLocationIntent(job, locationIntent);
+        const match = matchJobLocationIntent(job, locationIntent, {
+          nativeRadiusApplied:
+            sourcePlanBySource.get(job.source as ExtractorSourceId)
+              ?.usesNativeRadius ?? false,
+        });
         if (match.matched) {
           return true;
         }
@@ -516,7 +544,11 @@ export async function discoverJobsStep(args: {
           {
             step: "discover-jobs",
             droppedCount: locationFilteredOutCount,
-            locationIntent,
+            locationIntent: {
+              selectedCountry: locationIntent.selectedCountry,
+              cityCount: locationIntent.cityLocations.length,
+              radiusMiles: locationIntent.proximity?.radiusMiles ?? null,
+            },
             primaryLocation: getPrimaryLocationLabel(locationIntent),
             reasonCounts: locationFilterReasonCounts,
           },

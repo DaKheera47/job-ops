@@ -46,7 +46,7 @@ The Automatic tab opens on **Describe search** first.
 
 AI fills the existing controls only. It does not start the search automatically.
 
-The generated plan can update search terms, ranking preferences, country, cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
+The generated plan can update search terms, ranking preferences, country, map radius or cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
 
 Add as much detail as possible. Mention what the AI should rank higher or lower, such as salary targets, role seniority, visa sponsorship, graduate programmes, domains, commute limits, or preferred responsibilities.
 
@@ -65,15 +65,39 @@ value in this browser. If you picked **Custom**, it reopens in Custom mode with
 the same values. The pipeline run itself still derives per-source caps from the
 saved budget when you start the run.
 
+#### Search area
+
+**Map radius** is the default search-area mode. It does not require an address or postcode.
+
+1. Click the map to place the centre, or move the map and select **Use map centre**.
+2. JobOps detects the country at that point and shows it below the map.
+3. Drag the centre marker to move the area and detect the new country.
+4. Drag the circle's edge handle, or edit **Radius in miles**, to resize it.
+
+The default radius is `50` miles. The supported range is `1` to `200` miles. In Map radius mode, the map point is authoritative and there is no separate country selector.
+
+After you select or adjust an area, JobOps previews the named cities and towns inside the circle. The location count in **Your search** updates after this lookup and the same result is reused when the search starts.
+
+Select **Manual cities** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
+
+Map-radius support is applied consistently even when an extractor has no native radius option:
+
+- Hiring Cafe receives the selected coordinates and radius directly.
+- JobSpy-backed sources receive the nearest named place plus their native distance option.
+- Sources that accept location strings receive up to 25 nearby OpenStreetMap city or town names, ranked by proximity and population. If the Overpass service is unavailable, JobOps uses the locality nearest the selected centre instead of failing the whole run.
+- Broad sources that cannot accept a location filter are filtered centrally against those nearby place names after discovery.
+
+The last two behaviors are an approximation. For example, a role labelled `Wakefield` can match a 25-mile Leeds search after Wakefield is expanded from the map area. A role labelled only `West Yorkshire` may be rejected because the listing does not provide coordinates or a matching settlement name. Villages are not included in the full-radius Overpass query because those queries regularly time out; reverse geocoding still preserves the locality at the selected centre. The 25-place cap protects extractor request budgets but can omit smaller settlements in a large or dense radius.
+
+When you place or move the centre, JobOps sends it to OpenStreetMap Nominatim to detect the country. When you run a radius search, JobOps sends the centre and radius to the OpenStreetMap Overpass service to resolve nearby place names. OpenStreetMap tile servers also receive normal map-tile requests while the map is visible. If Hiring Cafe is selected, its search request receives the same centre and radius. Coordinates are stored in tenant-scoped settings and are not written to application logs.
+
 #### Country and source compatibility
 
-- Country selection affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
+- The detected map country—or the country selected in Manual cities mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
 - Each extractor declares its own supported countries. A country can be selectable even when JobSpy-backed sources do not support it, as long as another selected source can run or locally filter for that country.
 - UK-only sources are disabled for non-UK countries.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
-- Glassdoor can be enabled only when:
-  - selected country supports Glassdoor
-  - at least one **Search city** is set in Advanced settings
+- Glassdoor can be enabled only when the selected country supports Glassdoor and either a map point or at least one manual city is set.
 
 Incompatible sources are disabled with explanatory tooltips.
 
@@ -83,12 +107,12 @@ Incompatible sources are disabled with explanatory tooltips.
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
 - `Max jobs discovered` accepts values from `50` to `1000` in the UI.
-- **Search cities** (optional multi-city input; empty by default; required for Glassdoor)
+- **Search area** (`Map radius` by default, with `Manual cities` as the fallback)
 - **Workplace type** (`Remote`, `Hybrid`, `Onsite`)
 
 Workplace type applies globally to the run across all search terms and locations.
 
-Search cities only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
+Manual cities only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
 
 Source behavior differs:
 
@@ -113,6 +137,8 @@ The footer estimate shows expected discovered jobs and resume-processing range.
 - required save/run work is still in progress
 - no compatible sources are selected
 - no search terms are present
+- no country is selected
+- Map radius is selected but no centre point has been placed
 
 ### Manual tab
 
@@ -128,12 +154,19 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 - Ensure at least one search term is present.
 - Ensure at least one compatible source is selected.
+- Select a country and, in Map radius mode, place a centre point.
 - Wait for active save/run operations to finish.
+
+### Radius search cannot resolve nearby places
+
+- Try the run again; the OpenStreetMap Overpass service can be temporarily busy.
+- Reduce a very large radius.
+- Switch to **Manual cities** if you need to run without the nearby-place service.
 
 ### Glassdoor cannot be enabled
 
 - Verify selected country supports Glassdoor.
-- Set at least one Search city in Advanced settings.
+- Place a map centre or switch to Manual cities and add at least one city.
 
 ### Adzuna is not selectable
 

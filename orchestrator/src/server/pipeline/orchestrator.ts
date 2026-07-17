@@ -156,6 +156,16 @@ async function resolveLocationIntent(
     workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
     searchScope: settings.locationSearchScope,
     matchStrictness: settings.locationMatchStrictness,
+    proximity:
+      settings.locationSearchMode === "radius" &&
+      settings.locationLatitude != null &&
+      settings.locationLongitude != null
+        ? {
+            latitude: Number(settings.locationLatitude),
+            longitude: Number(settings.locationLongitude),
+            radiusMiles: Number(settings.locationRadiusMiles ?? 50),
+          }
+        : null,
   });
 }
 
@@ -323,7 +333,12 @@ export async function runPipeline(
       topN: mergedConfig.topN,
       minSuitabilityScore: mergedConfig.minSuitabilityScore,
       sources: mergedConfig.sources,
-      locationIntent: mergedConfig.locationIntent,
+      locationIntent: {
+        selectedCountry: locationIntent.selectedCountry,
+        cityCount: locationIntent.cityLocations.length,
+        radiusMiles: locationIntent.proximity?.radiusMiles ?? null,
+        hasProximity: Boolean(locationIntent.proximity),
+      },
     });
 
     try {

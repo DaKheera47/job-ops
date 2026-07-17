@@ -3,15 +3,28 @@ import type { PipelineSearchPresetConfig } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-const { mockCallJson } = vi.hoisted(() => ({
-  mockCallJson: vi.fn(),
-}));
+const { mockCallJson, mockResolveCountryAtPoint, mockResolveNearbyPlaceNames } =
+  vi.hoisted(() => ({
+    mockCallJson: vi.fn(),
+    mockResolveCountryAtPoint: vi.fn().mockResolvedValue("united kingdom"),
+    mockResolveNearbyPlaceNames: vi
+      .fn()
+      .mockResolvedValue(["Leeds", "Bradford"]),
+  }));
 
 vi.mock("@server/services/modelSelection", () => ({
   resolveLlmModel: vi.fn().mockResolvedValue("test-model"),
   createConfiguredLlmService: vi.fn().mockResolvedValue({
     callJson: mockCallJson,
   }),
+}));
+
+vi.mock("@server/services/proximity-search", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@server/services/proximity-search")
+  >()),
+  resolveCountryAtPoint: mockResolveCountryAtPoint,
+  resolveNearbyPlaceNames: mockResolveNearbyPlaceNames,
 }));
 
 describe.sequential("Pipeline API routes", () => {
@@ -35,6 +48,53 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.isRunning).toBe(false);
     expect(body.data.lastRun).toBeNull();
+  });
+
+  it("detects the country at a selected map point", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/location-country`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 53.8, longitude: -1.55 }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      data: { country: "united kingdom" },
+    });
+    expect(mockResolveCountryAtPoint).toHaveBeenCalledWith({
+      latitude: 53.8,
+      longitude: -1.55,
+    });
+
+    const invalidRes = await fetch(`${baseUrl}/api/pipeline/location-country`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 100, longitude: -1.55 }),
+    });
+    expect(invalidRes.status).toBe(400);
+  });
+
+  it("previews named locations in a selected map area", async () => {
+    const proximity = {
+      latitude: 53.8,
+      longitude: -1.55,
+      radiusMiles: 25,
+    };
+    const res = await fetch(`${baseUrl}/api/pipeline/location-area-preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(proximity),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      data: { locations: ["Leeds", "Bradford"] },
+    });
+    expect(mockResolveNearbyPlaceNames).toHaveBeenCalledWith(proximity);
   });
 
   it("returns the current pipeline progress snapshot in the API envelope", async () => {
@@ -123,6 +183,8 @@ describe.sequential("Pipeline API routes", () => {
       sources: ["linkedin"],
       country: "united kingdom",
       cityLocations: ["London"],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
@@ -317,6 +379,8 @@ describe.sequential("Pipeline API routes", () => {
       sources: ["linkedin"],
       country: "united kingdom",
       cityLocations: ["London"],
+      locationMode: "cities",
+      proximity: null,
       workplaceTypes: ["remote", "hybrid"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
