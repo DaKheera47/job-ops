@@ -3,6 +3,7 @@ import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type {
   PipelineFanoutProgress,
   PipelinePendingChallenge,
+  PipelineProgressCurrentJob,
   PipelineProgressState,
   PipelineProgressStep,
 } from "@shared/types";
@@ -526,19 +527,33 @@ export const progressHelpers = {
       crawlingCurrentUrl: undefined,
     }),
 
+  importingJob: (
+    index: number,
+    total: number,
+    job: PipelineProgressCurrentJob,
+  ) =>
+    updateProgress({
+      step: "importing",
+      message: `Importing jobs (${index}/${total})...`,
+      detail: "Checking for duplicates and saving new jobs",
+      currentJob: job,
+    }),
+
   importComplete: (created: number, skipped: number) =>
     updateProgress({
       step: "scoring",
       message: `Imported ${created} new jobs (${skipped} duplicates). Scoring...`,
       detail: "Using AI to evaluate job fit",
+      currentJob: undefined,
     }),
 
-  scoringJob: (index: number, total: number, title: string) =>
+  scoringJob: (index: number, total: number, job: PipelineProgressCurrentJob) =>
     updateProgress({
       step: "scoring",
       message: `Scoring jobs (${index}/${total})...`,
-      detail: title,
+      detail: "Using AI to evaluate job fit",
       jobsScored: index,
+      currentJob: job,
     }),
 
   scoringComplete: (totalScored: number) =>

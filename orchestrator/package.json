@@ -82,6 +82,7 @@
     "react-transition-group": "^4.4.5",
     "recharts": "^2.12.5",
     "remark-gfm": "^4.0.1",
+    "slot-text": "^0.3.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",

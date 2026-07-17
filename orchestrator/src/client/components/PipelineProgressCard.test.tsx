@@ -39,6 +39,48 @@ describe("PipelineProgressCard", () => {
     expect(screen.getByText("Remaining")).toBeInTheDocument();
   });
 
+  it("rolls the active job forward as stage progress changes", () => {
+    const { container, rerender } = render(
+      <PipelineProgressCard
+        progress={{
+          ...progress,
+          currentJob: {
+            id: "job-1",
+            title: "Frontend Engineer",
+            employer: "Monzo",
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByTitle("Ranking Frontend Engineer against your profile"),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-live-job-title]")).toHaveTextContent(
+      "Frontend Engineer",
+    );
+
+    rerender(
+      <PipelineProgressCard
+        progress={{
+          ...progress,
+          currentJob: {
+            id: "job-2",
+            title: "Platform Engineer",
+            employer: "Stripe",
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByTitle("Ranking Platform Engineer against your profile"),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-live-job-title]")).toHaveTextContent(
+      "Platform Engineer",
+    );
+  });
+
   it("shows failures clearly", () => {
     render(
       <PipelineProgressCard

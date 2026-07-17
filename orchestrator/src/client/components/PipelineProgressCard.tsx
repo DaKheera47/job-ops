@@ -1,6 +1,9 @@
 import NumberFlow from "@number-flow/react";
 import type { PipelineProgressState } from "@shared/types";
+import { useReducedMotion } from "framer-motion";
 import { CircleX } from "lucide-react";
+import "slot-text/style.css";
+import { SlotText } from "slot-text/react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -110,6 +113,58 @@ const Metric = ({ label, value }: { label: string; value: number }) => (
   </div>
 );
 
+const liveStageCopy = (
+  progress: PipelineProgressState,
+): { before: string; title: string; after: string } | null => {
+  if (!progress.currentJob) return null;
+
+  switch (progress.step) {
+    case "importing":
+      return {
+        before: "Importing",
+        title: progress.currentJob.title,
+        after: "into your workspace",
+      };
+    case "scoring":
+      return {
+        before: "Ranking",
+        title: progress.currentJob.title,
+        after: "against your profile",
+      };
+    case "processing":
+      return {
+        before: "Preparing",
+        title: progress.currentJob.title,
+        after: "for review",
+      };
+    default:
+      return null;
+  }
+};
+
+const RollingStageText = ({ text }: { text: string }) => {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <span data-live-job-title="">
+      {prefersReducedMotion ? (
+        text
+      ) : (
+        <SlotText
+          text={text}
+          options={{
+            direction: "up",
+            stagger: 12,
+            duration: 240,
+            bounce: 0.25,
+            interrupt: false,
+          }}
+        />
+      )}
+    </span>
+  );
+};
+
 export const PipelineProgressCard = ({
   progress,
   elapsedSeconds,
@@ -140,6 +195,10 @@ export const PipelineProgressCard = ({
     progress.totalToProcess - progress.jobsProcessed,
     0,
   );
+  const stageCopy = liveStageCopy(progress);
+  const stageText = stageCopy
+    ? `${stageCopy.before} ${stageCopy.title} ${stageCopy.after}`
+    : null;
   const showMetrics = progress.step !== "idle";
   const badgeVariant =
     progress.step === "failed"
@@ -162,8 +221,18 @@ export const PipelineProgressCard = ({
                 </span>
               ) : null}
             </CardTitle>
-            <CardDescription className="text-base">
-              {progress.message}
+            <CardDescription
+              className="overflow-hidden text-base"
+              title={stageText ?? undefined}
+            >
+              {stageCopy ? (
+                <>
+                  {stageCopy.before} <RollingStageText text={stageCopy.title} />{" "}
+                  {stageCopy.after}
+                </>
+              ) : (
+                progress.message
+              )}
             </CardDescription>
             {progress.detail ? (
               <p className="text-xs text-muted-foreground">{progress.detail}</p>

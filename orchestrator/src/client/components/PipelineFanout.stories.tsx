@@ -4,6 +4,7 @@ import type {
   PipelineFanoutProgress,
   PipelineFanoutRoleProgress,
   PipelinePendingChallenge,
+  PipelineProgressCurrentJob,
   PipelineProgressState,
 } from "@shared/types";
 import { useEffect, useState } from "react";
@@ -108,6 +109,14 @@ const progressFixture: PipelineProgressState = {
   totalToProcess: 240,
 };
 
+const stageJobs: PipelineProgressCurrentJob[] = [
+  { id: "job-1", title: "Frontend Engineer", employer: "Monzo" },
+  { id: "job-2", title: "Senior Product Engineer", employer: "Stripe" },
+  { id: "job-3", title: "Platform Engineer", employer: "Deliveroo" },
+  { id: "job-4", title: "Design Systems Engineer", employer: "Intercom" },
+  { id: "job-5", title: "Staff Software Engineer", employer: "Wise" },
+];
+
 const stageProgress = (
   step: PipelineProgressState["step"],
   message: string,
@@ -120,6 +129,42 @@ const stageProgress = (
 });
 
 const noop = () => {};
+const LiveStageStory = ({
+  progress,
+  elapsedSeconds,
+}: {
+  progress: PipelineProgressState;
+  elapsedSeconds: number;
+}) => {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(
+      () => setTick((current) => current + 1),
+      1600,
+    );
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return (
+    <PipelineProgressCard
+      progress={{
+        ...progress,
+        currentJob: stageJobs[tick % stageJobs.length],
+        jobsScored:
+          progress.step === "scoring"
+            ? Math.min(progress.jobsScored + tick, progress.jobsDiscovered)
+            : progress.jobsScored,
+        jobsProcessed:
+          progress.step === "processing"
+            ? Math.min(progress.jobsProcessed + tick, progress.totalToProcess)
+            : progress.jobsProcessed,
+      }}
+      elapsedSeconds={elapsedSeconds + tick}
+    />
+  );
+};
+
 const FanoutStory = ({
   fanout,
   challenges,
@@ -188,12 +233,12 @@ export const Connecting: Story = () => (
 Connecting.storyName = "Stage · connecting";
 
 export const Importing: Story = () => (
-  <PipelineProgressCard progress={progressFixture} elapsedSeconds={168} />
+  <LiveStageStory progress={progressFixture} elapsedSeconds={168} />
 );
 Importing.storyName = "Stage · importing";
 
 export const Scoring: Story = () => (
-  <PipelineProgressCard
+  <LiveStageStory
     progress={stageProgress(
       "scoring",
       "Ranking discovered jobs against your profile…",
@@ -208,7 +253,7 @@ export const Scoring: Story = () => (
 Scoring.storyName = "Stage · scoring";
 
 export const Processing: Story = () => (
-  <PipelineProgressCard
+  <LiveStageStory
     progress={stageProgress(
       "processing",
       "Preparing the strongest matches for review…",

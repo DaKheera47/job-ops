@@ -54,11 +54,11 @@ export async function scoreJobsStep(args: {
 
       if (hasCachedScore) {
         completed += 1;
-        progressHelpers.scoringJob(
-          completed,
-          unprocessedJobs.length,
-          `${job.title} (cached)`,
-        );
+        progressHelpers.scoringJob(completed, unprocessedJobs.length, {
+          id: job.id,
+          title: `${job.title} (cached)`,
+          employer: job.employer,
+        });
         scoredJobs.push({
           ...job,
           suitabilityScore: job.suitabilityScore as number,
@@ -119,7 +119,11 @@ export async function scoreJobsStep(args: {
       }
 
       completed += 1;
-      progressHelpers.scoringJob(completed, unprocessedJobs.length, job.title);
+      progressHelpers.scoringJob(completed, unprocessedJobs.length, {
+        id: job.id,
+        title: job.title,
+        employer: job.employer,
+      });
       scoredJobs.push({
         ...job,
         suitabilityScore: score,

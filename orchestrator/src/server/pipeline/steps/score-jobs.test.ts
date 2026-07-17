@@ -279,6 +279,11 @@ describe("scoreJobsStep auto-skip behavior", () => {
     expect(result.scoredJobs).toHaveLength(2);
     expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledWith(1, 2, {
+      id: expect.any(String),
+      title: expect.any(String),
+      employer: expect.any(String),
+    });
     expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(2);
   });
 

@@ -128,8 +128,9 @@ cycles through the configured job board, search term, and location combinations.
 - A browser-check row pauses only the affected extractor. Use **Solve** to open
   the challenge viewer; other extractors continue running.
 
-The fanout card is hidden after discovery. Importing, scoring, and processing
-continue in the background for now.
+After discovery, the progress card moves through importing, scoring, and
+processing. During each active stage, a live activity line shows the job that
+is currently moving through the pipeline.
 
 ### Manual tab
 
