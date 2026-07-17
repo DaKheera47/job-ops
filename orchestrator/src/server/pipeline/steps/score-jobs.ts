@@ -32,6 +32,7 @@ export async function scoreJobsStep(args: {
     step: "scoring",
     jobsDiscovered: unprocessedJobs.length,
     jobsScored: 0,
+    jobsExceptional: 0,
     jobsProcessed: 0,
     totalToProcess: 0,
     currentJob: undefined,
@@ -39,6 +40,7 @@ export async function scoreJobsStep(args: {
 
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
+  let exceptional = 0;
   const scoringInstructions = args.scoringInstructions?.trim();
 
   await asyncPool({
@@ -53,12 +55,18 @@ export async function scoreJobsStep(args: {
         !Number.isNaN(job.suitabilityScore);
 
       if (hasCachedScore) {
+        if ((job.suitabilityScore as number) > 90) exceptional += 1;
         completed += 1;
-        progressHelpers.scoringJob(completed, unprocessedJobs.length, {
-          id: job.id,
-          title: `${job.title} (cached)`,
-          employer: job.employer,
-        });
+        progressHelpers.scoringJob(
+          completed,
+          unprocessedJobs.length,
+          {
+            id: job.id,
+            title: `${job.title} (cached)`,
+            employer: job.employer,
+          },
+          exceptional,
+        );
         scoredJobs.push({
           ...job,
           suitabilityScore: job.suitabilityScore as number,
@@ -118,12 +126,18 @@ export async function scoreJobsStep(args: {
         });
       }
 
+      if (score !== null && score > 90) exceptional += 1;
       completed += 1;
-      progressHelpers.scoringJob(completed, unprocessedJobs.length, {
-        id: job.id,
-        title: job.title,
-        employer: job.employer,
-      });
+      progressHelpers.scoringJob(
+        completed,
+        unprocessedJobs.length,
+        {
+          id: job.id,
+          title: job.title,
+          employer: job.employer,
+        },
+        exceptional,
+      );
       scoredJobs.push({
         ...job,
         suitabilityScore: score,

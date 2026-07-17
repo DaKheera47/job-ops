@@ -130,7 +130,8 @@ cycles through the configured job board, search term, and location combinations.
 
 After discovery, the progress card moves through importing, scoring, and
 processing. During each active stage, a live activity line shows the job that
-is currently moving through the pipeline.
+is currently moving through the pipeline. While scoring, **Exceptional
+matches** counts jobs with a suitability score above 90.
 
 ### Manual tab
 

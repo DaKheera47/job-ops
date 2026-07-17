@@ -275,8 +275,8 @@ export const PipelineProgressCard = ({
                   value={isScoring ? awaitingScore : progress.jobsProcessed}
                 />
                 <Metric
-                  label={isScoring ? "Selected" : "To prepare"}
-                  value={isScoring ? progress.totalToProcess : remaining}
+                  label={isScoring ? "Exceptional matches" : "To prepare"}
+                  value={isScoring ? progress.jobsExceptional : remaining}
                 />
               </section>
             ) : null}

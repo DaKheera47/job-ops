@@ -41,6 +41,7 @@ function createIdleProgress(): PipelineProgress {
     crawlingJobPagesProcessed: 0,
     jobsDiscovered: 0,
     jobsScored: 0,
+    jobsExceptional: 0,
     jobsProcessed: 0,
     totalToProcess: 0,
   };
@@ -106,6 +107,7 @@ let currentProgress: PipelineProgress = {
   crawlingJobPagesProcessed: 0,
   jobsDiscovered: 0,
   jobsScored: 0,
+  jobsExceptional: 0,
   jobsProcessed: 0,
   totalToProcess: 0,
 };
@@ -357,6 +359,7 @@ export const progressHelpers = {
         ...emptyCrawlingStats,
         jobsDiscovered: 0,
         jobsScored: 0,
+        jobsExceptional: 0,
         jobsProcessed: 0,
         totalToProcess: 0,
       });
@@ -547,12 +550,18 @@ export const progressHelpers = {
       currentJob: undefined,
     }),
 
-  scoringJob: (index: number, total: number, job: PipelineProgressCurrentJob) =>
+  scoringJob: (
+    index: number,
+    total: number,
+    job: PipelineProgressCurrentJob,
+    exceptional: number,
+  ) =>
     updateProgress({
       step: "scoring",
       message: `Scoring jobs (${index}/${total})...`,
       detail: "Using AI to evaluate job fit",
       jobsScored: index,
+      jobsExceptional: exceptional,
       currentJob: job,
     }),
 

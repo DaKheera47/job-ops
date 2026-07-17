@@ -19,6 +19,7 @@ const progress: PipelineProgressState = {
   crawlingJobPagesProcessed: 80,
   jobsDiscovered: 100,
   jobsScored: 50,
+  jobsExceptional: 7,
   jobsProcessed: 10,
   totalToProcess: 20,
 };
@@ -37,7 +38,7 @@ describe("PipelineProgressCard", () => {
     );
     expect(screen.getByText("Discovered")).toBeInTheDocument();
     expect(screen.getByText("Awaiting score")).toBeInTheDocument();
-    expect(screen.getByText("Selected")).toBeInTheDocument();
+    expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
   });
 
   it("rolls the active job forward as stage progress changes", () => {

@@ -159,6 +159,30 @@ describe("scoreJobsStep auto-skip behavior", () => {
     );
   });
 
+  it.each([
+    { score: 90, exceptional: 0 },
+    { score: 91, exceptional: 1 },
+  ])("reports $exceptional exceptional matches for a score of $score", async ({
+    score,
+    exceptional,
+  }) => {
+    const scorer = await import("@server/services/scorer");
+    const { progressHelpers } = await import("../progress");
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score,
+      reason: "Test score",
+    });
+
+    await scoreJobsStep({ profile: {} });
+
+    expect(progressHelpers.scoringJob).toHaveBeenCalledWith(
+      1,
+      1,
+      expect.objectContaining({ id: "job-1" }),
+      exceptional,
+    );
+  });
+
   it("does not auto-skip jobs when score equals threshold", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const jobsRepo = await import("@server/repositories/jobs");
@@ -279,11 +303,16 @@ describe("scoreJobsStep auto-skip behavior", () => {
     expect(result.scoredJobs).toHaveLength(2);
     expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledWith(1, 2, {
-      id: expect.any(String),
-      title: expect.any(String),
-      employer: expect.any(String),
-    });
+    expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledWith(
+      1,
+      2,
+      {
+        id: expect.any(String),
+        title: expect.any(String),
+        employer: expect.any(String),
+      },
+      0,
+    );
     expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(2);
   });
 

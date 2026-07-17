@@ -105,6 +105,7 @@ const progressFixture: PipelineProgressState = {
   crawlingJobPagesProcessed: 3102,
   jobsDiscovered: 3102,
   jobsScored: 0,
+  jobsExceptional: 0,
   jobsProcessed: 0,
   totalToProcess: 240,
 };
@@ -155,6 +156,10 @@ const LiveStageStory = ({
           progress.step === "scoring"
             ? Math.min(progress.jobsScored + tick, progress.jobsDiscovered)
             : progress.jobsScored,
+        jobsExceptional:
+          progress.step === "scoring"
+            ? progress.jobsExceptional + Math.floor(tick / 3)
+            : progress.jobsExceptional,
         jobsProcessed:
           progress.step === "processing"
             ? Math.min(progress.jobsProcessed + tick, progress.totalToProcess)
@@ -245,6 +250,7 @@ export const Scoring: Story = () => (
       {
         detail: "Evaluating role fit, experience, and preferences.",
         jobsScored: 1860,
+        jobsExceptional: 126,
       },
     )}
     elapsedSeconds={246}

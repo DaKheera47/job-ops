@@ -336,6 +336,7 @@ export interface PipelineProgressState {
   crawlingCurrentUrl?: string;
   jobsDiscovered: number;
   jobsScored: number;
+  jobsExceptional: number;
   jobsProcessed: number;
   totalToProcess: number;
   currentJob?: PipelineProgressCurrentJob;
