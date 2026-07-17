@@ -4,14 +4,12 @@ import type {
   PipelineFanoutRoleProgress,
   PipelinePendingChallenge,
 } from "@shared/types";
-import { Loader2, ShieldAlert } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { PipelineActionRequired } from "./PipelineActionRequired";
 
 const getRoleTotal = (role: PipelineFanoutRoleProgress) =>
   role.complete + role.running + role.check + role.queued;
@@ -207,31 +206,15 @@ export const PipelineFanoutCard = ({
 
       <CardContent className="flex flex-col gap-4 border-t p-4 sm:p-5">
         {challenges.map((challenge) => (
-          <div
+          <PipelineActionRequired
             key={challenge.extractorId}
-            className="flex items-center justify-between rounded-md border border-orange-500/20 bg-orange-500/10 p-3"
-          >
-            <div className="flex items-center gap-2 text-sm text-orange-400">
-              <ShieldAlert className="size-4 shrink-0" />
-              <span>{challenge.extractorName}</span>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
-              disabled={solvingExtractor === challenge.extractorId}
-              onClick={() => onSolveChallenge(challenge.extractorId)}
-            >
-              {solvingExtractor === challenge.extractorId ? (
-                <>
-                  <Loader2 data-icon="inline-start" />
-                  Solving…
-                </>
-              ) : (
-                "Solve"
-              )}
-            </Button>
-          </div>
+            title={challenge.extractorName}
+            description="Complete the browser check to continue this job board."
+            actionLabel="Solve"
+            pendingLabel="Solving…"
+            pending={solvingExtractor === challenge.extractorId}
+            onAction={() => onSolveChallenge(challenge.extractorId)}
+          />
         ))}
 
         <section className="overflow-hidden rounded-xl border">

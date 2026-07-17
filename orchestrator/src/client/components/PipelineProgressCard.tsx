@@ -1,9 +1,8 @@
 import NumberFlow from "@number-flow/react";
 import type { PipelineProgressState } from "@shared/types";
-import { CircleX, Loader2, ShieldAlert } from "lucide-react";
+import { CircleX } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,7 +11,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { PipelineActionRequired } from "./PipelineActionRequired";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
+
+const noop = () => {};
 
 export interface PipelineProgressCardProps {
   progress: PipelineProgressState;
@@ -148,28 +150,14 @@ export const PipelineProgressCard = ({
             ) : null}
 
             {progress.step === "configuration_required" && progress.error ? (
-              <Alert variant="warning">
-                <ShieldAlert />
-                <AlertTitle>LLM configuration required</AlertTitle>
-                <AlertDescription className="flex flex-col gap-3">
-                  <p>{progress.error}</p>
-                  {onResumeScoring ? (
-                    <div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={resumingScoring}
-                        onClick={onResumeScoring}
-                      >
-                        {resumingScoring ? (
-                          <Loader2 data-icon="inline-start" />
-                        ) : null}
-                        {resumingScoring ? "Resuming…" : "Restart scoring"}
-                      </Button>
-                    </div>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
+              <PipelineActionRequired
+                title="LLM configuration required"
+                description={progress.error}
+                actionLabel="Restart scoring"
+                pendingLabel="Resuming…"
+                pending={resumingScoring}
+                onAction={onResumeScoring ?? noop}
+              />
             ) : null}
           </CardContent>
         </>
