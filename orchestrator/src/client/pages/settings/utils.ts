@@ -42,6 +42,7 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "gemini",
   "gemini_cli",
   "ollama",
+  "requesty",
 ] as const;
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
