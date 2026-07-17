@@ -37,7 +37,7 @@ describe("PipelineFanoutCard", () => {
     );
 
     expect(
-      screen.getByText("Searching frontend in edinburgh on linkedin"),
+      screen.getByText("Searching linkedin for “frontend” in edinburgh"),
     ).toBeInTheDocument();
     expect(screen.getByText("15")).toBeInTheDocument();
   });
