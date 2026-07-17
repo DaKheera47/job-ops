@@ -1,5 +1,6 @@
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type { LocationProximity } from "@shared/types/location.js";
+import PQueue from "p-queue";
 
 const METRES_PER_MILE = 1609.344;
 const MAX_OVERPASS_ELEMENTS = 500;
@@ -11,6 +12,12 @@ const OVERPASS_ENDPOINTS = [
 // local place dataset if village-level coverage becomes worth the dependency.
 const MAX_QUERY_PLACES = 25;
 const nearbyPlacesCache = new Map<string, Promise<string[]>>();
+const nominatimQueue = new PQueue({
+  concurrency: 1,
+  intervalCap: 1,
+  interval: 1_000,
+  carryoverConcurrencyCount: true,
+});
 
 type OverpassElement = {
   lat?: number;
@@ -32,13 +39,13 @@ async function reverseGeocodeAddress(
       addressdetails: "1",
       "accept-language": "en",
     });
-    const response = await fetchImpl(
-      `https://nominatim.openstreetmap.org/reverse?${params}`,
-      {
+    const request = () =>
+      fetchImpl(`https://nominatim.openstreetmap.org/reverse?${params}`, {
         headers: { "user-agent": "job-ops/1.0 proximity-search" },
         signal: AbortSignal.timeout(15_000),
-      },
-    );
+      });
+    const response =
+      fetchImpl === fetch ? await nominatimQueue.add(request) : await request();
     if (!response.ok) return null;
     const payload = (await response.json()) as {
       address?: Record<string, string | undefined>;

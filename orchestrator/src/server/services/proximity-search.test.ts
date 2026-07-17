@@ -6,7 +6,10 @@ import {
 } from "./proximity-search";
 
 describe("proximity search", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
   it("calculates distance and plans nearby places around the clicked point", async () => {
     expect(
@@ -145,17 +148,48 @@ describe("proximity search", () => {
   });
 
   it("detects the country at the selected point", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          address: { country: "United Kingdom", country_code: "gb" },
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            address: { country: "United Kingdom", country_code: "gb" },
+          }),
+          { status: 200 },
+        ),
     );
 
     await expect(
       resolveCountryAtPoint({ latitude: 53.8, longitude: -1.55 }, fetchImpl),
     ).resolves.toBe("united kingdom");
+  });
+
+  it("starts production Nominatim requests at most once per second", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            address: { country: "United Kingdom", country_code: "gb" },
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const requests = [
+      resolveCountryAtPoint({ latitude: 53.8, longitude: -1.55 }),
+      resolveCountryAtPoint({ latitude: 51.5, longitude: -0.12 }),
+    ];
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(Promise.all(requests)).resolves.toEqual([
+      "united kingdom",
+      "united kingdom",
+    ]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });

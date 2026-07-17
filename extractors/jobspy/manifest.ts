@@ -22,18 +22,11 @@ export const manifest: ExtractorManifest = {
   providesSources: ["indeed", "linkedin", "glassdoor"],
   capabilities: { locationEvidence: true },
   locationCapabilities: {
-    indeed: {
-      supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS,
-      supportsNativeRadius: true,
-    },
-    linkedin: {
-      supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS,
-      supportsNativeRadius: true,
-    },
+    indeed: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
+    linkedin: { supportedCountryKeys: JOBSPY_SUPPORTED_COUNTRY_KEYS },
     glassdoor: {
       supportedCountryKeys: GLASSDOOR_SUPPORTED_COUNTRY_KEYS,
       requiresCityLocations: true,
-      supportsNativeRadius: true,
     },
   },
   async run(context: ExtractorRuntimeContext) {
@@ -42,19 +35,27 @@ export const manifest: ExtractorManifest = {
     }
 
     const sites = context.selectedSources.filter(isJobSpySite);
+    const locations = context.sourceLocationPlan?.requestedCities;
+    const configuredResultsWanted = context.settings.jobspyResultsWanted
+      ? parseInt(context.settings.jobspyResultsWanted, 10)
+      : undefined;
+    const resultsWanted =
+      configuredResultsWanted && context.locationIntent?.proximity
+        ? Math.max(
+            1,
+            Math.ceil(
+              configuredResultsWanted / Math.max(1, locations?.length ?? 0),
+            ),
+          )
+        : configuredResultsWanted;
 
     const result = await runJobSpy({
       sites,
       searchTerms: context.searchTerms,
-      locations: context.locationIntent?.proximity
-        ? context.sourceLocationPlan?.requestedCities.slice(0, 1)
-        : context.sourceLocationPlan?.requestedCities,
+      locations,
       location:
         context.settings.searchCities ?? context.settings.jobspyLocation,
-      distance: context.locationIntent?.proximity?.radiusMiles,
-      resultsWanted: context.settings.jobspyResultsWanted
-        ? parseInt(context.settings.jobspyResultsWanted, 10)
-        : undefined,
+      resultsWanted,
       countryIndeed: context.settings.jobspyCountryIndeed,
       workplaceTypes: context.settings.workplaceTypes
         ? JSON.parse(context.settings.workplaceTypes)
