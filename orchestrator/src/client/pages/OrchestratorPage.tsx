@@ -28,6 +28,9 @@ export const OrchestratorPage: React.FC = () => {
   const {
     jobs,
     selectedJob,
+    selectedJobListItem,
+    selectedJobLoadState,
+    retrySelectedJob,
     stats,
     isLoading,
     isPipelineRunning,
@@ -147,6 +150,9 @@ export const OrchestratorPage: React.FC = () => {
           <OrchestratorJobWorkspaceContainer
             jobs={jobs}
             selectedJob={selectedJob}
+            selectedJobListItem={selectedJobListItem}
+            selectedJobLoadState={selectedJobLoadState}
+            retrySelectedJob={retrySelectedJob}
             stats={stats}
             isLoading={isLoading}
             isPipelineRunning={isPipelineRunning}

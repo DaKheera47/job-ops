@@ -45,6 +45,8 @@ type PipelineTerminalSnapshot = {
   signature: string;
 };
 
+export type SelectedJobLoadState = "idle" | "loading" | "error";
+
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "crawling",
   "challenge_required",
@@ -80,6 +82,10 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const queryClient = useQueryClient();
   const [jobListItems, setJobListItems] = useState<JobListItem[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedJobRequestState, setSelectedJobRequestState] = useState<{
+    jobId: string;
+    status: Exclude<SelectedJobLoadState, "idle">;
+  } | null>(null);
   const [stats, setStats] = useState<Record<JobStatus, number>>(initialStats);
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
@@ -162,8 +168,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   );
 
   const loadSelectedJob = useCallback(
-    async (jobId: string) => {
-      const seq = ++selectedJobRequestSeqRef.current;
+    async (jobId: string, seq: number) => {
       try {
         const fullJob = await queryClient.fetchQuery({
           queryKey: queryKeys.jobs.detail(jobId),
@@ -171,17 +176,18 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
           staleTime: 0,
         });
         selectedJobCacheRef.current.set(jobId, fullJob);
-        if (
-          selectedJobId === jobId &&
-          seq === selectedJobRequestSeqRef.current
-        ) {
+        if (seq === selectedJobRequestSeqRef.current) {
           setSelectedJob(fullJob);
+          setSelectedJobRequestState(null);
         }
       } catch (error) {
-        showErrorToast(error, "Failed to load selected job details");
+        if (seq === selectedJobRequestSeqRef.current) {
+          setSelectedJobRequestState({ jobId, status: "error" });
+          showErrorToast(error, "Failed to load selected job details");
+        }
       }
     },
-    [queryClient, selectedJobId],
+    [queryClient],
   );
 
   const loadJobs = useCallback(async () => {
@@ -406,6 +412,9 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   }, [checkPipelineStatus, isPipelineSseConnected, isRefreshPaused]);
 
   useEffect(() => {
+    const seq = ++selectedJobRequestSeqRef.current;
+    setSelectedJobRequestState(null);
+
     if (!selectedJobId) {
       setSelectedJob(null);
       return;
@@ -425,12 +434,44 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       return;
     }
 
-    void loadSelectedJob(selectedJobId);
+    setSelectedJob(null);
+    setSelectedJobRequestState({ jobId: selectedJobId, status: "loading" });
+    void loadSelectedJob(selectedJobId, seq);
   }, [jobListItems, loadSelectedJob, selectedJobId]);
+
+  const selectedJobListItem = selectedJobId
+    ? (jobListItems.find((job) => job.id === selectedJobId) ?? null)
+    : null;
+  const cachedSelectedJob = selectedJobId
+    ? selectedJobCacheRef.current.get(selectedJobId)
+    : null;
+  const matchingSelectedJob =
+    selectedJob?.id === selectedJobId
+      ? selectedJob
+      : cachedSelectedJob &&
+          cachedSelectedJob.updatedAt === selectedJobListItem?.updatedAt
+        ? cachedSelectedJob
+        : null;
+  const selectedJobLoadState: SelectedJobLoadState =
+    selectedJobListItem && !matchingSelectedJob
+      ? selectedJobRequestState?.jobId === selectedJobId
+        ? selectedJobRequestState.status
+        : "loading"
+      : "idle";
+  const retrySelectedJob = useCallback(() => {
+    if (!selectedJobId || !selectedJobListItem) return;
+    const seq = ++selectedJobRequestSeqRef.current;
+    setSelectedJob(null);
+    setSelectedJobRequestState({ jobId: selectedJobId, status: "loading" });
+    void loadSelectedJob(selectedJobId, seq);
+  }, [loadSelectedJob, selectedJobId, selectedJobListItem]);
 
   return {
     jobs: jobListItems,
-    selectedJob,
+    selectedJob: matchingSelectedJob,
+    selectedJobListItem,
+    selectedJobLoadState,
+    retrySelectedJob,
     stats,
     isLoading,
     isPipelineRunning,

@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { renderHookWithQueryClient } from "@client/test/renderWithQueryClient";
+import { createJob } from "@shared/testing/factories.js";
 import { act, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useOrchestratorData } from "./useOrchestratorData";
@@ -55,17 +56,35 @@ const makeResponse = (jobId: string, revision = `rev-${jobId}`) => ({
   revision,
 });
 
+const makeJobsResponse = (jobs: ReturnType<typeof createJob>[]) => ({
+  jobs,
+  total: jobs.length,
+  byStatus: {
+    discovered: jobs.filter((job) => job.status === "discovered").length,
+    processing: jobs.filter((job) => job.status === "processing").length,
+    ready: jobs.filter((job) => job.status === "ready").length,
+    applied: jobs.filter((job) => job.status === "applied").length,
+    in_progress: jobs.filter((job) => job.status === "in_progress").length,
+    skipped: jobs.filter((job) => job.status === "skipped").length,
+    expired: jobs.filter((job) => job.status === "expired").length,
+  },
+  revision: jobs.map((job) => `${job.id}:${job.updatedAt}`).join("|"),
+});
+
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;
+  reject: (reason?: unknown) => void;
 };
 
 const deferred = <T>(): Deferred<T> => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 };
 
 describe("useOrchestratorData", () => {
@@ -691,6 +710,118 @@ describe("useOrchestratorData", () => {
     await waitFor(() => {
       expect(api.getJob).toHaveBeenCalledWith("job-1");
       expect((result.current.selectedJob as any)?.id).toBe("job-1");
+    });
+  });
+
+  it("exposes the new summary and hides the previous full job while details load", async () => {
+    const job1 = createJob({
+      id: "job-1",
+      title: "First role",
+      status: "discovered",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const job2 = createJob({
+      id: "job-2",
+      title: "Second role",
+      status: "discovered",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
+    const job2Request = deferred<typeof job2>();
+    vi.mocked(api.getJobs).mockResolvedValue(makeJobsResponse([job1, job2]));
+    vi.mocked(api.getJob).mockImplementation((jobId) =>
+      jobId === job1.id ? Promise.resolve(job1) : job2Request.promise,
+    );
+
+    let selectedJobId: string | null = job1.id;
+    const { result, rerender } = renderHook(() =>
+      useOrchestratorData(selectedJobId),
+    );
+
+    await waitFor(() => expect(result.current.selectedJob?.id).toBe(job1.id));
+
+    selectedJobId = job2.id;
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.selectedJobListItem?.id).toBe(job2.id);
+      expect(result.current.selectedJob).toBeNull();
+      expect(result.current.selectedJobLoadState).toBe("loading");
+    });
+
+    await act(async () => {
+      job2Request.resolve(job2);
+      await job2Request.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedJob?.id).toBe(job2.id);
+      expect(result.current.selectedJobLoadState).toBe("idle");
+    });
+
+    selectedJobId = job1.id;
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.selectedJob?.id).toBe(job1.id);
+      expect(result.current.selectedJobLoadState).toBe("idle");
+    });
+    expect(api.getJob).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a detail response that arrives after deselection", async () => {
+    const job = createJob({
+      id: "job-1",
+      status: "discovered",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const request = deferred<typeof job>();
+    vi.mocked(api.getJobs).mockResolvedValue(makeJobsResponse([job]));
+    vi.mocked(api.getJob).mockReturnValue(request.promise);
+
+    let selectedJobId: string | null = job.id;
+    const { result, rerender } = renderHook(() =>
+      useOrchestratorData(selectedJobId),
+    );
+
+    await waitFor(() =>
+      expect(result.current.selectedJobLoadState).toBe("loading"),
+    );
+
+    selectedJobId = null;
+    rerender();
+    await act(async () => {
+      request.resolve(job);
+      await request.promise;
+    });
+
+    expect(result.current.selectedJob).toBeNull();
+    expect(result.current.selectedJobListItem).toBeNull();
+    expect(result.current.selectedJobLoadState).toBe("idle");
+  });
+
+  it("retries a failed selected job detail request", async () => {
+    const job = createJob({
+      id: "job-1",
+      status: "discovered",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    vi.mocked(api.getJobs).mockResolvedValue(makeJobsResponse([job]));
+    vi.mocked(api.getJob)
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(job);
+
+    const { result } = renderHook(() => useOrchestratorData(job.id));
+
+    await waitFor(() =>
+      expect(result.current.selectedJobLoadState).toBe("error"),
+    );
+
+    act(() => result.current.retrySelectedJob());
+
+    await waitFor(() => {
+      expect(api.getJob).toHaveBeenCalledTimes(2);
+      expect(result.current.selectedJob?.id).toBe(job.id);
+      expect(result.current.selectedJobLoadState).toBe("idle");
     });
   });
 });

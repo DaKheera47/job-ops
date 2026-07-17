@@ -56,6 +56,11 @@ It exists to ensure:
    2. Top jobs above threshold are auto-processed.
    3. Jobs move directly to `ready` with generated PDFs.
 
+When you select a job, the detail panel shows the available title, employer,
+status, and listing information immediately. A loading skeleton fills the
+remaining detail area until the full job arrives. If that request fails, use
+**Retry** in the panel; actions that require full details stay unavailable.
+
 ### Using the Filters panel
 
 The main jobs page has a `Filters` button on the top-right next to `Search`.

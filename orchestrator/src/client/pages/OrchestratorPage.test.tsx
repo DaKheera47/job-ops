@@ -135,6 +135,9 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
   useOrchestratorData: () => ({
     jobs: mockJobs,
     selectedJob: mockSelectedJob,
+    selectedJobListItem: mockSelectedJob,
+    selectedJobLoadState: "idle",
+    retrySelectedJob: vi.fn(),
     stats: {
       discovered: 1,
       processing: 1,
