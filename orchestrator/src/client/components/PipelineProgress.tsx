@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { subscribeToEventSource } from "@/client/lib/sse";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
+import { PipelineProgressCard } from "./PipelineProgressCard";
 
 interface PipelineProgressProps {
   isRunning: boolean;
@@ -142,19 +143,13 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   }, [isRunning]);
 
   useEffect(() => {
-    if (!progress?.fanout) return;
+    if (!progress?.fanout && progress?.step !== "scoring") return;
     setNow(Date.now());
     const intervalId = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(intervalId);
-  }, [progress?.fanout]);
+  }, [progress?.fanout, progress?.step]);
 
-  if (
-    !isRunning ||
-    !progress?.fanout ||
-    (progress.step !== "crawling" && progress.step !== "challenge_required")
-  ) {
-    return null;
-  }
+  if (!isRunning || !progress) return null;
 
   const startedAt = progress.startedAt
     ? Date.parse(progress.startedAt)
@@ -162,6 +157,22 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   const elapsedSeconds = Number.isFinite(startedAt)
     ? Math.max(0, Math.floor((now - startedAt) / 1000))
     : 0;
+
+  if (progress.step === "scoring") {
+    return (
+      <PipelineProgressCard
+        progress={progress}
+        elapsedSeconds={elapsedSeconds}
+      />
+    );
+  }
+
+  if (
+    !progress.fanout ||
+    (progress.step !== "crawling" && progress.step !== "challenge_required")
+  ) {
+    return null;
+  }
 
   return (
     <PipelineFanoutCard

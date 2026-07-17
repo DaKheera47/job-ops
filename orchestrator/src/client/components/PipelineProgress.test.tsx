@@ -58,6 +58,7 @@ const baseProgress = {
   crawlingJobPagesProcessed: 0,
   jobsDiscovered: 0,
   jobsScored: 0,
+  jobsExceptional: 0,
   jobsProcessed: 0,
   totalToProcess: 0,
 };
@@ -111,6 +112,33 @@ describe("PipelineProgress", () => {
       sseMock.handlers?.onMessage({ ...baseProgress, step: "importing" }),
     );
 
+    expect(screen.queryByText("Searching 4 combinations")).toBeNull();
+  });
+
+  it("renders the live scoring card after discovery", () => {
+    render(<PipelineProgress isRunning />);
+    act(() =>
+      sseMock.handlers?.onMessage({
+        ...baseProgress,
+        step: "scoring",
+        message: "Scoring jobs...",
+        detail: "Using AI to evaluate job fit",
+        jobsDiscovered: 100,
+        jobsScored: 50,
+        jobsExceptional: 7,
+        currentJob: {
+          id: "job-1",
+          title: "Frontend Engineer",
+          employer: "Monzo",
+        },
+      }),
+    );
+
+    expect(screen.getByText("Scoring matches")).toBeInTheDocument();
+    expect(
+      screen.getByTitle("Ranking Frontend Engineer against your profile"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
     expect(screen.queryByText("Searching 4 combinations")).toBeNull();
   });
 
