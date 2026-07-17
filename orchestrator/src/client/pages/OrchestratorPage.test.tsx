@@ -119,6 +119,8 @@ const processingJob = createJob({
 
 let mockJobs = [jobFixture, job2, processingJob];
 let mockSelectedJob: Job | null = jobFixture;
+let mockSelectedJobListItemOverride: Job | null | undefined;
+let mockSelectedJobLoadState: "idle" | "loading" | "error" = "idle";
 
 const createMatchMedia = (matches: boolean | Record<string, boolean>) =>
   vi.fn().mockImplementation((query: string) => ({
@@ -135,8 +137,11 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
   useOrchestratorData: () => ({
     jobs: mockJobs,
     selectedJob: mockSelectedJob,
-    selectedJobListItem: mockSelectedJob,
-    selectedJobLoadState: "idle",
+    selectedJobListItem:
+      mockSelectedJobListItemOverride === undefined
+        ? mockSelectedJob
+        : mockSelectedJobListItemOverride,
+    selectedJobLoadState: mockSelectedJobLoadState,
     retrySelectedJob: vi.fn(),
     stats: {
       discovered: 1,
@@ -536,6 +541,8 @@ describe("OrchestratorPage", () => {
     mockPipelineSources = ["linkedin"];
     mockJobs = [jobFixture, job2, processingJob];
     mockSelectedJob = jobFixture;
+    mockSelectedJobListItemOverride = undefined;
+    mockSelectedJobLoadState = "idle";
     mockLoadJobs = vi.fn().mockResolvedValue(undefined);
     mockAutomaticRunValues = {
       topN: 12,
@@ -1590,6 +1597,35 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(locationText()).toContain("/all");
     });
+  });
+
+  it("opens the listing from summary data while full job details load", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockSelectedJob = null;
+    mockSelectedJobListItemOverride = job2;
+    mockSelectedJobLoadState = "loading";
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/discovered/job-2"]}>
+        <Routes>
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    pressKey("o");
+
+    expect(openSpy).toHaveBeenCalledWith(
+      job2.applicationLink,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    pressKey("r");
+    expect(api.processJob).not.toHaveBeenCalled();
+    openSpy.mockRestore();
   });
 
   it("triggers skip, mark applied, and move-to-ready actions from shortcuts", async () => {

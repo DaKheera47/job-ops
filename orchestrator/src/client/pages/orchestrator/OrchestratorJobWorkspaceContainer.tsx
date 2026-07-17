@@ -137,6 +137,7 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
     activeJobs,
     selectedJobId: navigation.selectedJobId,
     selectedJob: visibleSelectedJob,
+    selectedJobSummary: visibleSelectedJobListItem,
     selectedJobIds,
     isDesktop: ui.isDesktop,
     handleSelectJobId: navigation.handleSelectJobId,
