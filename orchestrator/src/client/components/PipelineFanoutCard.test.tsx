@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
 
+vi.mock("framer-motion", () => ({ useReducedMotion: () => false }));
+
 const fanout: PipelineFanoutProgress = {
   termCount: 5,
   locationCount: 2,
@@ -23,6 +25,22 @@ const fanout: PipelineFanoutProgress = {
 };
 
 describe("PipelineFanoutCard", () => {
+  it("rolls each part of the live combination independently", () => {
+    render(
+      <PipelineFanoutCard
+        fanout={fanout}
+        elapsedSeconds={134}
+        currentCombination="linkedin · frontend · edinburgh"
+        solvingExtractor={null}
+        onSolveChallenge={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("linkedin · frontend · edinburgh"),
+    ).toBeInTheDocument();
+  });
+
   it("reveals roles beyond the first four", () => {
     render(
       <PipelineFanoutCard

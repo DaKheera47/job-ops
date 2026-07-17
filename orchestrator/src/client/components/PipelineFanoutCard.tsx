@@ -4,6 +4,9 @@ import type {
   PipelineFanoutRoleProgress,
   PipelinePendingChallenge,
 } from "@shared/types";
+import { useReducedMotion } from "framer-motion";
+import "slot-text/style.css";
+import { SlotText } from "slot-text/react";
 import {
   Accordion,
   AccordionContent,
@@ -22,6 +25,43 @@ import { PipelineActionRequired } from "./PipelineActionRequired";
 
 const getRoleTotal = (role: PipelineFanoutRoleProgress) =>
   role.complete + role.running + role.check + role.queued;
+
+const combinationSlotOptions = {
+  direction: "up" as const,
+  stagger: 16,
+  duration: 220,
+  bounce: 0,
+  skipUnchanged: false,
+  interrupt: false,
+};
+
+const LiveCombination = ({ text }: { text: string }) => {
+  const prefersReducedMotion = useReducedMotion();
+  const [source = "", role = "", location = ""] = text.split(" · ");
+
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true" className="contents">
+        {prefersReducedMotion ? (
+          text
+        ) : (
+          <>
+            <SlotText text={source} options={combinationSlotOptions} />
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span>·</span>
+              <SlotText text={role} options={combinationSlotOptions} />
+            </span>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span>·</span>
+              <SlotText text={location} options={combinationSlotOptions} />
+            </span>
+          </>
+        )}
+      </span>
+    </span>
+  );
+};
 
 const Segment = ({
   className,
@@ -149,7 +189,9 @@ export const PipelineFanoutCard = ({
           {currentCombination ? (
             <p className="flex min-w-0 items-start gap-2 font-mono text-[11px] text-muted-foreground">
               <span className="mt-1 size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" />
-              <span className="min-w-0 break-words">{currentCombination}</span>
+              <span className="min-w-0 break-words">
+                <LiveCombination text={currentCombination} />
+              </span>
             </p>
           ) : null}
         </div>

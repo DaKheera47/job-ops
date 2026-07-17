@@ -44,7 +44,7 @@ const getCurrentCombination = (
   const location = fanout.locations[index % fanout.locations.length];
   if (!source || !role || !location) return undefined;
 
-  return `${source.toLowerCase()} × ${role.toLowerCase()} × ${location.toLowerCase()}`;
+  return `${source.toLowerCase()} · ${role.toLowerCase()} · ${location.toLowerCase()}`;
 };
 
 export const PipelineProgress: React.FC<PipelineProgressProps> = ({

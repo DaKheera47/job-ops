@@ -177,21 +177,22 @@ const FanoutStory = ({
   fanout: PipelineFanoutProgress;
   challenges?: PipelinePendingChallenge[];
 }) => {
-  const [combination, setCombination] = useState(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const intervalId = window.setInterval(
-      () => setCombination((current) => current + 1),
+      () => setTick((current) => current + 1),
       1400,
     );
     return () => window.clearInterval(intervalId);
   }, []);
 
-  const source = sources[combination % fanout.sourceCount];
-  const role = fanout.roles[combination % fanout.termCount]?.role
+  const source = sources[Math.floor((tick + 2) / 3) % fanout.sourceCount];
+  const role = fanout.roles[Math.floor((tick + 1) / 3) % fanout.termCount]?.role
     .replace(/ engineer$/i, "")
     .toLowerCase();
-  const location = locations[combination % fanout.locationCount]?.toLowerCase();
+  const location =
+    locations[Math.floor(tick / 3) % fanout.locationCount]?.toLowerCase();
 
   return (
     <PipelineProgressCard
@@ -203,7 +204,7 @@ const FanoutStory = ({
         { fanout, pendingChallenges: challenges },
       )}
       elapsedSeconds={134}
-      currentCombination={`${source} × ${role} × ${location}`}
+      currentCombination={`${source} · ${role} · ${location}`}
       solvingExtractor={null}
       onSolveChallenge={noop}
     />

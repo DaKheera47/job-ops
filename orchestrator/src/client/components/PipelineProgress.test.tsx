@@ -94,7 +94,7 @@ describe("PipelineProgress", () => {
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("(02:14 elapsed)")).toBeInTheDocument();
-    expect(screen.getByText("glassdoor × backend × leeds")).toBeInTheDocument();
+    expect(screen.getByText("glassdoor · backend · leeds")).toBeInTheDocument();
   });
 
   it("falls back to snapshot polling when SSE does not open", async () => {
