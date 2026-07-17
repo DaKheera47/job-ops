@@ -453,6 +453,7 @@ export async function runPipeline(
         ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
           profile,
           scoringInstructions: mergedConfig.scoringInstructions,
+          visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
           shouldCancel: () =>
             getPipelineState(scopeKey).cancelRequestedAt !== null,
         }));
@@ -474,6 +475,7 @@ export async function runPipeline(
           ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
             profile,
             scoringInstructions: mergedConfig.scoringInstructions,
+            visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
             shouldCancel: () =>
               getPipelineState(scopeKey).cancelRequestedAt !== null,
           }));

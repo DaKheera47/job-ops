@@ -14,6 +14,7 @@ const SCORING_CONCURRENCY = 4;
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
   scoringInstructions?: string;
+  visaSponsorCountryKey?: string | null;
   shouldCancel?: () => boolean;
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
   logger.info("Running scoring step");
@@ -82,6 +83,7 @@ export async function scoreJobsStep(args: {
         const sponsorResults = await visaSponsors.searchSponsors(job.employer, {
           limit: 10,
           minScore: 50,
+          countryKey: args.visaSponsorCountryKey ?? undefined,
         });
 
         const summary =

@@ -258,6 +258,7 @@ export interface AppSettings {
   onboardingProfileCompleted: Resolved<boolean>;
   onboardingLlmCompleted: Resolved<boolean>;
   onboardingResumeConfirmedSource: Resolved<string>;
+  onboardingLegacyMigrationPending: Resolved<boolean>;
   blockedCompanyKeywords: Resolved<string[]>;
   scoringInstructions: Resolved<string>;
   ghostwriterSystemPromptTemplate: Resolved<string>;

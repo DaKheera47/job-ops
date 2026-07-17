@@ -202,6 +202,11 @@ export const createAppSettings = (
     default: "",
     override: null,
   },
+  onboardingLegacyMigrationPending: {
+    value: false,
+    default: false,
+    override: null,
+  },
   blockedCompanyKeywords: {
     value: [],
     default: [],

@@ -1,6 +1,10 @@
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useOnboardingStatus } from "@client/hooks/useOnboardingStatus";
+import {
+  formatCountryLabel,
+  SUPPORTED_COUNTRY_KEYS,
+} from "@shared/location-support.js";
 import type {
   OnboardingRequirement,
   OnboardingRequirementId,
@@ -17,12 +21,11 @@ import {
   EyeOff,
   FileCheck2,
   MapPin,
-  RefreshCw,
   Sparkles,
   UserPlus,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import * as api from "@/client/api";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -31,14 +34,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import { bucketDurationMs, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { showErrorToast } from "../lib/error-toast";
+import {
+  getErrorCategory,
+  getHttpStatusBucket,
+  getTextLengthBucket,
+} from "./onboarding/analytics";
 import { BaseResumeStep } from "./onboarding/components/BaseResumeStep";
 import { LlmConnectionStep } from "./onboarding/components/LlmConnectionStep";
 import type { ValidationState } from "./onboarding/types";
 import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
 const STEP_ORDER: OnboardingRequirementId[] = ["profile", "model", "resume"];
+const COUNTRY_OPTIONS = SUPPORTED_COUNTRY_KEYS.filter(
+  (country) => country !== "usa/ca",
+).map((country) => ({
+  value: country,
+  label: formatCountryLabel(country),
+}));
 
 function getRequirement(
   status: OnboardingStatusResponse | null,
@@ -66,10 +82,36 @@ function stepTitle(id: OnboardingRequirementId): string {
   return "Your resume";
 }
 
+function getRequirementAnalyticsStatus(
+  requirement: OnboardingRequirement | null,
+) {
+  return requirement?.status ?? "missing";
+}
+
 export const OnboardingPage: React.FC = () => {
   const [bootstrapState, setBootstrapState] = useState<
     "checking" | "account" | "launch" | "error"
   >("checking");
+  const analyticsStartedAtRef = useRef(Date.now());
+  const analyticsStartedRef = useRef(false);
+
+  const trackStarted = useCallback(
+    (
+      entryState: "account_required" | "launch",
+      nextStep: "account" | OnboardingRequirementId | "none",
+      demoMode: boolean,
+    ) => {
+      if (analyticsStartedRef.current) return;
+      analyticsStartedRef.current = true;
+      trackProductEvent("onboarding_started", {
+        entry_state: entryState,
+        next_step: nextStep,
+        has_session: api.hasAuthenticatedSession(),
+        demo_mode: demoMode,
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +129,12 @@ export const OnboardingPage: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (bootstrapState === "account") {
+      trackStarted("account_required", "account", false);
+    }
+  }, [bootstrapState, trackStarted]);
+
   if (bootstrapState === "checking") {
     return <LoadingState message="Preparing your workspace…" />;
   }
@@ -98,7 +146,14 @@ export const OnboardingPage: React.FC = () => {
   if (bootstrapState === "account") {
     return <AccountSetup onComplete={() => setBootstrapState("launch")} />;
   }
-  return <LaunchSetup />;
+  return (
+    <LaunchSetup
+      analyticsStartedAt={analyticsStartedAtRef.current}
+      onStarted={(nextStep, demoMode) =>
+        trackStarted("launch", nextStep, demoMode)
+      }
+    />
+  );
 };
 
 function LoadingState({ message }: { message: string }) {
@@ -124,15 +179,28 @@ function AccountSetup({ onComplete }: { onComplete: () => void }) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const normalizedUsername = username.trim();
+    trackProductEvent("onboarding_account_create_submitted", {
+      username_length_bucket: getTextLengthBucket(normalizedUsername),
+    });
     try {
       setBusy(true);
       await api.setupFirstAdmin({
-        username: username.trim(),
+        username: normalizedUsername,
         password,
-        displayName: username.trim(),
+        displayName: normalizedUsername,
+      });
+      trackProductEvent("onboarding_account_create_completed", {
+        result: "success",
+        credential_length_bucket: getTextLengthBucket(password),
       });
       onComplete();
     } catch (error) {
+      trackProductEvent("onboarding_account_create_completed", {
+        result: "error",
+        credential_length_bucket: getTextLengthBucket(password),
+        error_category: getErrorCategory(error),
+      });
       showErrorToast(error, "Could not create the workspace account");
     } finally {
       setBusy(false);
@@ -218,7 +286,16 @@ function Field({
   );
 }
 
-function LaunchSetup() {
+function LaunchSetup({
+  analyticsStartedAt,
+  onStarted,
+}: {
+  analyticsStartedAt: number;
+  onStarted: (
+    nextStep: OnboardingRequirementId | "none",
+    demoMode: boolean,
+  ) => void;
+}) {
   const queryClient = useQueryClient();
   const onboarding = useOnboardingStatus();
   const flow = useOnboardingFlow();
@@ -246,6 +323,9 @@ function LaunchSetup() {
     Array<"remote" | "hybrid" | "onsite">
   >(["remote", "hybrid"]);
   const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(false);
+  const completionTrackedRef = useRef(false);
+  const lastStepViewRef = useRef<string | null>(null);
+  const lastStatusCheckRef = useRef<string | null>(null);
 
   const showModel =
     appStatus.data?.capabilities.userEditableLlmSettings ?? true;
@@ -254,8 +334,78 @@ function LaunchSetup() {
     : STEP_ORDER.filter((step) => step !== "model");
   const status = onboarding.status;
   const activeStep = selectedStep ?? status?.nextRequirementId ?? "profile";
+  const profileRequirement = getRequirement(status, "profile");
+  const modelRequirement = getRequirement(status, "model");
+  const resumeRequirement = getRequirement(status, "resume");
+  const activeRequirement = getRequirement(status, activeStep);
+
+  useEffect(() => {
+    if (!status || onboarding.checking || appStatus.isLoading) return;
+    onStarted(status.nextRequirementId ?? "none", flow.demoMode);
+  }, [
+    appStatus.isLoading,
+    flow.demoMode,
+    onboarding.checking,
+    onStarted,
+    status,
+  ]);
+
+  useEffect(() => {
+    if (!status || onboarding.checking || appStatus.isLoading) return;
+    const key = `${activeStep}:${getRequirementAnalyticsStatus(activeRequirement)}`;
+    if (lastStepViewRef.current === key) return;
+    lastStepViewRef.current = key;
+    trackProductEvent("onboarding_step_viewed", {
+      step: activeStep,
+      step_index: visibleSteps.indexOf(activeStep) + 1,
+      requirement_status: getRequirementAnalyticsStatus(activeRequirement),
+    });
+  }, [
+    activeRequirement,
+    activeStep,
+    appStatus.isLoading,
+    onboarding.checking,
+    status,
+    visibleSteps,
+  ]);
+
+  useEffect(() => {
+    if (!status || onboarding.checking || appStatus.isLoading) return;
+    const key = JSON.stringify([
+      status.complete,
+      status.nextRequirementId,
+      profileRequirement?.status,
+      modelRequirement?.status,
+      resumeRequirement?.status,
+    ]);
+    if (lastStatusCheckRef.current === key) return;
+    lastStatusCheckRef.current = key;
+    trackProductEvent("onboarding_status_checked", {
+      complete: status.complete,
+      next_step: status.nextRequirementId ?? "none",
+      profile_status: getRequirementAnalyticsStatus(profileRequirement),
+      model_status: getRequirementAnalyticsStatus(modelRequirement),
+      resume_status: getRequirementAnalyticsStatus(resumeRequirement),
+    });
+  }, [
+    appStatus.isLoading,
+    modelRequirement,
+    onboarding.checking,
+    profileRequirement,
+    resumeRequirement,
+    status,
+  ]);
 
   const applyStatus = (next: OnboardingStatusResponse) => {
+    if (next.complete && !completionTrackedRef.current) {
+      completionTrackedRef.current = true;
+      trackProductEvent("onboarding_completed", {
+        duration_bucket: bucketDurationMs(Date.now() - analyticsStartedAt),
+        completed_steps: next.requirements.filter(
+          (requirement) => requirement.status === "ready",
+        ).length,
+      });
+    }
     queryClient.setQueryData(queryKeys.onboarding.status(), next);
     setSelectedStep(next.nextRequirementId);
   };
@@ -267,8 +417,6 @@ function LaunchSetup() {
     return <LoadingState message="Loading your setup…" />;
   }
 
-  const modelRequirement = getRequirement(status, "model");
-  const resumeRequirement = getRequirement(status, "resume");
   const resumeSource =
     typeof resumeRequirement?.details?.confirmationSource === "string"
       ? resumeRequirement.details.confirmationSource
@@ -281,6 +429,12 @@ function LaunchSetup() {
       .split(/[\n,]/)
       .map((city) => city.trim())
       .filter(Boolean);
+    trackProductEvent("onboarding_profile_save_submitted", {
+      has_country: Boolean(country.trim()),
+      city_count: parsedCities.length,
+      workplace_type_count: workplaceTypes.length,
+      requires_visa_sponsorship: requiresVisaSponsorship,
+    });
     try {
       setProfileBusy(true);
       applyStatus(
@@ -291,7 +445,15 @@ function LaunchSetup() {
           requiresVisaSponsorship,
         }),
       );
+      trackProductEvent("onboarding_profile_save_completed", {
+        result: "success",
+      });
     } catch (error) {
+      trackProductEvent("onboarding_profile_save_completed", {
+        result: "error",
+        error_category: getErrorCategory(error),
+        http_status_bucket: getHttpStatusBucket(error),
+      });
       showErrorToast(error, "Could not save search preferences");
     } finally {
       setProfileBusy(false);
@@ -305,10 +467,22 @@ function LaunchSetup() {
 
   const confirmResume = async () => {
     if (!resumeSource) return;
+    const source = resumeSource.startsWith("rxresume:") ? "rxresume" : "local";
+    trackProductEvent("onboarding_resume_confirm_submitted", { source });
     try {
       setConfirmBusy(true);
       applyStatus(await api.confirmOnboardingResume(resumeSource));
+      trackProductEvent("onboarding_resume_confirm_completed", {
+        result: "success",
+        source,
+      });
     } catch (error) {
+      trackProductEvent("onboarding_resume_confirm_completed", {
+        result: "error",
+        source,
+        error_category: getErrorCategory(error),
+        http_status_bucket: getHttpStatusBucket(error),
+      });
       showErrorToast(error, "Could not confirm this resume");
     } finally {
       setConfirmBusy(false);
@@ -445,7 +619,6 @@ function LaunchSetup() {
                     setSelectedStep(showModel ? "model" : "profile")
                   }
                   onConfirm={confirmResume}
-                  onRefresh={() => void profileQuery.refetch()}
                 />
               )}
             </CardContent>
@@ -540,10 +713,20 @@ function ProfileStep(props: {
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Country or market">
-          <Input
+          <SearchableDropdown
             value={props.country}
-            onChange={(event) => props.onCountryChange(event.target.value)}
-            placeholder="United Kingdom"
+            options={COUNTRY_OPTIONS}
+            onValueChange={props.onCountryChange}
+            placeholder="Select country"
+            searchPlaceholder="Search country..."
+            emptyText="No matching countries."
+            triggerClassName="h-10 w-full"
+            ariaLabel={
+              props.country
+                ? formatCountryLabel(props.country)
+                : "Select country"
+            }
+            allowCustomValue={false}
           />
         </Field>
         <Field label="Preferred cities or regions (optional)">
@@ -609,7 +792,6 @@ function ResumeStep({
   busy,
   onBack,
   onConfirm,
-  onRefresh,
 }: {
   flow: ReturnType<typeof useOnboardingFlow>;
   requirement: OnboardingRequirement | null;
@@ -618,7 +800,6 @@ function ResumeStep({
   busy: boolean;
   onBack: () => void;
   onConfirm: () => void;
-  onRefresh: () => void;
 }) {
   const experience = profile?.sections?.experience?.items ?? [];
   if (!hasResume) {
@@ -716,17 +897,8 @@ function ResumeStep({
               {experience.length === 1 ? "entry" : "entries"}
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={onRefresh}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh preview
-          </Button>
           <Button type="button" variant="outline" className="w-full" asChild>
-            <a href="/resume/design">
+            <a href="/design-resume">
               <BriefcaseBusiness className="h-4 w-4" />
               Edit in Resume Studio
             </a>

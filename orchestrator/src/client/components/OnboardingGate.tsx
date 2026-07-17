@@ -65,12 +65,12 @@ export const OnboardingGate: React.FC = () => {
     return <Navigate to="/onboarding" replace />;
   }
 
-  return <OnboardingRedirect />;
+  return <OnboardingRedirect pathname={location.pathname} />;
 };
 
-const OnboardingRedirect: React.FC = () => {
+const OnboardingRedirect: React.FC<{ pathname: string }> = ({ pathname }) => {
   const { error } = useSettings();
-  const { checking, complete } = useOnboardingStatus();
+  const { checking, complete, nextRequirementId } = useOnboardingStatus();
 
   if (error) {
     if (!navigator.onLine) {
@@ -80,6 +80,13 @@ const OnboardingRedirect: React.FC = () => {
   }
 
   if (checking || complete) {
+    return null;
+  }
+
+  if (
+    nextRequirementId === "resume" &&
+    (pathname === "/design-resume" || pathname.startsWith("/design-resume/"))
+  ) {
     return null;
   }
 

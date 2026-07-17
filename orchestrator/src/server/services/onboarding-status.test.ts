@@ -164,6 +164,55 @@ describe("onboarding status engine", () => {
       status: "needs_action",
       primaryAction: "connect_model",
     });
+    expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
+  });
+
+  it("validates and persists legacy onboarding state once", async () => {
+    const values: Record<string, string | null> = {
+      llmApiKey: "sk-test",
+      llmProvider: "openrouter",
+      llmBaseUrl: "",
+      model: "gpt-4o",
+      onboardingLegacyMigrationPending: "1",
+      onboardingProfileCompleted: null,
+      onboardingLlmCompleted: null,
+      onboardingResumeConfirmedSource: null,
+    };
+    mocks.getSetting.mockImplementation(async (key: string) =>
+      Object.hasOwn(values, key) ? values[key] : null,
+    );
+    mocks.applySettingsUpdates.mockImplementation(async (update) => {
+      if (update.onboardingProfileCompleted !== undefined) {
+        values.onboardingProfileCompleted = update.onboardingProfileCompleted
+          ? "1"
+          : "0";
+      }
+      if (update.onboardingLlmCompleted !== undefined) {
+        values.onboardingLlmCompleted = update.onboardingLlmCompleted
+          ? "1"
+          : "0";
+      }
+      if (update.onboardingResumeConfirmedSource !== undefined) {
+        values.onboardingResumeConfirmedSource =
+          update.onboardingResumeConfirmedSource;
+      }
+      values.onboardingLegacyMigrationPending = "0";
+      return {
+        shouldRefreshBackupScheduler: false,
+        shouldClearRxResumeCaches: false,
+        updatedSettingKeys: [],
+      };
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith({
+      onboardingProfileCompleted: true,
+      onboardingLegacyMigrationPending: false,
+      onboardingLlmCompleted: true,
+      onboardingResumeConfirmedSource: "local:doc-1",
+    });
+    expect(status.complete).toBe(true);
   });
 
   it("does not trust a completed Codex marker when refreshed auth is invalid", async () => {

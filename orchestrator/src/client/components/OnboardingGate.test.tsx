@@ -113,6 +113,29 @@ describe("OnboardingGate", () => {
     expect(screen.queryByText("onboarding")).not.toBeInTheDocument();
   });
 
+  it("allows Resume Studio only while the resume step is next", async () => {
+    vi.mocked(useOnboardingStatus).mockReturnValue({
+      checking: false,
+      complete: false,
+      nextRequirementId: "resume",
+    } as any);
+
+    render(
+      <MemoryRouter initialEntries={["/design-resume"]}>
+        <OnboardingGate />
+        <Routes>
+          <Route path="/design-resume" element={<div>resume studio</div>} />
+          <Route path="/onboarding" element={<div>onboarding</div>} />
+        </Routes>
+      </MemoryRouter>,
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(useOnboardingStatus).toHaveBeenCalled());
+    expect(screen.getByText("resume studio")).toBeInTheDocument();
+    expect(screen.queryByText("onboarding")).not.toBeInTheDocument();
+  });
+
   it("sends brand-new installs to onboarding before auth redirects", async () => {
     const { getAuthBootstrapStatus } = await import("@client/api");
     vi.mocked(getAuthBootstrapStatus).mockResolvedValueOnce({

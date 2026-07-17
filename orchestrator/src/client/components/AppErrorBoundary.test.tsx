@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiClientError } from "@/client/api/core";
 import {
   AppErrorBoundary,
   buildFatalIssueUrl,
@@ -128,6 +129,26 @@ describe("AppErrorBoundary", () => {
     fireEvent.click(screen.getByText("Technical details"));
     expect(screen.getByText(/token=\[redacted\]/)).toBeInTheDocument();
     expect(screen.queryByText(/abc123/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the app alive and shows a toast for recoverable API errors", async () => {
+    renderBoundary(<div>Healthy app</div>, "/jobs/ready");
+    const event = new Event("unhandledrejection", {
+      cancelable: true,
+    }) as PromiseRejectionEvent;
+    Object.defineProperty(event, "reason", {
+      value: new ApiClientError("API request failed", { status: 500 }),
+    });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(screen.getByText("Healthy app")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Something went wrong" }),
+    ).not.toBeInTheDocument();
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it("normalizes non-Error promise rejections safely", async () => {

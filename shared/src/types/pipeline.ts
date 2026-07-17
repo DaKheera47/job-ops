@@ -18,6 +18,73 @@ export function normalizePipelineRunBudget(value: number): number {
   );
 }
 
+export interface ExtractorLimits {
+  jobspyResultsWanted: number;
+  gradcrackerMaxJobsPerTerm: number;
+  ukvisajobsMaxJobs: number;
+  adzunaMaxJobsPerTerm: number;
+  startupjobsMaxJobsPerTerm: number;
+  workingnomadsMaxJobsPerTerm: number;
+  jobindexMaxJobsPerTerm: number;
+  seekMaxJobsPerTerm: number;
+  naukriMaxJobsPerTerm: number;
+}
+
+export function deriveExtractorLimits(args: {
+  budget: number;
+  searchTerms: string[];
+  sources: readonly string[];
+}): ExtractorLimits {
+  const budget = normalizePipelineRunBudget(args.budget);
+  const termCount = Math.max(1, args.searchTerms.length);
+  const perTermSources = [
+    "indeed",
+    "linkedin",
+    "glassdoor",
+    "gradcracker",
+    "adzuna",
+    "hiringcafe",
+    "startupjobs",
+    "workingnomads",
+    "jobindex",
+    "seek",
+    "naukri",
+  ] as const;
+  const weightedContributors =
+    perTermSources.filter((source) => args.sources.includes(source)).length *
+      termCount +
+    (args.sources.includes("ukvisajobs") ? 1 : 0);
+
+  if (weightedContributors <= 0) {
+    return {
+      jobspyResultsWanted: budget,
+      gradcrackerMaxJobsPerTerm: budget,
+      ukvisajobsMaxJobs: budget,
+      adzunaMaxJobsPerTerm: budget,
+      startupjobsMaxJobsPerTerm: budget,
+      workingnomadsMaxJobsPerTerm: budget,
+      jobindexMaxJobsPerTerm: budget,
+      seekMaxJobsPerTerm: budget,
+      naukriMaxJobsPerTerm: budget,
+    };
+  }
+
+  const perUnit = Math.max(1, Math.floor(budget / weightedContributors));
+  const remainder = Math.max(0, budget - perUnit * weightedContributors);
+
+  return {
+    jobspyResultsWanted: perUnit,
+    gradcrackerMaxJobsPerTerm: perUnit,
+    ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
+    adzunaMaxJobsPerTerm: perUnit,
+    startupjobsMaxJobsPerTerm: perUnit,
+    workingnomadsMaxJobsPerTerm: perUnit,
+    jobindexMaxJobsPerTerm: perUnit,
+    seekMaxJobsPerTerm: perUnit,
+    naukriMaxJobsPerTerm: perUnit,
+  };
+}
+
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
   minSuitabilityScore: number; // Minimum score to auto-process
@@ -25,6 +92,7 @@ export interface PipelineConfig {
   outputDir: string; // Directory for generated PDFs
   locationIntent?: LocationIntent;
   scoringInstructions?: string;
+  runBudget?: number;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
