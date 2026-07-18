@@ -434,10 +434,12 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       return;
     }
 
-    setSelectedJob(null);
-    setSelectedJobRequestState({ jobId: selectedJobId, status: "loading" });
+    if (selectedJob?.id !== selectedJobId) {
+      setSelectedJob(null);
+      setSelectedJobRequestState({ jobId: selectedJobId, status: "loading" });
+    }
     void loadSelectedJob(selectedJobId, seq);
-  }, [jobListItems, loadSelectedJob, selectedJobId]);
+  }, [jobListItems, loadSelectedJob, selectedJob?.id, selectedJobId]);
 
   const selectedJobListItem = selectedJobId
     ? (jobListItems.find((job) => job.id === selectedJobId) ?? null)

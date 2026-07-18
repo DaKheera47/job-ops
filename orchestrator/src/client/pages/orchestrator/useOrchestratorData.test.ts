@@ -713,6 +713,45 @@ describe("useOrchestratorData", () => {
     });
   });
 
+  it("keeps the selected job mounted during a same-job refetch", async () => {
+    const staleJob = createJob({
+      id: "job-1",
+      title: "Stale role",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const freshJob = createJob({
+      id: staleJob.id,
+      title: "Fresh role",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
+    const freshJobRequest = deferred<typeof freshJob>();
+    vi.mocked(api.getJobs)
+      .mockResolvedValueOnce(makeJobsResponse([staleJob]))
+      .mockResolvedValueOnce(makeJobsResponse([freshJob]));
+    vi.mocked(api.getJob)
+      .mockResolvedValueOnce(staleJob)
+      .mockReturnValueOnce(freshJobRequest.promise);
+
+    const { result } = renderHook(() => useOrchestratorData(staleJob.id));
+
+    await waitFor(() => expect(result.current.selectedJob).toEqual(staleJob));
+
+    await act(async () => {
+      await result.current.loadJobs();
+    });
+
+    await waitFor(() => expect(api.getJob).toHaveBeenCalledTimes(2));
+    expect(result.current.selectedJob).toEqual(staleJob);
+    expect(result.current.selectedJobLoadState).toBe("idle");
+
+    await act(async () => {
+      freshJobRequest.resolve(freshJob);
+      await freshJobRequest.promise;
+    });
+
+    await waitFor(() => expect(result.current.selectedJob).toEqual(freshJob));
+  });
+
   it("exposes the new summary and hides the previous full job while details load", async () => {
     const job1 = createJob({
       id: "job-1",
