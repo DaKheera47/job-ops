@@ -290,7 +290,7 @@ def main() -> int:
         escapechar="\\",
         index=False,
     )
-    jobs.to_json(output_json, orient="records", force_ascii=False)
+    jobs.to_json(output_json, orient="records", force_ascii=False, date_format="iso")
 
     print(f"Wrote CSV:  {output_csv}")
     print(f"Wrote JSON: {output_json}")
