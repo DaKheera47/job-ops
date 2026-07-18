@@ -22,7 +22,10 @@ describe("pipeline fanout progress", () => {
         capacity: 3,
       });
       progressHelpers.startFanoutTask("jobspy");
-      progressHelpers.updateFanoutTaskTerms("jobspy", 1, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 0, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 0, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 1, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Platform", 1, 6);
       progressHelpers.settleFanoutTask("gradcracker", "check");
       progressHelpers.updateFanoutResults(12, 9);
 
@@ -37,8 +40,8 @@ describe("pipeline fanout progress", () => {
         results: 12,
         unique: 9,
         roles: [
-          { role: "Backend", complete: 3, running: 3, queued: 3, check: 3 },
-          { role: "Platform", complete: 0, running: 0, queued: 9, check: 3 },
+          { role: "Backend", complete: 3, running: 0, queued: 6, check: 3 },
+          { role: "Platform", complete: 0, running: 3, queued: 6, check: 3 },
         ],
       });
     });

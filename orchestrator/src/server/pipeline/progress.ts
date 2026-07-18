@@ -58,6 +58,8 @@ type FanoutUnitState = "queued" | "running" | "complete" | "check";
 type FanoutTask = {
   states: FanoutUnitState[];
   unitsPerRole: number;
+  completedTerms: number;
+  termProgressStarted: boolean;
 };
 type FanoutTracker = {
   roles: string[];
@@ -301,6 +303,8 @@ export const progressHelpers = {
           task.id,
           {
             unitsPerRole: task.unitsPerRole,
+            completedTerms: 0,
+            termProgressStarted: false,
             states: Array.from(
               { length: options.roles.length * task.unitsPerRole },
               () => "queued" as const,
@@ -330,25 +334,51 @@ export const progressHelpers = {
 
   updateFanoutTaskTerms: (
     taskId: string,
+    role: string,
     termsProcessed: number,
     termsTotal?: number,
   ) => {
     const tracker = getFanoutTracker();
     const task = tracker?.tasks.get(taskId);
     if (!tracker || !task) return;
+    const roleIndex = tracker.roles.indexOf(role);
+    if (roleIndex < 0) return;
+    if (!task.termProgressStarted) {
+      task.states.fill("queued");
+      task.termProgressStarted = true;
+    }
     const total = Math.max(1, termsTotal ?? tracker.roles.length);
     const processed = Math.max(0, Math.min(total, termsProcessed));
-    const completeUnits = Math.round((processed / total) * task.states.length);
-    const runningUnits = Math.round(
-      (Math.min(total, processed + 1) / total) * task.states.length,
-    );
-    for (let index = 0; index < task.states.length; index += 1) {
-      task.states[index] =
-        index < completeUnits
-          ? "complete"
-          : index < runningUnits
-            ? "running"
-            : "queued";
+    const unitsPerTerm = Math.max(1, Math.round(task.states.length / total));
+    const roleStart = roleIndex * task.unitsPerRole;
+    const roleEnd = roleStart + task.unitsPerRole;
+    const roleStates = task.states.slice(roleStart, roleEnd);
+    if (processed > task.completedTerms) {
+      let remaining = (processed - task.completedTerms) * unitsPerTerm;
+      for (
+        let index = 0;
+        index < roleStates.length && remaining > 0;
+        index += 1
+      ) {
+        if (roleStates[index] === "complete") continue;
+        task.states[roleStart + index] = "complete";
+        remaining -= 1;
+      }
+      task.completedTerms = processed;
+    } else if (
+      processed === task.completedTerms &&
+      !roleStates.includes("running")
+    ) {
+      let remaining = unitsPerTerm;
+      for (
+        let index = 0;
+        index < roleStates.length && remaining > 0;
+        index += 1
+      ) {
+        if (roleStates[index] !== "queued") continue;
+        task.states[roleStart + index] = "running";
+        remaining -= 1;
+      }
     }
     emitFanout(tracker);
   },

@@ -315,9 +315,15 @@ export async function discoverJobsStep(args: {
           getExistingJobUrls,
           shouldCancel: args.shouldCancel,
           onProgress: (event) => {
-            if (event.termsProcessed !== undefined) {
+            const role =
+              searchTerms.find((term) => event.currentUrl === term) ??
+              searchTerms.find((term) =>
+                event.currentUrl?.startsWith(`${term} @`),
+              );
+            if (event.termsProcessed !== undefined && role) {
               progressHelpers.updateFanoutTaskTerms(
                 manifest.id,
+                role,
                 event.termsProcessed,
                 event.termsTotal,
               );

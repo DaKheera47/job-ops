@@ -152,19 +152,28 @@ describe("PipelineProgress", () => {
     ).toBeNull();
   });
 
-  it("resumes scoring after LLM configuration is added", () => {
-    render(<PipelineProgress isRunning />);
-    act(() =>
-      sseMock.handlers?.onMessage({
+  it("keeps polling after LLM configuration is added", async () => {
+    apiMock.getPipelineProgressSnapshot
+      .mockResolvedValueOnce({
         ...baseProgress,
         step: "configuration_required",
         error: "Add an API key.",
-      }),
-    );
+      })
+      .mockResolvedValueOnce({
+        ...baseProgress,
+        step: "scoring",
+        message: "Scoring jobs...",
+      });
+    render(<PipelineProgress isRunning />);
+
+    await act(async () => vi.advanceTimersByTimeAsync(1500));
 
     fireEvent.click(screen.getByRole("button", { name: "Restart scoring" }));
+    await act(async () => vi.advanceTimersByTimeAsync(2000));
 
     expect(apiMock.resumePipelineScoring).toHaveBeenCalledOnce();
+    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Scoring matches")).toBeInTheDocument();
   });
 
   it("renders browser challenges from live progress", () => {

@@ -25,7 +25,6 @@ const TERMINAL_STEPS: ReadonlySet<PipelineProgressState["step"]> = new Set([
   "completed",
   "cancelled",
   "failed",
-  "configuration_required",
 ]);
 
 const getCurrentCombination = (
