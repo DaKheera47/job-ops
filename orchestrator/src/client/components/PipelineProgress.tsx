@@ -1,6 +1,7 @@
 import {
   getPipelineProgressSnapshot,
   prepareChallengeViewer,
+  resumePipelineScoring,
   solvePipelineChallenge,
 } from "@client/api";
 import type {
@@ -24,7 +25,6 @@ const TERMINAL_STEPS: ReadonlySet<PipelineProgressState["step"]> = new Set([
   "completed",
   "cancelled",
   "failed",
-  "configuration_required",
 ]);
 
 const getCurrentCombination = (
@@ -52,6 +52,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
 }) => {
   const [progress, setProgress] = useState<PipelineProgressState | null>(null);
   const [solvingExtractor, setSolvingExtractor] = useState<string | null>(null);
+  const [resumingScoring, setResumingScoring] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   const handleSolveChallenge = useCallback(async (extractorId: string) => {
@@ -73,6 +74,16 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       showErrorToast(error, "Failed to solve challenge");
     } finally {
       setSolvingExtractor(null);
+    }
+  }, []);
+
+  const handleResumeScoring = useCallback(async () => {
+    setResumingScoring(true);
+    try {
+      await resumePipelineScoring();
+    } catch (error) {
+      setResumingScoring(false);
+      showErrorToast(error, "Failed to restart scoring");
     }
   }, []);
 
@@ -158,11 +169,16 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     ? Math.max(0, Math.floor((now - startedAt) / 1000))
     : 0;
 
-  if (progress.step === "scoring") {
+  if (
+    progress.step === "scoring" ||
+    progress.step === "configuration_required"
+  ) {
     return (
       <PipelineProgressCard
         progress={progress}
         elapsedSeconds={elapsedSeconds}
+        resumingScoring={resumingScoring}
+        onResumeScoring={handleResumeScoring}
       />
     );
   }

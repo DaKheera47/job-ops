@@ -111,6 +111,7 @@ describe("discoverJobsStep", () => {
     expect(getProgress().fanout).toMatchObject({
       locations: ["United Kingdom"],
       sources: ["indeed", "linkedin", "ukvisajobs"],
+      total: 3,
     });
     expect(result.sourceErrors).toEqual([
       "UK Visa Jobs: login failed (sources: ukvisajobs)",

@@ -315,10 +315,17 @@ export async function discoverJobsStep(args: {
           getExistingJobUrls,
           shouldCancel: args.shouldCancel,
           onProgress: (event) => {
-            if (event.termsProcessed !== undefined) {
+            const role =
+              searchTerms.find((term) => event.currentUrl === term) ??
+              searchTerms.find((term) =>
+                event.currentUrl?.startsWith(`${term} @`),
+              );
+            if (event.termsProcessed !== undefined && role) {
               progressHelpers.updateFanoutTaskTerms(
                 manifest.id,
+                role,
                 event.termsProcessed,
+                event.termsTotal,
               );
             }
             progressHelpers.crawlingUpdate({
@@ -421,11 +428,19 @@ export async function discoverJobsStep(args: {
 
   progressHelpers.startCrawling(totalSources, args.preserveFanout);
   if (!args.preserveFanout) {
+    const locationCount = Math.max(1, locationIntent.cityLocations.length);
     progressHelpers.initializeFanout({
       roles: searchTerms,
-      taskIds: [
-        ...sourceTasks.map((task) => task.source),
-        ...(watchlistSelectedSources.length > 0 ? ["watchlist"] : []),
+      tasks: [
+        ...sourceTasks.map((task) => ({
+          id: task.source,
+          unitsPerRole:
+            (groupedByManifest.get(task.source)?.sources.length ?? 1) *
+            locationCount,
+        })),
+        ...(watchlistSelectedSources.length > 0
+          ? [{ id: "watchlist", unitsPerRole: locationCount }]
+          : []),
       ],
       locations:
         locationIntent.cityLocations.length > 0
@@ -435,7 +450,7 @@ export async function discoverJobsStep(args: {
         ...compatibleSources,
         ...(watchlistSelectedSources.length > 0 ? ["watchlist"] : []),
       ],
-      locationCount: Math.max(1, locationIntent.cityLocations.length),
+      locationCount,
       sourceCount:
         compatibleSources.length +
         (watchlistSelectedSources.length > 0 ? 1 : 0),

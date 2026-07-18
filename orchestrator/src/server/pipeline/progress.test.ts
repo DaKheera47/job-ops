@@ -11,7 +11,10 @@ describe("pipeline fanout progress", () => {
       resetProgress();
       progressHelpers.initializeFanout({
         roles: ["Backend", "Platform"],
-        taskIds: ["jobspy", "gradcracker"],
+        tasks: [
+          { id: "jobspy", unitsPerRole: 9 },
+          { id: "gradcracker", unitsPerRole: 3 },
+        ],
         locations: ["Manchester", "London", "Leeds"],
         sources: ["indeed", "linkedin", "glassdoor", "gradcracker"],
         locationCount: 3,
@@ -19,7 +22,10 @@ describe("pipeline fanout progress", () => {
         capacity: 3,
       });
       progressHelpers.startFanoutTask("jobspy");
-      progressHelpers.updateFanoutTaskTerms("jobspy", 1);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 0, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 0, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Backend", 1, 6);
+      progressHelpers.updateFanoutTaskTerms("jobspy", "Platform", 1, 6);
       progressHelpers.settleFanoutTask("gradcracker", "check");
       progressHelpers.updateFanoutResults(12, 9);
 
@@ -29,13 +35,13 @@ describe("pipeline fanout progress", () => {
         sourceCount: 4,
         locations: ["Manchester", "London", "Leeds"],
         sources: ["indeed", "linkedin", "glassdoor", "gradcracker"],
-        total: 4,
+        total: 24,
         capacity: 3,
         results: 12,
         unique: 9,
         roles: [
-          { role: "Backend", complete: 1, running: 0, queued: 0, check: 1 },
-          { role: "Platform", complete: 0, running: 1, queued: 0, check: 1 },
+          { role: "Backend", complete: 3, running: 0, queued: 6, check: 3 },
+          { role: "Platform", complete: 0, running: 3, queued: 6, check: 3 },
         ],
       });
     });
@@ -46,7 +52,7 @@ describe("pipeline fanout progress", () => {
       resetProgress();
       progressHelpers.initializeFanout({
         roles: ["Backend"],
-        taskIds: ["jobspy"],
+        tasks: [{ id: "jobspy", unitsPerRole: 3 }],
         locations: ["Manchester"],
         sources: ["indeed", "linkedin", "glassdoor"],
         locationCount: 1,
