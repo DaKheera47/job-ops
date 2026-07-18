@@ -55,9 +55,13 @@ const currentSourceStatsByTenant = new Map<
 >();
 
 type FanoutUnitState = "queued" | "running" | "complete" | "check";
+type FanoutTask = {
+  states: FanoutUnitState[];
+  unitsPerRole: number;
+};
 type FanoutTracker = {
   roles: string[];
-  tasks: Map<string, FanoutUnitState[]>;
+  tasks: Map<string, FanoutTask>;
   locations: string[];
   sources: string[];
   locationCount: number;
@@ -183,7 +187,12 @@ function aggregateCrawlingStats(tenantId = getProgressScopeKey()) {
 
 function buildFanoutProgress(tracker: FanoutTracker): PipelineFanoutProgress {
   const roles = tracker.roles.map((role, index) => {
-    const states = [...tracker.tasks.values()].map((task) => task[index]);
+    const states = [...tracker.tasks.values()].flatMap((task) =>
+      task.states.slice(
+        index * task.unitsPerRole,
+        (index + 1) * task.unitsPerRole,
+      ),
+    );
     return {
       role,
       complete: states.filter((state) => state === "complete").length,
@@ -198,7 +207,11 @@ function buildFanoutProgress(tracker: FanoutTracker): PipelineFanoutProgress {
     sourceCount: tracker.sourceCount,
     locations: tracker.locations,
     sources: tracker.sources,
-    total: tracker.roles.length * tracker.tasks.size,
+    total: roles.reduce(
+      (sum, role) =>
+        sum + role.complete + role.running + role.queued + role.check,
+      0,
+    ),
     capacity: tracker.capacity,
     results: tracker.results,
     unique: tracker.unique,
@@ -274,7 +287,7 @@ export function resetProgress(): void {
 export const progressHelpers = {
   initializeFanout: (options: {
     roles: string[];
-    taskIds: string[];
+    tasks: Array<{ id: string; unitsPerRole: number }>;
     locations: string[];
     sources: string[];
     locationCount: number;
@@ -284,9 +297,15 @@ export const progressHelpers = {
     const tracker: FanoutTracker = {
       roles: options.roles,
       tasks: new Map(
-        options.taskIds.map((taskId) => [
-          taskId,
-          options.roles.map(() => "queued" as const),
+        options.tasks.map((task) => [
+          task.id,
+          {
+            unitsPerRole: task.unitsPerRole,
+            states: Array.from(
+              { length: options.roles.length * task.unitsPerRole },
+              () => "queued" as const,
+            ),
+          },
         ]),
       ),
       locations: options.locations,
@@ -303,22 +322,31 @@ export const progressHelpers = {
 
   startFanoutTask: (taskId: string) => {
     const tracker = getFanoutTracker();
-    const states = tracker?.tasks.get(taskId);
-    if (!tracker || !states) return;
-    states.fill("running");
+    const task = tracker?.tasks.get(taskId);
+    if (!tracker || !task) return;
+    task.states.fill("running");
     emitFanout(tracker);
   },
 
-  updateFanoutTaskTerms: (taskId: string, termsProcessed: number) => {
+  updateFanoutTaskTerms: (
+    taskId: string,
+    termsProcessed: number,
+    termsTotal?: number,
+  ) => {
     const tracker = getFanoutTracker();
-    const states = tracker?.tasks.get(taskId);
-    if (!tracker || !states) return;
-    const processed = Math.max(0, Math.min(states.length, termsProcessed));
-    for (let index = 0; index < states.length; index += 1) {
-      states[index] =
-        index < processed
+    const task = tracker?.tasks.get(taskId);
+    if (!tracker || !task) return;
+    const total = Math.max(1, termsTotal ?? tracker.roles.length);
+    const processed = Math.max(0, Math.min(total, termsProcessed));
+    const completeUnits = Math.round((processed / total) * task.states.length);
+    const runningUnits = Math.round(
+      (Math.min(total, processed + 1) / total) * task.states.length,
+    );
+    for (let index = 0; index < task.states.length; index += 1) {
+      task.states[index] =
+        index < completeUnits
           ? "complete"
-          : index === processed
+          : index < runningUnits
             ? "running"
             : "queued";
     }
@@ -327,9 +355,9 @@ export const progressHelpers = {
 
   settleFanoutTask: (taskId: string, state: "complete" | "check") => {
     const tracker = getFanoutTracker();
-    const states = tracker?.tasks.get(taskId);
-    if (!tracker || !states) return;
-    states.fill(state);
+    const task = tracker?.tasks.get(taskId);
+    if (!tracker || !task) return;
+    task.states.fill(state);
     emitFanout(tracker);
   },
 

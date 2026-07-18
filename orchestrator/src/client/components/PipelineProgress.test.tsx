@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type SseHandlers = {
@@ -14,6 +14,7 @@ const sseMock = vi.hoisted(() => ({
 const apiMock = vi.hoisted(() => ({
   getPipelineProgressSnapshot: vi.fn(),
   prepareChallengeViewer: vi.fn(),
+  resumePipelineScoring: vi.fn(),
   solvePipelineChallenge: vi.fn(),
 }));
 
@@ -78,6 +79,8 @@ describe("PipelineProgress", () => {
     apiMock.getPipelineProgressSnapshot.mockReset();
     apiMock.getPipelineProgressSnapshot.mockResolvedValue(baseProgress);
     apiMock.prepareChallengeViewer.mockReset();
+    apiMock.resumePipelineScoring.mockReset();
+    apiMock.resumePipelineScoring.mockResolvedValue({ resolved: true });
     apiMock.solvePipelineChallenge.mockReset();
   });
 
@@ -147,6 +150,21 @@ describe("PipelineProgress", () => {
     expect(
       screen.queryByText("Searching glassdoor for “backend” in leeds"),
     ).toBeNull();
+  });
+
+  it("resumes scoring after LLM configuration is added", () => {
+    render(<PipelineProgress isRunning />);
+    act(() =>
+      sseMock.handlers?.onMessage({
+        ...baseProgress,
+        step: "configuration_required",
+        error: "Add an API key.",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart scoring" }));
+
+    expect(apiMock.resumePipelineScoring).toHaveBeenCalledOnce();
   });
 
   it("renders browser challenges from live progress", () => {
