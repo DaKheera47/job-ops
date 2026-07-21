@@ -131,14 +131,6 @@ JOB DESCRIPTION:
 
 SCORING INSTRUCTIONS:
 {{scoringInstructionsText}}
-
-IMPORTANT: Respond with ONLY a valid JSON object. No markdown, no code fences, no explanation outside the JSON.
-
-REQUIRED FORMAT (exactly this structure):
-{"score": <integer 0-100>, "reason": "<1-2 sentence explanation>"}
-
-EXAMPLE VALID RESPONSE:
-{"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}
 `.trim(),
   },
 } as const;

@@ -4,7 +4,7 @@
 
 import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
-import type { Job } from "@shared/types";
+import type { Job, JobBrief } from "@shared/types";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
@@ -21,6 +21,7 @@ export class LlmNotConfiguredError extends Error {
 interface SuitabilityResult {
   score: number | null; // 0-100, or null when scoring failed
   reason: string; // Explanation
+  jobBrief: string | null;
 }
 
 type ScoringPreferences = {
@@ -44,11 +45,79 @@ const SCORING_SCHEMA: JsonSchemaDefinition = {
         type: "string",
         description: "Brief 1-2 sentence explanation of the score",
       },
+      jobBrief: {
+        type: "object",
+        properties: {
+          role_summary: {
+            type: "string",
+            description: "One sentence summarizing what the person would do",
+          },
+          they_want: {
+            type: "array",
+            maxItems: 6,
+            items: { type: "string" },
+          },
+          specifics: {
+            type: "array",
+            maxItems: 18,
+            items: { type: "string" },
+          },
+          company_offers: {
+            type: "array",
+            maxItems: 5,
+            items: { type: "string" },
+          },
+          practical_details: {
+            type: "array",
+            maxItems: 8,
+            items: { type: "string" },
+          },
+          missing_or_unclear: {
+            type: "array",
+            maxItems: 5,
+            items: { type: "string" },
+          },
+          repeated_signals: {
+            type: "array",
+            maxItems: 5,
+            items: { type: "string" },
+          },
+        },
+        required: [
+          "role_summary",
+          "they_want",
+          "specifics",
+          "company_offers",
+          "practical_details",
+          "missing_or_unclear",
+          "repeated_signals",
+        ],
+        additionalProperties: false,
+      },
     },
-    required: ["score", "reason"],
+    required: ["score", "reason", "jobBrief"],
     additionalProperties: false,
   },
 };
+
+const SCORING_OUTPUT_INSTRUCTIONS = `
+Also extract a concise job brief from the job description. The brief must only use stated information, remain neutral, remove employer fluff, and never judge candidate fit. Use "Not stated" for missing practical details.
+
+Respond with ONLY valid JSON in this exact shape:
+{
+  "score": <integer 0-100>,
+  "reason": "<1-2 sentence explanation>",
+  "jobBrief": {
+    "role_summary": "<one sentence describing what the person would do>",
+    "they_want": ["<up to 6 stated requirements>"],
+    "specifics": ["<up to 18 concrete tools, responsibilities, domain or working-pattern details>"],
+    "company_offers": ["<up to 5 concrete offerings>"],
+    "practical_details": ["<up to 8 key-value details such as Salary: Not stated>"],
+    "missing_or_unclear": ["<up to 5 important missing details>"],
+    "repeated_signals": ["<up to 5 repeated themes>"]
+  }
+}
+No markdown, code fences, or text outside the JSON.`.trim();
 
 /**
  * Check if a job's salary field is missing/empty.
@@ -116,7 +185,11 @@ export async function scoreJobSuitability(
   });
 
   const llm = await createConfiguredLlmService("scoring");
-  const result = await llm.callJson<{ score: number; reason: string }>({
+  const result = await llm.callJson<{
+    score: number;
+    reason: string;
+    jobBrief: JobBrief;
+  }>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: SCORING_SCHEMA,
@@ -158,6 +231,10 @@ export async function scoreJobSuitability(
   return {
     score: penaltyResult.score,
     reason: penaltyResult.reason,
+    jobBrief:
+      job.jobDescription?.trim() && result.data.jobBrief
+        ? JSON.stringify(result.data.jobBrief)
+        : null,
   };
 }
 
@@ -266,7 +343,7 @@ function buildScoringPrompt(
   profile: Record<string, unknown>,
   preferences: ScoringPreferences,
 ): string {
-  return renderPromptTemplate(preferences.promptTemplate, {
+  return `${renderPromptTemplate(preferences.promptTemplate, {
     profileJson: JSON.stringify(profile, null, 2),
     jobTitle: job.title,
     employer: job.employer,
@@ -278,7 +355,7 @@ function buildScoringPrompt(
     scoringInstructionsText: preferences.instructions
       ? preferences.instructions
       : "No additional custom scoring instructions.",
-  });
+  })}\n\n${SCORING_OUTPUT_INSTRUCTIONS}`;
 }
 
 function sanitizeProfileForPrompt(

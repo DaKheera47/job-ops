@@ -23,10 +23,6 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("@server/services/job-brief", () => ({
-  generateJobBrief: vi.fn(),
-}));
-
 vi.mock("@server/services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
   calculateSponsorMatchSummary: vi.fn(),
@@ -47,7 +43,6 @@ describe("scoreJobsStep auto-skip behavior", () => {
     const jobsRepo = await import("@server/repositories/jobs");
     const settingsRepo = await import("@server/repositories/settings");
     const scorer = await import("@server/services/scorer");
-    const jobBrief = await import("@server/services/job-brief");
     const visaSponsors = await import("@server/services/visa-sponsors/index");
 
     vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
@@ -64,8 +59,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
     vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
       score: 40,
       reason: "Low fit",
+      jobBrief: null,
     });
-    vi.mocked(jobBrief.generateJobBrief).mockResolvedValue(null);
     vi.mocked(visaSponsors.searchSponsors).mockResolvedValue([]);
     vi.mocked(visaSponsors.calculateSponsorMatchSummary).mockReturnValue({
       sponsorMatchScore: 0,
@@ -142,11 +137,14 @@ describe("scoreJobsStep auto-skip behavior", () => {
 
   it("persists generated job briefs while scoring", async () => {
     const jobsRepo = await import("@server/repositories/jobs");
-    const jobBrief = await import("@server/services/job-brief");
+    const scorer = await import("@server/services/scorer");
 
-    vi.mocked(jobBrief.generateJobBrief).mockResolvedValue(
-      '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
-    );
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score: 40,
+      reason: "Low fit",
+      jobBrief:
+        '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
+    });
 
     await scoreJobsStep({ profile: {} });
 
@@ -171,6 +169,7 @@ describe("scoreJobsStep auto-skip behavior", () => {
     vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
       score,
       reason: "Test score",
+      jobBrief: null,
     });
 
     await scoreJobsStep({ profile: {} });
@@ -193,6 +192,7 @@ describe("scoreJobsStep auto-skip behavior", () => {
     vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
       score: 50,
       reason: "At threshold",
+      jobBrief: null,
     });
 
     await scoreJobsStep({ profile: {} });
@@ -295,8 +295,16 @@ describe("scoreJobsStep auto-skip behavior", () => {
     ]);
 
     vi.mocked(scorer.scoreJobSuitability)
-      .mockResolvedValueOnce({ score: 61, reason: "First score" })
-      .mockResolvedValueOnce({ score: 72, reason: "Second score" });
+      .mockResolvedValueOnce({
+        score: 61,
+        reason: "First score",
+        jobBrief: null,
+      })
+      .mockResolvedValueOnce({
+        score: 72,
+        reason: "Second score",
+        jobBrief: null,
+      });
 
     const result = await scoreJobsStep({ profile: {} });
 

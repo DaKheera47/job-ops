@@ -747,10 +747,22 @@ describe("salary penalty", () => {
 
       callJsonMock.mockResolvedValue({
         success: true,
-        data: { score: 80, reason: "Good match" },
+        data: {
+          score: 80,
+          reason: "Good match",
+          jobBrief: {
+            role_summary: "Build backend services.",
+            they_want: ["TypeScript"],
+            specifics: ["Node.js"],
+            company_offers: [],
+            practical_details: ["Salary: Not stated"],
+            missing_or_unclear: ["Sponsorship"],
+            repeated_signals: ["Ownership"],
+          },
+        },
       });
 
-      await scoreJobSuitability(
+      const result = await scoreJobSuitability(
         createJob({
           id: "test-job-custom-template",
           title: "Backend Engineer",
@@ -767,7 +779,16 @@ describe("salary penalty", () => {
               ),
             }),
           ],
+          jsonSchema: expect.objectContaining({
+            schema: expect.objectContaining({
+              required: ["score", "reason", "jobBrief"],
+            }),
+          }),
         }),
+      );
+      expect(getScoringPrompt()).toContain('"jobBrief"');
+      expect(JSON.parse(result.jobBrief as string)).toEqual(
+        expect.objectContaining({ role_summary: "Build backend services." }),
       );
     });
 

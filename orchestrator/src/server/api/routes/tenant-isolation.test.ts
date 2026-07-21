@@ -78,6 +78,7 @@ describe.sequential("Tenant isolation", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 80,
       reason: "Good fit",
+      jobBrief: null,
     });
 
     const adminToken = await login(baseUrl, "admin", "secret");
