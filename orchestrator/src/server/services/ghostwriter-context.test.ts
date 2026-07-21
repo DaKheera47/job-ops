@@ -120,7 +120,7 @@ describe("buildJobChatPromptContext", () => {
       id: "job-ctx-1",
       title: "Software Engineer",
       employer: "JP Morgan",
-      jobDescription: "A".repeat(5000),
+      jobDescription: `<p>${"A".repeat(5000)}</p>`,
     });
 
     vi.mocked(getJobById).mockResolvedValue(job);
@@ -188,7 +188,9 @@ describe("buildJobChatPromptContext", () => {
     expect(context.systemPrompt).toContain(
       "Avoid these terms: synergy, leverage",
     );
-    expect(context.jobSnapshot).toContain('"id": "job-ctx-1"');
+    expect(context.jobSnapshot).toContain('"id":"job-ctx-1"');
+    expect(context.jobSnapshot).not.toContain("<p>");
+    expect(context.jobSnapshot).not.toContain("\n");
     expect(context.jobSnapshot.length).toBeLessThan(6000);
     expect(context.profileSnapshot).toContain("Name: Test User");
     expect(context.profileSnapshot).toContain("Skills:");
