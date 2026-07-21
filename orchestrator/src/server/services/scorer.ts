@@ -4,7 +4,12 @@
 
 import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
-import type { Job, JobBrief } from "@shared/types";
+import type { Job, JobBrief, UpdateJobInput } from "@shared/types";
+import {
+  type JobFactPatch,
+  PATCHABLE_JOB_FIELDS,
+  validateAndApplyJobPatches,
+} from "./job-fact-patches";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
@@ -22,6 +27,7 @@ interface SuitabilityResult {
   score: number | null; // 0-100, or null when scoring failed
   reason: string; // Explanation
   jobBrief: string | null;
+  jobUpdates?: UpdateJobInput;
 }
 
 type ScoringPreferences = {
@@ -39,6 +45,8 @@ const SCORING_SCHEMA: JsonSchemaDefinition = {
     properties: {
       score: {
         type: "integer",
+        minimum: 0,
+        maximum: 100,
         description: "Suitability score from 0 to 100",
       },
       reason: {
@@ -94,14 +102,49 @@ const SCORING_SCHEMA: JsonSchemaDefinition = {
         ],
         additionalProperties: false,
       },
+      jobPatches: {
+        type: "array",
+        maxItems: PATCHABLE_JOB_FIELDS.length,
+        items: {
+          type: "object",
+          properties: {
+            field: { type: "string", enum: [...PATCHABLE_JOB_FIELDS] },
+            value: {
+              anyOf: [
+                { type: "string" },
+                { type: "number" },
+                { type: "boolean" },
+              ],
+            },
+            confidence: {
+              type: "string",
+              enum: ["high", "medium", "low"],
+            },
+            evidence: { type: "string" },
+          },
+          required: ["field", "value", "confidence", "evidence"],
+          additionalProperties: false,
+        },
+      },
+      jobWarnings: {
+        type: "array",
+        maxItems: 10,
+        items: { type: "string" },
+      },
     },
-    required: ["score", "reason", "jobBrief"],
+    required: ["score", "reason", "jobBrief", "jobPatches", "jobWarnings"],
     additionalProperties: false,
   },
 };
 
 const SCORING_OUTPUT_INSTRUCTIONS = `
-Also extract a concise job brief from the job description. The brief must only use stated information, remain neutral, remove employer fluff, and never judge candidate fit. Use "Not stated" for missing practical details.
+Perform these tasks in one response:
+1. JOB FACT REVIEW (candidate-independent): compare JOB DATA with the original listing. Use only those sources, never the candidate profile. Propose a patch only for a missing or clearly incorrect whitelisted field with an exact supporting listing excerpt. Do not guess, infer from general knowledge, estimate, annualise compensation, or paraphrase/invent evidence. Use high confidence for clear corrections; medium may only fill missing values; omit ambiguous corrections. Candidate evaluation must use the proposed corrected facts.
+2. JOB BRIEF: use only stated job information, remain neutral, remove employer fluff, never judge candidate fit, and use "Not stated" for missing practical details.
+3. CANDIDATE EVALUATION: score the candidate against the listing, corrected facts, and scoring instructions.
+
+Patchable fields: ${PATCHABLE_JOB_FIELDS.join(", ")}.
+Value conventions: salaryInterval is hourly|daily|weekly|monthly|yearly; salary amounts and vacancyCount are numbers without annualisation; salaryCurrency is a 3-letter code; isRemote is boolean; workFromHomeType is remote|hybrid|onsite; all other patch values are strings. Return only changed fields. Put unsupported distinctions or explicit contradictions that cannot be represented safely in jobWarnings.
 
 Respond with ONLY valid JSON in this exact shape:
 {
@@ -115,7 +158,9 @@ Respond with ONLY valid JSON in this exact shape:
     "practical_details": ["<up to 8 key-value details such as Salary: Not stated>"],
     "missing_or_unclear": ["<up to 5 important missing details>"],
     "repeated_signals": ["<up to 5 repeated themes>"]
-  }
+  },
+  "jobPatches": [{"field":"<whitelisted field>","value":<string|number|boolean>,"confidence":"high|medium|low","evidence":"<exact listing excerpt>"}],
+  "jobWarnings": ["<unrepresentable or contradictory stated fact>"]
 }
 No markdown, code fences, or text outside the JSON.`.trim();
 
@@ -154,8 +199,12 @@ const NON_SOURCE_JOB_FIELDS = new Set<keyof Job>([
  * Check if a job's salary field is missing/empty.
  * Returns true for null, empty string, or whitespace-only strings.
  */
-function isSalaryMissing(salary: string | null): boolean {
-  return salary === null || salary.trim() === "";
+function isSalaryMissing(job: Job): boolean {
+  return (
+    !job.salary?.trim() &&
+    job.salaryMinAmount == null &&
+    job.salaryMaxAmount == null
+  );
 }
 
 /**
@@ -168,7 +217,7 @@ function applySalaryPenalty(
   originalReason: string,
   settings: { penalizeMissingSalary: boolean; missingSalaryPenalty: number },
 ): { score: number; reason: string; penaltyApplied: boolean } {
-  if (!settings.penalizeMissingSalary || !isSalaryMissing(job.salary)) {
+  if (!settings.penalizeMissingSalary || !isSalaryMissing(job)) {
     return {
       score: originalScore,
       reason: originalReason,
@@ -219,7 +268,9 @@ export async function scoreJobSuitability(
   const result = await llm.callJson<{
     score: number;
     reason: string;
-    jobBrief: JobBrief;
+    jobBrief?: JobBrief;
+    jobPatches?: JobFactPatch[];
+    jobWarnings?: string[];
   }>({
     model,
     messages: [{ role: "user", content: prompt }],
@@ -252,12 +303,35 @@ export async function scoreJobSuitability(
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
   const clampedReason = reason || "No explanation provided";
+  const patchResult = validateAndApplyJobPatches(
+    job,
+    result.data.jobPatches ?? [],
+  );
+
+  if (patchResult.accepted.length > 0 || patchResult.rejected.length > 0) {
+    logger.info("Reviewed AI job fact patches", {
+      jobId: job.id,
+      accepted: patchResult.accepted,
+      rejected: patchResult.rejected,
+    });
+  }
+  if (result.data.jobWarnings?.length) {
+    logger.warn("AI job fact review warnings", {
+      jobId: job.id,
+      warnings: result.data.jobWarnings,
+    });
+  }
 
   // Apply salary penalty if enabled
-  const penaltyResult = applySalaryPenalty(job, clampedScore, clampedReason, {
-    penalizeMissingSalary: settings.penalizeMissingSalary.value,
-    missingSalaryPenalty: settings.missingSalaryPenalty.value,
-  });
+  const penaltyResult = applySalaryPenalty(
+    patchResult.patchedJob,
+    clampedScore,
+    clampedReason,
+    {
+      penalizeMissingSalary: settings.penalizeMissingSalary.value,
+      missingSalaryPenalty: settings.missingSalaryPenalty.value,
+    },
+  );
 
   return {
     score: penaltyResult.score,
@@ -266,6 +340,7 @@ export async function scoreJobSuitability(
       job.jobDescription?.trim() && result.data.jobBrief
         ? JSON.stringify(result.data.jobBrief)
         : null,
+    jobUpdates: patchResult.updates,
   };
 }
 
@@ -574,9 +649,14 @@ export async function scoreAndRankJobs(
 > {
   const scoredJobs = await Promise.all(
     jobs.map(async (job) => {
-      const { score, reason } = await scoreJobSuitability(job, profile);
+      const {
+        score,
+        reason,
+        jobUpdates = {},
+      } = await scoreJobSuitability(job, profile);
       return {
         ...job,
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
       };

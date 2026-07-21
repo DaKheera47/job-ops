@@ -565,6 +565,64 @@ describe("salary penalty", () => {
   });
 
   describe("isSalaryMissing detection", () => {
+    it("uses accepted salary patches before applying the missing-salary penalty", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: {
+          score: 80,
+          reason: "Good match",
+          jobPatches: [
+            {
+              field: "salaryMinAmount",
+              value: 45_000,
+              confidence: "high",
+              evidence: "Salary: £45,000 per year",
+            },
+          ],
+        },
+      });
+
+      const result = await scoreJobSuitability(
+        createJob({
+          salary: null,
+          salaryMinAmount: null,
+          salaryMaxAmount: null,
+          jobDescription: "Salary: £45,000 per year",
+        }),
+        {},
+      );
+
+      expect(result.score).toBe(80);
+      expect(result.reason).not.toContain("missing salary");
+      expect(result.jobUpdates).toEqual({
+        salaryMinAmount: 45_000,
+        salarySource: "ai_job_fact_review",
+      });
+    });
+
+    it("treats legacy responses without patches as no corrections", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const result = await scoreJobSuitability(createJob(), {});
+
+      expect(result.jobUpdates).toEqual({});
+    });
+
     it("should detect null salary as missing", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({
@@ -825,12 +883,22 @@ describe("salary penalty", () => {
           ],
           jsonSchema: expect.objectContaining({
             schema: expect.objectContaining({
-              required: ["score", "reason", "jobBrief"],
+              required: [
+                "score",
+                "reason",
+                "jobBrief",
+                "jobPatches",
+                "jobWarnings",
+              ],
             }),
           }),
         }),
       );
       expect(getScoringPrompt()).toContain('"jobBrief"');
+      expect(getScoringPrompt()).toContain('"jobPatches"');
+      expect(getScoringPrompt()).toContain(
+        "Do not guess, infer from general knowledge, estimate, annualise compensation",
+      );
       expect(getScoringPrompt()).toContain("JOB DATA (JSON):");
       expect(getScoringPrompt()).toContain(
         '"jobDescription":"Job description content"',

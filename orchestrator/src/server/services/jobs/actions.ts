@@ -221,9 +221,15 @@ export async function executeJobActionForJob(
           return rawProfile as Record<string, unknown>;
         })();
 
-    const { score, reason, jobBrief } = await scoreJobSuitability(job, profile);
+    const {
+      score,
+      reason,
+      jobBrief,
+      jobUpdates = {},
+    } = await scoreJobSuitability(job, profile);
 
     const updated = await jobsRepo.updateJob(job.id, {
+      ...jobUpdates,
       suitabilityScore: score,
       suitabilityReason: reason,
       jobBrief,

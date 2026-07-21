@@ -77,7 +77,12 @@ export async function scoreJobsStep(args: {
       const scoringResultPromise = scoringInstructions
         ? scoreJobSuitability(job, args.profile, { scoringInstructions })
         : scoreJobSuitability(job, args.profile);
-      const { score, reason, jobBrief } = await scoringResultPromise;
+      const {
+        score,
+        reason,
+        jobBrief,
+        jobUpdates = {},
+      } = await scoringResultPromise;
       if (args.shouldCancel?.()) return;
 
       let sponsorMatchScore = 0;
@@ -105,6 +110,7 @@ export async function scoreJobsStep(args: {
         score < autoSkipThreshold;
 
       await jobsRepo.updateJob(job.id, {
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
         jobBrief,
@@ -136,6 +142,7 @@ export async function scoreJobsStep(args: {
       );
       scoredJobs.push({
         ...job,
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
       });

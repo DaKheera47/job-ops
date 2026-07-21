@@ -369,11 +369,14 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           throw new Error("Invalid resume profile format");
         }
         const profile = rawProfile as Record<string, unknown>;
-        const { score, reason, jobBrief } = await scoreJobSuitability(
-          processedJob,
-          profile,
-        );
+        const {
+          score,
+          reason,
+          jobBrief,
+          jobUpdates = {},
+        } = await scoreJobSuitability(processedJob, profile);
         await jobsRepo.updateJob(processedJob.id, {
+          ...jobUpdates,
           status: "ready",
           suitabilityScore: score,
           suitabilityReason: reason,

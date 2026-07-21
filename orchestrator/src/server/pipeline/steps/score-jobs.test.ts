@@ -157,6 +157,32 @@ describe("scoreJobsStep auto-skip behavior", () => {
     );
   });
 
+  it("persists accepted job fact updates while scoring", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
+
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score: 75,
+      reason: "Good fit",
+      jobBrief: null,
+      jobUpdates: {
+        salaryInterval: "hourly",
+        salarySource: "ai_job_fact_review",
+      },
+    });
+
+    const result = await scoreJobsStep({ profile: {} });
+
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        salaryInterval: "hourly",
+        salarySource: "ai_job_fact_review",
+      }),
+    );
+    expect(result.scoredJobs[0]).toMatchObject({ salaryInterval: "hourly" });
+  });
+
   it.each([
     { score: 90, exceptional: 0 },
     { score: 91, exceptional: 1 },
