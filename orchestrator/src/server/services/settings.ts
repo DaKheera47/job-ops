@@ -56,6 +56,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "codex") {
     return "";
   }
+  if (normalized === "requesty") {
+    return "https://router.requesty.ai/v1";
+  }
   return "https://openrouter.ai";
 }
 

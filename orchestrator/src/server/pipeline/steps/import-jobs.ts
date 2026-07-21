@@ -22,7 +22,15 @@ export async function importJobsStep(args: {
     });
   }
 
-  const { created, skipped } = await jobsRepo.createJobs(dedupedJobs);
+  const { created, skipped } = await jobsRepo.createJobs(
+    dedupedJobs,
+    (job, index, total) =>
+      progressHelpers.importingJob(index, total, {
+        id: job.jobUrl,
+        title: job.title,
+        employer: job.employer,
+      }),
+  );
   logger.info("Import step complete", {
     discovered: args.discoveredJobs.length,
     fuzzyMerged,

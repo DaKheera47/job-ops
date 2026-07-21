@@ -108,6 +108,11 @@ describe("discoverJobsStep", () => {
     const result = await discoverJobsStep({ mergedConfig: baseConfig });
 
     expect(result.discoveredJobs).toHaveLength(1);
+    expect(getProgress().fanout).toMatchObject({
+      locations: ["United Kingdom"],
+      sources: ["indeed", "linkedin", "ukvisajobs"],
+      total: 3,
+    });
     expect(result.sourceErrors).toEqual([
       "UK Visa Jobs: login failed (sources: ukvisajobs)",
     ]);

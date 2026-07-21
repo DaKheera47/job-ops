@@ -20,7 +20,7 @@ export const OrchestratorSummary: React.FC<OrchestratorSummaryProps> = ({
       </div>
 
       {isPipelineRunning && (
-        <div className="max-w-3xl">
+        <div>
           <PipelineProgress isRunning={isPipelineRunning} />
         </div>
       )}

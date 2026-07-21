@@ -22,6 +22,7 @@ import {
 } from "@shared/job-document-classification.js";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { Job, JobDocument, ResumeProfile } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
 import * as jobDocumentsRepo from "../repositories/job-documents";
 import * as jobsRepo from "../repositories/jobs";
 import * as settingsRepo from "../repositories/settings";
@@ -111,11 +112,14 @@ function buildJobSnapshot(job: Job): string {
       tailoredSummary: truncate(job.tailoredSummary, 1200),
       tailoredHeadline: truncate(job.tailoredHeadline, 300),
       tailoredSkills: truncate(job.tailoredSkills, 1200),
-      jobDescription: truncate(job.jobDescription, MAX_JOB_DESCRIPTION),
+      jobDescription: truncate(
+        stripHtmlTags(job.jobDescription ?? ""),
+        MAX_JOB_DESCRIPTION,
+      ),
     },
   };
 
-  return JSON.stringify(snapshot, null, 2);
+  return JSON.stringify(snapshot);
 }
 
 function buildProfileSnapshot(profile: ResumeProfile): string {

@@ -3,6 +3,7 @@ import {
   TYPST_THEME_VALUES,
 } from "../generated/typst-themes";
 import type {
+  LocationInputMode,
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
@@ -25,6 +26,7 @@ export interface ResumeProjectsSettings {
 
 export const LLM_PROVIDER_VALUES = [
   "openrouter",
+  "requesty",
   "lmstudio",
   "ollama",
   "openai",
@@ -266,6 +268,10 @@ export interface AppSettings {
   tailoringPromptTemplate: Resolved<string>;
   scoringPromptTemplate: Resolved<string>;
   searchCities: Resolved<string>;
+  locationSearchMode: Resolved<LocationInputMode>;
+  locationLatitude: Resolved<number | null>;
+  locationLongitude: Resolved<number | null>;
+  locationRadiusMiles: Resolved<number>;
   locationSearchScope: Resolved<LocationSearchScope>;
   locationMatchStrictness: Resolved<LocationMatchStrictness>;
   jobspyResultsWanted: Resolved<number>;

@@ -28,6 +28,9 @@ export const OrchestratorPage: React.FC = () => {
   const {
     jobs,
     selectedJob,
+    selectedJobListItem,
+    selectedJobLoadState,
+    retrySelectedJob,
     stats,
     isLoading,
     isPipelineRunning,
@@ -73,7 +76,8 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext: navigation.navigateWithContext,
   });
 
-  const isFirstRunWorkspace = !isLoading && jobs.length === 0;
+  const isFirstRunWorkspace =
+    !isLoading && jobs.length === 0 && !isPipelineRunning;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
   const canToggleSearchComposer = !isFirstRunWorkspace;
   const searchPresetProps = usePipelineSearchPresets({
@@ -146,6 +150,9 @@ export const OrchestratorPage: React.FC = () => {
           <OrchestratorJobWorkspaceContainer
             jobs={jobs}
             selectedJob={selectedJob}
+            selectedJobListItem={selectedJobListItem}
+            selectedJobLoadState={selectedJobLoadState}
+            retrySelectedJob={retrySelectedJob}
             stats={stats}
             isLoading={isLoading}
             isPipelineRunning={isPipelineRunning}

@@ -23,10 +23,6 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("@server/services/job-brief", () => ({
-  generateJobBrief: vi.fn(),
-}));
-
 vi.mock("@server/services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
   calculateSponsorMatchSummary: vi.fn(),
@@ -47,7 +43,6 @@ describe("scoreJobsStep auto-skip behavior", () => {
     const jobsRepo = await import("@server/repositories/jobs");
     const settingsRepo = await import("@server/repositories/settings");
     const scorer = await import("@server/services/scorer");
-    const jobBrief = await import("@server/services/job-brief");
     const visaSponsors = await import("@server/services/visa-sponsors/index");
 
     vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
@@ -64,8 +59,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
     vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
       score: 40,
       reason: "Low fit",
+      jobBrief: null,
     });
-    vi.mocked(jobBrief.generateJobBrief).mockResolvedValue(null);
     vi.mocked(visaSponsors.searchSponsors).mockResolvedValue([]);
     vi.mocked(visaSponsors.calculateSponsorMatchSummary).mockReturnValue({
       sponsorMatchScore: 0,
@@ -142,11 +137,14 @@ describe("scoreJobsStep auto-skip behavior", () => {
 
   it("persists generated job briefs while scoring", async () => {
     const jobsRepo = await import("@server/repositories/jobs");
-    const jobBrief = await import("@server/services/job-brief");
+    const scorer = await import("@server/services/scorer");
 
-    vi.mocked(jobBrief.generateJobBrief).mockResolvedValue(
-      '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
-    );
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score: 40,
+      reason: "Low fit",
+      jobBrief:
+        '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
+    });
 
     await scoreJobsStep({ profile: {} });
 
@@ -156,6 +154,56 @@ describe("scoreJobsStep auto-skip behavior", () => {
         jobBrief:
           '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
       }),
+    );
+  });
+
+  it("persists accepted job fact updates while scoring", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
+
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score: 75,
+      reason: "Good fit",
+      jobBrief: null,
+      jobUpdates: {
+        salaryInterval: "hourly",
+        salarySource: "ai_job_fact_review",
+      },
+    });
+
+    await scoreJobsStep({ profile: {} });
+
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        salaryInterval: "hourly",
+        salarySource: "ai_job_fact_review",
+      }),
+    );
+  });
+
+  it.each([
+    { score: 90, exceptional: 0 },
+    { score: 91, exceptional: 1 },
+  ])("reports $exceptional exceptional matches for a score of $score", async ({
+    score,
+    exceptional,
+  }) => {
+    const scorer = await import("@server/services/scorer");
+    const { progressHelpers } = await import("../progress");
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score,
+      reason: "Test score",
+      jobBrief: null,
+    });
+
+    await scoreJobsStep({ profile: {} });
+
+    expect(progressHelpers.scoringJob).toHaveBeenCalledWith(
+      1,
+      1,
+      expect.objectContaining({ id: "job-1" }),
+      exceptional,
     );
   });
 
@@ -169,6 +217,7 @@ describe("scoreJobsStep auto-skip behavior", () => {
     vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
       score: 50,
       reason: "At threshold",
+      jobBrief: null,
     });
 
     await scoreJobsStep({ profile: {} });
@@ -271,14 +320,32 @@ describe("scoreJobsStep auto-skip behavior", () => {
     ]);
 
     vi.mocked(scorer.scoreJobSuitability)
-      .mockResolvedValueOnce({ score: 61, reason: "First score" })
-      .mockResolvedValueOnce({ score: 72, reason: "Second score" });
+      .mockResolvedValueOnce({
+        score: 61,
+        reason: "First score",
+        jobBrief: null,
+      })
+      .mockResolvedValueOnce({
+        score: 72,
+        reason: "Second score",
+        jobBrief: null,
+      });
 
     const result = await scoreJobsStep({ profile: {} });
 
     expect(result.scoredJobs).toHaveLength(2);
     expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledWith(
+      1,
+      2,
+      {
+        id: expect.any(String),
+        title: expect.any(String),
+        employer: expect.any(String),
+      },
+      0,
+    );
     expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(2);
   });
 

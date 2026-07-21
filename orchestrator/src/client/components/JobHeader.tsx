@@ -1,5 +1,5 @@
 import { isAwaitingAiScore, ScoreRing } from "@client/components";
-import type { AppliedDuplicateMatch, Job } from "@shared/types.js";
+import type { AppliedDuplicateMatch, Job, JobListItem } from "@shared/types.js";
 import { Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -17,7 +17,7 @@ import {
 import { Tip } from "./Tip";
 
 interface JobHeaderProps {
-  job: Job;
+  job: Job | JobListItem;
   className?: string;
   onCheckSponsor?: () => Promise<void>;
   jobCTA?: React.ReactNode;
@@ -167,7 +167,10 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   jobCTA,
 }) => {
   const jobStatus = getJobStatusIndicator(job.status);
-  const tracerStatus = getTracerStatusIndicator(job.tracerLinksEnabled);
+  const fullJob = "tracerLinksEnabled" in job ? job : null;
+  const tracerStatus = fullJob
+    ? getTracerStatusIndicator(fullJob.tracerLinksEnabled)
+    : null;
   const { showSponsorInfo } = useSettings();
   const location = useLocation();
   const { pathname } = location;
@@ -183,12 +186,13 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
     ) : job.status === "ready" ? (
       <p className="text-xs">Tailored and ready to apply.</p>
     ) : undefined;
-  const tracerStatusTooltip = !job.tracerLinksEnabled ? (
-    <p className="text-xs">
-      Tracer links are turned off for this job, so click tracking will not be
-      recorded.
-    </p>
-  ) : undefined;
+  const tracerStatusTooltip =
+    fullJob && !fullJob.tracerLinksEnabled ? (
+      <p className="text-xs">
+        Tracer links are turned off for this job, so click tracking will not be
+        recorded.
+      </p>
+    ) : undefined;
   return (
     <div
       className={cn(
@@ -210,11 +214,11 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           <span>{job.employer}</span>
 
           <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground/70 mt-1">
-            {(job.location || job.isRemote) && (
+            {(job.location || fullJob?.isRemote) && (
               <span className="flex items-center gap-1">
                 <MapPin className="size-4" />
                 {job.location?.trim()}
-                {job.isRemote && ", Remote"}
+                {fullJob?.isRemote && ", Remote"}
               </span>
             )}
             {deadline && (
@@ -238,7 +242,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
               score={job.suitabilityScore}
               size="sm"
               isAwaitingAi={isAwaitingAiScore(job)}
-              suitabilityReason={job.suitabilityReason}
+              suitabilityReason={fullJob?.suitabilityReason}
               jobId={job.id}
             />
           </div>
@@ -256,13 +260,15 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             tooltipClassName="max-w-xs"
             className={jobStatusTooltip ? "cursor-help" : undefined}
           />
-          <StatusIndicator
-            dotColor={tracerStatus.dotColor}
-            label={tracerStatus.label}
-            tooltip={tracerStatusTooltip}
-            tooltipClassName="max-w-xs"
-            className={tracerStatusTooltip ? "cursor-help" : undefined}
-          />
+          {tracerStatus && (
+            <StatusIndicator
+              dotColor={tracerStatus.dotColor}
+              label={tracerStatus.label}
+              tooltip={tracerStatusTooltip}
+              tooltipClassName="max-w-xs"
+              className={tracerStatusTooltip ? "cursor-help" : undefined}
+            />
+          )}
 
           <AppliedDuplicatePill match={job.appliedDuplicateMatch} />
 
@@ -286,7 +292,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             />
           )}
 
-          {job.isRemote === true && (
+          {fullJob?.isRemote === true && (
             <StatusIndicator
               variant="emerald"
               label="Remote"
@@ -298,7 +304,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {showSponsorInfo && (
             <SponsorPill
               score={job.sponsorMatchScore}
-              names={job.sponsorMatchNames}
+              names={fullJob?.sponsorMatchNames ?? null}
               onCheck={onCheckSponsor}
             />
           )}

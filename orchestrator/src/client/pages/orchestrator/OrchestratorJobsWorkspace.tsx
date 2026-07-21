@@ -14,6 +14,7 @@ import { JobDetailPanel } from "./JobDetailPanel";
 import { JobListPanel } from "./JobListPanel";
 import { OrchestratorFilters } from "./OrchestratorFilters";
 import { OrchestratorSummary } from "./OrchestratorSummary";
+import type { SelectedJobLoadState } from "./useOrchestratorData";
 
 interface EmptyStateAction {
   label: string;
@@ -26,6 +27,8 @@ interface OrchestratorJobsWorkspaceProps {
   jobs: JobListItem[];
   activeJobs: JobListItem[];
   selectedJob: Job | null;
+  selectedJobListItem: JobListItem | null;
+  selectedJobLoadState: SelectedJobLoadState;
   selectedJobId: string | null;
   selectedJobIds: Set<string>;
   activeTab: FilterTab;
@@ -68,6 +71,7 @@ interface OrchestratorJobsWorkspaceProps {
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
   onPauseRefreshChange: (paused: boolean) => void;
+  onRetrySelectedJob: () => void;
 }
 
 export const OrchestratorJobsWorkspace: React.FC<
@@ -78,6 +82,8 @@ export const OrchestratorJobsWorkspace: React.FC<
   jobs,
   activeJobs,
   selectedJob,
+  selectedJobListItem,
+  selectedJobLoadState,
   selectedJobId,
   selectedJobIds,
   activeTab,
@@ -120,6 +126,7 @@ export const OrchestratorJobsWorkspace: React.FC<
   onSelectJobId,
   onJobUpdated,
   onPauseRefreshChange,
+  onRetrySelectedJob,
 }) => (
   <>
     <OrchestratorSummary stats={stats} isPipelineRunning={isPipelineRunning} />
@@ -182,9 +189,12 @@ export const OrchestratorJobsWorkspace: React.FC<
             activeTab={activeTab}
             activeJobs={activeJobs}
             selectedJob={selectedJob}
+            selectedJobListItem={selectedJobListItem}
+            selectedJobLoadState={selectedJobLoadState}
             onSelectJobId={onSelectJobId}
             onJobUpdated={onJobUpdated}
             onPauseRefreshChange={onPauseRefreshChange}
+            onRetrySelectedJob={onRetrySelectedJob}
           />
         )}
       </div>

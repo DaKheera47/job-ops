@@ -1,7 +1,6 @@
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
-import { generateJobBrief } from "@server/services/job-brief";
 import { scoreJobSuitability } from "@server/services/scorer";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { asyncPool } from "@server/utils/async-pool";
@@ -32,6 +31,7 @@ export async function scoreJobsStep(args: {
     step: "scoring",
     jobsDiscovered: unprocessedJobs.length,
     jobsScored: 0,
+    jobsExceptional: 0,
     jobsProcessed: 0,
     totalToProcess: 0,
     currentJob: undefined,
@@ -39,6 +39,7 @@ export async function scoreJobsStep(args: {
 
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
+  let exceptional = 0;
   const scoringInstructions = args.scoringInstructions?.trim();
 
   await asyncPool({
@@ -53,11 +54,17 @@ export async function scoreJobsStep(args: {
         !Number.isNaN(job.suitabilityScore);
 
       if (hasCachedScore) {
+        if ((job.suitabilityScore as number) > 90) exceptional += 1;
         completed += 1;
         progressHelpers.scoringJob(
           completed,
           unprocessedJobs.length,
-          `${job.title} (cached)`,
+          {
+            id: job.id,
+            title: `${job.title} (cached)`,
+            employer: job.employer,
+          },
+          exceptional,
         );
         scoredJobs.push({
           ...job,
@@ -70,10 +77,12 @@ export async function scoreJobsStep(args: {
       const scoringResultPromise = scoringInstructions
         ? scoreJobSuitability(job, args.profile, { scoringInstructions })
         : scoreJobSuitability(job, args.profile);
-      const [{ score, reason }, jobBrief] = await Promise.all([
-        scoringResultPromise,
-        generateJobBrief(job.jobDescription, { jobId: job.id }),
-      ]);
+      const {
+        score,
+        reason,
+        jobBrief,
+        jobUpdates = {},
+      } = await scoringResultPromise;
       if (args.shouldCancel?.()) return;
 
       let sponsorMatchScore = 0;
@@ -101,6 +110,7 @@ export async function scoreJobsStep(args: {
         score < autoSkipThreshold;
 
       await jobsRepo.updateJob(job.id, {
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
         jobBrief,
@@ -118,10 +128,21 @@ export async function scoreJobsStep(args: {
         });
       }
 
+      if (score !== null && score > 90) exceptional += 1;
       completed += 1;
-      progressHelpers.scoringJob(completed, unprocessedJobs.length, job.title);
+      progressHelpers.scoringJob(
+        completed,
+        unprocessedJobs.length,
+        {
+          id: job.id,
+          title: job.title,
+          employer: job.employer,
+        },
+        exceptional,
+      );
       scoredJobs.push({
         ...job,
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
       });

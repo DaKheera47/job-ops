@@ -57,6 +57,7 @@ vi.mock("@/components/ui/select", () => ({
   SelectContent: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+  SelectGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SelectItem: ({
     value,
     children,
@@ -71,6 +72,8 @@ vi.mock("@/lib/user-location", () => ({
 }));
 
 vi.mock("@client/api", () => ({
+  detectLocationCountry: vi.fn(),
+  previewLocationArea: vi.fn(),
   planPipelineSearch: vi.fn(),
 }));
 
@@ -131,10 +134,10 @@ describe("AutomaticRunTab", () => {
 
   const openLocationPreferences = () => {
     openConfigureDetails();
-    const trigger = screen.getByRole("button", {
+    const trigger = screen.queryByRole("button", {
       name: "Review and edit location intent",
     });
-    if (trigger.getAttribute("aria-expanded") !== "true") {
+    if (trigger && trigger.getAttribute("aria-expanded") !== "true") {
       fireEvent.click(trigger);
     }
   };
@@ -152,6 +155,14 @@ describe("AutomaticRunTab", () => {
   beforeEach(() => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
+    vi.mocked(api.detectLocationCountry).mockReset();
+    vi.mocked(api.detectLocationCountry).mockResolvedValue({
+      country: "united kingdom",
+    });
+    vi.mocked(api.previewLocationArea).mockReset();
+    vi.mocked(api.previewLocationArea).mockResolvedValue({
+      locations: ["Leeds", "Bradford", "Wakefield"],
+    });
     vi.mocked(api.planPipelineSearch).mockReset();
     ensureStorage().clear();
     Element.prototype.hasPointerCapture ??= vi.fn(() => false);
@@ -290,6 +301,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "Select country" }),
@@ -317,6 +329,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     fireEvent.click(screen.getByRole("button", { name: "Use suggestion" }));
 
     expect(
@@ -327,7 +340,7 @@ describe("AutomaticRunTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not default the country picker to United Kingdom", () => {
+  it("hides the manual country picker in the default map mode", () => {
     render(
       <AutomaticRunTab
         open
@@ -344,9 +357,65 @@ describe("AutomaticRunTab", () => {
     openConfigureDetails();
 
     expect(
-      screen.getByRole("button", { name: "Select country" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Select country" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
+  });
+
+  it("uses a map radius by default and keeps manual cities available", async () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "united kingdom",
+            default: "",
+            override: "united kingdom",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    openConfigureDetails();
+
+    expect(screen.getByRole("radio", { name: /Map radius/i })).toBeChecked();
+    expect(
+      screen.queryByRole("button", { name: "United Kingdom" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Use map centre" }),
+    );
+    await waitFor(() => {
+      expect(api.detectLocationCountry).toHaveBeenCalledWith({
+        latitude: 54.5,
+        longitude: -3,
+      });
+      expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
+    });
+    expect(screen.getByText("Detected country")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("United Kingdom")).toBeInTheDocument();
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("search-count-summary")).toHaveTextContent(
+          "1 role · 3 locations · 1 job board",
+        ),
+      { timeout: 1500 },
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
+    expect(
+      screen.getByRole("button", { name: "United Kingdom" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Cities")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Radius in miles")).not.toBeInTheDocument();
   });
 
   it("loads persisted country from settings", () => {
@@ -376,6 +445,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -409,6 +479,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -686,6 +757,11 @@ describe("AutomaticRunTab", () => {
             default: "UK",
             override: "UK",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -829,6 +905,11 @@ describe("AutomaticRunTab", () => {
             default: "",
             override: "croatia",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
           jobspyResultsWanted: {
             value: 25,
             default: 200,
@@ -859,6 +940,11 @@ describe("AutomaticRunTab", () => {
             value: "croatia",
             default: "",
             override: "croatia",
+          },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
           },
         })}
         enabledSources={["linkedin"]}
@@ -920,6 +1006,11 @@ describe("AutomaticRunTab", () => {
             default: "",
             override: "croatia",
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -955,6 +1046,11 @@ describe("AutomaticRunTab", () => {
             value: "croatia",
             default: "",
             override: "croatia",
+          },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
           },
         })}
         enabledSources={["linkedin"]}
@@ -1001,6 +1097,11 @@ describe("AutomaticRunTab", () => {
             default: 20,
             override: 80,
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -1012,7 +1113,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
     fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
@@ -1044,6 +1145,11 @@ describe("AutomaticRunTab", () => {
             default: 20,
             override: 90,
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -1056,10 +1162,7 @@ describe("AutomaticRunTab", () => {
 
     openConfigureDetails();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Balanced" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(screen.getByRole("radio", { name: /Balanced/i })).toBeChecked();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
@@ -1086,6 +1189,11 @@ describe("AutomaticRunTab", () => {
             default: 20,
             override: 80,
           },
+          locationSearchMode: {
+            value: "cities",
+            default: "radius",
+            override: "cities",
+          },
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -1097,8 +1205,8 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Custom/i }));
     fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
@@ -1142,10 +1250,7 @@ describe("AutomaticRunTab", () => {
 
     openConfigureDetails();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Custom" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(screen.getByRole("radio", { name: /Custom/i })).toBeChecked();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
@@ -1197,12 +1302,16 @@ describe("AutomaticRunTab", () => {
 
     openLocationPreferences();
     expect(screen.getByText("Work arrangement")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
     expect(screen.getByText("Location scope")).toBeInTheDocument();
     expect(screen.getByText("Match strictness")).toBeInTheDocument();
     expect(
       screen.getByText("Selected locations + remote worldwide"),
     ).toBeInTheDocument();
     expect(screen.getByText("Include likely matches")).toBeInTheDocument();
+    expect(screen.getByTestId("search-count-summary")).toHaveTextContent(
+      "1 role · 1 location · 1 job board",
+    );
     expect(
       screen.getByText(
         /You'll get (hybrid and onsite|onsite and hybrid) jobs in Zagreb in Croatia plus remote jobs worldwide\. Likely matches are included\./i,
@@ -1270,10 +1379,7 @@ describe("AutomaticRunTab", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("backend engineer").length).toBeGreaterThan(0);
     expect(screen.getAllByText("London").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Fast" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("radio", { name: /Fast/i })).toBeChecked();
     expect(onSetPipelineSources).toHaveBeenCalledWith([
       "linkedin",
       "glassdoor",

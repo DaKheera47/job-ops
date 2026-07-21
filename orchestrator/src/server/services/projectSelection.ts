@@ -2,6 +2,7 @@
  * Service for AI-powered project selection for resumes.
  */
 
+import { stripHtmlTags } from "@shared/utils/string";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import type { ResumeProjectSelectionItem } from "./resumeProjects";
@@ -39,9 +40,10 @@ export async function pickProjectIdsForJob(args: {
   }
 
   const model = await resolveLlmModel("projectSelection");
+  const jobDescription = stripHtmlTags(args.jobDescription);
 
   const prompt = buildProjectSelectionPrompt({
-    jobDescription: args.jobDescription,
+    jobDescription,
     projects: args.eligibleProjects,
     desiredCount,
   });
@@ -55,7 +57,7 @@ export async function pickProjectIdsForJob(args: {
 
   if (!result.success) {
     const fallback = fallbackPickProjectIds(
-      args.jobDescription,
+      jobDescription,
       args.eligibleProjects,
       desiredCount,
     );
@@ -82,7 +84,7 @@ export async function pickProjectIdsForJob(args: {
 
   if (unique.length === 0) {
     const fallback = fallbackPickProjectIds(
-      args.jobDescription,
+      jobDescription,
       args.eligibleProjects,
       desiredCount,
     );
@@ -119,7 +121,7 @@ Job description:
 ${args.jobDescription}
 
 Candidate projects (pick from these IDs only):
-${JSON.stringify(projects, null, 2)}
+${JSON.stringify(projects)}
 
 Respond with JSON only, in this exact shape:
 {

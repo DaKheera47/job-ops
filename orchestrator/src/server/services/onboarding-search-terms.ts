@@ -149,7 +149,7 @@ function buildPrompt(context: SearchTermContext): string {
     "- Stay grounded in the resume evidence.",
     "",
     "Resume snapshot:",
-    JSON.stringify(context, null, 2),
+    JSON.stringify(context),
   ].join("\n");
 }
 

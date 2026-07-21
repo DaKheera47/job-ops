@@ -58,6 +58,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { parseJobBrief } from "@/client/components/JobBriefPane";
 import { showErrorToast } from "@/client/lib/error-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -66,6 +67,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trackProductEvent } from "@/lib/analytics";
 import {
@@ -75,14 +77,18 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import type { FilterTab } from "./constants";
+import type { SelectedJobLoadState } from "./useOrchestratorData";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
   activeJobs: JobListItem[];
   selectedJob: Job | null;
+  selectedJobListItem: JobListItem | null;
+  selectedJobLoadState: SelectedJobLoadState;
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
   onPauseRefreshChange?: (paused: boolean) => void;
+  onRetrySelectedJob: () => void;
 }
 
 type InspectorTab = "brief" | "tailoring" | "apply";
@@ -116,6 +122,42 @@ const tabCopy: Record<
       "!border-emerald-400/65 !bg-emerald-500/20 !text-emerald-100",
   },
 };
+
+const InspectorTabsList: React.FC<{
+  inspectorTab: InspectorTab;
+  disabled?: boolean;
+}> = ({ inspectorTab, disabled = false }) => (
+  <TabsList className="mb-4 grid h-auto grid-cols-3 gap-1 rounded-lg bg-muted/90 text-sm">
+    {Object.entries(tabCopy).map(([value, copy]) => {
+      const isSelected = inspectorTab === value;
+      const trigger = (
+        <TabsTrigger
+          key={value}
+          value={value}
+          disabled={disabled}
+          className={cn(
+            "flex flex-1 items-center gap-1.5 lg:flex-none",
+            isSelected && copy.selectedClassName,
+          )}
+        >
+          <span className={cn("size-1.5 rounded-full", copy.dotClassName)} />
+          <span className="text-sm">{copy.label}</span>
+        </TabsTrigger>
+      );
+
+      return (
+        <Tip
+          key={value}
+          asChild
+          content={<p>{copy.description}</p>}
+          contentClassName="max-w-xs text-center"
+        >
+          {trigger}
+        </Tip>
+      );
+    })}
+  </TabsList>
+);
 
 const statusTone: Record<
   Job["status"],
@@ -177,7 +219,7 @@ const getPrimaryAction = (job: Job): string => {
 };
 
 const getDefaultInspectorTab = (
-  job: Job | null,
+  job: Pick<Job, "status"> | null,
   activeTab: FilterTab,
 ): InspectorTab => {
   if (!job) return "brief";
@@ -240,9 +282,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   activeTab,
   activeJobs,
   selectedJob,
+  selectedJobListItem,
+  selectedJobLoadState,
   onSelectJobId,
   onJobUpdated,
   onPauseRefreshChange,
+  onRetrySelectedJob,
 }) => {
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("brief");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -308,14 +353,15 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   }, [loadCatalog]);
 
   useEffect(() => {
-    const currentJobId = selectedJob?.id ?? null;
+    const selection = selectedJob ?? selectedJobListItem;
+    const currentJobId = selection?.id ?? null;
     const currentSelectionKey = `${activeTab}:${currentJobId ?? ""}`;
     if (previousSelectionKeyRef.current === currentSelectionKey) return;
     previousSelectionKeyRef.current = currentSelectionKey;
-    setInspectorTab(getDefaultInspectorTab(selectedJob, activeTab));
+    setInspectorTab(getDefaultInspectorTab(selection, activeTab));
     setIsEditDetailsOpen(false);
     onPauseRefreshChange?.(false);
-  }, [activeTab, selectedJob, onPauseRefreshChange]);
+  }, [activeTab, selectedJob, selectedJobListItem, onPauseRefreshChange]);
 
   useEffect(() => {
     return () => onPauseRefreshChange?.(false);
@@ -507,6 +553,105 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   );
 
   if (!selectedJob) {
+    if (selectedJobListItem) {
+      const isLoadingDetails = selectedJobLoadState !== "error";
+      const listingUrl =
+        selectedJobListItem.applicationLink || selectedJobListItem.jobUrl;
+      const summaryPdfMessage = isPdfRegenerating(selectedJobListItem)
+        ? PDF_REGENERATING_MESSAGE
+        : isPdfStale(selectedJobListItem)
+          ? STALE_PDF_MESSAGE
+          : null;
+
+      return (
+        <Tabs
+          value={inspectorTab}
+          aria-busy={isLoadingDetails}
+          className="flex min-h-0 min-w-0 flex-1 flex-col p-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto"
+        >
+          <InspectorTabsList inspectorTab={inspectorTab} disabled />
+          <JobHeader
+            job={selectedJobListItem}
+            jobCTA={
+              listingUrl ? (
+                <OpenJobListingButton href={listingUrl} />
+              ) : undefined
+            }
+          />
+
+          <div className="flex min-w-0 flex-col gap-4 rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Stat
+                label="Location"
+                value={selectedJobListItem.location}
+                tone="blue"
+              />
+              <Stat
+                label="Salary"
+                value={selectedJobListItem.salary}
+                tone="green"
+              />
+              <Stat label="Function" value={selectedJobListItem.jobFunction} />
+              <Stat label="Type" value={selectedJobListItem.jobType} />
+            </div>
+
+            {summaryPdfMessage ? (
+              <p className="text-xs text-muted-foreground">
+                {summaryPdfMessage}
+              </p>
+            ) : null}
+
+            {selectedJobLoadState === "error" ? (
+              <Alert>
+                <CircleAlert />
+                <AlertTitle>Couldn&apos;t load job details</AlertTitle>
+                <AlertDescription className="flex flex-col items-start gap-3">
+                  <p>
+                    The summary is still available. Try loading the details
+                    again.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onRetrySelectedJob}
+                  >
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <output
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                  aria-live="polite"
+                >
+                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  Loading full job details…
+                </output>
+                <div
+                  className="flex flex-col gap-4"
+                  aria-hidden="true"
+                  data-testid="job-detail-skeleton"
+                >
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-11/12" />
+                  </div>
+                  <Skeleton className="h-24 w-full" />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </Tabs>
+      );
+    }
+
     return (
       <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-2 text-center">
@@ -551,37 +696,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       onValueChange={(value) => setInspectorTab(value as InspectorTab)}
       className="flex min-h-0 min-w-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto p-1"
     >
-      <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg text-sm bg-muted/90 mb-4">
-        {Object.entries(tabCopy).map(([value, copy]) => {
-          const isSelected = inspectorTab === value;
-          const trigger = (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className={cn(
-                "flex-1 flex items-center lg:flex-none gap-1.5",
-                isSelected && copy.selectedClassName,
-              )}
-            >
-              <span
-                className={cn("h-1.5 w-1.5 rounded-full", copy.dotClassName)}
-              />
-              <span className="text-sm">{copy.label}</span>
-            </TabsTrigger>
-          );
-
-          return (
-            <Tip
-              key={value}
-              asChild
-              content={<p>{copy.description}</p>}
-              contentClassName="max-w-xs text-center"
-            >
-              {trigger}
-            </Tip>
-          );
-        })}
-      </TabsList>
+      <InspectorTabsList inspectorTab={inspectorTab} />
       <JobHeader
         job={selectedJob}
         onCheckSponsor={async () => {

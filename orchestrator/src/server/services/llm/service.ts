@@ -244,7 +244,8 @@ export class LlmService {
       this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
-      this.provider !== "ollama"
+      this.provider !== "ollama" &&
+      this.provider !== "requesty"
     ) {
       return [];
     }
@@ -261,6 +262,9 @@ export class LlmService {
       }
       if (this.provider === "glm") {
         return this.listGlmModels();
+      }
+      if (this.provider === "requesty") {
+        return this.listRequestyModels();
       }
       return this.listOllamaModels();
     })();
@@ -620,6 +624,28 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listRequestyModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Requesty returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   private async listOllamaModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/api/tags"), {
       method: "GET",
@@ -668,6 +694,7 @@ function normalizeProvider(
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
+  if (normalized === "requesty") return "requesty";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,

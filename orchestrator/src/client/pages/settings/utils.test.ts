@@ -118,6 +118,7 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("gemini_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("claude_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("ollama")).toBe(true);
+    expect(supportsLlmModelSuggestions("requesty")).toBe(true);
     expect(supportsLlmModelSuggestions("openrouter")).toBe(false);
   });
 });

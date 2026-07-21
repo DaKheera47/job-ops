@@ -7,6 +7,7 @@ import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
+import { requestyStrategy } from "./requesty";
 
 const schema = {
   name: "test_schema",
@@ -33,6 +34,18 @@ describe("provider adapters", () => {
           model: "model-a",
         },
         expectedUrl: "https://openrouter.ai/api/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "requesty-json_schema",
+        strategy: requestyStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://router.requesty.ai/v1",
+          apiKey: "x",
+          model: "openai/gpt-4o-mini",
+        },
+        expectedUrl: "https://router.requesty.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {
@@ -184,6 +197,7 @@ describe("provider adapters", () => {
       choices: [{ message: { content: "ok" } }],
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
+    expect(requestyStrategy.extractText(response)).toBe("ok");
     expect(glmStrategy.extractText(response)).toBe("ok");
     expect(lmStudioStrategy.extractText(response)).toBe("ok");
     expect(ollamaStrategy.extractText(response)).toBe("ok");

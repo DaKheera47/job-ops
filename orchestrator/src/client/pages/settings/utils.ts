@@ -22,6 +22,7 @@ export const formatSecretHint = (hint: string | null) =>
 
 export const LLM_PROVIDERS = [
   "openrouter",
+  "requesty",
   "lmstudio",
   "ollama",
   "openai",
@@ -43,10 +44,12 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "gemini_cli",
   "claude_cli",
   "ollama",
+  "requesty",
 ] as const;
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openrouter: "OpenRouter",
+  requesty: "Requesty",
   lmstudio: "LM Studio",
   ollama: "Ollama",
   openai: "OpenAI",
@@ -61,6 +64,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "openrouter",
+  "requesty",
   "openai",
   "anthropic",
   "openai_compatible",
@@ -80,6 +84,8 @@ const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
+  requesty:
+    "Requesty uses your API key and routes requests across providers through an OpenAI-compatible endpoint.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
   ollama:
     "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
@@ -105,6 +111,10 @@ const PROVIDER_KEY_HELPERS: Record<
   openrouter: {
     text: "Create a key at openrouter.ai",
     href: "https://openrouter.ai/keys",
+  },
+  requesty: {
+    text: "Create a key at app.requesty.ai/api-keys",
+    href: "https://app.requesty.ai/api-keys",
   },
   lmstudio: { text: "No API key required for LM Studio" },
   ollama: {

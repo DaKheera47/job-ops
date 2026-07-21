@@ -365,4 +365,46 @@ describe("runHiringCafe", () => {
       },
     });
   });
+
+  it("serializes the selected map point and radius without geocoding a city", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(createTextResponse(createSearchHtml([]))),
+    );
+
+    await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "United Kingdom",
+      countryKey: "united kingdom",
+      locations: ["Leeds"],
+      proximity: {
+        latitude: 53.8008,
+        longitude: -1.5491,
+        radiusMiles: 30,
+      },
+      maxJobsPerTerm: 1,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).startsWith("https://nominatim.openstreetmap.org/search"),
+      ),
+    ).toBe(false);
+    const searchCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).startsWith("https://hiring.cafe/"),
+    );
+    const url = new URL(String(searchCall?.[0]));
+    const searchState = JSON.parse(
+      url.searchParams.get("searchState") ?? "{}",
+    ) as Record<string, unknown>;
+    const locations = searchState.locations as Array<{
+      geometry?: { location?: { lat?: number; lon?: number } };
+      options?: { radius?: number; radius_unit?: string };
+    }>;
+
+    expect(locations[0]).toMatchObject({
+      geometry: { location: { lat: 53.8008, lon: -1.5491 } },
+      options: { radius: 30, radius_unit: "miles" },
+    });
+  });
 });

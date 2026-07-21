@@ -85,6 +85,7 @@ describe.sequential("Manual jobs API routes", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 88,
       reason: "Strong fit",
+      jobBrief: null,
     });
 
     const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
@@ -120,6 +121,7 @@ describe.sequential("Manual jobs API routes", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 88,
       reason: "Strong fit",
+      jobBrief: null,
     });
 
     const firstRes = await fetch(`${baseUrl}/api/manual-jobs/import`, {
@@ -245,6 +247,7 @@ describe.sequential("Manual jobs API routes", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 70,
       reason: "Fit",
+      jobBrief: null,
     });
     await setSetting("autoTailorOnManualImport", "0");
 

@@ -13,6 +13,7 @@ import type { RunMode } from "./run-mode";
 import { useFilteredJobs } from "./useFilteredJobs";
 import { useJobSelectionActions } from "./useJobSelectionActions";
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
+import type { SelectedJobLoadState } from "./useOrchestratorData";
 import type { useOrchestratorFilters } from "./useOrchestratorFilters";
 import type { useOrchestratorNavigation } from "./useOrchestratorNavigation";
 import type { useOrchestratorUiState } from "./useOrchestratorUiState";
@@ -22,6 +23,9 @@ import { getJobCounts, getSourcesWithJobs } from "./utils";
 interface OrchestratorJobWorkspaceContainerProps {
   jobs: JobListItem[];
   selectedJob: Job | null;
+  selectedJobListItem: JobListItem | null;
+  selectedJobLoadState: SelectedJobLoadState;
+  retrySelectedJob: () => void;
   stats: Record<JobStatus, number>;
   isLoading: boolean;
   isPipelineRunning: boolean;
@@ -38,6 +42,9 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
 > = ({
   jobs,
   selectedJob,
+  selectedJobListItem,
+  selectedJobLoadState,
+  retrySelectedJob,
   stats,
   isLoading,
   isPipelineRunning,
@@ -73,6 +80,14 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
     if (!tabDef || tabDef.statuses.length === 0) return selectedJob;
     return tabDef.statuses.includes(selectedJob.status) ? selectedJob : null;
   }, [navigation.activeTab, selectedJob]);
+  const visibleSelectedJobListItem = useMemo(() => {
+    if (!selectedJobListItem) return null;
+    const tabDef = tabs.find((tab) => tab.id === navigation.activeTab);
+    if (!tabDef || tabDef.statuses.length === 0) return selectedJobListItem;
+    return tabDef.statuses.includes(selectedJobListItem.status)
+      ? selectedJobListItem
+      : null;
+  }, [navigation.activeTab, selectedJobListItem]);
 
   const {
     selectedJobIds,
@@ -122,6 +137,7 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
     activeJobs,
     selectedJobId: navigation.selectedJobId,
     selectedJob: visibleSelectedJob,
+    selectedJobSummary: visibleSelectedJobListItem,
     selectedJobIds,
     isDesktop: ui.isDesktop,
     handleSelectJobId: navigation.handleSelectJobId,
@@ -208,6 +224,10 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
           jobs={jobs}
           activeJobs={activeJobs}
           selectedJob={visibleSelectedJob}
+          selectedJobListItem={visibleSelectedJobListItem}
+          selectedJobLoadState={
+            visibleSelectedJobListItem ? selectedJobLoadState : "idle"
+          }
           selectedJobId={navigation.selectedJobId}
           selectedJobIds={selectedJobIds}
           activeTab={navigation.activeTab}
@@ -250,6 +270,7 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
           onSelectJobId={navigation.handleSelectJobId}
           onJobUpdated={loadJobs}
           onPauseRefreshChange={setIsRefreshPaused}
+          onRetrySelectedJob={retrySelectedJob}
         />
       </div>
 
@@ -271,10 +292,15 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
           activeTab={navigation.activeTab}
           activeJobs={activeJobs}
           selectedJob={visibleSelectedJob}
+          selectedJobListItem={visibleSelectedJobListItem}
+          selectedJobLoadState={
+            visibleSelectedJobListItem ? selectedJobLoadState : "idle"
+          }
           onOpenChange={ui.onDetailDrawerOpenChange}
           onSelectJobId={navigation.handleSelectJobId}
           onJobUpdated={loadJobs}
           onPauseRefreshChange={setIsRefreshPaused}
+          onRetrySelectedJob={retrySelectedJob}
         />
       )}
 

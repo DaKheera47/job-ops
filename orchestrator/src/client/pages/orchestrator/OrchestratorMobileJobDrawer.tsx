@@ -4,16 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import type { FilterTab } from "./constants";
 import { JobDetailPanel } from "./JobDetailPanel";
+import type { SelectedJobLoadState } from "./useOrchestratorData";
 
 interface OrchestratorMobileJobDrawerProps {
   open: boolean;
   activeTab: FilterTab;
   activeJobs: JobListItem[];
   selectedJob: Job | null;
+  selectedJobListItem: JobListItem | null;
+  selectedJobLoadState: SelectedJobLoadState;
   onOpenChange: (open: boolean) => void;
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
   onPauseRefreshChange: (paused: boolean) => void;
+  onRetrySelectedJob: () => void;
 }
 
 export const OrchestratorMobileJobDrawer: React.FC<
@@ -23,10 +27,13 @@ export const OrchestratorMobileJobDrawer: React.FC<
   activeTab,
   activeJobs,
   selectedJob,
+  selectedJobListItem,
+  selectedJobLoadState,
   onOpenChange,
   onSelectJobId,
   onJobUpdated,
   onPauseRefreshChange,
+  onRetrySelectedJob,
 }) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
     <DrawerContent className="max-h-[90vh]">
@@ -45,9 +52,12 @@ export const OrchestratorMobileJobDrawer: React.FC<
           activeTab={activeTab}
           activeJobs={activeJobs}
           selectedJob={selectedJob}
+          selectedJobListItem={selectedJobListItem}
+          selectedJobLoadState={selectedJobLoadState}
           onSelectJobId={onSelectJobId}
           onJobUpdated={onJobUpdated}
           onPauseRefreshChange={onPauseRefreshChange}
+          onRetrySelectedJob={onRetrySelectedJob}
         />
       </div>
     </DrawerContent>

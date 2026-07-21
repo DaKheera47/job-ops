@@ -1,10 +1,11 @@
 import type { ExtractorSourceId } from "../extractors";
 import type {
+  LocationInputMode,
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
 import type { Job, JobStatus } from "./jobs";
-import type { LocationIntent } from "./location";
+import type { LocationIntent, LocationProximity } from "./location";
 import type { PdfRenderer } from "./settings";
 
 export const MIN_PIPELINE_RUN_BUDGET = 300;
@@ -221,6 +222,8 @@ export interface PipelineSearchPresetConfig {
   sources: ExtractorSourceId[];
   country: string;
   cityLocations: string[];
+  locationMode?: LocationInputMode;
+  proximity?: LocationProximity | null;
   workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -294,11 +297,33 @@ export interface PipelinePendingChallenge {
   sources: ExtractorSourceId[];
 }
 
+export interface PipelineFanoutRoleProgress {
+  role: string;
+  complete: number;
+  running: number;
+  queued: number;
+  check: number;
+}
+
+export interface PipelineFanoutProgress {
+  termCount: number;
+  locationCount: number;
+  sourceCount: number;
+  locations: string[];
+  sources: string[];
+  total: number;
+  capacity: number;
+  results: number;
+  unique: number;
+  roles: PipelineFanoutRoleProgress[];
+}
+
 export interface PipelineProgressState {
   step: PipelineProgressStep;
   message: string;
   detail?: string;
   pendingChallenges?: PipelinePendingChallenge[];
+  fanout?: PipelineFanoutProgress;
   crawlingSource: string | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
@@ -314,6 +339,7 @@ export interface PipelineProgressState {
   crawlingCurrentUrl?: string;
   jobsDiscovered: number;
   jobsScored: number;
+  jobsExceptional: number;
   jobsProcessed: number;
   totalToProcess: number;
   currentJob?: PipelineProgressCurrentJob;

@@ -43,7 +43,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`openrouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -150,6 +150,8 @@ Defaults and constraints:
   - Job scoring prompt
 - Each editor starts from the current effective template, not a blank override
 - Supported placeholders are shown inline for each template
+- Job scoring always appends minified normalized source-job JSON, including `null` values, plus the required output contract
+- The same scoring call may propose evidence-backed corrections to existing job facts. JobOps only accepts whitelisted, schema-valid values supported by an excerpt from the listing; these mandatory safety instructions remain appended even when you customize the scoring template
 - Use **Reset** to restore a single template, or **Reset all prompts** to restore all three
 - Template editing is intentionally advanced:
   - removing key instructions can degrade output quality
