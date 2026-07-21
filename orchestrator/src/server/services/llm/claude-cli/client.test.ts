@@ -3,14 +3,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClaudeCliClient } from "./client";
 
 function createMockChild() {
+  const stdin = Object.assign(new EventEmitter(), {
+    end: vi.fn(),
+  });
   const stdout = new EventEmitter();
   const stderr = new EventEmitter();
   const child = Object.assign(new EventEmitter(), {
+    stdin,
     stdout,
     stderr,
     kill: vi.fn(),
   });
-  return { child, stdout, stderr };
+  return { child, stdin, stdout, stderr };
 }
 
 describe("ClaudeCliClient", () => {
@@ -112,6 +116,72 @@ describe("ClaudeCliClient", () => {
     expect(args).toContain("--model");
     expect(args).toContain("claude-sonnet-5");
     expect(args).toContain("--json-schema");
+  });
+
+  it("sends image inputs through stream-json stdin", async () => {
+    const { child, stdin, stdout } = createMockChild();
+    const spawnFn = vi.fn().mockReturnValue(child);
+
+    const pending = new ClaudeCliClient({ spawnFn }).callJson({
+      model: "sonnet",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Review this image" },
+            {
+              type: "image",
+              imageUrl: "data:image/png;base64,aGVsbG8=",
+              mediaType: "image/png",
+              name: "screenshot.png",
+            },
+          ],
+        },
+      ],
+      jsonSchema: {
+        name: "t",
+        schema: {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: false,
+        },
+      },
+    });
+    queueMicrotask(() => {
+      stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify({
+            type: "result",
+            subtype: "success",
+            is_error: false,
+            structured_output: { value: "from-image" },
+          }),
+        ),
+      );
+      child.emit("close", 0);
+    });
+
+    await expect(pending).resolves.toEqual({
+      text: JSON.stringify({ value: "from-image" }),
+    });
+    const args = spawnFn.mock.calls[0]?.[1] as string[] | undefined;
+    expect(args).toContain("--input-format");
+    expect(args).toContain("stream-json");
+
+    const stdinInput = stdin.end.mock.calls[0]?.[0] as string | undefined;
+    const payload = JSON.parse(stdinInput?.trim() || "null") as {
+      message?: { content?: unknown[] };
+    };
+    expect(payload.message?.content).toContainEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "aGVsbG8=",
+      },
+    });
   });
 
   it("callJson falls back to parsing result when structured_output is absent", async () => {

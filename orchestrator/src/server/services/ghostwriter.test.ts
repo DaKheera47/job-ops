@@ -639,7 +639,13 @@ describe("ghostwriter service", () => {
     });
   });
 
-  it("passes screenshot attachments as image input when the model supports them", async () => {
+  it("passes screenshot attachments as image input to Claude CLI", async () => {
+    mocks.resolveLlmRuntimeSettings.mockResolvedValue({
+      model: "sonnet",
+      provider: "claude_cli",
+      baseUrl: null,
+      apiKey: null,
+    });
     const assistantPartial: JobChatMessage = {
       ...baseAssistantMessage,
       id: "assistant-with-image",

@@ -89,6 +89,15 @@ function normalizeModelForProviderCompatibility(
     }
   }
 
+  if (normalizedProvider === "claude_cli") {
+    const isClaudeModel =
+      ["sonnet", "opus", "haiku", "fable"].includes(normalizedModel) ||
+      normalizedModel.startsWith("claude-");
+    if (!isClaudeModel) {
+      return null;
+    }
+  }
+
   if (normalizedProvider === "glm") {
     const isGlmModel =
       normalizedModel.startsWith("glm") ||

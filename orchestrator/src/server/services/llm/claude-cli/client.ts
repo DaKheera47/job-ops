@@ -83,6 +83,85 @@ function formatMessagesPrompt(
   ].join("\n");
 }
 
+type ClaudeCliInputBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "image";
+      source: {
+        type: "base64";
+        media_type: "image/png" | "image/jpeg" | "image/webp";
+        data: string;
+      };
+    };
+
+function hasImageInput(
+  messages: LlmRequestOptions<unknown>["messages"],
+): boolean {
+  return messages.some(
+    (message) =>
+      typeof message.content !== "string" &&
+      message.content.some((part) => part.type === "image"),
+  );
+}
+
+function formatMessagesStreamInput(
+  messages: LlmRequestOptions<unknown>["messages"],
+): string {
+  const content: ClaudeCliInputBlock[] = [
+    {
+      type: "text",
+      text: [
+        "You are generating a structured JSON response for JobOps.",
+        "Do not use tools; answer directly using only the information in this transcript.",
+        "",
+        "Transcript:",
+      ].join("\n"),
+    },
+  ];
+
+  messages.forEach((message, index) => {
+    content.push({
+      type: "text",
+      text: `\n\nMessage ${index + 1} (${message.role.toUpperCase()}):\n`,
+    });
+
+    if (typeof message.content === "string") {
+      content.push({ type: "text", text: message.content.trim() });
+      return;
+    }
+
+    for (const part of message.content) {
+      if (part.type === "text") {
+        content.push({ type: "text", text: part.text });
+        continue;
+      }
+
+      const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/s.exec(
+        part.imageUrl,
+      );
+      if (!match) {
+        throw new Error(
+          "Claude CLI image input must be a PNG, JPEG, or WebP base64 data URL.",
+        );
+      }
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: match[1] as "image/png" | "image/jpeg" | "image/webp",
+          data: match[2],
+        },
+      });
+    }
+  });
+
+  return `${JSON.stringify({
+    type: "user",
+    message: { role: "user", content },
+    parent_tool_use_id: null,
+  })}\n`;
+}
+
 export type ClaudeCliSpawnFn = typeof spawn;
 
 type ClaudeCliResultEnvelope = {
@@ -116,21 +195,21 @@ function parseCliJsonOutput(stdout: string): { response: string } {
 
 async function runClaudeCliOnce(args: {
   spawnFn: ClaudeCliSpawnFn;
-  prompt: string;
+  input: string;
+  inputFormat: "text" | "stream-json";
   model: string | null;
   jsonSchema: JsonSchemaDefinition;
   timeoutMs: number;
   signal?: AbortSignal;
 }): Promise<{ stdout: string; stderr: string }> {
   const bin = process.env.CLAUDE_CLI_BIN?.trim() || "claude";
-  const procArgs: string[] = [
-    "-p",
-    args.prompt,
-    "--output-format",
-    "json",
-    "--permission-mode",
-    "plan",
-  ];
+  const procArgs: string[] = ["-p"];
+  if (args.inputFormat === "stream-json") {
+    procArgs.push("--input-format", "stream-json");
+  } else {
+    procArgs.push(args.input);
+  }
+  procArgs.push("--output-format", "json", "--permission-mode", "plan");
   const cliModel = args.model?.trim();
   if (cliModel) {
     procArgs.push("--model", cliModel);
@@ -145,7 +224,7 @@ async function runClaudeCliOnce(args: {
     let settled = false;
 
     const child = args.spawnFn(bin, procArgs, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env },
       windowsHide: true,
       shell,
@@ -222,6 +301,14 @@ async function runClaudeCliOnce(args: {
         resolve({ stdout, stderr });
       });
     });
+
+    child.stdin.on("error", (error) => {
+      clearTimeout(timer);
+      finish(() => reject(error));
+    });
+    child.stdin.end(
+      args.inputFormat === "stream-json" ? args.input : undefined,
+    );
   });
 }
 
@@ -248,7 +335,8 @@ export class ClaudeCliClient {
     try {
       const { stdout } = await runClaudeCliOnce({
         spawnFn: this.spawnFn,
-        prompt: "Return the structured output exactly as instructed.",
+        input: "Return the structured output exactly as instructed.",
+        inputFormat: "text",
         model: null,
         jsonSchema: VALIDATION_SCHEMA,
         timeoutMs,
@@ -298,11 +386,15 @@ export class ClaudeCliClient {
       "CLAUDE_CLI_REQUEST_TIMEOUT_MS",
       DEFAULT_REQUEST_TIMEOUT_MS,
     );
-    const prompt = formatMessagesPrompt(options.messages);
+    const useStreamInput = hasImageInput(options.messages);
+    const input = useStreamInput
+      ? formatMessagesStreamInput(options.messages)
+      : formatMessagesPrompt(options.messages);
     const model = options.model?.trim() || null;
     const { stdout } = await runClaudeCliOnce({
       spawnFn: this.spawnFn,
-      prompt,
+      input,
+      inputFormat: useStreamInput ? "stream-json" : "text",
       model,
       jsonSchema: options.jsonSchema,
       timeoutMs,

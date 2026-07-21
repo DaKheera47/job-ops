@@ -328,7 +328,7 @@ async function imageInputCapabilityReason(
   }
 
   if (provider === "claude_cli") {
-    return /^claude/.test(model)
+    return /^(claude-|sonnet$|opus$|haiku$|fable$)/.test(model)
       ? null
       : `The selected Claude model (${input.model}) is not recognized as image-capable.`;
   }
