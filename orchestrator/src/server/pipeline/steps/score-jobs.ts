@@ -1,7 +1,6 @@
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
-import { generateJobBrief } from "@server/services/job-brief";
 import { scoreJobSuitability } from "@server/services/scorer";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { asyncPool } from "@server/utils/async-pool";
@@ -78,10 +77,12 @@ export async function scoreJobsStep(args: {
       const scoringResultPromise = scoringInstructions
         ? scoreJobSuitability(job, args.profile, { scoringInstructions })
         : scoreJobSuitability(job, args.profile);
-      const [{ score, reason }, jobBrief] = await Promise.all([
-        scoringResultPromise,
-        generateJobBrief(job.jobDescription, { jobId: job.id }),
-      ]);
+      const {
+        score,
+        reason,
+        jobBrief,
+        jobUpdates = {},
+      } = await scoringResultPromise;
       if (args.shouldCancel?.()) return;
 
       let sponsorMatchScore = 0;
@@ -109,6 +110,7 @@ export async function scoreJobsStep(args: {
         score < autoSkipThreshold;
 
       await jobsRepo.updateJob(job.id, {
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
         jobBrief,
@@ -140,6 +142,7 @@ export async function scoreJobsStep(args: {
       );
       scoredJobs.push({
         ...job,
+        ...jobUpdates,
         suitabilityScore: score,
         suitabilityReason: reason,
       });

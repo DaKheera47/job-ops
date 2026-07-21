@@ -1429,6 +1429,7 @@ describe.sequential("Jobs API routes", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 81,
       reason: "Updated fit from action rescore",
+      jobBrief: null,
     });
 
     const discovered = await createJob({
@@ -1630,7 +1631,6 @@ describe.sequential("Jobs API routes", () => {
 
   it("rescoring a job updates the suitability fields", async () => {
     const { createJob } = await import("@server/repositories/jobs");
-    const { generateJobBrief } = await import("@server/services/job-brief");
     const { scoreJobSuitability } = await import("@server/services/scorer");
     const { getProfile } = await import("@server/services/profile");
 
@@ -1638,10 +1638,9 @@ describe.sequential("Jobs API routes", () => {
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 77,
       reason: "Updated fit",
+      jobBrief:
+        '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
     });
-    vi.mocked(generateJobBrief).mockResolvedValue(
-      '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
-    );
 
     const job = await createJob({
       source: "manual",

@@ -87,7 +87,11 @@ describe("Sponsor Match Calculation", () => {
     createJobs = jobsRepo.createJobs as ReturnType<typeof vi.fn>;
 
     // Default mock implementations
-    scoreJobSuitability.mockResolvedValue({ score: 75, reason: "Good match" });
+    scoreJobSuitability.mockResolvedValue({
+      score: 75,
+      reason: "Good match",
+      jobBrief: null,
+    });
     createJobs.mockResolvedValue({ created: 0, skipped: 0 });
     updateJob.mockResolvedValue(undefined);
 
