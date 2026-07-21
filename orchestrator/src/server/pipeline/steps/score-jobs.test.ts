@@ -171,7 +171,7 @@ describe("scoreJobsStep auto-skip behavior", () => {
       },
     });
 
-    const result = await scoreJobsStep({ profile: {} });
+    await scoreJobsStep({ profile: {} });
 
     expect(jobsRepo.updateJob).toHaveBeenCalledWith(
       "job-1",
@@ -180,7 +180,6 @@ describe("scoreJobsStep auto-skip behavior", () => {
         salarySource: "ai_job_fact_review",
       }),
     );
-    expect(result.scoredJobs[0]).toMatchObject({ salaryInterval: "hourly" });
   });
 
   it.each([

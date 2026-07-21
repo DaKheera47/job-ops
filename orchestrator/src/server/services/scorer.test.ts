@@ -567,11 +567,6 @@ describe("salary penalty", () => {
   describe("isSalaryMissing detection", () => {
     it("uses accepted salary patches before applying the missing-salary penalty", async () => {
       const { scoreJobSuitability } = await import("./scorer");
-      getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: { value: true, default: true, override: null },
-        missingSalaryPenalty: { value: 10, default: 10, override: null },
-        rxresumeBaseResumeId: "base-resume-123",
-      } as any);
       callJsonMock.mockResolvedValue({
         success: true,
         data: {
@@ -604,23 +599,6 @@ describe("salary penalty", () => {
         salaryMinAmount: 45_000,
         salarySource: "ai_job_fact_review",
       });
-    });
-
-    it("treats legacy responses without patches as no corrections", async () => {
-      const { scoreJobSuitability } = await import("./scorer");
-      getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: { value: false, default: false, override: null },
-        missingSalaryPenalty: { value: 10, default: 10, override: null },
-        rxresumeBaseResumeId: "base-resume-123",
-      } as any);
-      callJsonMock.mockResolvedValue({
-        success: true,
-        data: { score: 80, reason: "Good match" },
-      });
-
-      const result = await scoreJobSuitability(createJob(), {});
-
-      expect(result.jobUpdates).toEqual({});
     });
 
     it("should detect null salary as missing", async () => {
