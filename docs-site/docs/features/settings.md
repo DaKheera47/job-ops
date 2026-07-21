@@ -148,6 +148,7 @@ Defaults and constraints:
   - Job scoring prompt
 - Each editor starts from the current effective template, not a blank override
 - Supported placeholders are shown inline for each template
+- Job scoring always appends minified normalized source-job JSON, including `null` values, plus the required output contract
 - Use **Reset** to restore a single template, or **Reset all prompts** to restore all three
 - Template editing is intentionally advanced:
   - removing key instructions can degrade output quality

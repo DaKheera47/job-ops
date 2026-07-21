@@ -119,6 +119,37 @@ Respond with ONLY valid JSON in this exact shape:
 }
 No markdown, code fences, or text outside the JSON.`.trim();
 
+const NON_SOURCE_JOB_FIELDS = new Set<keyof Job>([
+  "id",
+  "locationMatch",
+  "status",
+  "outcome",
+  "closedAt",
+  "suitabilityScore",
+  "suitabilityReason",
+  "jobBrief",
+  "tailoredSummary",
+  "tailoredHeadline",
+  "tailoredSkills",
+  "selectedProjectIds",
+  "pdfPath",
+  "pdfSource",
+  "pdfRegenerating",
+  "pdfFreshness",
+  "pdfFingerprint",
+  "pdfGeneratedAt",
+  "tracerLinksEnabled",
+  "sponsorMatchScore",
+  "sponsorMatchNames",
+  "appliedDuplicateMatch",
+  "discoveredAt",
+  "processedAt",
+  "readyAt",
+  "appliedAt",
+  "createdAt",
+  "updatedAt",
+]);
+
 /**
  * Check if a job's salary field is missing/empty.
  * Returns true for null, empty string, or whitespace-only strings.
@@ -343,8 +374,16 @@ function buildScoringPrompt(
   profile: Record<string, unknown>,
   preferences: ScoringPreferences,
 ): string {
+  const jobJson = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(job).filter(
+        ([key]) => !NON_SOURCE_JOB_FIELDS.has(key as keyof Job),
+      ),
+    ),
+  );
+
   return `${renderPromptTemplate(preferences.promptTemplate, {
-    profileJson: JSON.stringify(profile, null, 2),
+    profileJson: JSON.stringify(profile),
     jobTitle: job.title,
     employer: job.employer,
     location: job.location || "Not specified",
@@ -355,7 +394,7 @@ function buildScoringPrompt(
     scoringInstructionsText: preferences.instructions
       ? preferences.instructions
       : "No additional custom scoring instructions.",
-  })}\n\n${SCORING_OUTPUT_INSTRUCTIONS}`;
+  })}\n\nJOB DATA (JSON):\n${jobJson}\n\n${SCORING_OUTPUT_INSTRUCTIONS}`;
 }
 
 function sanitizeProfileForPrompt(

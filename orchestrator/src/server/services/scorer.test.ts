@@ -318,11 +318,55 @@ describe("salary penalty", () => {
   function getPromptProfile(): Record<string, any> {
     const prompt = getScoringPrompt();
     const match = prompt.match(
-      /CANDIDATE PROFILE:\n(?<profile>[\s\S]*?)\n\nJOB LISTING:/,
+      /CANDIDATE PROFILE:\n(?<profile>[\s\S]*?)\n\nSCORING INSTRUCTIONS:/,
     );
     expect(match?.groups?.profile).toBeDefined();
     return JSON.parse(match?.groups?.profile ?? "{}");
   }
+
+  it("sends minified source job JSON with nulls and no generated state", async () => {
+    const { scoreJobSuitability } = await import("./scorer");
+    getEffectiveSettingsMock.mockResolvedValue({
+      penalizeMissingSalary: { value: false, default: false, override: null },
+      missingSalaryPenalty: { value: 10, default: 10, override: null },
+      scoringInstructions: { value: "", default: "", override: null },
+      rxresumeBaseResumeId: "base-resume-123",
+    } as any);
+
+    await scoreJobSuitability(
+      createJob({
+        salary: null,
+        jobLevel: "senior",
+        salaryMinAmount: 80_000,
+        companyIndustry: "Fintech",
+        skills: "TypeScript, Node.js",
+        emails: "jobs@example.com",
+        suitabilityScore: 42,
+        jobBrief: '{"stale":true}',
+        tailoredSummary: "Private tailored summary",
+        pdfPath: "/private/resume.pdf",
+      }),
+      {},
+    );
+
+    const match = getScoringPrompt().match(
+      /JOB DATA \(JSON\):\n(?<job>[^\n]+)\n\n/,
+    );
+    const job = JSON.parse(match?.groups?.job ?? "{}");
+    expect(job).toMatchObject({
+      salary: null,
+      jobLevel: "senior",
+      salaryMinAmount: 80_000,
+      companyIndustry: "Fintech",
+      skills: "TypeScript, Node.js",
+      emails: "jobs@example.com",
+      jobDescription: "Job description content",
+    });
+    expect(job).not.toHaveProperty("suitabilityScore");
+    expect(job).not.toHaveProperty("jobBrief");
+    expect(job).not.toHaveProperty("tailoredSummary");
+    expect(job).not.toHaveProperty("pdfPath");
+  });
 
   describe("profile prompt sanitization", () => {
     it("includes top-level education and the full top-level CV content", async () => {
@@ -787,6 +831,10 @@ describe("salary penalty", () => {
         }),
       );
       expect(getScoringPrompt()).toContain('"jobBrief"');
+      expect(getScoringPrompt()).toContain("JOB DATA (JSON):");
+      expect(getScoringPrompt()).toContain(
+        '"jobDescription":"Job description content"',
+      );
       expect(JSON.parse(result.jobBrief as string)).toEqual(
         expect.objectContaining({ role_summary: "Build backend services." }),
       );

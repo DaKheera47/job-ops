@@ -93,7 +93,7 @@ OUTPUT FORMAT (JSON):
   scoringPromptTemplate: {
     label: "Job scoring prompt",
     description:
-      "Controls how suitability scoring evaluates the candidate profile against a job listing.",
+      "Controls how suitability scoring evaluates the candidate profile. Minified source job JSON and the output contract are appended automatically.",
     placeholders: [
       "profileJson",
       "jobTitle",
@@ -117,17 +117,6 @@ SCORING CRITERIA:
 
 CANDIDATE PROFILE:
 {{profileJson}}
-
-JOB LISTING:
-Title: {{jobTitle}}
-Employer: {{employer}}
-Location: {{location}}
-Salary: {{salary}}
-Degree Required: {{degreeRequired}}
-Disciplines: {{disciplines}}
-
-JOB DESCRIPTION:
-{{jobDescription}}
 
 SCORING INSTRUCTIONS:
 {{scoringInstructionsText}}
