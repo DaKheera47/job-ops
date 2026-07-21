@@ -203,15 +203,15 @@ export const updateOutcomeSchema = z.object({
 export const jobActionRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("skip"),
-    jobIds: z.array(z.string().min(1)).min(1).max(100),
+    jobIds: z.array(z.string().min(1)).min(1).max(500),
   }),
   z.object({
     action: z.literal("rescore"),
-    jobIds: z.array(z.string().min(1)).min(1).max(100),
+    jobIds: z.array(z.string().min(1)).min(1).max(500),
   }),
   z.object({
     action: z.literal("move_to_ready"),
-    jobIds: z.array(z.string().min(1)).min(1).max(100),
+    jobIds: z.array(z.string().min(1)).min(1).max(500),
     options: z
       .object({
         force: z.boolean().optional(),
