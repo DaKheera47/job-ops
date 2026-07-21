@@ -18,7 +18,6 @@
     "format:fix": "biome format --write",
     "build:client": "vite build",
     "start": "tsx src/server/index.ts",
-    "benchmark:extractors": "tsx scripts/benchmark-extractors.ts",
     "benchmark:jobs": "tsx scripts/benchmark-jobs.ts",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:migrate:prod": "tsx src/server/db/migrate.ts",

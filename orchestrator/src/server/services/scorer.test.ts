@@ -336,6 +336,7 @@ describe("salary penalty", () => {
     await scoreJobSuitability(
       createJob({
         salary: null,
+        jobDescription: "<p>Build <strong>TypeScript</strong> services.</p>",
         jobLevel: "senior",
         salaryMinAmount: 80_000,
         companyIndustry: "Fintech",
@@ -360,12 +361,13 @@ describe("salary penalty", () => {
       companyIndustry: "Fintech",
       skills: "TypeScript, Node.js",
       emails: "jobs@example.com",
-      jobDescription: "Job description content",
+      jobDescription: "Build TypeScript services.",
     });
     expect(job).not.toHaveProperty("suitabilityScore");
     expect(job).not.toHaveProperty("jobBrief");
     expect(job).not.toHaveProperty("tailoredSummary");
     expect(job).not.toHaveProperty("pdfPath");
+    expect(getScoringPrompt()).not.toContain("<strong>");
   });
 
   describe("profile prompt sanitization", () => {

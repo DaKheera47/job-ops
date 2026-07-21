@@ -5,6 +5,7 @@
 import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import type { Job, JobBrief, UpdateJobInput } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
 import {
   type JobFactPatch,
   PATCHABLE_JOB_FIELDS,
@@ -449,13 +450,15 @@ function buildScoringPrompt(
   profile: Record<string, unknown>,
   preferences: ScoringPreferences,
 ): string {
-  const jobJson = JSON.stringify(
-    Object.fromEntries(
+  const jobDescription = stripHtmlTags(job.jobDescription ?? "") || null;
+  const jobJson = JSON.stringify({
+    ...Object.fromEntries(
       Object.entries(job).filter(
         ([key]) => !NON_SOURCE_JOB_FIELDS.has(key as keyof Job),
       ),
     ),
-  );
+    jobDescription,
+  });
 
   return `${renderPromptTemplate(preferences.promptTemplate, {
     profileJson: JSON.stringify(profile),
@@ -465,7 +468,7 @@ function buildScoringPrompt(
     salary: job.salary || "Not specified",
     degreeRequired: job.degreeRequired || "Not specified",
     disciplines: job.disciplines || "Not specified",
-    jobDescription: job.jobDescription || "No description available",
+    jobDescription: jobDescription || "No description available",
     scoringInstructionsText: preferences.instructions
       ? preferences.instructions
       : "No additional custom scoring instructions.",
