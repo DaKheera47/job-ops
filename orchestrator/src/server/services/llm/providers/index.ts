@@ -1,5 +1,6 @@
 import type { LlmProvider, ProviderStrategy } from "../types";
 import { anthropicStrategy } from "./anthropic";
+import { claudeCliStrategy } from "./claude_cli";
 import { codexStrategy } from "./codex";
 import { geminiStrategy } from "./gemini";
 import { geminiCliStrategy } from "./gemini_cli";
@@ -22,5 +23,6 @@ export const strategies: Record<LlmProvider, ProviderStrategy> = {
   glm: glmStrategy,
   gemini: geminiStrategy,
   gemini_cli: geminiCliStrategy,
+  claude_cli: claudeCliStrategy,
   codex: codexStrategy,
 };

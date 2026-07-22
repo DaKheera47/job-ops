@@ -50,6 +50,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "gemini_cli") {
     return "";
   }
+  if (normalized === "claude_cli") {
+    return "";
+  }
   if (normalized === "codex") {
     return "";
   }
@@ -85,6 +88,15 @@ function normalizeModelForProviderCompatibility(
       normalizedModel.startsWith("models/") ||
       normalizedModel.startsWith("gemini");
     if (!isGeminiModel) {
+      return null;
+    }
+  }
+
+  if (normalizedProvider === "claude_cli") {
+    const isClaudeModel =
+      ["sonnet", "opus", "haiku", "fable"].includes(normalizedModel) ||
+      normalizedModel.startsWith("claude-");
+    if (!isClaudeModel) {
       return null;
     }
   }

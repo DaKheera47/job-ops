@@ -41,7 +41,7 @@ import {
   designResumeToProfile,
   getCurrentDesignResumeOrNullOnLegacy,
 } from "./design-resume";
-import { getEnvSettingsData } from "./envSettings";
+import { getEnvSettingsData, getOriginalEnvValue } from "./envSettings";
 import { getProfile } from "./profile";
 import {
   extractProjectsFromProfile,
@@ -54,6 +54,7 @@ describe("getEffectiveSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getAllSettings).mockResolvedValue({});
+    vi.mocked(getOriginalEnvValue).mockReturnValue(undefined);
     vi.mocked(getCurrentDesignResumeOrNullOnLegacy).mockResolvedValue({
       id: "primary",
       resumeJson: {},
@@ -136,5 +137,22 @@ describe("getEffectiveSettings", () => {
       tailoring: { provider: "openai", model: "gpt-5.4-mini" },
     });
     expect(settings.llmPurposeApiKeyHints).toEqual({ tailoring: "sk-p" });
+  });
+
+  it("ignores an inherited model that is incompatible with Claude CLI", async () => {
+    vi.mocked(getAllSettings).mockResolvedValue({
+      llmProvider: "claude_cli",
+    } as never);
+    vi.mocked(getOriginalEnvValue).mockImplementation((key) =>
+      key === "MODEL" ? "google/gemini-3-flash-preview" : undefined,
+    );
+
+    const settings = await getEffectiveSettings();
+
+    expect(settings.model).toMatchObject({
+      value: "claude-sonnet-5",
+      default: "claude-sonnet-5",
+      override: null,
+    });
   });
 });

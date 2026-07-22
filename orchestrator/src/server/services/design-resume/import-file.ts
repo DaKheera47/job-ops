@@ -13,6 +13,7 @@ import {
   extractPdfText,
   PdfTextExtractionError,
 } from "@server/services/document-text-extraction";
+import { ClaudeCliClient } from "@server/services/llm/claude-cli/client";
 import { CodexClient } from "@server/services/llm/codex/client";
 import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
@@ -44,6 +45,7 @@ type SupportedRuntimeProvider =
   | "glm"
   | "gemini"
   | "gemini_cli"
+  | "claude_cli"
   | "codex"
   | "openai_compatible"
   | "ollama"
@@ -339,6 +341,7 @@ function normalizeRuntimeProvider(
   if (mapped === "glm") return "glm";
   if (mapped === "gemini") return "gemini";
   if (mapped === "gemini_cli") return "gemini_cli";
+  if (mapped === "claude_cli") return "claude_cli";
   if (mapped === "codex") return "codex";
   if (mapped === "openai_compatible") return "openai_compatible";
   if (mapped === "ollama") return "ollama";
@@ -1185,6 +1188,7 @@ async function extractInitialDocumentText(input: {
   if (
     input.mediaType === "application/pdf" &&
     (input.provider === "gemini_cli" ||
+      input.provider === "claude_cli" ||
       isTextOnlyImportProvider(input.provider))
   ) {
     return extractResumePdfText(input.decoded);
@@ -1202,6 +1206,7 @@ function shouldFallbackToExtractedPdfText(input: {
     input.mediaType !== "application/pdf" ||
     input.documentText ||
     input.provider === "gemini_cli" ||
+    input.provider === "claude_cli" ||
     isTextOnlyImportProvider(input.provider)
   ) {
     return false;
@@ -1612,6 +1617,54 @@ async function extractWithGeminiCli(args: {
   }
 }
 
+async function extractWithClaudeCli(args: {
+  model: string;
+  mediaType: SupportedImportMediaType;
+  fileName: string;
+  documentText: string;
+  requestId: string | undefined;
+}): Promise<string> {
+  const source: "DOCX" | "PDF" =
+    args.mediaType === "application/pdf" ? "PDF" : "DOCX";
+  const userContent = buildTextExtractPrompt(
+    args.documentText,
+    args.fileName,
+    source,
+  );
+  const client = new ClaudeCliClient();
+  try {
+    const { text } = await client.callJson({
+      model: args.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userContent },
+      ],
+      jsonSchema: DESIGN_RESUME_IMPORT_CLI_JSON_SCHEMA,
+    });
+    if (!text?.trim()) {
+      throw upstreamError(
+        "Claude CLI returned an empty response for resume import.",
+      );
+    }
+    return text;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    throw upstreamError(
+      truncate(message, 500),
+      args.requestId
+        ? {
+            provider: "claude_cli",
+            model: args.model,
+            requestId: args.requestId,
+          }
+        : { provider: "claude_cli", model: args.model },
+    );
+  }
+}
+
 async function extractWithCodex(args: {
   model: string;
   mediaType: SupportedImportMediaType;
@@ -1699,6 +1752,21 @@ async function extractResumeFromProvider(args: {
       );
     }
     return extractWithGeminiCli({
+      model: args.model,
+      mediaType: args.mediaType,
+      fileName: args.fileName,
+      documentText: text,
+      requestId: args.requestId,
+    });
+  }
+  if (args.provider === "claude_cli") {
+    const text = args.documentText?.trim();
+    if (!text) {
+      throw badRequest(
+        "Claude CLI resume import requires plain-text resume content (DOCX or extracted PDF text).",
+      );
+    }
+    return extractWithClaudeCli({
       model: args.model,
       mediaType: args.mediaType,
       fileName: args.fileName,

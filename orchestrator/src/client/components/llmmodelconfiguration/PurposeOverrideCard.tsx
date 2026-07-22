@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { ClaudeCliSetupHint } from "@client/components/ClaudeCliSetupHint";
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
@@ -69,6 +70,8 @@ export default function PurposeOverrideCard({
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
   const isGeminiCliProvider =
     providerConfig.normalizedProvider === "gemini_cli";
+  const isClaudeCliProvider =
+    providerConfig.normalizedProvider === "claude_cli";
   const supportsModelSuggestions =
     supportsLlmModelSuggestions(selectedProvider);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -211,6 +214,9 @@ export default function PurposeOverrideCard({
       ) : null}
       {hasProviderOverride && isGeminiCliProvider ? (
         <GeminiCliSetupHint />
+      ) : null}
+      {hasProviderOverride && isClaudeCliProvider ? (
+        <ClaudeCliSetupHint />
       ) : null}
 
       {hasProviderOverride && providerConfig.showBaseUrl ? (

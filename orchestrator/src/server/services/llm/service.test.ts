@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ClaudeCliClient } from "./claude-cli/client";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
 import { LlmService } from "./service";
@@ -53,6 +54,15 @@ describe("LlmService provider normalization", () => {
     });
 
     expect(llm.getProvider()).toBe("gemini_cli");
+    expect(llm.getBaseUrl()).toBe("");
+  });
+
+  it("supports claude_cli provider normalization", () => {
+    const llm = new LlmService({
+      provider: "claude-cli",
+    });
+
+    expect(llm.getProvider()).toBe("claude_cli");
     expect(llm.getBaseUrl()).toBe("");
   });
 
@@ -164,6 +174,26 @@ describe("LlmService provider normalization", () => {
     const models = await llm.listModels();
 
     expect(models[0]).toBe("google/gemini-3-flash-preview");
+    expect(models.length).toBeGreaterThan(1);
+  });
+
+  it("delegates claude_cli credential validation to the Claude CLI client", async () => {
+    const validateSpy = vi
+      .spyOn(ClaudeCliClient.prototype, "validateCredentials")
+      .mockResolvedValue({ valid: true, message: null });
+
+    const llm = new LlmService({ provider: "claude_cli" });
+    const result = await llm.validateCredentials();
+
+    expect(result).toEqual({ valid: true, message: null });
+    expect(validateSpy).toHaveBeenCalledOnce();
+  });
+
+  it("returns curated models for claude_cli", async () => {
+    const llm = new LlmService({ provider: "claude_cli" });
+    const models = await llm.listModels();
+
+    expect(models[0]).toBe("claude-sonnet-5");
     expect(models.length).toBeGreaterThan(1);
   });
 

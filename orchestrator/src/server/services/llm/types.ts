@@ -9,6 +9,7 @@ export type LlmProvider =
   | "glm"
   | "gemini"
   | "gemini_cli"
+  | "claude_cli"
   | "codex";
 
 export type ResponseMode = "json_schema" | "json_object" | "text" | "none";
