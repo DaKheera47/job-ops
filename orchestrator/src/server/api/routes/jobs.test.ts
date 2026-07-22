@@ -1580,7 +1580,7 @@ describe.sequential("Jobs API routes", () => {
 
   it("validates job action payloads", async () => {
     const tooManyIds = Array.from(
-      { length: 101 },
+      { length: 501 },
       (_, index) => `job-${index}`,
     );
     const res = await fetch(`${baseUrl}/api/jobs/actions`, {

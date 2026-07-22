@@ -18,7 +18,7 @@ import {
 } from "./jobActions";
 import { clampNumber } from "./utils";
 
-const MAX_JOB_ACTION_JOB_IDS = 100;
+const MAX_JOB_ACTION_JOB_IDS = 500;
 
 const jobActionLabel: Record<JobAction, string> = {
   move_to_ready: "Moving jobs to Ready...",
