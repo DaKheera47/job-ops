@@ -174,7 +174,22 @@ type ClaudeCliResultEnvelope = {
 
 function parseCliJsonOutput(stdout: string): { response: string } {
   const trimmed = stdout.trim();
-  const parsed = JSON.parse(trimmed) as ClaudeCliResultEnvelope;
+  let parsed: ClaudeCliResultEnvelope | undefined;
+  try {
+    parsed = JSON.parse(trimmed) as ClaudeCliResultEnvelope;
+  } catch {
+    const lines = trimmed.split(/\r?\n/);
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const candidate = JSON.parse(lines[index]) as ClaudeCliResultEnvelope;
+      if (candidate.type === "result") {
+        parsed = candidate;
+        break;
+      }
+    }
+  }
+  if (!parsed) {
+    throw new Error("Claude CLI stream output did not include a result event.");
+  }
   if (parsed.is_error) {
     throw new Error(
       toNonEmptyString(parsed.result) ||
@@ -205,11 +220,17 @@ async function runClaudeCliOnce(args: {
   const bin = process.env.CLAUDE_CLI_BIN?.trim() || "claude";
   const procArgs: string[] = ["-p"];
   if (args.inputFormat === "stream-json") {
-    procArgs.push("--input-format", "stream-json");
+    procArgs.push(
+      "--input-format",
+      "stream-json",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+    );
   } else {
-    procArgs.push(args.input);
+    procArgs.push(args.input, "--output-format", "json");
   }
-  procArgs.push("--output-format", "json", "--permission-mode", "plan");
+  procArgs.push("--permission-mode", "plan");
   const cliModel = args.model?.trim();
   if (cliModel) {
     procArgs.push("--model", cliModel);

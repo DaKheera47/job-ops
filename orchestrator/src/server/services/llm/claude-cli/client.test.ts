@@ -152,12 +152,19 @@ describe("ClaudeCliClient", () => {
       stdout.emit(
         "data",
         Buffer.from(
-          JSON.stringify({
-            type: "result",
-            subtype: "success",
-            is_error: false,
-            structured_output: { value: "from-image" },
-          }),
+          [
+            JSON.stringify({ type: "system", subtype: "init" }),
+            JSON.stringify({
+              type: "assistant",
+              message: { content: [{ type: "text", text: "Working" }] },
+            }),
+            JSON.stringify({
+              type: "result",
+              subtype: "success",
+              is_error: false,
+              structured_output: { value: "from-image" },
+            }),
+          ].join("\n"),
         ),
       );
       child.emit("close", 0);
@@ -169,6 +176,8 @@ describe("ClaudeCliClient", () => {
     const args = spawnFn.mock.calls[0]?.[1] as string[] | undefined;
     expect(args).toContain("--input-format");
     expect(args).toContain("stream-json");
+    expect(args?.[args.indexOf("--output-format") + 1]).toBe("stream-json");
+    expect(args).toContain("--verbose");
 
     const stdinInput = stdin.end.mock.calls[0]?.[0] as string | undefined;
     const payload = JSON.parse(stdinInput?.trim() || "null") as {
