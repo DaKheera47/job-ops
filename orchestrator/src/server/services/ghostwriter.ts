@@ -74,6 +74,8 @@ const CHAT_RESPONSE_SCHEMA: JsonSchemaDefinition = {
     properties: {
       response: {
         type: "string",
+        description:
+          "The direct user-facing reply in plain text or Markdown. Do not serialize JSON into this string unless the user explicitly asks for JSON.",
       },
     },
     required: ["response"],

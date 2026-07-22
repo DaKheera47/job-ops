@@ -703,6 +703,11 @@ describe("ghostwriter service", () => {
         name: "form.png",
       },
     ]);
+    expect(
+      mocks.llmCallJson.mock.calls[0][0].jsonSchema.schema.properties.response,
+    ).toMatchObject({
+      description: expect.stringContaining("Do not serialize JSON"),
+    });
   });
 
   it("rejects screenshots before running when the selected model is text-only", async () => {
