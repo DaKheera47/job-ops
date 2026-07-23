@@ -157,8 +157,10 @@ const completeStatus: OnboardingStatusResponse = {
   })),
 };
 
-function mockFlow() {
-  vi.mocked(useOnboardingFlow).mockReturnValue({
+function mockFlow(
+  overrides: Partial<ReturnType<typeof useOnboardingFlow>> = {},
+) {
+  const flow = {
     demoMode: false,
     handleImportResumeFile: vi.fn(),
     handleRxresumeSelfHostedChange: vi.fn(),
@@ -178,7 +180,10 @@ function mockFlow() {
     setResumeSetupMode: vi.fn(),
     setValue: vi.fn(),
     watch: vi.fn((key: string) => (key === "rxresumeBaseResumeId" ? null : "")),
-  } as unknown as ReturnType<typeof useOnboardingFlow>);
+    ...overrides,
+  } as unknown as ReturnType<typeof useOnboardingFlow>;
+  vi.mocked(useOnboardingFlow).mockReturnValue(flow);
+  return flow;
 }
 
 async function renderPage() {
@@ -310,6 +315,36 @@ describe("OnboardingPage", () => {
       { result: "success" },
     );
     expect(await screen.findByText("Resume importer")).toBeInTheDocument();
+  });
+
+  it("checks the Reactive Resume connection before loading templates", async () => {
+    const status: OnboardingStatusResponse = {
+      ...resumeStatus,
+      requirements: resumeStatus.requirements.map((requirement) =>
+        requirement.id === "resume"
+          ? {
+              ...requirement,
+              primaryAction: "connect_rxresume",
+              details: undefined,
+            }
+          : requirement,
+      ),
+    };
+    vi.mocked(useOnboardingStatus).mockReturnValue({
+      status,
+      complete: false,
+      nextRequirementId: "resume",
+      requirements: status.requirements,
+      checking: false,
+      error: null,
+      refetch: vi.fn(),
+    } as ReturnType<typeof useOnboardingStatus>);
+    const flow = mockFlow({ resumeSetupMode: "rxresume" });
+
+    await renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /check connection/i }));
+
+    expect(flow.handleSaveRxresume).toHaveBeenCalledOnce();
   });
 
   it("shows parsed resume details and confirms the exact source", async () => {

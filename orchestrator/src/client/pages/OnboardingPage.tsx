@@ -834,12 +834,21 @@ function ResumeStep({
           onRxresumeUrlChange={(value) => flow.setValue("rxresumeUrl", value)}
           onTemplateResumeChange={flow.handleTemplateResumeChange}
         />
-        <div className="border-t pt-6">
-          <Button type="button" variant="ghost" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-        </div>
+        {flow.resumeSetupMode === "rxresume" ? (
+          <StepActions
+            onBack={onBack}
+            onContinue={() => void flow.handleSaveRxresume()}
+            busy={flow.isBusy}
+            label="Check connection"
+          />
+        ) : (
+          <div className="border-t pt-6">
+            <Button type="button" variant="ghost" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </div>
+        )}
       </StepShell>
     );
   }
