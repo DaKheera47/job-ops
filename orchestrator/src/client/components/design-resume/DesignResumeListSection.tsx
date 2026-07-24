@@ -131,10 +131,9 @@ const projectModeOptions: Array<{
 }> = [
   {
     mode: "manual",
-    label: "Don't select",
-    shortLabel: "Don't select",
-    tooltip:
-      "Do not select this project, meaning it'll never show in tailored resumes",
+    label: "Don't include",
+    shortLabel: "Don't include",
+    tooltip: "Never send this project to AI or show it in tailored resumes",
     icon: EyeOff,
     activeClassName: "border-border/70 bg-muted/55 text-muted-foreground",
   },
@@ -148,10 +147,10 @@ const projectModeOptions: Array<{
   },
   {
     mode: "must-include",
-    label: "Always selected",
-    shortLabel: "Always",
+    label: "Must include",
+    shortLabel: "Must include",
     tooltip:
-      "Always include this project in tailored resumes, regardless of the job description",
+      "Always send this project to relevant AI contexts and include it in tailored resumes",
     icon: LockKeyhole,
     activeClassName: "border-amber-200/35 bg-amber-300/12 text-amber-200",
   },
@@ -521,12 +520,12 @@ export function DesignResumeListSectionContent({
                 asChild
                 content={
                   <>
-                    Set the maximum number of projects that Job Tailoring can
-                    include in tailored resumes. <br />
-                    <br /> Always-selected projects count toward this limit.{" "}
+                    Set the desired number of projects in tailored resumes.{" "}
+                    <br />
+                    <br /> Must-include projects count toward this target.{" "}
                     <br />
                     <br /> Setting it to 0 prevents automatic project selection
-                    unless projects are marked Always.
+                    unless projects are marked Must include.
                   </>
                 }
                 contentClassName="max-w-96 text-center"
@@ -535,7 +534,7 @@ export function DesignResumeListSectionContent({
                   htmlFor={maxProjectsInputId}
                   className="text-xs font-medium text-muted-foreground w-full"
                 >
-                  Maximum projects in Tailored Resumes
+                  Target projects in tailored resumes
                 </label>
               </Tip>
 

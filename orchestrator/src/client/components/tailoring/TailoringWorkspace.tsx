@@ -2,6 +2,7 @@ import * as api from "@client/api";
 import { useProfile } from "@client/hooks/useProfile";
 import { useSettings } from "@client/hooks/useSettings";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type { Job } from "@shared/types.js";
 import {
   Check,
@@ -56,7 +57,12 @@ interface TailoringBaseline {
 }
 
 type AutosaveStatus = "saved" | "unsaved" | "saving" | "error";
-type TailoringGenerateTarget = "all" | "summary" | "headline" | "skills";
+type TailoringGenerateTarget =
+  | "all"
+  | "summary"
+  | "headline"
+  | "skills"
+  | "projects";
 
 const AutosaveStatusIcon: React.FC<{ status: AutosaveStatus }> = ({
   status,
@@ -142,7 +148,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     applyIncomingDraft,
     markSavedSnapshot,
     markSavedJob,
-    handleToggleProject,
+    replaceSelectedProjects,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
     handleRemoveSkillGroup,
@@ -374,7 +380,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
         const updatedJob = await api.summarizeJob(props.job.id, {
           force: true,
-          fields: target === "all" ? undefined : [target],
+          fields:
+            target === "all" ? ["summary", "headline", "skills"] : [target],
         });
         applyIncomingDraft(updatedJob);
         setAiBaseline(toBaselineFromJob(updatedJob));
@@ -408,6 +415,39 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const handleGenerateSkills = useCallback(async () => {
     await handleGenerateTailoring("skills");
   }, [handleGenerateTailoring]);
+
+  const handleGenerateProjects = useCallback(async () => {
+    await handleGenerateTailoring("projects");
+  }, [handleGenerateTailoring]);
+
+  const handleToggleProject = useCallback(
+    (id: string) => {
+      const resumeProjects = settings?.resumeProjects.value;
+      if (!resumeProjects) return;
+      const resolution = resolveResumeProjectSelection({
+        catalog,
+        resumeProjects,
+        selectedProjectIds: [...selectedIds],
+      });
+      if (!resolution.aiSelectableIds.includes(id)) return;
+
+      const mustIncludeSet = new Set(resolution.mustIncludeIds);
+      const next = resolution.effectiveSelectedIds.filter(
+        (projectId) => !mustIncludeSet.has(projectId),
+      );
+      const index = next.indexOf(id);
+      if (index >= 0) next.splice(index, 1);
+      else if (resolution.effectiveSelectedIds.length < resolution.targetCount)
+        next.push(id);
+      replaceSelectedProjects(next);
+    },
+    [
+      catalog,
+      replaceSelectedProjects,
+      selectedIds,
+      settings?.resumeProjects.value,
+    ],
+  );
 
   const handleGeneratePdf = useCallback(async () => {
     try {
@@ -485,11 +525,13 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         generateTarget === "skills"
           ? generateTarget
           : null,
+      isGeneratingProjects: generateTarget === "projects",
       openSkillGroupId,
       disableInputs,
       onGenerateSummary: handleGenerateSummary,
       onGenerateHeadline: handleGenerateHeadline,
       onGenerateSkills: handleGenerateSkills,
+      onGenerateProjects: handleGenerateProjects,
       onSummaryChange: setSummary,
       onHeadlineChange: setHeadline,
       onUndoSummary: handleUndoSummary,
@@ -538,6 +580,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       handleGenerateSummary,
       handleGenerateHeadline,
       handleGenerateSkills,
+      handleGenerateProjects,
       setSummary,
       setHeadline,
       handleUndoSummary,

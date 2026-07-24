@@ -21,6 +21,7 @@ const SETTINGS_INVALIDATION_KEYS = new Set<SettingKey>([
   "rxresumeBaseResumeId",
   "rxresumeUrl",
   "rxresumeApiKey",
+  "resumeProjects",
 ]);
 
 function onlyInvalidatesTypstTheme(

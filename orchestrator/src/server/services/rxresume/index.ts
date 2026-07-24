@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { getSetting } from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
-import { pickProjectIdsForJob } from "@server/services/projectSelection";
 import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
 import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
   getResumeSchemaValidationMessage,
@@ -355,15 +355,6 @@ export async function validateResumeSchema(
   };
 }
 
-function parseSelectedProjectIds(selectedProjectIds?: string | null): string[] {
-  if (selectedProjectIds === null || selectedProjectIds === undefined)
-    return [];
-  return selectedProjectIds
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 export function extractProjectsFromResume(resumeData: unknown): {
   mode: "v5";
   catalog: ResumeProjectCatalogItem[];
@@ -406,36 +397,16 @@ export async function prepareTailoredResumeForPdf(args: {
     tailoredContent: args.tailoredContent,
   });
 
-  const { catalog, selectionItems } = extractProjectsFromResumeV5(workingCopy);
-
-  let selectedIds = parseSelectedProjectIds(args.selectedProjectIds);
-
-  if (
-    args.selectedProjectIds === null ||
-    args.selectedProjectIds === undefined
-  ) {
-    const overrideResumeProjectsRaw = await getSetting("resumeProjects");
-    const { resumeProjects } = resolveResumeProjectsSettings({
-      catalog,
-      overrideRaw: overrideResumeProjectsRaw,
-    });
-
-    const locked = resumeProjects.lockedProjectIds;
-    const desiredCount = Math.max(
-      0,
-      resumeProjects.maxProjects - locked.length,
-    );
-    const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-    const eligibleProjects = selectionItems.filter((p) =>
-      eligibleSet.has(p.id),
-    );
-    const picked = await pickProjectIdsForJob({
-      jobDescription: args.jobDescription,
-      eligibleProjects,
-      desiredCount,
-    });
-    selectedIds = [...locked, ...picked];
-  }
+  const { catalog } = extractProjectsFromResumeV5(workingCopy);
+  const { resumeProjects } = resolveResumeProjectsSettings({
+    catalog,
+    overrideRaw: await getSetting("resumeProjects"),
+  });
+  const selectedIds = resolveResumeProjectSelection({
+    catalog,
+    resumeProjects,
+    selectedProjectIds: args.selectedProjectIds,
+  }).effectiveSelectedIds;
 
   applyProjectVisibility({
     resumeData: workingCopy,

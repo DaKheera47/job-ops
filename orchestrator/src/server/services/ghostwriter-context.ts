@@ -36,6 +36,7 @@ import {
   getEffectivePromptTemplate,
   renderPromptTemplate,
 } from "./prompt-templates";
+import { filterProfileProjectsForAi } from "./resumeProjects";
 import {
   getWritingStyle,
   stripLanguageDirectivesFromConstraints,
@@ -392,7 +393,7 @@ export async function buildJobChatPromptContext(
 
   let profile: ResumeProfile = {};
   try {
-    profile = await getProfile();
+    profile = await filterProfileProjectsForAi(await getProfile());
   } catch (error) {
     logger.warn("Failed to load profile for job chat context", {
       jobId,

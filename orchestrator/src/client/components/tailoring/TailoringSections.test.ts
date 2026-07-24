@@ -58,7 +58,7 @@ describe("getNoSelectedProjectsInfo", () => {
     ).toBe("no-project-slots");
   });
 
-  it("explains when must-include projects fill all automatic slots", () => {
+  it("treats must-include projects as selected even when the job selection is empty", () => {
     expect(
       getNoSelectedProjectsInfo({
         catalog,
@@ -69,8 +69,8 @@ describe("getNoSelectedProjectsInfo", () => {
           lockedProjectIds: ["p1", "p2"],
           aiSelectableProjectIds: [],
         }),
-      })?.reason,
-    ).toBe("no-available-slots");
+      }),
+    ).toBeNull();
   });
 
   it("explains when no projects are AI-selectable", () => {
@@ -81,7 +81,7 @@ describe("getNoSelectedProjectsInfo", () => {
         selectedIds: new Set(),
         resumeProjectsSettings: settings({ aiSelectableProjectIds: [] }),
       })?.reason,
-    ).toBe("no-ai-selectable-projects");
+    ).toBe("selection-empty");
   });
 
   it("explains when automatic selection produced no saved selection", () => {

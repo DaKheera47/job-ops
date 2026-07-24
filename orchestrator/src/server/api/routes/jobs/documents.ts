@@ -31,7 +31,12 @@ import {
 
 export const jobsDocumentsRouter = Router();
 
-const tailoringGenerateFields = ["summary", "headline", "skills"] as const;
+const tailoringGenerateFields = [
+  "summary",
+  "headline",
+  "skills",
+  "projects",
+] as const;
 type TailoringGenerateField = (typeof tailoringGenerateFields)[number];
 
 function encodeContentDispositionFileName(value: string): string {

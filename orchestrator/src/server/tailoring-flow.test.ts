@@ -38,6 +38,11 @@ describe("Tailoring Flow", () => {
       pdfRenderer: "latex",
       typstTheme: "classic",
       rxresumeBaseResumeId: null,
+      resumeProjects: {
+        maxProjects: 3,
+        lockedProjectIds: [],
+        aiSelectableProjectIds: [],
+      },
     });
     vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(
       {} as any,
