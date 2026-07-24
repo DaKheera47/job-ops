@@ -175,12 +175,14 @@ Defaults and constraints:
 - JobOps uses the selected RxResume resume as the source of truth for import and project data
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
-- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
+- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `rxresumeBaseResumeId`, RxResume URL/key, or resume project policy) auto-queues regeneration for ready jobs that currently use system-generated PDFs
 - Select a template/base resume
 - Configure project selection behavior:
-  - Max projects
-  - Must-include projects
-  - AI-selectable projects
+  - Target project count
+  - **Must include**: always available to AI and always included in tailored resumes
+  - **AI can select**: available to AI and to per-job automatic/manual selection
+  - **Don't include**: excluded from AI prompts and tailored resumes
+- The target cannot be lower than the Must-include count. Automatic selection fills available slots; manual selection may use fewer but cannot exceed the target.
 - JobOps briefly caches successful Reactive Resume resume data to reduce repeated API calls across settings, profile, and PDF flows
 
 ### Tracer Links

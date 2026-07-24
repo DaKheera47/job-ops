@@ -15,6 +15,7 @@ import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import { renderPromptTemplate } from "./prompt-templates";
+import { filterProfileProjectsForAi } from "./resumeProjects";
 import { getEffectiveSettings } from "./settings";
 
 export class LlmNotConfiguredError extends Error {
@@ -250,15 +251,16 @@ export async function scoreJobSuitability(
   profile: Record<string, unknown>,
   options: { scoringInstructions?: string } = {},
 ): Promise<SuitabilityResult> {
-  const [model, settings] = await Promise.all([
+  const [model, settings, aiProfile] = await Promise.all([
     resolveLlmModel("scoring"),
     getEffectiveSettings(),
+    filterProfileProjectsForAi(profile),
   ]);
   const scoringInstructions = Object.hasOwn(options, "scoringInstructions")
     ? (options.scoringInstructions ?? "")
     : (settings.scoringInstructions?.value ?? "");
 
-  const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile), {
+  const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(aiProfile), {
     instructions: scoringInstructions,
     promptTemplate:
       settings.scoringPromptTemplate?.value ??

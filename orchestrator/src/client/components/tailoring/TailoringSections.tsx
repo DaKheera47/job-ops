@@ -1,4 +1,5 @@
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type {
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
@@ -15,7 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tip } from "@/client/components/Tip";
 import {
   Accordion,
@@ -44,11 +45,13 @@ interface TailoringSectionsProps {
   tracerEnableBlockedReason: string | null;
   tracerReadinessChecking?: boolean;
   generatingSection: "summary" | "headline" | "skills" | null;
+  isGeneratingProjects: boolean;
   openSkillGroupId: string;
   disableInputs: boolean;
   onGenerateSummary: () => void;
   onGenerateHeadline: () => void;
   onGenerateSkills: () => void;
+  onGenerateProjects: () => void;
   onSummaryChange: (value: string) => void;
   onHeadlineChange: (value: string) => void;
   onUndoSummary: () => void;
@@ -90,10 +93,7 @@ type NoSelectedProjectsReason =
   | "settings-loading"
   | "no-projects"
   | "no-project-slots"
-  | "no-available-slots"
-  | "no-ai-selectable-projects"
-  | "selection-empty"
-  | "unknown";
+  | "selection-empty";
 
 type NoSelectedProjectsInfoCopy = {
   reason: NoSelectedProjectsReason;
@@ -170,8 +170,6 @@ export function getNoSelectedProjectsInfo(args: {
   resumeProjectsSettings?: ResumeProjectsSettings | null;
   isResumeProjectsSettingsLoading?: boolean;
 }): NoSelectedProjectsInfoCopy | null {
-  if (args.selectedIds.size > 0) return null;
-
   if (args.isCatalogLoading) {
     return {
       reason: "projects-loading",
@@ -202,48 +200,25 @@ export function getNoSelectedProjectsInfo(args: {
   const settings = args.resumeProjectsSettings;
   if (!settings) {
     return {
-      reason: "unknown",
-      title: "No projects selected",
-      description:
-        "No projects are saved for this job yet. The generated PDF will not include tailored project choices until you select projects below or run automatic generation again.",
+      reason: "settings-loading",
+      title: "Project settings are still loading",
+      description: "Project choices will appear when settings finish loading.",
     };
   }
 
-  const catalogIds = new Set(args.catalog.map((project) => project.id));
-  const lockedProjectIds = settings.lockedProjectIds.filter((id) =>
-    catalogIds.has(id),
-  );
-  const lockedSet = new Set(lockedProjectIds);
-  const aiSelectableProjectIds = settings.aiSelectableProjectIds
-    .filter((id) => catalogIds.has(id))
-    .filter((id) => !lockedSet.has(id));
-  const maxProjects = Math.max(0, Math.floor(settings.maxProjects));
-  const availableSlots = Math.max(0, maxProjects - lockedProjectIds.length);
+  const resolution = resolveResumeProjectSelection({
+    catalog: args.catalog,
+    resumeProjects: settings,
+    selectedProjectIds: [...args.selectedIds],
+  });
+  if (resolution.effectiveSelectedIds.length > 0) return null;
 
-  if (maxProjects === 0) {
+  if (resolution.targetCount === 0) {
     return {
       reason: "no-project-slots",
       title: "No project slots available",
       description:
-        "Project settings currently allow 0 projects. Increase the max project count or select projects manually before generating the PDF.",
-    };
-  }
-
-  if (availableSlots === 0) {
-    return {
-      reason: "no-available-slots",
-      title: "No AI selection slots available",
-      description:
-        "Your max project count is already filled by must-include projects, so automatic selection cannot add more projects. Select projects manually or adjust the max project count.",
-    };
-  }
-
-  if (aiSelectableProjectIds.length === 0) {
-    return {
-      reason: "no-ai-selectable-projects",
-      title: "No AI-selectable projects",
-      description:
-        "Your resume has projects, but none are available for automatic selection. Select projects manually here, or mark projects as AI-selectable in resume project settings.",
+        "Project settings currently allow 0 projects. Increase the target to include projects.",
     };
   }
 
@@ -251,7 +226,9 @@ export function getNoSelectedProjectsInfo(args: {
     reason: "selection-empty",
     title: "No projects selected",
     description:
-      "Automatic tailoring created the draft, but no projects were selected for this job. Choose the projects to include below before generating the PDF.",
+      resolution.aiSelectableIds.length === 0
+        ? "No projects are marked Must include or AI can select in Settings."
+        : "Choose projects below or use Pick again with AI.",
   };
 }
 
@@ -333,11 +310,13 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   tracerEnableBlockedReason,
   tracerReadinessChecking = false,
   generatingSection,
+  isGeneratingProjects,
   openSkillGroupId,
   disableInputs,
   onGenerateSummary,
   onGenerateHeadline,
   onGenerateSkills,
+  onGenerateProjects,
   onSummaryChange,
   onHeadlineChange,
   onUndoSummary,
@@ -375,7 +354,21 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
       : skillsDraft.some(skillGroupNeedsReview)
         ? "review"
         : "ready";
-  const projectsState: SectionState = selectedIds.size > 0 ? "ready" : "none";
+  const projectResolution = useMemo(
+    () =>
+      resumeProjectsSettings
+        ? resolveResumeProjectSelection({
+            catalog,
+            resumeProjects: resumeProjectsSettings,
+            selectedProjectIds: [...selectedIds],
+          })
+        : null,
+    [catalog, resumeProjectsSettings, selectedIds],
+  );
+  const selectedProjectCount =
+    projectResolution?.effectiveSelectedIds.length ?? 0;
+  const projectsState: SectionState =
+    selectedProjectCount > 0 ? "ready" : "none";
   const noSelectedProjectsInfo = getNoSelectedProjectsInfo({
     catalog,
     isCatalogLoading,
@@ -710,7 +703,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
               title="Selected Projects"
               state={projectsState}
               badgeLabel={
-                selectedIds.size > 0 ? String(selectedIds.size) : undefined
+                selectedProjectCount > 0
+                  ? String(selectedProjectCount)
+                  : undefined
               }
               badgeAdornment={
                 noSelectedProjectsInfo ? (
@@ -720,13 +715,33 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
             />
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
-            <ProjectSelector
-              catalog={catalog}
-              selectedIds={selectedIds}
-              onToggle={onToggleProject}
-              maxProjects={3}
-              disabled={disableInputs}
-            />
+            {projectResolution ? (
+              <>
+                <div className="mb-2 flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={actionButtonClass}
+                    onClick={onGenerateProjects}
+                    disabled={disableInputs}
+                  >
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    {isGeneratingProjects ? "Picking..." : "Pick again with AI"}
+                  </Button>
+                </div>
+                <ProjectSelector
+                  catalog={catalog}
+                  resolution={projectResolution}
+                  onToggle={onToggleProject}
+                  disabled={disableInputs}
+                />
+              </>
+            ) : (
+              <p className="py-3 text-xs text-muted-foreground">
+                Project settings are still loading.
+              </p>
+            )}
           </AccordionContent>
         </AccordionItem>
       )}

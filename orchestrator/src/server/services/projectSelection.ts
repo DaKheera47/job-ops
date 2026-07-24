@@ -39,36 +39,39 @@ export async function pickProjectIdsForJob(args: {
     return [];
   }
 
-  const model = await resolveLlmModel("projectSelection");
   const jobDescription = stripHtmlTags(args.jobDescription);
-
-  const prompt = buildProjectSelectionPrompt({
-    jobDescription,
-    projects: args.eligibleProjects,
-    desiredCount,
-  });
-
-  const llm = await createConfiguredLlmService("projectSelection");
-  const result = await llm.callJson<{ selectedProjectIds: string[] }>({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    jsonSchema: PROJECT_SELECTION_SCHEMA,
-  });
-
-  if (!result.success) {
-    const fallback = fallbackPickProjectIds(
+  let selectedProjectIds: unknown[] = [];
+  try {
+    const [model, llm] = await Promise.all([
+      resolveLlmModel("projectSelection"),
+      createConfiguredLlmService("projectSelection"),
+    ]);
+    const result = await llm.callJson<{ selectedProjectIds: string[] }>({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: buildProjectSelectionPrompt({
+            jobDescription,
+            projects: args.eligibleProjects,
+            desiredCount,
+          }),
+        },
+      ],
+      jsonSchema: PROJECT_SELECTION_SCHEMA,
+    });
+    selectedProjectIds =
+      result.success && Array.isArray(result.data?.selectedProjectIds)
+        ? result.data.selectedProjectIds
+        : [];
+  } catch {
+    return fallbackPickProjectIds(
       jobDescription,
       args.eligibleProjects,
       desiredCount,
     );
-    return fallback;
   }
 
-  const selectedProjectIds = Array.isArray(result.data?.selectedProjectIds)
-    ? result.data.selectedProjectIds
-    : [];
-
-  // Validate and dedupe the returned IDs
   const unique: string[] = [];
   const seen = new Set<string>();
   for (const id of selectedProjectIds) {
@@ -82,13 +85,13 @@ export async function pickProjectIdsForJob(args: {
     if (unique.length >= desiredCount) break;
   }
 
-  if (unique.length === 0) {
-    const fallback = fallbackPickProjectIds(
-      jobDescription,
-      args.eligibleProjects,
-      desiredCount,
-    );
-    return fallback;
+  for (const id of fallbackPickProjectIds(
+    jobDescription,
+    args.eligibleProjects,
+    desiredCount,
+  )) {
+    if (!seen.has(id)) unique.push(id);
+    if (unique.length >= desiredCount) break;
   }
 
   return unique;
@@ -111,7 +114,7 @@ function buildProjectSelectionPrompt(args: {
 You are selecting which projects to include on a resume for a specific job.
 
 Rules:
-- Choose up to ${args.desiredCount} project IDs.
+- Rank the best ${args.desiredCount} project IDs.
 - Only choose IDs from the provided list.
 - Prefer projects that strongly match the job description keywords/tech stack.
 - Prefer projects that signal impact and real-world engineering.

@@ -249,8 +249,41 @@ describe("AI Service Resilience", () => {
         desiredCount: 2,
       });
 
-      // Should strip p999 and only return p1
-      expect(result).toEqual(["p1"]);
+      // Invalid IDs are removed and deterministic fallback fills the slot.
+      expect(result).toEqual(["p1", "p2"]);
+    });
+
+    it("tops up a short AI ranking deterministically", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ selectedProjectIds: ["p2"] }),
+              },
+            },
+          ],
+        }),
+      } as any);
+
+      const result = await pickProjectIdsForJob({
+        jobDescription: "React dev",
+        eligibleProjects: [
+          ...mockProjects,
+          {
+            id: "p3",
+            name: "Project 3",
+            description: "Other",
+            summaryText: "Other",
+            date: "2024",
+            isVisibleInBase: false,
+          },
+        ],
+        desiredCount: 3,
+      });
+
+      expect(result).toEqual(["p2", "p1", "p3"]);
     });
   });
 });

@@ -368,7 +368,6 @@ vi.mock("./design-resume", () => ({
 
 vi.mock("./rxresume", async () => {
   const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
-  const projectSelectionModule = await import("./projectSelection");
   return {
     importResume: vi.fn().mockResolvedValue("temp-resume-id"),
     exportResumePdf: vi.fn().mockResolvedValue({
@@ -394,21 +393,13 @@ vi.mock("./rxresume", async () => {
           data.basics.headline = args.tailoredContent.headline;
         }
 
-        let selected = (args.selectedProjectIds as string | null | undefined)
-          ?.split(",")
+        const selected = (
+          (args.selectedProjectIds as string | null | undefined) ?? ""
+        )
+          .split(",")
           .map((s) => s.trim())
-          .filter(Boolean);
-        if (!selected) {
-          selected = await projectSelectionModule.pickProjectIdsForJob({
-            jobDescription: args.jobDescription,
-            eligibleProjects: [
-              { id: "p1", name: "Project 1" },
-              { id: "p2", name: "Project 2" },
-            ],
-            desiredCount: 3,
-          } as any);
-        }
-        const selectedSet = new Set(selected);
+          .filter((id) => id === "p2");
+        const selectedSet = new Set(["p1", ...selected]);
         for (const item of data.sections?.projects?.items ?? []) {
           item.hidden = !selectedSet.has(item.id);
         }
@@ -494,7 +485,7 @@ describe("PDF Service Tailoring Logic", () => {
     const p2 = projects.find((p: any) => p.id === "p2");
 
     expect(p2.hidden).toBe(false);
-    expect(p1.hidden).toBe(true);
+    expect(p1.hidden).toBe(false);
 
     // 3. Verify Summary Update
     const summary = savedResumeJson.summary.content;
@@ -519,18 +510,15 @@ describe("PDF Service Tailoring Logic", () => {
     const savedResumeJson = mockResumeRenderer.getLastResumeJson();
     const projects = savedResumeJson.sections.projects.items;
 
-    expect(projects.find((p: any) => p.id === "p1").hidden).toBe(true);
+    expect(projects.find((p: any) => p.id === "p1").hidden).toBe(false);
     expect(projects.find((p: any) => p.id === "p2").hidden).toBe(true);
     expect(savedResumeJson.sections.projects.hidden).toBe(false);
   });
 
-  it("should fall back to AI selection if selectedProjectIds is null/undefined", async () => {
-    // Setup AI selection mock for this test
-    vi.mocked(projectSelection.pickProjectIdsForJob).mockResolvedValue(["p1"]);
-
+  it("resolves must-include projects without AI when selection is absent", async () => {
     await generatePdf("job-3", {}, "desc", "base.json", undefined);
 
-    expect(projectSelection.pickProjectIdsForJob).toHaveBeenCalled();
+    expect(projectSelection.pickProjectIdsForJob).not.toHaveBeenCalled();
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
     const savedResumeJson = mockResumeRenderer.getLastResumeJson();

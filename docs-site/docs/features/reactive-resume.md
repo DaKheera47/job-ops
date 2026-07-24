@@ -67,17 +67,20 @@ Each project is identified by:
 
 ### Project selection controls
 
-The Settings UI supports 3 controls:
+The Settings UI supports 4 project modes/controls:
 
-- **Must Include**: always include these projects.
-- **AI Selectable**: pool of projects AI can pick from.
-- **Max Projects**: final cap for included projects.
+- **Must include**: always sent to relevant AI contexts and always shown in tailored resumes.
+- **AI can select**: sent to AI and available for automatic or manual job selection.
+- **Don't include**: never sent to AI and never shown in tailored resumes.
+- **Target**: desired final project count; JobOps keeps it at or above the Must-include count.
 
 At generation time:
 
 1. Must-include projects are added first.
-2. AI picks up to remaining slots from AI-selectable projects.
-3. Final visible projects are applied to the generated resume.
+2. A job's valid AI-selectable choices fill the remaining slots up to the target.
+3. Excluded, deleted, stale, and duplicate IDs are removed.
+
+Automatic selection fills every available slot. Manual selection may use fewer slots, but cannot exceed the target. PDF generation never makes a hidden project-selection AI call; it resolves the saved job choices against the current global policy, so the PDF matches the Tailoring editor.
 
 ## Setup and configuration
 
@@ -131,10 +134,10 @@ After that import, JobOps reads resume context locally by default.
 
 In **Settings → Reactive Resume**:
 
-1. Set `Max projects`.
+1. Set the project `Target`.
 2. Mark projects as **Must Include** where needed.
-3. Mark remaining projects as **AI selectable**.
-4. Save settings.
+3. Mark projects as **AI can select** or **Don't include**.
+4. Save settings. Existing generated PDFs affected by the policy are marked stale and queued for regeneration.
 
 ## Runtime behavior
 
@@ -151,6 +154,8 @@ High-level flow:
    - RxResume export
    - Local LaTeX with `tectonic`
    - Local Typst with `typst`
+
+In the Tailoring editor, Must-include projects are checked and locked, excluded projects are absent, and selectable projects can be toggled until the target is filled. Use **Pick again with AI** to replace only the selectable portion. **Generate all** updates summary, headline, and skills without replacing manual project choices.
 
 ### Resume-data caching
 

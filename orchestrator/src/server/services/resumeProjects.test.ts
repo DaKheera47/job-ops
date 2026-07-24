@@ -1,6 +1,9 @@
 import type { ResumeProjectCatalogItem } from "@shared/types";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as rp from "./resumeProjects";
+
+const settingsMocks = vi.hoisted(() => ({ getSetting: vi.fn() }));
+vi.mock("@server/repositories/settings", () => settingsMocks);
 
 describe("Resume Projects Logic", () => {
   describe("stripHtml", () => {
@@ -192,5 +195,49 @@ describe("Resume Projects Logic", () => {
       expect(result.overrideResumeProjects).toBeNull();
       expect(result.resumeProjects.lockedProjectIds).toEqual(["p1"]);
     });
+  });
+
+  it("keeps project exclusions scoped to the current workspace settings", async () => {
+    const profile = {
+      sections: {
+        projects: {
+          items: ["shared", "tenant-a-only", "tenant-b-only"].map((id) => ({
+            id,
+            name: id,
+            description: "",
+            summary: "",
+            date: "",
+            visible: true,
+          })),
+        },
+      },
+    };
+    settingsMocks.getSetting
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          maxProjects: 2,
+          lockedProjectIds: ["shared"],
+          aiSelectableProjectIds: ["tenant-a-only"],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          maxProjects: 2,
+          lockedProjectIds: ["shared"],
+          aiSelectableProjectIds: ["tenant-b-only"],
+        }),
+      );
+
+    const tenantA = await rp.filterProfileProjectsForAi(profile);
+    const tenantB = await rp.filterProfileProjectsForAi(profile);
+
+    expect(tenantA.sections?.projects?.items?.map(({ id }) => id)).toEqual([
+      "shared",
+      "tenant-a-only",
+    ]);
+    expect(tenantB.sections?.projects?.items?.map(({ id }) => id)).toEqual([
+      "shared",
+      "tenant-b-only",
+    ]);
   });
 });
