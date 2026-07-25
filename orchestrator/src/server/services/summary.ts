@@ -1,5 +1,5 @@
 /**
- * Service for generating tailored resume content (Summary, Headline, Skills).
+ * Service for generating source-linked tailored resume content.
  */
 
 import { logger } from "@infra/logger";
@@ -16,23 +16,37 @@ import {
   renderPromptTemplate,
 } from "./prompt-templates";
 import {
+  extractTailoringSource,
+  type FullTailoredData,
+  validateTailoringData,
+} from "./tailored-resume";
+import {
   getWritingStyle,
   stripKeywordLimitFromConstraints,
   stripLanguageDirectivesFromConstraints,
   stripWordLimitFromConstraints,
 } from "./writing-style";
 
-export interface TailoredData {
-  summary: string;
-  headline: string;
-  skills: Array<{ name: string; keywords: string[] }>;
-}
+export type TailoredData = FullTailoredData;
 
 export interface TailoringResult {
   success: boolean;
   data?: TailoredData;
   error?: string;
 }
+
+const SOURCE_LINKED_REWRITES_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      bullets: { type: "array", items: { type: "string" } },
+    },
+    required: ["id", "bullets"],
+    additionalProperties: false,
+  },
+};
 
 /** JSON schema for resume tailoring response */
 const TAILORING_SCHEMA: JsonSchemaDefinition = {
@@ -68,14 +82,16 @@ const TAILORING_SCHEMA: JsonSchemaDefinition = {
           additionalProperties: false,
         },
       },
+      experience: SOURCE_LINKED_REWRITES_SCHEMA,
+      projects: SOURCE_LINKED_REWRITES_SCHEMA,
     },
-    required: ["headline", "summary", "skills"],
+    required: ["headline", "summary", "skills", "experience", "projects"],
     additionalProperties: false,
   },
 };
 
 /**
- * Generate tailored resume content (summary, headline, skills) for a job.
+ * Generate all source-linked tailored resume fields for a job.
  */
 export async function generateTailoring(
   jobDescription: string,
@@ -92,7 +108,7 @@ export async function generateTailoring(
   );
 
   const llm = await createConfiguredLlmService("tailoring");
-  const result = await llm.callJson<TailoredData>({
+  const result = await llm.callJson<unknown>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: TAILORING_SCHEMA,
@@ -111,21 +127,15 @@ export async function generateTailoring(
     };
   }
 
-  const { summary, headline, skills } = result.data;
-
-  // Basic validation
-  if (!summary || !headline || !Array.isArray(skills)) {
-    logger.warn("AI response missing required tailoring fields", result.data);
+  const validated = validateTailoringData(result.data, profile);
+  if (!validated.data) {
+    logger.warn("AI response failed source-linked tailoring validation", {
+      error: validated.error,
+    });
+    return { success: false, error: validated.error };
   }
 
-  return {
-    success: true,
-    data: {
-      summary: sanitizeText(summary || ""),
-      headline: sanitizeText(headline || ""),
-      skills: skills || [],
-    },
-  };
+  return { success: true, data: validated.data };
 }
 
 /**
@@ -167,29 +177,10 @@ async function buildTailoringPrompt(
       stripKeywordLimitFromConstraints(effectiveConstraints);
   }
 
-  // Extract only needed parts of profile to save tokens
-  const relevantProfile = {
-    basics: {
-      name: profile.basics?.name,
-      label: profile.basics?.label, // Original headline
-      summary: profile.basics?.summary,
-    },
-    skills: profile.sections?.skills,
-    projects: profile.sections?.projects?.items?.map((p) => ({
-      name: p.name,
-      description: p.description,
-      keywords: p.keywords,
-    })),
-    experience: profile.sections?.experience?.items?.map((e) => ({
-      company: e.company,
-      position: e.position,
-      summary: e.summary,
-    })),
-  };
-
+  const relevantProfile = extractTailoringSource(profile);
   const template = await getEffectivePromptTemplate("tailoringPromptTemplate");
 
-  return renderPromptTemplate(template, {
+  const rendered = renderPromptTemplate(template, {
     jobDescription,
     profileJson: JSON.stringify(relevantProfile),
     outputLanguage,
@@ -210,10 +201,15 @@ async function buildTailoringPrompt(
       ? `- Avoid these words or phrases: ${writingStyle.doNotUse}`
       : "",
   });
-}
 
-function sanitizeText(text: string): string {
-  return text
-    .replace(/\*\*[\s\S]*?\*\*/g, "") // remove markdown bold
-    .trim();
+  return `${rendered}
+
+SOURCE-LINKED CLAIM SAFETY (mandatory):
+- Return all five fields: headline, summary, skills, experience, and projects.
+- For experience and projects, use only IDs present in MY PROFILE.
+- Each bullet may use evidence only from that same source item. Never transfer facts between roles or projects.
+- Do not add employers, titles, tools, metrics, scale, ownership, outcomes, or production maturity absent from that source item.
+- Preserve qualifiers such as prototype, pilot, contributor, collaboration, and ongoing work.
+- Do not introduce a numerical token unless it appears in that same source item.
+- Return plain-text bullets; do not return HTML or Markdown.`;
 }

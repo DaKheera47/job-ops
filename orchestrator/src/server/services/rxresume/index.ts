@@ -10,6 +10,10 @@ import {
 import { getActiveTenantId } from "@server/tenancy/context";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
+  applyTailoredResumeArtifact,
+  parseValidTailoredResumeArtifact,
+} from "../tailored-resume";
+import {
   getResumeSchemaValidationMessage,
   safeParseV5ResumeData,
 } from "./schema";
@@ -358,10 +362,14 @@ export async function validateResumeSchema(
 function parseSelectedProjectIds(selectedProjectIds?: string | null): string[] {
   if (selectedProjectIds === null || selectedProjectIds === undefined)
     return [];
-  return selectedProjectIds
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      selectedProjectIds
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export function extractProjectsFromResume(resumeData: unknown): {
@@ -384,6 +392,7 @@ export async function prepareTailoredResumeForPdf(args: {
     summary?: string | null;
     headline?: string | null;
     skills?: TailoredSkillsInput;
+    tailoredResume?: string | null;
   };
   jobDescription: string;
   selectedProjectIds?: string | null;
@@ -400,34 +409,40 @@ export async function prepareTailoredResumeForPdf(args: {
     throw new Error(getResumeSchemaValidationMessage(parsed.error));
   }
 
-  const workingCopy = cloneResumeData(parsed.data as Record<string, unknown>);
+  const baseData = parsed.data as Record<string, unknown>;
+  const tailoredResume = parseValidTailoredResumeArtifact(
+    args.tailoredContent.tailoredResume,
+    baseData,
+    args.jobDescription,
+  );
+  const workingCopy = cloneResumeData(baseData);
   applyTailoredChunks({
     resumeData: workingCopy,
     tailoredContent: args.tailoredContent,
   });
+  if (tailoredResume) {
+    applyTailoredResumeArtifact(workingCopy, tailoredResume);
+  }
 
   const { catalog, selectionItems } = extractProjectsFromResumeV5(workingCopy);
-
-  let selectedIds = parseSelectedProjectIds(args.selectedProjectIds);
+  const { resumeProjects } = resolveResumeProjectsSettings({
+    catalog,
+    overrideRaw: await getSetting("resumeProjects"),
+  });
+  const locked = resumeProjects.lockedProjectIds;
+  const selectable = new Set(resumeProjects.aiSelectableProjectIds);
+  let selectedIds: string[];
 
   if (
     args.selectedProjectIds === null ||
     args.selectedProjectIds === undefined
   ) {
-    const overrideResumeProjectsRaw = await getSetting("resumeProjects");
-    const { resumeProjects } = resolveResumeProjectsSettings({
-      catalog,
-      overrideRaw: overrideResumeProjectsRaw,
-    });
-
-    const locked = resumeProjects.lockedProjectIds;
     const desiredCount = Math.max(
       0,
       resumeProjects.maxProjects - locked.length,
     );
-    const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-    const eligibleProjects = selectionItems.filter((p) =>
-      eligibleSet.has(p.id),
+    const eligibleProjects = selectionItems.filter((project) =>
+      selectable.has(project.id),
     );
     const picked = await pickProjectIdsForJob({
       jobDescription: args.jobDescription,
@@ -435,6 +450,14 @@ export async function prepareTailoredResumeForPdf(args: {
       desiredCount,
     });
     selectedIds = [...locked, ...picked];
+  } else {
+    const lockedSet = new Set(locked);
+    selectedIds = [
+      ...locked,
+      ...parseSelectedProjectIds(args.selectedProjectIds).filter(
+        (id) => selectable.has(id) && !lockedSet.has(id),
+      ),
+    ].slice(0, resumeProjects.maxProjects);
   }
 
   applyProjectVisibility({

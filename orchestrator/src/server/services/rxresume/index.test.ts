@@ -1,14 +1,17 @@
 import { getSetting } from "@server/repositories/settings";
 import { getActiveTenantId } from "@server/tenancy/context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createTailoredResumeArtifact } from "../tailored-resume";
 import {
   clearRxResumeResumeCache,
   exportResumePdf,
   getResume,
   importResume,
   listResumes,
+  prepareTailoredResumeForPdf,
   validateCredentials,
 } from "./index";
+import { defaultV5ResumeData } from "./schema/v5";
 import * as v5 from "./v5";
 
 vi.mock("@server/repositories/settings", () => ({
@@ -274,5 +277,129 @@ describe("RxResume Service (index.ts)", () => {
         message: expect.stringContaining("API key is not configured"),
       });
     });
+  });
+});
+
+function tailoringResume() {
+  const resume = structuredClone(defaultV5ResumeData);
+  resume.sections.experience.items = [
+    {
+      id: "experience-1",
+      hidden: false,
+      options: { showLinkInTitle: false },
+      company: "Example Labs",
+      position: "Engineer",
+      location: "Remote",
+      period: "2022 - 2024",
+      website: { url: "", label: "" },
+      description: "Contributed to an API pilot used by 25 teams.",
+      roles: [],
+    },
+  ];
+  resume.sections.projects.items = ["p1", "p2", "p3"].map((id, index) => ({
+    id,
+    hidden: id !== "p1",
+    options: { showLinkInTitle: false },
+    name: `Project ${index + 1}`,
+    period: "2024",
+    website: { url: "", label: "" },
+    description: `Built project ${index + 1}`,
+  }));
+  return resume;
+}
+
+describe("full RxResume tailoring", () => {
+  beforeEach(() => {
+    vi.mocked(getSetting).mockImplementation(async (key) => {
+      if (key === "resumeProjects") {
+        return JSON.stringify({
+          maxProjects: 2,
+          lockedProjectIds: ["p1", "unknown-locked"],
+          aiSelectableProjectIds: ["p2", "p3", "p3", "unknown-selectable"],
+        });
+      }
+      if (key === "rxresumeApiKey") return "test-api-key";
+      if (key === "rxresumeUrl") return "https://rxresu.me";
+      return null;
+    });
+  });
+
+  it("applies source-linked bullets to a clone by stable ID", async () => {
+    const resume = tailoringResume();
+    const data = {
+      headline: "Platform Engineer",
+      summary: "Tailored summary",
+      skills: [],
+      experience: [
+        {
+          id: "experience-1",
+          bullets: ["Contributed to the API pilot used by 25 teams."],
+        },
+      ],
+      projects: [{ id: "p2", bullets: ["Built project 2"] }],
+    };
+    const artifact = createTailoredResumeArtifact(
+      data,
+      resume,
+      "Build APIs",
+      "2026-01-01T00:00:00.000Z",
+    );
+
+    const prepared = await prepareTailoredResumeForPdf({
+      resumeData: resume,
+      tailoredContent: { tailoredResume: JSON.stringify(artifact) },
+      jobDescription: "Build APIs",
+      selectedProjectIds: "p2",
+    });
+
+    expect(resume.sections.experience.items[0].description).toContain(
+      "API pilot used by 25 teams",
+    );
+    expect(prepared.data.sections).toEqual(expect.any(Object));
+    const sections = prepared.data.sections as typeof resume.sections;
+    expect(sections.experience.items[0].description).toBe(
+      "<ul><li>Contributed to the API pilot used by 25 teams.</li></ul>",
+    );
+    expect(sections.projects.items[1].description).toBe(
+      "<ul><li>Built project 2</li></ul>",
+    );
+  });
+
+  it("ignores stale artifacts and caps explicit project IDs", async () => {
+    const resume = tailoringResume();
+    const artifact = createTailoredResumeArtifact(
+      {
+        headline: "Platform Engineer",
+        summary: "Tailored summary",
+        skills: [],
+        experience: [
+          {
+            id: "experience-1",
+            bullets: ["Contributed to the API pilot used by 25 teams."],
+          },
+        ],
+        projects: [],
+      },
+      resume,
+      "Old job description",
+    );
+
+    const prepared = await prepareTailoredResumeForPdf({
+      resumeData: resume,
+      tailoredContent: { tailoredResume: JSON.stringify(artifact) },
+      jobDescription: "New job description",
+      selectedProjectIds: "p2,p2,unknown,p3,p1",
+    });
+    const sections = prepared.data.sections as typeof resume.sections;
+
+    expect(sections.experience.items[0].description).toBe(
+      "Contributed to an API pilot used by 25 teams.",
+    );
+    expect(prepared.selectedProjectIds).toEqual(["p1", "p2"]);
+    expect(sections.projects.items.map((project) => project.hidden)).toEqual([
+      false,
+      false,
+      true,
+    ]);
   });
 });

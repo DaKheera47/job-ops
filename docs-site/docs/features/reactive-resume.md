@@ -142,8 +142,8 @@ In **Settings → Reactive Resume**:
 
 High-level flow:
 
-1. Load the local Resume Studio document.
-2. Apply tailored summary/headline/skills.
+1. Load and clone the local Resume Studio document.
+2. Apply tailored summary, headline, skills, experience bullets, and project bullets.
 3. Compute final visible projects from your selection rules.
 4. Optionally rewrite outbound links to tracer links (per-job toggle).
 5. Normalize the tailored resume data into JobOps' renderer document model.
@@ -177,12 +177,20 @@ Important:
 
 ### What JobOps changes with AI
 
-Current AI-driven edits are intentionally scoped:
+AI tailoring can change:
 
 - `summary`
 - `headline/title`
 - `skills` and keywords
+- experience bullets linked to their source experience ID
+- project bullets linked to their source project ID
 - project **visibility** (enable/disable per project)
+
+Rewritten bullets may only use evidence from the same source item. JobOps rejects unknown or duplicate IDs and bullets containing numbers absent from that source item.
+
+### Tailoring artifact freshness
+
+JobOps stores experience and project rewrites in a version 1 per-job JSON artifact. The artifact contains hashes of the relevant source resume and job description. Missing, malformed, or hash-mismatched artifacts are regenerated during tailoring and are never applied to PDFs. The artifact is also part of PDF freshness checks, so changing it regenerates system-generated PDFs while uploaded PDFs remain untouched.
 
 ### Local renderer dependency
 

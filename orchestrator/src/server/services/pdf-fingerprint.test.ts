@@ -106,6 +106,17 @@ describe("PDF freshness", () => {
     );
   });
 
+  it("changes when the full tailoring artifact changes", () => {
+    const job = createJob({ tailoredResume: '{"version":1,"value":"before"}' });
+
+    expect(createJobPdfFingerprint(job, context)).not.toBe(
+      createJobPdfFingerprint(
+        { ...job, tailoredResume: '{"version":1,"value":"after"}' },
+        context,
+      ),
+    );
+  });
+
   it("treats legacy PDFs without a source as generated for freshness", () => {
     expect(
       getJobPdfFreshness(

@@ -324,6 +324,62 @@ describe.sequential("database migrations", () => {
     );
   });
 
+  it("preserves jobs and tailored artifacts across idempotent migration", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const migrationUrl = pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href;
+      await import(\`\${migrationUrl}?run=initial\`);
+
+      const sqlite = new Database(dbPath);
+      const artifact = JSON.stringify({ version: 1, sourceHash: "a", jobDescriptionHash: "b" });
+      sqlite.prepare("INSERT INTO jobs(id, title, employer, job_url, tailored_resume) VALUES (?, ?, ?, ?, ?)").run(
+        "job-with-artifact",
+        "Engineer",
+        "Example Labs",
+        "https://example.com/job-with-artifact",
+        artifact,
+      );
+      sqlite.prepare("INSERT INTO jobs(id, title, employer, job_url) VALUES (?, ?, ?, ?)").run(
+        "job-without-artifact",
+        "Developer",
+        "Example Works",
+        "https://example.com/job-without-artifact",
+      );
+      sqlite.close();
+
+      await import(\`\${migrationUrl}?run=repeat\`);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+      const count = migratedDb.prepare("SELECT count(*) AS count FROM jobs").get();
+      if (count.count !== 2) {
+        throw new Error(\`Expected 2 jobs after migration, got \${count.count}\`);
+      }
+      const row = migratedDb.prepare("SELECT tailored_resume FROM jobs WHERE id = ?").get("job-with-artifact");
+      if (row?.tailored_resume !== artifact) {
+        throw new Error("tailored_resume was not preserved");
+      }
+      const integrity = migratedDb.prepare("PRAGMA integrity_check").pluck().get();
+      if (integrity !== "ok") {
+        throw new Error(\`SQLite integrity check failed: \${integrity}\`);
+      }
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: { ...process.env, DATA_DIR: tempDir },
+        stdio: "pipe",
+      },
+    );
+  });
+
   it("enforces private unique indexes when user_id is null", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
     const script = `

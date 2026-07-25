@@ -3,6 +3,8 @@ import * as jobsRepo from "../repositories/jobs";
 import * as settingsRepo from "../repositories/settings";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
+import { generateTailoring } from "../services/summary";
+import { createTailoredResumeArtifact } from "../services/tailored-resume";
 import { summarizeJob } from "./orchestrator";
 
 vi.mock("@infra/logger", () => {
@@ -71,25 +73,25 @@ const profileWithProjects = {
     projects: {
       items: [
         {
-          id: "mumtaz-urdu",
-          name: "Mumtaz Urdu",
-          summary: "Next.js education platform.",
+          id: "project-a",
+          name: "Project A",
+          summary: "Education platform.",
           description: "",
           date: "",
           visible: false,
         },
         {
-          id: "jobops",
-          name: "JobOps",
-          summary: "Job search automation app.",
+          id: "project-b",
+          name: "Project B",
+          summary: "Workflow application.",
           description: "",
           date: "",
           visible: false,
         },
         {
-          id: "indus-marine",
-          name: "Indus Marine Services",
-          summary: "Induction platform.",
+          id: "project-c",
+          name: "Project C",
+          summary: "Data collection service.",
           description: "",
           date: "",
           visible: false,
@@ -108,19 +110,29 @@ describe("summarizeJob project selection", () => {
       tailoredSummary: "Existing summary.",
       tailoredHeadline: "Existing headline.",
       tailoredSkills: JSON.stringify(["TypeScript"]),
-      selectedProjectIds: "mumtaz-urdu,jobops,indus-marine",
+      selectedProjectIds: "project-a,project-b,project-c",
     } as any);
     vi.mocked(jobsRepo.updateJob).mockResolvedValue(undefined as any);
     vi.mocked(getProfile).mockResolvedValue(profileWithProjects as any);
+    vi.mocked(generateTailoring).mockResolvedValue({
+      success: true,
+      data: {
+        headline: "Existing headline.",
+        summary: "Existing summary.",
+        skills: [{ name: "Backend", keywords: ["TypeScript"] }],
+        experience: [],
+        projects: [{ id: "project-a", bullets: ["Education platform."] }],
+      },
+    });
     vi.mocked(settingsRepo.getSetting).mockImplementation(async (key) => {
       if (key !== "resumeProjects") return null;
       return JSON.stringify({
         maxProjects: 3,
         lockedProjectIds: [],
-        aiSelectableProjectIds: ["mumtaz-urdu"],
+        aiSelectableProjectIds: ["project-a"],
       });
     });
-    vi.mocked(pickProjectIdsForJob).mockResolvedValue(["mumtaz-urdu"]);
+    vi.mocked(pickProjectIdsForJob).mockResolvedValue(["project-a"]);
   });
 
   it("reselects stale saved projects using only the AI-selectable pool", async () => {
@@ -133,17 +145,85 @@ describe("summarizeJob project selection", () => {
         desiredCount: 3,
         eligibleProjects: [
           expect.objectContaining({
-            id: "mumtaz-urdu",
-            name: "Mumtaz Urdu",
+            id: "project-a",
+            name: "Project A",
           }),
         ],
       }),
     );
+    expect(generateTailoring).toHaveBeenCalledTimes(1);
     expect(jobsRepo.updateJob).toHaveBeenCalledWith(
       "job-1",
       expect.objectContaining({
-        selectedProjectIds: "mumtaz-urdu",
+        selectedProjectIds: "project-a",
+        tailoredResume: expect.any(String),
       }),
     );
+  });
+
+  it.each([
+    ["malformed", "{"],
+    [
+      "stale",
+      JSON.stringify(
+        createTailoredResumeArtifact(
+          {
+            headline: "Existing headline.",
+            summary: "Existing summary.",
+            skills: [{ name: "Backend", keywords: ["TypeScript"] }],
+            experience: [],
+            projects: [],
+          },
+          profileWithProjects,
+          "Old job description",
+        ),
+      ),
+    ],
+  ])("regenerates %s full-tailoring artifacts", async (_kind, artifact) => {
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue({
+      id: "job-1",
+      jobDescription: "Data acquisition engineer role.",
+      tailoredSummary: "Existing summary.",
+      tailoredHeadline: "Existing headline.",
+      tailoredSkills: JSON.stringify(["TypeScript"]),
+      tailoredResume: artifact,
+      selectedProjectIds: "project-a",
+    } as any);
+
+    expect(await summarizeJob("job-1")).toEqual({ success: true });
+    expect(generateTailoring).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses a current artifact unless tailoring is forced", async () => {
+    const artifact = JSON.stringify(
+      createTailoredResumeArtifact(
+        {
+          headline: "Existing headline.",
+          summary: "Existing summary.",
+          skills: [{ name: "Backend", keywords: ["TypeScript"] }],
+          experience: [],
+          projects: [],
+        },
+        profileWithProjects,
+        "Data acquisition engineer role.",
+      ),
+    );
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue({
+      id: "job-1",
+      jobDescription: "Data acquisition engineer role.",
+      tailoredSummary: "Existing summary.",
+      tailoredHeadline: "Existing headline.",
+      tailoredSkills: JSON.stringify(["TypeScript"]),
+      tailoredResume: artifact,
+      selectedProjectIds: "project-a",
+    } as any);
+
+    expect(await summarizeJob("job-1")).toEqual({ success: true });
+    expect(generateTailoring).not.toHaveBeenCalled();
+
+    expect(await summarizeJob("job-1", { force: true })).toEqual({
+      success: true,
+    });
+    expect(generateTailoring).toHaveBeenCalledTimes(1);
   });
 });

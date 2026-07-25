@@ -42,6 +42,10 @@ import {
 import { LlmNotConfiguredError } from "../services/scorer";
 import { generateTailoring } from "../services/summary";
 import {
+  createTailoredResumeArtifact,
+  parseValidTailoredResumeArtifact,
+} from "../services/tailored-resume";
+import {
   type PendingChallenge,
   progressHelpers,
   resetProgress,
@@ -672,6 +676,15 @@ export async function summarizeJob(
       let tailoredSummary = job.tailoredSummary;
       let tailoredHeadline = job.tailoredHeadline;
       let tailoredSkills = job.tailoredSkills;
+      let generatedTailoredResume: string | undefined;
+      const jobDescription = job.jobDescription || "";
+      const hasCurrentTailoredResume = Boolean(
+        parseValidTailoredResumeArtifact(
+          job.tailoredResume,
+          profile,
+          jobDescription,
+        ),
+      );
       const requestedFields = options?.fields;
       const shouldUpdateAllTailoring = !requestedFields?.length;
       const shouldUpdateSummary =
@@ -683,14 +696,21 @@ export async function summarizeJob(
       const shouldGenerateTailoring =
         shouldUpdateSummary || shouldUpdateHeadline || shouldUpdateSkills;
 
+      const isRequestedTailoringMissing =
+        (shouldUpdateSummary && !tailoredSummary) ||
+        (shouldUpdateHeadline && !tailoredHeadline) ||
+        (shouldUpdateSkills && !tailoredSkills);
+
       if (
         shouldGenerateTailoring &&
-        (!tailoredSummary || !tailoredHeadline || options?.force)
+        (isRequestedTailoringMissing ||
+          !hasCurrentTailoredResume ||
+          options?.force)
       ) {
         jobLogger.info("Generating tailoring content");
         await reserveTailoringUsage();
         const tailoringResult = await generateTailoring(
-          job.jobDescription || "",
+          jobDescription,
           profile,
         );
         if (tailoringResult.success && tailoringResult.data) {
@@ -704,10 +724,17 @@ export async function summarizeJob(
           if (shouldUpdateSkills) {
             tailoredSkills = JSON.stringify(tailoringResult.data.skills);
           }
+          generatedTailoredResume = JSON.stringify(
+            createTailoredResumeArtifact(
+              tailoringResult.data,
+              profile,
+              jobDescription,
+            ),
+          );
         } else if (
           options?.force ||
-          (shouldUpdateSummary && !tailoredSummary) ||
-          (shouldUpdateHeadline && !tailoredHeadline)
+          isRequestedTailoringMissing ||
+          !hasCurrentTailoredResume
         ) {
           await settleTailoringUsage();
           return {
@@ -787,6 +814,9 @@ export async function summarizeJob(
           : {}),
         ...(shouldUpdateSkills
           ? { tailoredSkills: tailoredSkills ?? undefined }
+          : {}),
+        ...(generatedTailoredResume
+          ? { tailoredResume: generatedTailoredResume }
           : {}),
         ...(shouldUpdateAllTailoring
           ? { selectedProjectIds: selectedProjectIds ?? undefined }
@@ -871,6 +901,7 @@ export async function generateFinalPdf(
           summary: job.tailoredSummary || "",
           headline: job.tailoredHeadline || "",
           skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
+          tailoredResume: job.tailoredResume,
         },
         job.jobDescription || "",
         undefined, // deprecated baseResumePath parameter
