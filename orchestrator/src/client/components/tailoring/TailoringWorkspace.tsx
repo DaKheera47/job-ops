@@ -41,7 +41,7 @@ interface TailoringWorkspaceBaseProps {
 
 interface TailoringWorkspaceEditorProps extends TailoringWorkspaceBaseProps {
   mode: "editor";
-  onUpdate: () => void | Promise<void>;
+  onUpdate: (job?: Job) => void | Promise<void>;
   onRegisterSave?: (save: () => Promise<void>) => void;
   onBeforeGenerate?: () => boolean | Promise<boolean>;
 }
@@ -231,20 +231,21 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     persistedPayloadKeyRef.current = savedPayloadKey;
   }, [savedPayloadKey]);
 
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-      }
-    };
-  }, []);
+  const flushAutosaveRef = useRef<() => Promise<void>>(async () => {});
 
   const runAutosaveLoop = useCallback(async () => {
-    if (saveInFlightRef.current) {
+    const inFlight = saveInFlightRef.current;
+    if (inFlight) {
       saveAgainRef.current = true;
-      await saveInFlightRef.current;
-      return;
+      await inFlight;
+      if (saveInFlightRef.current) return;
+      if (
+        !latestPayloadRef.current ||
+        getTailoringSavePayloadKey(latestPayloadRef.current) ===
+          persistedPayloadKeyRef.current
+      ) {
+        return;
+      }
     }
 
     const savePromise = (async () => {
@@ -265,6 +266,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           if (isMountedRef.current) setAutosaveStatus("saving");
           const snapshotKey = getTailoringSavePayloadKey(snapshot);
           const updatedJob = await api.updateJob(props.job.id, snapshot);
+          // Keep parent/cache in sync even if this editor already unmounted.
+          void props.onUpdate(updatedJob);
           if (!isMountedRef.current) return;
           const updatedPayload = toSavePayloadFromJob(updatedJob);
 
@@ -308,7 +311,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
     saveInFlightRef.current = savePromise;
     await savePromise;
-  }, [markSavedJob, markSavedSnapshot, props.job.id]);
+  }, [markSavedJob, markSavedSnapshot, props.job.id, props.onUpdate]);
 
   const flushAutosave = useCallback(async () => {
     if (autosaveTimerRef.current) {
@@ -328,6 +331,15 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       await runAutosaveLoop();
     }
   }, [runAutosaveLoop]);
+
+  flushAutosaveRef.current = flushAutosave;
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      void flushAutosaveRef.current();
+    };
+  }, []);
 
   useEffect(() => {
     if (autosaveTimerRef.current) {

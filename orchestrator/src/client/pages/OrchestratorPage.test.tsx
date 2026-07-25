@@ -157,6 +157,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
     pipelineTerminalEvent: mockPipelineTerminalEvent,
     setIsRefreshPaused: vi.fn(),
     loadJobs: mockLoadJobs,
+    applySelectedJobUpdate: vi.fn(),
   }),
 }));
 

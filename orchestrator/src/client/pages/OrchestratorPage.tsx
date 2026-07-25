@@ -1,5 +1,6 @@
 import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { useSettings } from "@client/hooks/useSettings";
+import type { Job } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
@@ -38,7 +39,19 @@ export const OrchestratorPage: React.FC = () => {
     pipelineTerminalEvent,
     setIsRefreshPaused,
     loadJobs,
+    applySelectedJobUpdate,
   } = useOrchestratorData(navigation.selectedJobId);
+
+  const handleJobUpdated = useCallback(
+    async (job?: Job) => {
+      if (job) {
+        applySelectedJobUpdate(job);
+        return;
+      }
+      await loadJobs();
+    },
+    [applySelectedJobUpdate, loadJobs],
+  );
 
   useNavigationRefresh(loadJobs);
 
@@ -156,7 +169,7 @@ export const OrchestratorPage: React.FC = () => {
             stats={stats}
             isLoading={isLoading}
             isPipelineRunning={isPipelineRunning}
-            loadJobs={loadJobs}
+            loadJobs={handleJobUpdated}
             setIsRefreshPaused={setIsRefreshPaused}
             filters={filters}
             navigation={navigation}

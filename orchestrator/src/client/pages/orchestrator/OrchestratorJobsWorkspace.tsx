@@ -69,7 +69,7 @@ interface OrchestratorJobsWorkspaceProps {
   onToggleSelectJob: (jobId: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onSelectJobId: (jobId: string | null) => void;
-  onJobUpdated: () => Promise<void>;
+  onJobUpdated: (job?: Job) => Promise<void>;
   onPauseRefreshChange: (paused: boolean) => void;
   onRetrySelectedJob: () => void;
 }
