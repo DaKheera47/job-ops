@@ -110,9 +110,11 @@ export function applyTailoredSkills(
   const template = existing[0] ?? null;
   if (!template) return;
 
-  skillsSection.items = skills.map((newSkill) => {
+  skillsSection.items = skills.map((newSkill, index) => {
     const match =
-      existing.find((item) => item.name === newSkill.name) ?? template;
+      existing.find((item) => item.name === newSkill.name) ??
+      existing[index] ??
+      template;
     const next: RecordLike = { ...match };
 
     if ("id" in next) {

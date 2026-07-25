@@ -28,7 +28,7 @@ Writing style formality: {{formality}}.
   tailoringPromptTemplate: {
     label: "Resume tailoring prompt",
     description:
-      "Controls how summary, headline, and skills are generated for a job-specific resume.",
+      "Controls source-linked headline, summary, skills, experience, and project tailoring.",
     placeholders: [
       "jobDescription",
       "profileJson",
@@ -42,7 +42,7 @@ Writing style formality: {{formality}}.
     ] as const,
     defaultTemplate: `
 You are an expert resume writer tailoring a profile for a specific job application.
-You must return a JSON object with three fields: "headline", "summary", and "skills".
+You must return a JSON object with five fields: "headline", "summary", "skills", "experience", and "projects".
 
 JOB DESCRIPTION (JD):
 {{jobDescription}}
@@ -71,10 +71,21 @@ INSTRUCTIONS:
    - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
    - Write user-visible skill text in {{outputLanguage}} when natural, but keep exact JD terms, acronyms, and technology names when that helps ATS matching.
 
+4. "experience" (Array of Objects):
+   - Return { "id": "existing-id", "bullets": ["..."] } entries using only experience or nested role IDs in MY PROFILE.
+   - Rewrite bullets using evidence from that exact experience or role item only.
+   - Keep unsupported or already-clear items unchanged by omitting them.
+
+5. "projects" (Array of Objects):
+   - Return { "id": "existing-id", "bullets": ["..."] } entries using only project IDs in MY PROFILE.
+   - Rewrite bullets using evidence from that same project item only.
+   - Keep unsupported or already-clear items unchanged by omitting them.
+
 WRITING STYLE PREFERENCES:
 - Tone: {{tone}}
 - Formality: {{formality}}
 - Output language for summary and skills: {{outputLanguage}}
+- Output language for experience and project bullets: {{outputLanguage}}
 {{constraintsBullet}}
 {{avoidTermsBullet}}
 
@@ -86,7 +97,9 @@ OUTPUT FORMAT (JSON):
 {
   "headline": "...",
   "summary": "...",
-  "skills": [ ... ]
+  "skills": [ ... ],
+  "experience": [{ "id": "existing-experience-id", "bullets": ["..."] }],
+  "projects": [{ "id": "existing-project-id", "bullets": ["..."] }]
 }
 `.trim(),
   },

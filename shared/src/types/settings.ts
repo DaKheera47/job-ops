@@ -169,6 +169,14 @@ export interface ResumeProfile {
         date: string;
         summary: string;
         visible: boolean;
+        roles?: Array<{
+          id?: string;
+          position?: string;
+          period?: string;
+          date?: string;
+          description?: string;
+          summary?: string;
+        }>;
       }>;
     };
     [key: string]: unknown;

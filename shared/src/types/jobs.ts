@@ -171,6 +171,19 @@ export interface JobBrief {
   repeated_signals: string[];
 }
 
+export interface TailoredResumeItem {
+  id: string;
+  bullets: string[];
+}
+
+export interface TailoredResumeArtifact {
+  version: 1;
+  sourceHash: string;
+  jobDescriptionHash: string;
+  experience: TailoredResumeItem[];
+  projects: TailoredResumeItem[];
+}
+
 export interface Job {
   id: string;
 
@@ -206,6 +219,7 @@ export interface Job {
   tailoredSummary: string | null; // Generated resume summary
   tailoredHeadline: string | null; // Generated resume headline
   tailoredSkills: string | null; // Generated resume skills (JSON)
+  tailoredResume: string | null; // Versioned source-linked bullet tailoring artifact (JSON)
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null; // Path to generated PDF
   pdfSource: JobPdfSource | null; // Whether PDF was system-generated or user-uploaded
@@ -566,6 +580,7 @@ export interface UpdateJobInput {
   tailoredSummary?: string;
   tailoredHeadline?: string;
   tailoredSkills?: string;
+  tailoredResume?: string | null;
   selectedProjectIds?: string;
   pdfPath?: string;
   pdfSource?: JobPdfSource | null;
