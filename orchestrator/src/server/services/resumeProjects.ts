@@ -4,42 +4,33 @@ import type {
   ResumeProjectsSettings,
 } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
+import { extractTailoringSource } from "./tailored-resume";
 
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & {
   summaryText: string;
 };
+
+export function parseProjectIdsCsv(value: string | null | undefined): string[] {
+  return uniqueStrings(value?.split(",") ?? []);
+}
+
 export function extractProjectsFromProfile(profile: ResumeProfile): {
   catalog: ResumeProjectCatalogItem[];
   selectionItems: ResumeProjectSelectionItem[];
 } {
-  const items = profile?.sections?.projects?.items;
-  if (!Array.isArray(items)) return { catalog: [], selectionItems: [] };
-
   const catalog: ResumeProjectCatalogItem[] = [];
   const selectionItems: ResumeProjectSelectionItem[] = [];
 
-  for (const item of items) {
-    if (!item || typeof item !== "object") continue;
-
-    const id = item.id || "";
-    if (!id) continue;
-
-    const name = item.name || "";
-    const description = stripHtml(item.description || "");
-    const date = item.date || "";
-    const isVisibleInBase = Boolean(item.visible);
-    const summary = item.summary || "";
-    const summaryText = stripHtml(summary);
-
+  for (const item of extractTailoringSource(profile).projects) {
     const base: ResumeProjectCatalogItem = {
-      id,
-      name,
-      description,
-      date,
-      isVisibleInBase,
+      id: item.id,
+      name: typeof item.name === "string" ? item.name : "",
+      description: item.description,
+      date: typeof item.period === "string" ? item.period : "",
+      isVisibleInBase: item.visible !== false,
     };
     catalog.push(base);
-    selectionItems.push({ ...base, summaryText });
+    selectionItems.push({ ...base, summaryText: item.description });
   }
 
   return { catalog, selectionItems };

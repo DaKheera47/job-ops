@@ -347,7 +347,12 @@ function buildExperienceEntries(resumeJson: RecordLike): LatexResumeEntry[] {
         joinNonEmpty([toText(item.position), toText(item.location)], " / ") ||
         null,
       date: toText(item.period) || null,
-      bullets: extractBullets(item.description),
+      bullets: [
+        ...extractBullets(item.description),
+        ...asArray(item.roles).flatMap((role) =>
+          extractBullets(asRecord(role)?.description),
+        ),
+      ],
       url: toText(getByPath(item, "website.url")) || undefined,
     }),
   );

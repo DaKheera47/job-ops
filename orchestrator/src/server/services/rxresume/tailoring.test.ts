@@ -1,7 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { extractProjectsFromResume } from "./tailoring";
+import { applyTailoredSkills, extractProjectsFromResume } from "./tailoring";
 
 describe("rxresume tailoring", () => {
+  it("preserves Reactive Resume v5 skill fields", () => {
+    const resume = {
+      sections: {
+        skills: {
+          items: [
+            {
+              id: "skill-1",
+              name: "Backend",
+              proficiency: "Advanced",
+              level: 4,
+              hidden: true,
+              keywords: ["Node.js"],
+            },
+          ],
+        },
+      },
+    };
+
+    applyTailoredSkills(resume, [
+      { name: "Platform", keywords: ["TypeScript"] },
+    ]);
+
+    expect(resume.sections.skills.items).toEqual([
+      {
+        id: "skill-1",
+        name: "Platform",
+        proficiency: "Advanced",
+        level: 4,
+        hidden: true,
+        keywords: ["TypeScript"],
+      },
+    ]);
+  });
+
   it("strips html from project catalog descriptions", () => {
     const { catalog, selectionItems } = extractProjectsFromResume({
       sections: {

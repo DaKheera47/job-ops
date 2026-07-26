@@ -6,7 +6,7 @@ import * as jobsRepo from "@server/repositories/jobs";
 import type { SettingKey } from "@server/repositories/settings";
 import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import type { Job } from "@shared/types";
-import { generateFinalPdf } from "../pipeline";
+import { generateFinalPdf, summarizeJob } from "../pipeline";
 import {
   getJobPdfFreshness,
   resolvePdfFingerprintContext,
@@ -198,6 +198,13 @@ async function processQueuedAutoPdfRegeneration(input: {
         return "processed";
       }
 
+      const tailoringResult = await summarizeJob(job.id);
+      if (!tailoringResult.success) {
+        throw new Error(
+          tailoringResult.error ?? "Automatic resume tailoring failed.",
+        );
+      }
+
       const result = await generateFinalPdf(job.id, {
         analyticsOrigin: "auto_pdf_regeneration",
       });
@@ -301,6 +308,7 @@ export function shouldEnqueueTailoringAutoPdfRegeneration(
     previousJob.tailoredSummary !== nextJob.tailoredSummary ||
     previousJob.tailoredHeadline !== nextJob.tailoredHeadline ||
     previousJob.tailoredSkills !== nextJob.tailoredSkills ||
+    previousJob.tailoredResume !== nextJob.tailoredResume ||
     previousJob.selectedProjectIds !== nextJob.selectedProjectIds ||
     previousJob.jobDescription !== nextJob.jobDescription ||
     previousJob.tracerLinksEnabled !== nextJob.tracerLinksEnabled ||

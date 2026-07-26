@@ -278,6 +278,23 @@ describe("auto PDF regeneration", () => {
     );
   });
 
+  it("regenerates generated PDFs when the full tailoring artifact changes", () => {
+    const previous = createJob({
+      status: "ready",
+      pdfSource: "generated",
+      tailoredResume: '{"version":1,"value":"before"}',
+    });
+    const next = createJob({
+      status: "ready",
+      pdfSource: "generated",
+      tailoredResume: '{"version":1,"value":"after"}',
+    });
+
+    expect(shouldEnqueueTailoringAutoPdfRegeneration(previous, next)).toBe(
+      true,
+    );
+  });
+
   it("ignores jobs that are not backed by generated PDFs", () => {
     const previous = createJob({
       status: "ready",

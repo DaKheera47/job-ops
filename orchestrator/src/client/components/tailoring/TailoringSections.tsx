@@ -820,7 +820,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
               catalog={catalog}
               selectedIds={selectedIds}
               onToggle={onToggleProject}
-              maxProjects={3}
+              maxProjects={resumeProjectsSettings?.maxProjects ?? 3}
               disabled={disableInputs}
             />
           </AccordionContent>

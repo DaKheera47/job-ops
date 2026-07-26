@@ -54,6 +54,8 @@ describe("generateTailoring", () => {
         summary: "Tailored summary",
         headline: "Senior Engineer",
         skills: [],
+        experience: [],
+        projects: [],
       },
     });
     vi.mocked(getSetting).mockResolvedValue(null);
@@ -106,7 +108,7 @@ describe("generateTailoring", () => {
     expect(request?.messages?.[0]?.content).toContain("Build APIs");
     expect(request?.messages?.[0]?.content).not.toContain("<strong>");
     expect(request?.messages?.[0]?.content).toContain(
-      '"basics":{"name":"Test User"',
+      '"basics":{"headline":"Engineer","summary":"Existing summary"}',
     );
   });
 
@@ -312,6 +314,88 @@ describe("generateTailoring", () => {
 
     const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
     expect(prompt).not.toContain("keywords per category");
+  });
+
+  it("requires all five output fields and sends v5 evidence with stable IDs", async () => {
+    const profile = {
+      basics: { headline: "Engineer" },
+      summary: { content: "Source summary" },
+      sections: {
+        experience: {
+          hidden: false,
+          items: [
+            {
+              id: "experience-1",
+              company: "Example Labs",
+              position: "Engineer",
+              period: "2023 - Present",
+              description: "Contributed to an ongoing API pilot.",
+              hidden: false,
+              roles: [
+                {
+                  id: "role-1",
+                  position: "Platform Engineer",
+                  period: "2024",
+                  description: "Maintained the pilot API.",
+                },
+              ],
+            },
+          ],
+        },
+        projects: {
+          hidden: false,
+          items: [
+            {
+              id: "project-1",
+              name: "Prototype",
+              period: "2024",
+              description: "Built a TypeScript prototype.",
+              hidden: true,
+            },
+          ],
+        },
+      },
+    } as unknown as ResumeProfile;
+    callJsonMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        headline: "Platform Engineer",
+        summary: "Tailored summary",
+        skills: [],
+        experience: [
+          {
+            id: "experience-1",
+            bullets: ["Contributed to an ongoing API pilot."],
+          },
+        ],
+        projects: [
+          { id: "project-1", bullets: ["Built a TypeScript prototype."] },
+        ],
+      },
+    });
+
+    const result = await generateTailoring("Build APIs", profile);
+    const request = callJsonMock.mock.calls.at(-1)?.[0];
+    const prompt = request?.messages?.[0]?.content;
+
+    expect(result.success).toBe(true);
+    expect(request?.jsonSchema.schema.required).toEqual([
+      "headline",
+      "summary",
+      "skills",
+      "experience",
+      "projects",
+    ]);
+    expect(prompt).toContain('"id":"experience-1"');
+    expect(prompt).toContain("Contributed to an ongoing API pilot.");
+    expect(prompt).toContain('"id":"role-1"');
+    expect(prompt).toContain('"parentId":"experience-1"');
+    expect(prompt).toContain('"id":"project-1"');
+    expect(prompt).toContain('"visible":false');
+    expect(prompt).toContain(
+      "Preserve qualifiers such as prototype, pilot, contributor, collaboration, and ongoing work.",
+    );
+    expect(prompt).toContain("Never transfer facts between roles or projects.");
   });
 
   it("includes both limits and constraints when all set", async () => {

@@ -16,6 +16,7 @@ type JobPdfFingerprintInput = Pick<
   | "tailoredSummary"
   | "tailoredHeadline"
   | "tailoredSkills"
+  | "tailoredResume"
   | "selectedProjectIds"
   | "jobDescription"
   | "tracerLinksEnabled"
@@ -80,6 +81,7 @@ export function createJobPdfFingerprint(
       tailoredSummary: job.tailoredSummary ?? null,
       tailoredHeadline: job.tailoredHeadline ?? null,
       tailoredSkills: job.tailoredSkills ?? null,
+      tailoredResume: job.tailoredResume ?? null,
       selectedProjectIds: job.selectedProjectIds ?? null,
       jobDescription: job.jobDescription ?? null,
       tracerLinksEnabled: Boolean(job.tracerLinksEnabled),

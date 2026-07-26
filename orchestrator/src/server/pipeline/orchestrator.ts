@@ -37,10 +37,15 @@ import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
+  parseProjectIdsCsv,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
 import { LlmNotConfiguredError } from "../services/scorer";
 import { generateTailoring } from "../services/summary";
+import {
+  createTailoredResumeArtifact,
+  parseValidTailoredResumeArtifact,
+} from "../services/tailored-resume";
 import {
   type PendingChallenge,
   progressHelpers,
@@ -72,19 +77,6 @@ const DEFAULT_CONFIG: PipelineConfig = {
   enableImporting: true,
   enableAutoTailoring: true,
 };
-
-function parseProjectIdsCsv(value: string | null | undefined): string[] {
-  if (!value) return [];
-  const seen = new Set<string>();
-  const ids: string[] = [];
-  for (const rawId of value.split(",")) {
-    const id = rawId.trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-  }
-  return ids;
-}
 
 type TenantPipelineState = {
   isRunning: boolean;
@@ -672,6 +664,15 @@ export async function summarizeJob(
       let tailoredSummary = job.tailoredSummary;
       let tailoredHeadline = job.tailoredHeadline;
       let tailoredSkills = job.tailoredSkills;
+      let generatedTailoredResume: string | undefined;
+      const jobDescription = job.jobDescription || "";
+      const hasCurrentTailoredResume = Boolean(
+        parseValidTailoredResumeArtifact(
+          job.tailoredResume,
+          profile,
+          jobDescription,
+        ),
+      );
       const requestedFields = options?.fields;
       const shouldUpdateAllTailoring = !requestedFields?.length;
       const shouldUpdateSummary =
@@ -683,14 +684,21 @@ export async function summarizeJob(
       const shouldGenerateTailoring =
         shouldUpdateSummary || shouldUpdateHeadline || shouldUpdateSkills;
 
+      const isRequestedTailoringMissing =
+        (shouldUpdateSummary && !tailoredSummary) ||
+        (shouldUpdateHeadline && !tailoredHeadline) ||
+        (shouldUpdateSkills && !tailoredSkills);
+
       if (
         shouldGenerateTailoring &&
-        (!tailoredSummary || !tailoredHeadline || options?.force)
+        (isRequestedTailoringMissing ||
+          !hasCurrentTailoredResume ||
+          options?.force)
       ) {
         jobLogger.info("Generating tailoring content");
         await reserveTailoringUsage();
         const tailoringResult = await generateTailoring(
-          job.jobDescription || "",
+          jobDescription,
           profile,
         );
         if (tailoringResult.success && tailoringResult.data) {
@@ -704,10 +712,17 @@ export async function summarizeJob(
           if (shouldUpdateSkills) {
             tailoredSkills = JSON.stringify(tailoringResult.data.skills);
           }
+          generatedTailoredResume = JSON.stringify(
+            createTailoredResumeArtifact(
+              tailoringResult.data,
+              profile,
+              jobDescription,
+            ),
+          );
         } else if (
           options?.force ||
-          (shouldUpdateSummary && !tailoredSummary) ||
-          (shouldUpdateHeadline && !tailoredHeadline)
+          isRequestedTailoringMissing ||
+          !hasCurrentTailoredResume
         ) {
           await settleTailoringUsage();
           return {
@@ -787,6 +802,9 @@ export async function summarizeJob(
           : {}),
         ...(shouldUpdateSkills
           ? { tailoredSkills: tailoredSkills ?? undefined }
+          : {}),
+        ...(shouldUpdateAllTailoring && generatedTailoredResume
+          ? { tailoredResume: generatedTailoredResume }
           : {}),
         ...(shouldUpdateAllTailoring
           ? { selectedProjectIds: selectedProjectIds ?? undefined }
@@ -871,6 +889,7 @@ export async function generateFinalPdf(
           summary: job.tailoredSummary || "",
           headline: job.tailoredHeadline || "",
           skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
+          tailoredResume: job.tailoredResume,
         },
         job.jobDescription || "",
         undefined, // deprecated baseResumePath parameter

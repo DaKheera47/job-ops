@@ -1205,6 +1205,15 @@ export async function designResumeToProfile(
             date: toText(record.period),
             summary: toText(record.description),
             visible: !toBoolean(record.hidden, false),
+            roles: asArray(record.roles).map((role) => {
+              const roleRecord = asRecord(role) ?? {};
+              return {
+                id: toText(roleRecord.id),
+                position: toText(roleRecord.position),
+                period: toText(roleRecord.period),
+                description: toText(roleRecord.description),
+              };
+            }),
           };
         }),
       },
