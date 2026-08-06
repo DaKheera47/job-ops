@@ -131,6 +131,28 @@ onboardingRouter.post(
   },
 );
 
+onboardingRouter.post(
+  "/validate/orcarouter",
+  async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          valid: true,
+          message:
+            "Demo mode: OrcaRouter validation is simulated and always succeeds.",
+        },
+        { simulated: true },
+      );
+    }
+
+    const apiKey =
+      typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
+    const result = await validateLlm({ apiKey, provider: "orcarouter" });
+    ok(res, result);
+  },
+);
+
 onboardingRouter.post("/validate/llm", async (req: Request, res: Response) => {
   if (isDemoMode()) {
     return okWithMeta(

@@ -10,7 +10,8 @@ export type LlmProvider =
   | "gemini"
   | "gemini_cli"
   | "claude_cli"
-  | "codex";
+  | "codex"
+  | "orcarouter";
 
 export type ResponseMode = "json_schema" | "json_object" | "text" | "none";
 
