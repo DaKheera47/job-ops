@@ -110,6 +110,7 @@ JobOps works with the model provider you already use:
 - GLM / Zhipu AI
 - Google Gemini
 - OpenRouter
+- OrcaRouter
 - Any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
 
 ---

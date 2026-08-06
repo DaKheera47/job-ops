@@ -7,6 +7,7 @@ import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
+import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
 
 const schema = {
@@ -46,6 +47,18 @@ describe("provider adapters", () => {
           model: "openai/gpt-4o-mini",
         },
         expectedUrl: "https://router.requesty.ai/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "orcarouter-json_schema",
+        strategy: orcaRouterStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.orcarouter.ai",
+          apiKey: "x",
+          model: "deepseek/deepseek-v4-flash-0731",
+        },
+        expectedUrl: "https://api.orcarouter.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {

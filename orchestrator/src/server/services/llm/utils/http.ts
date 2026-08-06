@@ -31,7 +31,7 @@ export function buildHeaders(args: {
     headers.Authorization = `Bearer ${args.apiKey}`;
   }
 
-  if (args.provider === "openrouter") {
+  if (args.provider === "openrouter" || args.provider === "orcarouter") {
     headers["HTTP-Referer"] = "JobOps";
     headers["X-Title"] = "JobOpsOrchestrator";
   }

@@ -337,6 +337,7 @@ async function imageInputCapabilityReason(
 
   if (
     provider === "openrouter" ||
+    provider === "orcarouter" ||
     provider === "openai_compatible" ||
     provider === "glm"
   ) {
