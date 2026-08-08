@@ -29,7 +29,7 @@ interface OrchestratorJobWorkspaceContainerProps {
   stats: Record<JobStatus, number>;
   isLoading: boolean;
   isPipelineRunning: boolean;
-  loadJobs: () => Promise<void>;
+  loadJobs: (job?: Job) => Promise<void>;
   setIsRefreshPaused: (paused: boolean) => void;
   filters: ReturnType<typeof useOrchestratorFilters>;
   navigation: ReturnType<typeof useOrchestratorNavigation>;

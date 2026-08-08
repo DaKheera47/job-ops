@@ -86,7 +86,7 @@ interface JobDetailPanelProps {
   selectedJobListItem: JobListItem | null;
   selectedJobLoadState: SelectedJobLoadState;
   onSelectJobId: (jobId: string | null) => void;
-  onJobUpdated: () => Promise<void>;
+  onJobUpdated: (job?: Job) => Promise<void>;
   onPauseRefreshChange?: (paused: boolean) => void;
   onRetrySelectedJob: () => void;
 }
