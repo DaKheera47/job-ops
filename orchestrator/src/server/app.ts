@@ -28,6 +28,7 @@ import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";
+import { ojcpManifestHandler, ojcpMcpHandler } from "./ojcp";
 import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -196,6 +197,8 @@ export function createAuthGuard() {
     if (normalizedPath === "/api/demo/info") return true;
     if (normalizedPath === "/api/app/status") return true;
     if (normalizedPath === "/api/profile/status") return true;
+    if (normalizedMethod === "POST" && normalizedPath === "/ojcp/mcp")
+      return true;
     if (
       normalizedMethod === "POST" &&
       normalizedPath === "/api/visa-sponsors/search"
@@ -434,6 +437,9 @@ export function createApp() {
 
   // Optional authentication for protected routes
   app.use(authGuard.middleware);
+
+  app.get("/.well-known/ojcp.json", ojcpManifestHandler);
+  app.all("/ojcp/mcp", ojcpMcpHandler);
 
   // API routes
   app.use("/api", apiRouter);
