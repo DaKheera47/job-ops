@@ -1,13 +1,13 @@
 ---
 id: ojcp
 title: OJCP and MCP
-description: Search your JobOps workspace from MCP clients using OJCP-compatible tools.
+description: Search the public JobOps demo from MCP clients using OJCP-compatible tools.
 sidebar_position: 13
 ---
 
 ## What it is
 
-JobOps exposes its stored jobs as an [Open Job Context Protocol](https://spec.ojcp.dev/0.1/) provider over MCP Streamable HTTP.
+In demo mode, JobOps exposes its stored jobs as an [Open Job Context Protocol](https://spec.ojcp.dev/0.1/) provider over MCP Streamable HTTP. The provider is disabled unless `DEMO_MODE=true`.
 
 The provider currently offers two read-only tools:
 
@@ -24,7 +24,12 @@ Job data remains workspace-scoped. The MCP endpoint is currently unauthenticated
 
 ## How to use it
 
-1. Deploy JobOps behind HTTPS.
+1. Deploy JobOps behind HTTPS with demo mode enabled:
+
+   ```bash
+   DEMO_MODE=true
+   ```
+
 2. Set the public base URL:
 
    ```bash
@@ -66,6 +71,8 @@ Defaults and constraints:
 - Search defaults to 10 results and supports at most 50 per call.
 - Expired jobs are not returned.
 - Search reads jobs already stored in JobOps; it does not start an extractor or pipeline run.
+- Demo mode refreshes US software-engineering jobs from LinkedIn, Indeed, and Hiring Cafe every 24 hours.
+- Each refresh deletes jobs posted more than 30 days ago.
 - Apply paths are external redirects and do not support agent submission.
 - Candidate context requires `consent_scope` and is not currently used for personalization.
 - Radius searches are approximate because JobOps stores job locations as text.
@@ -75,7 +82,7 @@ Defaults and constraints:
 
 ### The MCP client says Cannot POST /ojcp/mcp
 
-The running JobOps server predates the MCP route, or the client is pointed at the frontend development server instead of the backend.
+Demo mode is disabled, the running JobOps server predates the MCP route, or the client is pointed at the frontend development server instead of the backend.
 
 Restart the JobOps server and use `http://localhost:3001/ojcp/mcp` for the default local backend.
 
@@ -87,7 +94,7 @@ Set it to the externally reachable HTTPS origin and restart JobOps.
 
 ### Search does not discover new jobs
 
-`search_jobs` searches the existing JobOps database. Run the normal JobOps pipeline first to discover and import new jobs.
+`search_jobs` searches the existing JobOps database. Demo mode refreshes that database every 24 hours; check the server logs if all three upstream sources remain stale.
 
 ### A job ID from an earlier search is no longer available
 

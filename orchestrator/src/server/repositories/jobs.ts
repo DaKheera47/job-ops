@@ -838,6 +838,26 @@ export async function deleteJobsBelowScore(threshold: number): Promise<number> {
   return result.changes;
 }
 
+export async function deleteJobsOlderThan(cutoff: Date): Promise<number> {
+  const cutoffTime = cutoff.getTime();
+  const staleIds = (await getAllJobs())
+    .filter((job) => {
+      const postedTime = Date.parse(job.datePosted ?? "");
+      const jobTime = Number.isNaN(postedTime)
+        ? Date.parse(job.discoveredAt)
+        : postedTime;
+      return !Number.isNaN(jobTime) && jobTime < cutoffTime;
+    })
+    .map((job) => job.id);
+  if (staleIds.length === 0) return 0;
+
+  const result = await db
+    .delete(jobs)
+    .where(and(jobsScopeFilter(), inArray(jobs.id, staleIds)))
+    .run();
+  return result.changes;
+}
+
 // Helper to map database row to Job type
 function mapRowToJob(row: typeof jobs.$inferSelect): Job {
   return {

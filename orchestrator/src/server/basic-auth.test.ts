@@ -99,7 +99,8 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it("allows the MCP endpoint without auth", async () => {
+  it("allows the MCP endpoint without auth in demo mode", async () => {
+    process.env.DEMO_MODE = "true";
     vi.mocked(countUsers).mockResolvedValue(1);
 
     const { middleware } = createAuthGuard();

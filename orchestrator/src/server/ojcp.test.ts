@@ -36,7 +36,7 @@ describe.sequential("OJCP MCP", () => {
   let defaultJobId: string;
 
   beforeAll(async () => {
-    running = await startServer();
+    running = await startServer({ env: { DEMO_MODE: "true" } });
     const { db, schema } = await import("@server/db");
     const { runWithRequestContext } = await import("@infra/request-context");
     const jobsRepo = await import("@server/repositories/jobs");
