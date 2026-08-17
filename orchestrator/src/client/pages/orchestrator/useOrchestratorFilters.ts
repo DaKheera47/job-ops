@@ -9,6 +9,8 @@ import type {
   JobSort,
   SalaryFilter,
   SalaryFilterMode,
+  ScoreFilter,
+  ScoreFilterMode,
   SponsorFilter,
 } from "./constants";
 import {
@@ -30,6 +32,9 @@ const allowedSalaryModes: SalaryFilterMode[] = [
   "at_most",
   "between",
 ];
+const allowedScoreModes: ScoreFilterMode[] = ["any", "has", "missing"];
+const clampScoreValue = (value: number): number =>
+  Math.min(100, Math.max(0, value));
 const allowedSortKeys: JobSort["key"][] = [
   "datePosted",
   "discoveredAt",
@@ -161,6 +166,44 @@ export const useOrchestratorFilters = () => {
           else prev.set("salaryMax", String(value.max));
 
           prev.delete("minSalary");
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const scoreFilter = useMemo((): ScoreFilter => {
+    const modeRaw = searchParams.get("scoreMode") ?? "any";
+    const mode = allowedScoreModes.includes(modeRaw as ScoreFilterMode)
+      ? (modeRaw as ScoreFilterMode)
+      : "any";
+
+    const minRaw = searchParams.get("scoreMin");
+    const minParsed = minRaw == null ? Number.NaN : Number.parseInt(minRaw, 10);
+    const min = Number.isFinite(minParsed) ? clampScoreValue(minParsed) : null;
+
+    const maxRaw = searchParams.get("scoreMax");
+    const maxParsed = maxRaw == null ? Number.NaN : Number.parseInt(maxRaw, 10);
+    const max = Number.isFinite(maxParsed) ? clampScoreValue(maxParsed) : null;
+
+    return { mode, min, max };
+  }, [searchParams]);
+
+  const setScoreFilter = useCallback(
+    (value: ScoreFilter) => {
+      setSearchParams(
+        (prev) => {
+          if (value.mode === "any") prev.delete("scoreMode");
+          else prev.set("scoreMode", value.mode);
+
+          if (value.min == null) prev.delete("scoreMin");
+          else prev.set("scoreMin", String(clampScoreValue(value.min)));
+
+          if (value.max == null) prev.delete("scoreMax");
+          else prev.set("scoreMax", String(clampScoreValue(value.max)));
+
           return prev;
         },
         { replace: true },
@@ -324,6 +367,9 @@ export const useOrchestratorFilters = () => {
         prev.delete("salaryMin");
         prev.delete("salaryMax");
         prev.delete("minSalary");
+        prev.delete("scoreMode");
+        prev.delete("scoreMin");
+        prev.delete("scoreMax");
         prev.delete("postedWithin");
         prev.delete("employment");
         prev.delete("location");
@@ -346,6 +392,8 @@ export const useOrchestratorFilters = () => {
     setSponsorFilter,
     salaryFilter,
     setSalaryFilter,
+    scoreFilter,
+    setScoreFilter,
     postedWithinDays,
     setPostedWithinDays,
     employmentTypes,
