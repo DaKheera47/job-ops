@@ -121,6 +121,76 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("times out a hung extractor and continues with other sources", async () => {
+    vi.useFakeTimers();
+    try {
+      const settingsRepo = await import("@server/repositories/settings");
+      const registryModule = await import("@server/extractors/registry");
+      let hungContext: ExtractorRuntimeContext | undefined;
+      const hungManifest = {
+        id: "startupjobs",
+        displayName: "startup.jobs",
+        providesSources: ["startupjobs"],
+        run: vi.fn((context: ExtractorRuntimeContext) => {
+          hungContext = context;
+          return new Promise<never>(() => {});
+        }),
+      };
+      const healthyManifest = {
+        id: "jobspy",
+        displayName: "JobSpy",
+        providesSources: ["linkedin"],
+        run: vi.fn().mockResolvedValue({
+          success: true,
+          jobs: [
+            {
+              source: "linkedin",
+              title: "Engineer",
+              employer: "ACME",
+              jobUrl: "https://example.com/job",
+              location: "London, United Kingdom",
+            },
+          ],
+        }),
+      };
+
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        searchTerms: JSON.stringify(["engineer"]),
+        jobspyCountryIndeed: "united kingdom",
+      } as any);
+      vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+        manifests: new Map([
+          ["startupjobs", hungManifest as any],
+          ["jobspy", healthyManifest as any],
+        ]),
+        manifestBySource: new Map([
+          ["startupjobs", hungManifest as any],
+          ["linkedin", healthyManifest as any],
+        ]),
+        availableSources: ["startupjobs", "linkedin"],
+      } as any);
+
+      const resultPromise = discoverJobsStep({
+        mergedConfig: {
+          ...baseConfig,
+          sources: ["startupjobs", "linkedin"],
+        },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(hungContext?.shouldCancel?.()).toBe(false);
+      await vi.runOnlyPendingTimersAsync();
+
+      await expect(resultPromise).resolves.toMatchObject({
+        discoveredJobs: [expect.objectContaining({ title: "Engineer" })],
+        sourceErrors: ["startupjobs: timed out after 10 minutes"],
+      });
+      expect(hungContext?.shouldCancel?.()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("overrides persisted extractor limits with the normalized run budget", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const registryModule = await import("@server/extractors/registry");

@@ -153,6 +153,8 @@ through the active search term, location, and job board one value at a time.
   in-run title/employer deduplication.
 - A browser-check row pauses only the affected extractor. Use **Solve** to open
   the challenge viewer; other extractors continue running.
+- An extractor that does not finish within 10 minutes is marked as failed. The
+  remaining extractors continue instead of leaving the run stuck indefinitely.
 
 After discovery, the scoring card shows the job currently being ranked and
 updates its counters live. **Exceptional matches** counts jobs with a
