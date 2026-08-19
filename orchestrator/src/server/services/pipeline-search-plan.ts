@@ -34,6 +34,7 @@ import type {
 import {
   MAX_PIPELINE_RUN_BUDGET,
   MIN_PIPELINE_RUN_BUDGET,
+  normalizePostedWithinDays,
 } from "@shared/types";
 import { normalizeSearchTerms } from "@shared/utils/search-terms";
 import type { JsonSchemaDefinition } from "./llm/types";
@@ -96,6 +97,7 @@ const SEARCH_PLAN_SCHEMA: JsonSchemaDefinition = {
           minSuitabilityScore: { type: "number" },
           runBudget: { type: "number" },
           scoringInstructions: { type: "string" },
+          postedWithinDays: { type: ["number", "null"] },
           automaticPresetId: {
             type: "string",
             enum: [...PRESET_VALUES],
@@ -113,6 +115,7 @@ const SEARCH_PLAN_SCHEMA: JsonSchemaDefinition = {
           "minSuitabilityScore",
           "runBudget",
           "scoringInstructions",
+          "postedWithinDays",
           "automaticPresetId",
         ],
         additionalProperties: false,
@@ -393,6 +396,9 @@ export function normalizePipelineSearchPlanConfig(args: {
       candidate?.scoringInstructions,
       currentConfig.scoringInstructions ?? "",
     ),
+    postedWithinDays: normalizePostedWithinDays(
+      candidate?.postedWithinDays ?? currentConfig.postedWithinDays ?? null,
+    ),
     automaticPresetId: PRESET_VALUES.includes(
       candidate?.automaticPresetId as (typeof PRESET_VALUES)[number],
     )
@@ -429,6 +435,7 @@ function buildPrompt(args: {
     "- Keep locations in country/city fields, not in search terms.",
     "- Choose only available source ids.",
     "- Use conservative run volume unless the user asks for broad/deep search.",
+    "- Set postedWithinDays to the maximum posting age in days when the user asks for recent jobs (e.g. 'last 24 hours' -> 1, 'past week' -> 7, 'this month' -> 30). Use null when they do not mention recency; keep the current value if unchanged.",
     "- Convert explicit ranking preferences into scoringInstructions. Examples: salary floor, lower-score graduate programs, prioritize sponsorship, prefer backend API work.",
     "- Do not invent scoring preferences. If the user did not specify ranking preferences, keep current scoringInstructions.",
     "- Write summary in neutral product voice, not first person. Use wording like 'The search was updated...' or 'Search settings were updated...', never 'I updated...' or 'I have updated...'.",

@@ -119,6 +119,7 @@ export function usePipelineControls(
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
+      postedWithinDays: number | null;
       watchlistSelectedSourceIds?: string[];
     }) => {
       try {
@@ -137,6 +138,7 @@ export function usePipelineControls(
           workplaceTypes: config.workplaceTypes,
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
+          postedWithinDays: config.postedWithinDays,
           watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         });
         toast.message("Search started", {

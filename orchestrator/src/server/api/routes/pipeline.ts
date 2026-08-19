@@ -59,6 +59,7 @@ import type {
 } from "@shared/types";
 import {
   MAX_PIPELINE_RUN_BUDGET,
+  MAX_POSTED_WITHIN_DAYS,
   normalizePipelineRunBudget,
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
@@ -274,6 +275,13 @@ const pipelineSearchPresetConfigSchema = z.object({
   minSuitabilityScore: z.number().int().min(0).max(100),
   runBudget: pipelineRunBudgetSchema,
   scoringInstructions: z.string().trim().max(4000).optional().default(""),
+  postedWithinDays: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_POSTED_WITHIN_DAYS)
+    .nullable()
+    .optional(),
   automaticPresetId: z
     .enum(["fast", "balanced", "detailed", "custom"])
     .optional(),
@@ -518,6 +526,14 @@ const runPipelineSchema = z.object({
     .optional(),
   searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES).optional(),
   matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES).optional(),
+  // Max posting age (in days) for discovered jobs; omitted/null = any time.
+  postedWithinDays: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_POSTED_WITHIN_DAYS)
+    .nullable()
+    .optional(),
   // Per-#621: optional client-supplied per-run Watchlist source filter.
   // Omitted preserves the legacy "include every saved Watchlist source"
   // behavior; [] disables Watchlist entirely; non-empty restricts to a
@@ -623,6 +639,7 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
           sources: config.sources,
           scoringInstructions: config.scoringInstructions,
           runBudget: config.runBudget,
+          postedWithinDays: config.postedWithinDays,
           locationIntent,
           watchlistSelectedSourceIds: config.watchlistSelectedSourceIds,
         },

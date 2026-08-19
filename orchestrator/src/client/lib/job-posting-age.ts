@@ -1,4 +1,11 @@
+import {
+  getPostingDateSortValue,
+  parsePostingDate,
+  parseRelativeAgeDays,
+} from "@shared/job-posting-age.js";
 import { formatDate, formatDateTime } from "@/lib/utils";
+
+export { getPostingDateSortValue };
 
 export interface PostingAgeLabel {
   label: string;
@@ -11,12 +18,6 @@ export type PostingAgeTone = "fresh" | "aging" | "old";
 
 const RELATIVE_SOURCE_PATTERN =
   /\b(ago|today|yesterday|minute|hour|day|week|month|year)s?\b/i;
-
-function parsePostingDate(value: string): Date | null {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
 
 function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -37,44 +38,6 @@ function getPostingAgeTone(ageDays: number | null): PostingAgeTone {
   if (ageDays <= 4) return "fresh";
   if (ageDays <= 14) return "aging";
   return "old";
-}
-
-function parseRelativeAgeDays(value: string): number | null {
-  const normalized = value.trim().toLowerCase();
-  if (/\btoday\b/.test(normalized)) return 0;
-  if (/\byesterday\b/.test(normalized)) return 1;
-
-  const match = /(\d+)\s*(minute|hour|day|week|month|year)s?\s+ago\b/.exec(
-    normalized,
-  );
-  if (!match) return null;
-
-  const amount = Number.parseInt(match[1] ?? "", 10);
-  if (!Number.isFinite(amount)) return null;
-
-  const unit = match[2];
-  if (unit === "minute" || unit === "hour") return 0;
-  if (unit === "day") return amount;
-  if (unit === "week") return amount * 7;
-  if (unit === "month") return amount * 30;
-  if (unit === "year") return amount * 365;
-  return null;
-}
-
-export function getPostingDateSortValue(
-  datePosted: string | null | undefined,
-  now = new Date(),
-): number | null {
-  const raw = datePosted?.trim();
-  if (!raw) return null;
-
-  const parsed = parsePostingDate(raw);
-  if (parsed) return parsed.getTime();
-
-  const ageDays = parseRelativeAgeDays(raw);
-  if (ageDays == null) return null;
-
-  return now.getTime() - ageDays * 86_400_000;
 }
 
 function plural(value: number, unit: string): string {
