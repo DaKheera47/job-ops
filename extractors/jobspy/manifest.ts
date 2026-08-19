@@ -49,6 +49,14 @@ export const manifest: ExtractorManifest = {
           )
         : configuredResultsWanted;
 
+    const configuredHoursOld = context.settings.jobspyHoursOld
+      ? parseInt(context.settings.jobspyHoursOld, 10)
+      : undefined;
+    const hoursOld =
+      configuredHoursOld && Number.isFinite(configuredHoursOld)
+        ? configuredHoursOld
+        : undefined;
+
     const result = await runJobSpy({
       sites,
       searchTerms: context.searchTerms,
@@ -56,6 +64,7 @@ export const manifest: ExtractorManifest = {
       location:
         context.settings.searchCities ?? context.settings.jobspyLocation,
       resultsWanted,
+      hoursOld,
       countryIndeed: context.settings.jobspyCountryIndeed,
       workplaceTypes: context.settings.workplaceTypes
         ? JSON.parse(context.settings.workplaceTypes)

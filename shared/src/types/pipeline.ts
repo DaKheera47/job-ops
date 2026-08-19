@@ -18,6 +18,23 @@ export function normalizePipelineRunBudget(value: number): number {
   );
 }
 
+/** Upper bound (in days) for the "Job posted within" search filter. */
+export const MAX_POSTED_WITHIN_DAYS = 365;
+
+/**
+ * Normalizes a "posted within the last N days" value. `null`/`undefined` and
+ * any non-positive value mean "any time" (no filter). Positive values are
+ * rounded and clamped to {@link MAX_POSTED_WITHIN_DAYS}.
+ */
+export function normalizePostedWithinDays(
+  value: number | null | undefined,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  if (rounded <= 0) return null;
+  return Math.min(MAX_POSTED_WITHIN_DAYS, rounded);
+}
+
 export interface ExtractorLimits {
   jobspyResultsWanted: number;
   gradcrackerMaxJobsPerTerm: number;
@@ -93,6 +110,10 @@ export interface PipelineConfig {
   locationIntent?: LocationIntent;
   scoringInstructions?: string;
   runBudget?: number;
+  // Max posting age (in days) for discovered jobs. null/undefined = any time.
+  // Applied in discoverJobsStep to drop jobs with a known older posting date,
+  // and mapped to JobSpy's native `hoursOld` for source-level trimming.
+  postedWithinDays?: number | null;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
@@ -231,6 +252,8 @@ export interface PipelineSearchPresetConfig {
   minSuitabilityScore: number;
   runBudget: number;
   scoringInstructions?: string;
+  // Max posting age (in days) for discovered jobs. Omitted/null = any time.
+  postedWithinDays?: number | null;
   automaticPresetId?: PipelineSearchPresetMode;
   // Optional per-run Watchlist source selection. Omitted = legacy behavior
   // (include every Watchlist source the user has saved). See issue #621.

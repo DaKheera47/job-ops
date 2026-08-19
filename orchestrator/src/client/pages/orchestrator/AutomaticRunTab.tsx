@@ -52,9 +52,12 @@ import {
   type AutomaticPresetId,
   type AutomaticPresetSelection,
   type AutomaticRunValues,
+  derivePostedWithinSelection,
   loadAutomaticRunMemory,
   normalizeWorkplaceTypes,
   parseCityLocationsSetting,
+  type PostedWithinSelection,
+  resolvePostedWithinDays,
   saveAutomaticRunMemory,
   summarizeLocationPreferences,
   type WorkplaceType,
@@ -101,6 +104,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   workplaceTypes: ["remote", "hybrid", "onsite"],
   searchScope: "selected_only",
   matchStrictness: "exact_only",
+  postedWithinDays: null,
 };
 
 interface AutomaticRunFormValues {
@@ -115,6 +119,8 @@ interface AutomaticRunFormValues {
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
+  postedWithinSelection: PostedWithinSelection;
+  postedWithinCustomDraft: string;
   searchTerms: string[];
   searchTermDraft: string;
   scoringInstructions: string;
@@ -199,6 +205,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       workplaceTypes: DEFAULT_VALUES.workplaceTypes,
       searchScope: DEFAULT_VALUES.searchScope,
       matchStrictness: DEFAULT_VALUES.matchStrictness,
+      postedWithinSelection: "any",
+      postedWithinCustomDraft: "",
       searchTerms: DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
       scoringInstructions: DEFAULT_VALUES.scoringInstructions,
@@ -216,6 +224,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const workplaceTypes = watch("workplaceTypes");
   const searchScope = watch("searchScope");
   const matchStrictness = watch("matchStrictness");
+  const postedWithinSelection = watch("postedWithinSelection");
+  const postedWithinCustomDraft = watch("postedWithinCustomDraft");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
   const scoringInstructions = watch("scoringInstructions");
@@ -329,6 +339,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       workplaceTypes: rememberedWorkplaceTypes,
       searchScope: rememberedSearchScope,
       matchStrictness: rememberedMatchStrictness,
+      postedWithinSelection: "any",
+      postedWithinCustomDraft: "",
       searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
       scoringInstructions: DEFAULT_VALUES.scoringInstructions,
@@ -390,6 +402,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       workplaceTypes: normalizeWorkplaceTypes(workplaceTypes),
       searchScope,
       matchStrictness,
+      postedWithinDays: resolvePostedWithinDays(
+        postedWithinSelection,
+        postedWithinCustomDraft,
+      ),
       searchTerms,
       scoringInstructions: scoringInstructions.trim(),
     };
@@ -404,6 +420,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     workplaceTypes,
     searchScope,
     matchStrictness,
+    postedWithinSelection,
+    postedWithinCustomDraft,
     searchTerms,
     scoringInstructions,
   ]);
@@ -557,6 +575,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       minSuitabilityScore: values.minSuitabilityScore,
       runBudget: values.runBudget,
       scoringInstructions: values.scoringInstructions,
+      postedWithinDays: values.postedWithinDays,
       automaticPresetId: selectedPreset,
       watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
     }),
@@ -649,6 +668,13 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     });
     setValue("searchScope", config.searchScope, { shouldDirty: true });
     setValue("matchStrictness", config.matchStrictness, { shouldDirty: true });
+    const postedWithin = derivePostedWithinSelection(config.postedWithinDays);
+    setValue("postedWithinSelection", postedWithin.selection, {
+      shouldDirty: true,
+    });
+    setValue("postedWithinCustomDraft", postedWithin.customDraft, {
+      shouldDirty: true,
+    });
     setValue("searchTerms", config.searchTerms, { shouldDirty: true });
     setValue("searchTermDraft", "");
     setValue("scoringInstructions", config.scoringInstructions ?? "", {
@@ -876,6 +902,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   cityLocationDraft={cityLocationDraft}
                   workplaceTypes={workplaceTypes}
                   workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
+                  postedWithinSelection={postedWithinSelection}
+                  postedWithinCustomDraft={postedWithinCustomDraft}
                   onCountryChange={(country) => {
                     setValue("country", country, { shouldDirty: true });
                     if (
@@ -905,6 +933,16 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                     setValue("proximity", value, { shouldDirty: true })
                   }
                   onToggleWorkplaceType={toggleWorkplaceType}
+                  onPostedWithinSelectionChange={(value) => {
+                    setValue("postedWithinSelection", value, {
+                      shouldDirty: true,
+                    });
+                  }}
+                  onPostedWithinCustomDraftChange={(value) =>
+                    setValue("postedWithinCustomDraft", value, {
+                      shouldDirty: true,
+                    })
+                  }
                 />
 
                 <AutomaticRankingPreferencesCard

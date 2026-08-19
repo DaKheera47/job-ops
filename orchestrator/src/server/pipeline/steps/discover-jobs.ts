@@ -13,6 +13,7 @@ import {
   deduplicateJobsByTitleAndEmployer,
   matchJobLocationIntent,
 } from "@shared/job-matching.js";
+import { getPostingDateSortValue } from "@shared/job-posting-age.js";
 import {
   buildLocationEvidence as buildSharedLocationEvidence,
   createLocationIntentFromLegacyInputs,
@@ -24,6 +25,7 @@ import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import {
   type CreateJobInput,
   deriveExtractorLimits,
+  normalizePostedWithinDays,
   type PipelineConfig,
 } from "@shared/types";
 import {
@@ -228,8 +230,14 @@ export async function discoverJobsStep(args: {
   const compatibleSources = sourcePlans
     .filter(({ plan }) => plan.canRun)
     .map(({ source }) => source);
-  const runSettings =
-    args.mergedConfig.runBudget !== undefined
+  // Max posting age for this run. Applied as an all-source cutoff below and,
+  // for JobSpy sources, mapped to its native `hoursOld` param so stale
+  // listings are trimmed at the source instead of only post-discovery.
+  const postedWithinDays = normalizePostedWithinDays(
+    args.mergedConfig.postedWithinDays,
+  );
+  const runSettings: Record<string, string> = {
+    ...(args.mergedConfig.runBudget !== undefined
       ? Object.fromEntries(
           Object.entries(
             deriveExtractorLimits({
@@ -239,7 +247,11 @@ export async function discoverJobsStep(args: {
             }),
           ).map(([key, value]) => [key, String(value)]),
         )
-      : {};
+      : {}),
+    ...(postedWithinDays != null
+      ? { jobspyHoursOld: String(postedWithinDays * 24) }
+      : {}),
+  };
   let existingJobUrlsPromise: Promise<string[]> | null = null;
   const getExistingJobUrls = (): Promise<string[]> => {
     if (!existingJobUrlsPromise) {
@@ -712,10 +724,38 @@ export async function discoverJobsStep(args: {
         });
       }
 
+      // Drop jobs whose known posting date is older than the requested window.
+      // Jobs with a missing/unparseable date are kept: many sources omit a
+      // posting date entirely, and dropping them would silently discard whole
+      // sources. JobSpy sources are additionally trimmed at the source via the
+      // native `hoursOld` param injected above.
+      let withinWindowJobs = filteredDiscoveredJobs;
+      if (postedWithinDays != null) {
+        const now = Date.now();
+        const nowDate = new Date(now);
+        const cutoff = now - postedWithinDays * 86_400_000;
+        let droppedStaleCount = 0;
+        withinWindowJobs = filteredDiscoveredJobs.filter((job) => {
+          const postedAt = getPostingDateSortValue(job.datePosted, nowDate);
+          if (postedAt == null) return true;
+          if (postedAt >= cutoff) return true;
+          droppedStaleCount += 1;
+          return false;
+        });
+
+        if (droppedStaleCount > 0) {
+          logger.info("Dropped discovered jobs older than the posting window", {
+            step: "discover-jobs",
+            droppedCount: droppedStaleCount,
+            postedWithinDays,
+          });
+        }
+      }
+
       if (args.shouldCancel?.()) {
         return {
           result: {
-            discoveredJobs: filteredDiscoveredJobs,
+            discoveredJobs: withinWindowJobs,
             sourceErrors,
             pendingChallenges,
           },
@@ -755,12 +795,12 @@ export async function discoverJobsStep(args: {
       // Don't transition to "importing" yet if there are challenges to solve —
       // the orchestrator will pause and re-run after challenges are resolved.
       if (pendingChallenges.length === 0) {
-        progressHelpers.crawlingComplete(filteredDiscoveredJobs.length);
+        progressHelpers.crawlingComplete(withinWindowJobs.length);
       }
 
       return {
         result: {
-          discoveredJobs: filteredDiscoveredJobs,
+          discoveredJobs: withinWindowJobs,
           sourceErrors,
           pendingChallenges,
         },

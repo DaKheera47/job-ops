@@ -13,7 +13,9 @@ import {
 import {
   deriveExtractorLimits,
   type LocationProximity,
+  MAX_POSTED_WITHIN_DAYS,
   normalizePipelineRunBudget,
+  normalizePostedWithinDays,
 } from "@shared/types";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 
@@ -39,6 +41,8 @@ export interface AutomaticRunValues {
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
+  // Max posting age (in days) for discovered jobs. null = any time.
+  postedWithinDays: number | null;
   // Optional override for per-#621 Watchlist source selection. When
   // omitted, usePipelineControls falls back to the global hook selection.
   watchlistSelectedSourceIds?: string[];
@@ -140,6 +144,89 @@ export const MATCH_STRICTNESS_OPTIONS: Array<{
     description: "Include nearby and plausibly compatible locations.",
   },
 ];
+
+export { MAX_POSTED_WITHIN_DAYS };
+
+/** UI selection for the "Job posted within" search filter. */
+export type PostedWithinSelection = "any" | "24h" | "7d" | "month" | "custom";
+
+const POSTED_WITHIN_PRESET_DAYS: Record<"24h" | "7d" | "month", number> = {
+  "24h": 1,
+  "7d": 7,
+  month: 30,
+};
+
+export const POSTED_WITHIN_OPTIONS: Array<{
+  value: PostedWithinSelection;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "any",
+    label: "Any time",
+    description: "Include jobs regardless of when they were posted.",
+  },
+  {
+    value: "24h",
+    label: "Last 24 hours",
+    description: "Only jobs posted in the past day.",
+  },
+  {
+    value: "7d",
+    label: "Last 7 days",
+    description: "Only jobs posted in the past week.",
+  },
+  {
+    value: "month",
+    label: "Last month",
+    description: "Only jobs posted in the past 30 days.",
+  },
+  {
+    value: "custom",
+    label: "Custom",
+    description: "Choose a maximum posting age in days.",
+  },
+];
+
+/**
+ * Resolves the UI selection (plus the custom-days draft) into the canonical
+ * `postedWithinDays` value threaded to the backend. Returns null ("any time")
+ * for the "any" option or an empty/invalid custom draft.
+ */
+export function resolvePostedWithinDays(
+  selection: PostedWithinSelection,
+  customDraft: string,
+): number | null {
+  if (selection === "any") return null;
+  if (selection === "custom") {
+    return normalizePostedWithinDays(Number.parseInt(customDraft, 10));
+  }
+  return POSTED_WITHIN_PRESET_DAYS[selection];
+}
+
+/**
+ * Inverse of {@link resolvePostedWithinDays}: maps a canonical
+ * `postedWithinDays` value back to a UI selection and custom-days draft.
+ * Preset day counts map to their preset option; any other positive value maps
+ * to the "custom" option.
+ */
+export function derivePostedWithinSelection(days: number | null | undefined): {
+  selection: PostedWithinSelection;
+  customDraft: string;
+} {
+  const normalized = normalizePostedWithinDays(days);
+  if (normalized == null) return { selection: "any", customDraft: "" };
+  if (normalized === POSTED_WITHIN_PRESET_DAYS["24h"]) {
+    return { selection: "24h", customDraft: "" };
+  }
+  if (normalized === POSTED_WITHIN_PRESET_DAYS["7d"]) {
+    return { selection: "7d", customDraft: "" };
+  }
+  if (normalized === POSTED_WITHIN_PRESET_DAYS.month) {
+    return { selection: "month", customDraft: "" };
+  }
+  return { selection: "custom", customDraft: String(normalized) };
+}
 
 export interface AutomaticRunMemory {
   topN: number;

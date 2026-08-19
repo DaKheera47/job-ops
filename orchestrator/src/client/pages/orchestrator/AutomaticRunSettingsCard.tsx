@@ -31,7 +31,10 @@ import {
 import {
   type AutomaticRunValues,
   MATCH_STRICTNESS_OPTIONS,
+  MAX_POSTED_WITHIN_DAYS,
   parseCityLocationsInput,
+  POSTED_WITHIN_OPTIONS,
+  type PostedWithinSelection,
   SEARCH_SCOPE_OPTIONS,
   WORKPLACE_TYPE_OPTIONS,
   type WorkplaceType,
@@ -47,6 +50,8 @@ interface AutomaticRunSettingsCardProps {
   cityLocationDraft: string;
   workplaceTypes: WorkplaceType[];
   workplaceTypeSelectionInvalid: boolean;
+  postedWithinSelection: PostedWithinSelection;
+  postedWithinCustomDraft: string;
   onCountryChange: (country: string) => void;
   onUseCountrySuggestion: () => void;
   onCityLocationDraftChange: (value: string) => void;
@@ -57,6 +62,8 @@ interface AutomaticRunSettingsCardProps {
     workplaceType: WorkplaceType,
     checked: boolean,
   ) => void;
+  onPostedWithinSelectionChange: (value: PostedWithinSelection) => void;
+  onPostedWithinCustomDraftChange: (value: string) => void;
 }
 
 export function AutomaticRunSettingsCard({
@@ -67,6 +74,8 @@ export function AutomaticRunSettingsCard({
   cityLocationDraft,
   workplaceTypes,
   workplaceTypeSelectionInvalid,
+  postedWithinSelection,
+  postedWithinCustomDraft,
   onCountryChange,
   onUseCountrySuggestion,
   onCityLocationDraftChange,
@@ -74,6 +83,8 @@ export function AutomaticRunSettingsCard({
   onLocationModeChange,
   onProximityChange,
   onToggleWorkplaceType,
+  onPostedWithinSelectionChange,
+  onPostedWithinCustomDraftChange,
 }: AutomaticRunSettingsCardProps) {
   return (
     <Card>
@@ -99,6 +110,8 @@ export function AutomaticRunSettingsCard({
           cityLocationDraft={cityLocationDraft}
           workplaceTypes={workplaceTypes}
           workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
+          postedWithinSelection={postedWithinSelection}
+          postedWithinCustomDraft={postedWithinCustomDraft}
           onCountryChange={onCountryChange}
           onUseCountrySuggestion={onUseCountrySuggestion}
           onCityLocationDraftChange={onCityLocationDraftChange}
@@ -106,6 +119,8 @@ export function AutomaticRunSettingsCard({
           onLocationModeChange={onLocationModeChange}
           onProximityChange={onProximityChange}
           onToggleWorkplaceType={onToggleWorkplaceType}
+          onPostedWithinSelectionChange={onPostedWithinSelectionChange}
+          onPostedWithinCustomDraftChange={onPostedWithinCustomDraftChange}
         />
       </CardContent>
     </Card>
@@ -120,6 +135,8 @@ interface LocationPreferencesProps {
   cityLocationDraft: string;
   workplaceTypes: WorkplaceType[];
   workplaceTypeSelectionInvalid: boolean;
+  postedWithinSelection: PostedWithinSelection;
+  postedWithinCustomDraft: string;
   onCountryChange: (country: string) => void;
   onUseCountrySuggestion: () => void;
   onCityLocationDraftChange: (value: string) => void;
@@ -130,6 +147,8 @@ interface LocationPreferencesProps {
     workplaceType: WorkplaceType,
     checked: boolean,
   ) => void;
+  onPostedWithinSelectionChange: (value: PostedWithinSelection) => void;
+  onPostedWithinCustomDraftChange: (value: string) => void;
 }
 
 function LocationPreferences({
@@ -140,6 +159,8 @@ function LocationPreferences({
   cityLocationDraft,
   workplaceTypes,
   workplaceTypeSelectionInvalid,
+  postedWithinSelection,
+  postedWithinCustomDraft,
   onCountryChange,
   onUseCountrySuggestion,
   onCityLocationDraftChange,
@@ -147,6 +168,8 @@ function LocationPreferences({
   onLocationModeChange,
   onProximityChange,
   onToggleWorkplaceType,
+  onPostedWithinSelectionChange,
+  onPostedWithinCustomDraftChange,
 }: LocationPreferencesProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -279,6 +302,40 @@ function LocationPreferences({
           <p className="text-xs text-destructive">
             Select at least one workplace type.
           </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <Label className="text-base font-semibold">Job posted within</Label>
+          <p className="text-sm leading-5 text-muted-foreground">
+            Only include jobs posted in the selected time frame. Jobs without a
+            posting date are always kept.
+          </p>
+        </div>
+        <AutomaticChoiceCardGroup
+          ariaLabel="Job posted within"
+          value={postedWithinSelection}
+          columns={3}
+          options={POSTED_WITHIN_OPTIONS}
+          onValueChange={onPostedWithinSelectionChange}
+        />
+        {postedWithinSelection === "custom" ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="posted-within-custom-days">Maximum age (days)</Label>
+            <Input
+              id="posted-within-custom-days"
+              type="number"
+              min={1}
+              max={MAX_POSTED_WITHIN_DAYS}
+              value={postedWithinCustomDraft}
+              placeholder="e.g. 10"
+              className="w-40"
+              onChange={(event) =>
+                onPostedWithinCustomDraftChange(event.target.value)
+              }
+            />
+          </div>
         ) : null}
       </div>
     </div>
