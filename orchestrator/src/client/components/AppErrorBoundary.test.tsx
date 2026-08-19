@@ -7,6 +7,7 @@ import {
   buildFatalIssueUrl,
   createFatalErrorSnapshot,
   FatalErrorScreen,
+  isOpaqueCrossOriginError,
   sanitizeCrashText,
 } from "./AppErrorBoundary";
 
@@ -108,6 +109,27 @@ describe("AppErrorBoundary", () => {
     expect(screen.queryByText(/abc\.def\.ghi/)).not.toBeInTheDocument();
   });
 
+  it("ignores opaque cross-origin 'Script error.' events without crashing", async () => {
+    renderBoundary(<div>Healthy app</div>, "/jobs/discovered/abc123");
+
+    act(() => {
+      window.dispatchEvent(
+        new ErrorEvent("error", {
+          message: "Script error.",
+          filename: "",
+          lineno: 0,
+          colno: 0,
+          // No `error` object — the browser hides details for cross-origin scripts.
+        }),
+      );
+    });
+
+    expect(screen.getByText("Healthy app")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Something went wrong" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the fatal fallback for unhandled promise rejections", async () => {
     renderBoundary(<div>Healthy app</div>, "/overview");
     const event = new Event("unhandledrejection", {
@@ -196,6 +218,31 @@ describe("AppErrorBoundary", () => {
     expect(decoded).toContain("token=[redacted]");
     expect(decoded).not.toContain("top-secret");
     expect(decoded).not.toContain("hunter2");
+  });
+
+  it("classifies opaque cross-origin errors, but not real Error events", () => {
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", { message: "Script error.", filename: "" }),
+      ),
+    ).toBe(true);
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", {
+          message: "anything",
+          filename: "",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", {
+          message: "Real failure",
+          filename: "https://avasar.slotify.dev/app.js",
+          error: new Error("Real failure"),
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("redacts long opaque values", () => {
