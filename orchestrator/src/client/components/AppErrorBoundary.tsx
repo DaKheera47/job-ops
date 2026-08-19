@@ -280,6 +280,20 @@ function isRecoverableApiError(reason: unknown): boolean {
   );
 }
 
+/**
+ * Detects opaque cross-origin "Script error." events. When a script loaded from
+ * a different origin (without CORS) throws, browsers hide all details for
+ * security and fire a global error event with no real Error object, an empty
+ * filename, and the literal message "Script error.". These almost always come
+ * from third-party analytics scripts or browser extensions — they are not fatal
+ * to our app, so escalating them to the crash screen only produces repeated,
+ * non-actionable failures with no stack to debug.
+ */
+export function isOpaqueCrossOriginError(event: ErrorEvent): boolean {
+  if (event.error instanceof Error) return false;
+  return !event.filename || event.message === "Script error.";
+}
+
 export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const route = `${location.pathname}${location.search}${location.hash}`;
@@ -292,6 +306,10 @@ export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
+      if (isOpaqueCrossOriginError(event)) {
+        // Non-actionable third-party/extension noise — don't crash the app.
+        return;
+      }
       const reason = event.error ?? event.message;
       if (isRecoverableApiError(reason)) {
         event.preventDefault();
