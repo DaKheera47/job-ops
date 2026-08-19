@@ -1,0 +1,45 @@
+name: Deploy to MoxieU26Server
+
+# Deploys to MoxieU26Server (avasar.slotify.dev) via the self-hosted runner.
+# Only pushes to main deploy — never pull_request, because the runner is a
+# real server and this repo is public. See /var/www/Avasar-RR/deployment.md
+# on the server for the full hosting picture.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-avasar-rr
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to MoxieU26Server
+    # Guard: never run this job from a fork of the repo.
+    if: github.repository == 'rohanrathi99/Avasar'
+    runs-on: [self-hosted, avasar-rr]
+    timeout-minutes: 30
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use the server's Node 22 (nvm)
+        # Same binary the avasar-rr systemd service runs, so native modules
+        # (better-sqlite3) are compiled for exactly the right ABI.
+        run: echo "/home/moxie/.nvm/versions/node/v22.22.1/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: npm ci --workspaces --include-workspace-root
+
+      - name: Build client
+        run: npm run build:client
+        working-directory: orchestrator
+
+      - name: Deploy and restart service
+        # Root-owned script, allowed via /etc/sudoers.d/avasar-rr-deploy.
+        # It rsyncs this staged checkout into /var/www/Avasar-RR/publish
+        # (data/ and the server-local .env are untouched), restarts
+        # avasar-rr, and fails if /health doesn't come back.
+        run: sudo -n /usr/local/bin/avasar-rr-deploy "$GITHUB_WORKSPACE"
