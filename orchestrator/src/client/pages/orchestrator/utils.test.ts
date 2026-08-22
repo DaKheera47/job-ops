@@ -1,8 +1,8 @@
-import { createAppSettings, createJob } from "@shared/testing/factories.js";
 import {
   EXTRACTOR_SOURCE_METADATA,
   PIPELINE_EXTRACTOR_SOURCE_IDS,
 } from "@shared/extractors";
+import { createAppSettings, createJob } from "@shared/testing/factories.js";
 import { describe, expect, it } from "vitest";
 import {
   extractEmploymentTypes,
