@@ -1,4 +1,5 @@
 import { getPostingDateSortValue } from "@client/lib/job-posting-age";
+import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
 import type { AppSettings, JobListItem, JobSource } from "@shared/types";
 import type {
   DateFilterDimension,
@@ -298,50 +299,11 @@ export const getEnabledSources = (
   const hasApifyToken = Boolean(settings.apifyTokenHint);
 
   for (const source of orderedSources) {
-    if (source === "gradcracker") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "ukvisajobs") {
-      if (hasUkVisaJobsAuth) enabled.push(source);
-      continue;
-    }
-    if (source === "adzuna") {
-      if (hasAdzunaAuth) enabled.push(source);
-      continue;
-    }
-    if (source === "seek") {
-      if (hasApifyToken) enabled.push(source);
-      continue;
-    }
-    if (source === "naukri") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "hiringcafe") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "startupjobs") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "workingnomads") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "golangjobs") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "jobindex") {
-      enabled.push(source);
-      continue;
-    }
     if (
-      source === "indeed" ||
-      source === "linkedin" ||
-      source === "glassdoor"
+      !EXTRACTOR_SOURCE_METADATA[source].requiresCredentials ||
+      (source === "ukvisajobs" && hasUkVisaJobsAuth) ||
+      (source === "adzuna" && hasAdzunaAuth) ||
+      (source === "seek" && hasApifyToken)
     ) {
       enabled.push(source);
     }
