@@ -22,6 +22,7 @@ Extractor integrations are now registered through manifests and loaded automatic
 | [Golang Jobs](/docs/next/extractors/golang-jobs) | Go-specific discovery through the public Golang Jobs feed | Depends on the site's public Supabase-backed schema staying stable; no credentials required | existing pipeline `searchTerms`, selected country/cities, `jobspyResultsWanted`, workplace type | Paginates the public jobs feed, maps location through the linked city record, then filters locally and de-duplicates by source id / URL |
 | [Jobindex](/docs/next/extractors/jobindex) | Denmark job search through Jobindex result pages | Denmark-only; city filtering depends on resolving selected cities to Jobindex `geoareaid` values | existing pipeline `searchTerms`, selected country/cities, `JOBINDEX_MAX_JOBS_PER_TERM` / automatic run budget | Parses the embedded Stash payload, applies resolved `geoareaid` filters when available, paginates result pages, maps card metadata and direct apply links, and de-duplicates by source id / URL |
 | [Seek](/docs/next/extractors/seek) | Australia/NZ job search via Apify | Requires Apify API token; actor runs incur cost ($1.50/1,000 results; free tier ~3,000/month) | `APIFY_TOKEN`, `SEEK_MAX_JOBS_PER_TERM`, `SEEK_APIFY_ACTOR_ID` | Calls the `unfenced-group/seek-com-au-scraper` Apify actor per term, maps results, and de-duplicates by source id / URL |
+| [FreeHire](/docs/next/extractors/freehire) | Broad job discovery through FreeHire's public agent API | No credentials required; API availability and rate limits are controlled by FreeHire | existing pipeline `searchTerms`, selected country/cities, `jobspyResultsWanted`, workplace type | Requests full Markdown descriptions and enriched job metadata, then de-duplicates original upstream URLs across sources |
 | [UKVisaJobs](/docs/next/extractors/ukvisajobs) | UK visa sponsorship-focused roles | Requires authenticated session and periodic token/cookie refresh | `UKVISAJOBS_EMAIL`, `UKVISAJOBS_PASSWORD`, `UKVISAJOBS_MAX_JOBS`, `UKVISAJOBS_SEARCH_KEYWORD` | API pagination + dataset output; orchestrator de-dupes and may fetch missing descriptions |
 | [Manual Import](/docs/next/extractors/manual) | One-off jobs not covered by scrapers | Inference quality depends on model/provider and input quality; some URLs cannot be fetched reliably | App/API endpoints (`/api/manual-jobs/infer`, `/api/manual-jobs/import`) | Accepts text/HTML/URL, runs inference, then saves and scores job after review |
 
@@ -35,6 +36,7 @@ Extractor integrations are now registered through manifests and loaded automatic
 - Use **Golang Jobs** when you want a niche Go-focused board that broad aggregators often miss.
 - Use **Jobindex** when targeting Denmark roles from the local Jobindex board.
 - Use **Seek** when targeting Australia/NZ roles via the Apify-powered Seek scraper.
+- Use **FreeHire** for broad API-backed coverage without another credential.
 - Use **Gradcracker** when targeting graduate pipelines in the UK.
 - Use **UKVisaJobs** for sponsorship-specific UK searches.
 - Use **Manual Import** when you already have a specific posting and need direct import.
@@ -63,6 +65,7 @@ Many runs combine sources: broad discovery first, then manual import for high-pr
 - [Golang Jobs](/docs/next/extractors/golang-jobs)
 - [Jobindex](/docs/next/extractors/jobindex)
 - [Seek](/docs/next/extractors/seek)
+- [FreeHire](/docs/next/extractors/freehire)
 - [UKVisaJobs](/docs/next/extractors/ukvisajobs)
 - [Manual Import](/docs/next/extractors/manual)
 - [Add an Extractor](/docs/next/workflows/add-an-extractor)

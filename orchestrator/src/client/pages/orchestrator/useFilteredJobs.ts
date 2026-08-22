@@ -29,6 +29,7 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
     sourceFilter,
     sponsorFilter,
     salaryFilter,
+    scoreFilter,
     postedWithinDays,
     employmentTypes,
     location,
@@ -128,6 +129,21 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
       });
     }
 
+    if (scoreFilter.mode === "missing") {
+      filtered = filtered.filter((job) => job.suitabilityScore == null);
+    } else if (scoreFilter.mode === "has") {
+      filtered = filtered.filter((job) => {
+        if (job.suitabilityScore == null) return false;
+        if (scoreFilter.min != null && job.suitabilityScore < scoreFilter.min) {
+          return false;
+        }
+        if (scoreFilter.max != null && job.suitabilityScore > scoreFilter.max) {
+          return false;
+        }
+        return true;
+      });
+    }
+
     return [...filtered].sort((a, b) => compareJobs(a, b, sort));
   }, [
     jobs,
@@ -136,6 +152,7 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
     sourceFilter,
     sponsorFilter,
     salaryFilter,
+    scoreFilter,
     postedWithinDays,
     employmentTypes,
     location,

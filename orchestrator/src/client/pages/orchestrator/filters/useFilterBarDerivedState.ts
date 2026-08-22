@@ -5,14 +5,17 @@ import type {
   JobDateFilter,
   JobSort,
   SalaryFilter,
+  ScoreFilter,
   SponsorFilter,
 } from "../constants";
 import { postedWithinOptions } from "../constants";
 import { sponsorOptions } from "./filterOptions";
 import {
   formatSalarySummary,
+  formatScoreSummary,
   getDirectionOptions,
   isSalaryFilterActive,
+  isScoreFilterActive,
 } from "./filterUtils";
 
 interface UseFilterBarDerivedStateArgs {
@@ -23,6 +26,7 @@ interface UseFilterBarDerivedStateArgs {
   employmentTypes: EmploymentType[];
   locationFilter: string;
   salaryFilter: SalaryFilter;
+  scoreFilter: ScoreFilter;
   sort: JobSort;
   isFiltersOpen?: boolean;
   onFiltersOpenChange?: (open: boolean) => void;
@@ -36,6 +40,7 @@ export const useFilterBarDerivedState = ({
   employmentTypes,
   locationFilter,
   salaryFilter,
+  scoreFilter,
   sort,
   isFiltersOpen: isFiltersOpenProp,
   onFiltersOpenChange: onFiltersOpenChangeProp,
@@ -45,6 +50,7 @@ export const useFilterBarDerivedState = ({
   const onFiltersOpenChange = onFiltersOpenChangeProp ?? setInternalFiltersOpen;
 
   const salaryActive = isSalaryFilterActive(salaryFilter);
+  const scoreActive = isScoreFilterActive(scoreFilter);
 
   const activeFilterCount = useMemo(
     () =>
@@ -54,7 +60,8 @@ export const useFilterBarDerivedState = ({
       Number(postedWithinDays != null) +
       Number(employmentTypes.length > 0) +
       Number(locationFilter.trim() !== "") +
-      Number(salaryActive),
+      Number(salaryActive) +
+      Number(scoreActive),
     [
       sourceFilter,
       sponsorFilter,
@@ -63,6 +70,7 @@ export const useFilterBarDerivedState = ({
       employmentTypes.length,
       locationFilter,
       salaryActive,
+      scoreActive,
     ],
   );
 
@@ -81,15 +89,18 @@ export const useFilterBarDerivedState = ({
   )?.label;
 
   const salarySummary = formatSalarySummary(salaryFilter);
+  const scoreSummary = formatScoreSummary(scoreFilter);
 
   return {
     isFiltersOpen,
     onFiltersOpenChange,
     salaryActive,
+    scoreActive,
     activeFilterCount,
     postedWithinLabel,
     sponsorLabel,
     sortDirectionLabel,
     salarySummary,
+    scoreSummary,
   };
 };
