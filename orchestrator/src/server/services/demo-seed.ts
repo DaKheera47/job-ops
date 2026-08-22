@@ -13,7 +13,7 @@ import {
 } from "@server/services/demo-pdf";
 import { resolvePdfFingerprintContext } from "@server/services/pdf-fingerprint";
 import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
-import { and, eq, like, notInArray, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 type BuiltDemoBaseline = {
   resetAt: string;
@@ -24,12 +24,6 @@ type BuiltDemoBaseline = {
 };
 
 const { interviews, jobs, pipelineRuns, settings, stageEvents, tasks } = schema;
-
-export const DEMO_LIVE_JOB_SOURCES = [
-  "linkedin",
-  "indeed",
-  "hiringcafe",
-] as const;
 
 function toIsoFromOffset(now: Date, offsetMinutes: number): string {
   return new Date(now.getTime() - offsetMinutes * 60 * 1000).toISOString();
@@ -115,17 +109,7 @@ export async function applyDemoBaseline(
     tx.delete(interviews)
       .where(eq(interviews.tenantId, DEFAULT_TENANT_ID))
       .run();
-    tx.delete(jobs)
-      .where(
-        and(
-          eq(jobs.tenantId, DEFAULT_TENANT_ID),
-          or(
-            like(jobs.id, "demo-job-%"),
-            notInArray(jobs.source, [...DEMO_LIVE_JOB_SOURCES]),
-          ),
-        ),
-      )
-      .run();
+    tx.delete(jobs).where(eq(jobs.tenantId, DEFAULT_TENANT_ID)).run();
     tx.delete(pipelineRuns)
       .where(eq(pipelineRuns.tenantId, DEFAULT_TENANT_ID))
       .run();

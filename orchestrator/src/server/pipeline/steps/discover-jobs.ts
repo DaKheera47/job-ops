@@ -149,10 +149,7 @@ function buildLocationEvidence(args: {
 }
 
 export async function discoverJobsStep(args: {
-  mergedConfig: Pick<
-    PipelineConfig,
-    "sources" | "locationIntent" | "runBudget"
-  >;
+  mergedConfig: PipelineConfig;
   includeWatchlist?: boolean;
   preserveFanout?: boolean;
   fanoutSeedJobs?: CreateJobInput[];

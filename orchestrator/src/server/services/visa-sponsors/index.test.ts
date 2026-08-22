@@ -1,6 +1,22 @@
 import type { VisaSponsorSearchResult } from "@shared/types";
 import { describe, expect, it } from "vitest";
-import { calculateSponsorMatchSummary } from "./index";
+import { buildExactSponsorIndex, calculateSponsorMatchSummary } from "./index";
+
+describe("buildExactSponsorIndex", () => {
+  it("indexes equivalent company names for constant-time lookup", () => {
+    const sponsor = {
+      organisationName: "Acme Corporation Limited",
+      townCity: "London",
+      county: "",
+      typeRating: "Worker",
+      route: "Skilled Worker",
+    };
+
+    const index = buildExactSponsorIndex([sponsor]);
+
+    expect(index.get("acme")).toEqual([sponsor]);
+  });
+});
 
 describe("calculateSponsorMatchSummary", () => {
   it("should return default values for empty results", () => {

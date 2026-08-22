@@ -259,7 +259,6 @@ Set `DEMO_MODE=true` for sandbox deployments.
 Behavior in demo mode:
 
 - Anonymous read-only access to the seeded demo workspace
-- OJCP discovery and MCP job search endpoints, backed by a daily US software-engineering refresh from LinkedIn, Indeed, and Hiring Cafe with 30-day retention
 - Works locally: browsing/filtering/viewing timelines
 - Simulated: pipeline run/summarize/process/rescore/pdf/apply
 - Blocked: settings writes, DB clear, backups

@@ -197,11 +197,7 @@ export function createAuthGuard() {
     if (normalizedPath === "/api/demo/info") return true;
     if (normalizedPath === "/api/app/status") return true;
     if (normalizedPath === "/api/profile/status") return true;
-    if (
-      isDemoMode() &&
-      normalizedMethod === "POST" &&
-      normalizedPath === "/ojcp/mcp"
-    )
+    if (normalizedMethod === "POST" && normalizedPath === "/ojcp/mcp")
       return true;
     if (
       normalizedMethod === "POST" &&
@@ -442,10 +438,8 @@ export function createApp() {
   // Optional authentication for protected routes
   app.use(authGuard.middleware);
 
-  if (isDemoMode()) {
-    app.get("/.well-known/ojcp.json", ojcpManifestHandler);
-    app.all("/ojcp/mcp", ojcpMcpHandler);
-  }
+  app.get("/.well-known/ojcp.json", ojcpManifestHandler);
+  app.all("/ojcp/mcp", ojcpMcpHandler);
 
   // API routes
   app.use("/api", apiRouter);

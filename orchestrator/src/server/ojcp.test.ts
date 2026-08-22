@@ -1,5 +1,22 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { startServer, stopServer } from "./api/routes/test-utils";
+import * as visaSponsors from "./services/visa-sponsors/index";
+
+const mocks = vi.hoisted(() => ({
+  fetchFreeHirePage: vi.fn(),
+}));
+
+vi.mock("../../../extractors/freehire/src/run.js", () => ({
+  fetchFreeHirePage: mocks.fetchFreeHirePage,
+}));
 
 type RpcResponse = {
   result?: {
@@ -33,69 +50,69 @@ async function callMcp(
 
 describe.sequential("OJCP MCP", () => {
   let running: Awaited<ReturnType<typeof startServer>> | undefined;
-  let defaultJobId: string;
 
   beforeAll(async () => {
-    running = await startServer({ env: { DEMO_MODE: "true" } });
-    const { db, schema } = await import("@server/db");
-    const { runWithRequestContext } = await import("@infra/request-context");
-    const jobsRepo = await import("@server/repositories/jobs");
+    running = await startServer();
+  });
 
-    const defaultJob = await runWithRequestContext(
-      {
-        requestId: "ojcp-seed-default",
-        tenantId: "tenant_default",
-        userId: "test-user",
-      },
-      () =>
-        jobsRepo.createJob({
-          source: "manual",
-          title: "Senior Platform Engineer",
-          employer: "Default Workspace Ltd",
-          jobUrl: "https://example.com/default-platform-engineer",
-          applicationLink:
-            "https://example.com/default-platform-engineer/apply",
-          datePosted: "2026-08-01",
+  beforeEach(async () => {
+    const { __resetOjcpCachesForTests } = await import("./ojcp");
+    __resetOjcpCachesForTests();
+    mocks.fetchFreeHirePage.mockReset().mockResolvedValue({
+      jobs: [
+        {
+          source: "freehire",
+          sourceJobId: "senior-go-engineer-acme",
+          title: "Senior Go Engineer",
+          employer: "Acme Limited",
+          jobUrl: "https://example.com/jobs/123",
+          applicationLink: "https://example.com/jobs/123/apply",
+          datePosted: "2026-08-22T10:00:00Z",
           location: "London, United Kingdom",
-          jobDescription: "Build reliable TypeScript platform services.",
-          jobType: "full time",
-          salaryMinAmount: 80_000,
-          salaryMaxAmount: 100_000,
+          jobDescription: "Build reliable Go services.",
+          jobType: "full_time",
+          salaryMinAmount: 90_000,
+          salaryMaxAmount: 120_000,
           salaryCurrency: "GBP",
-          skills: JSON.stringify(["TypeScript", "Platform Engineering"]),
-        }),
-    );
-    defaultJobId = defaultJob.id;
-
-    await db.insert(schema.tenants).values({
-      id: "tenant-ojcp-alt",
-      name: "OJCP Alt",
-      slug: "tenant-ojcp-alt",
+          skills: "Go, PostgreSQL",
+          workFromHomeType: "hybrid",
+        },
+      ],
+      limit: 1,
+      offset: 20,
+      total: 321,
     });
-    await runWithRequestContext(
-      {
-        requestId: "ojcp-seed-alt",
-        tenantId: "tenant-ojcp-alt",
-        userId: "test-user",
-      },
-      () =>
-        jobsRepo.createJob({
-          source: "manual",
-          title: "Senior Platform Engineer",
-          employer: "Other Tenant Secret Ltd",
-          jobUrl: "https://example.com/alt-platform-engineer",
-          datePosted: "2026-08-02",
-          location: "London, United Kingdom",
-          jobDescription: "This job must never cross tenant boundaries.",
-        }),
-    );
+    vi.mocked(visaSponsors.searchSponsorsExact)
+      .mockReset()
+      .mockImplementation(async (employer: string) => ({
+        available: true,
+        providerIds: ["uk"],
+        results:
+          employer === "Acme Limited"
+            ? [
+                {
+                  providerId: "uk",
+                  countryKey: "united kingdom",
+                  score: 100,
+                  sponsor: {
+                    organisationName: "ACME LIMITED",
+                    townCity: "London",
+                    county: "",
+                    typeRating: "Worker",
+                    route: "Skilled Worker",
+                  },
+                  matchedName: "acme",
+                },
+              ]
+            : [],
+      }));
   });
 
   afterAll(async () => {
     if (running) await stopServer(running);
   });
 
-  it("discovers, searches, and reads tenant-scoped jobs over MCP", async () => {
+  it("discovers the provider and serves cached details from live FreeHire search", async () => {
     if (!running) throw new Error("Test server did not start");
     const manifestResponse = await fetch(
       `${running.baseUrl}/.well-known/ojcp.json`,
@@ -128,49 +145,116 @@ describe.sequential("OJCP MCP", () => {
       "get_job_detail",
     ]);
 
+    const searchArguments = {
+      query: "senior backend engineer",
+      location: {
+        city: "London",
+        country: "UK",
+        remote_ok: false,
+      },
+      pagination: { limit: 1, offset: 20 },
+    };
     const searched = await callMcp(running.baseUrl, 3, "tools/call", {
       name: "search_jobs",
-      arguments: {
-        query: "platform engineer",
-        filters: { employment_type: "full_time", salary_min: 90_000 },
-        pagination: { limit: 1, offset: 0 },
-      },
+      arguments: searchArguments,
     });
-    const searchData = searched.result?.structuredContent;
-    expect(searchData).toMatchObject({
+    expect(searched.result?.structuredContent).toMatchObject({
       ojcp_version: "0.1",
-      total_results: 1,
+      total_results: 321,
       returned: 1,
-      offset: 0,
+      offset: 20,
+      jobs: [
+        {
+          ojcp_id: "jobops:freehire:senior-go-engineer-acme",
+          title: "Senior Go Engineer",
+          visa_sponsor_match: {
+            exact_name_match: true,
+            provider_id: "uk",
+            matched_organisations: ["ACME LIMITED"],
+          },
+        },
+      ],
     });
-    const searchJson = JSON.stringify(searchData);
-    expect(searchJson).toContain("Default Workspace Ltd");
-    expect(searchJson).not.toContain("Other Tenant Secret Ltd");
+    expect(mocks.fetchFreeHirePage).toHaveBeenCalledWith({
+      searchTerm: "senior backend engineer",
+      selectedCountry: "UK",
+      locations: ["London"],
+      workplaceTypes: ["hybrid", "onsite"],
+      limit: 1,
+      offset: 20,
+      timeoutMs: 5_000,
+    });
+    expect(visaSponsors.searchSponsorsExact).toHaveBeenCalledWith(
+      "Acme Limited",
+      { countryKey: "united kingdom" },
+    );
 
-    const detailed = await callMcp(running.baseUrl, 4, "tools/call", {
+    await callMcp(running.baseUrl, 4, "tools/call", {
+      name: "search_jobs",
+      arguments: searchArguments,
+    });
+    expect(mocks.fetchFreeHirePage).toHaveBeenCalledTimes(1);
+
+    const detailed = await callMcp(running.baseUrl, 5, "tools/call", {
       name: "get_job_detail",
-      arguments: { job_id: `jobops:${defaultJobId}` },
+      arguments: { job_id: "jobops:freehire:senior-go-engineer-acme" },
     });
     expect(detailed.result?.structuredContent).toMatchObject({
       ojcp_version: "0.1",
       job: {
-        ojcp_id: `jobops:${defaultJobId}`,
-        title: "Senior Platform Engineer",
-        datePosted: "2026-08-01",
+        ojcp_id: "jobops:freehire:senior-go-engineer-acme",
+        title: "Senior Go Engineer",
+        description: "Build reliable Go services.",
       },
-      employer_context: { name: "Default Workspace Ltd" },
+      employer_context: { name: "Acme Limited" },
     });
 
-    const missing = await callMcp(running.baseUrl, 5, "tools/call", {
+    const missing = await callMcp(running.baseUrl, 6, "tools/call", {
       name: "get_job_detail",
-      arguments: { job_id: "jobops:missing" },
+      arguments: { job_id: "jobops:freehire:missing" },
     });
     expect(missing.error).toMatchObject({
       code: -32000,
-      data: {
-        ojcp_version: "0.1",
-        error_code: "job_not_found",
+      data: { ojcp_version: "0.1", error_code: "job_not_found" },
+    });
+  });
+
+  it("rejects filters that FreeHire cannot apply correctly", async () => {
+    if (!running) throw new Error("Test server did not start");
+    const response = await callMcp(running.baseUrl, 7, "tools/call", {
+      name: "search_jobs",
+      arguments: {
+        query: "backend engineer",
+        filters: { salary_min: 90_000 },
       },
     });
+
+    expect(response.error).toMatchObject({
+      code: -32000,
+      data: {
+        ojcp_version: "0.1",
+        error_code: "unsupported_filter",
+        details: { unsupported_filters: ["filters.salary_min"] },
+      },
+    });
+    expect(mocks.fetchFreeHirePage).not.toHaveBeenCalled();
+  });
+
+  it("returns a sanitized provider error when FreeHire fails", async () => {
+    if (!running) throw new Error("Test server did not start");
+    mocks.fetchFreeHirePage.mockRejectedValueOnce(
+      new Error("FreeHire request failed with status 503"),
+    );
+
+    const response = await callMcp(running.baseUrl, 8, "tools/call", {
+      name: "search_jobs",
+      arguments: { query: "backend engineer" },
+    });
+
+    expect(response.error).toMatchObject({
+      code: -32000,
+      data: { ojcp_version: "0.1", error_code: "provider_error" },
+    });
+    expect(JSON.stringify(response)).not.toContain("503");
   });
 });

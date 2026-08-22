@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { logger } from "@infra/logger";
 import { resolveRequestOrigin } from "@infra/request-origin";
 import { sanitizeUnknown } from "@infra/sanitize";
@@ -10,25 +11,45 @@ import {
   McpError,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import * as jobsRepo from "@server/repositories/jobs";
-import type { Job } from "@shared/types";
+import * as visaSponsors from "@server/services/visa-sponsors/index";
+import { normalizeCountryKey } from "@shared/location-support.js";
+import type { CreateJobInput } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
 import type { Request, RequestHandler, Response } from "express";
 import { z } from "zod";
+import { fetchFreeHirePage } from "../../../extractors/freehire/src/run.js";
 
 const OJCP_VERSION = "0.1";
 const OJCP_ERROR_CODE = -32000;
-const OJCP_ID_PREFIX = "jobops:";
-const SEARCH_STOP_WORDS = new Set([
-  "a",
-  "an",
-  "for",
-  "job",
-  "jobs",
-  "role",
-  "roles",
-  "the",
-]);
+const OJCP_ID_PREFIX = "jobops:freehire:";
+const DETAIL_CACHE_TTL_MS = 10 * 60 * 1000;
+const DETAIL_CACHE_MAX_ENTRIES = 1_000;
+const SEARCH_CACHE_TTL_MS = 15_000;
+const SEARCH_CACHE_MAX_ENTRIES = 100;
+const SEARCH_CONCURRENCY = 10;
+const FREEHIRE_TIMEOUT_MS = 5_000;
+
+type VisaSponsorMatch = {
+  exact_name_match: boolean;
+  provider_id: string;
+  matched_organisations?: string[];
+};
+
+type OjcpJob = CreateJobInput & {
+  id: string;
+  discoveredAt: string;
+  visaSponsorMatch?: VisaSponsorMatch;
+};
+
+type CachedDetail = { expiresAt: number; job: OjcpJob };
+type CachedSearch = {
+  expiresAt: number;
+  result: Record<string, unknown>;
+};
+
+const detailCache = new Map<string, CachedDetail>();
+const searchCache = new Map<string, CachedSearch>();
+const inFlightSearches = new Map<string, Promise<Record<string, unknown>>>();
 
 const candidateContextSchema = z
   .object({
@@ -97,8 +118,8 @@ export type GetJobDetailInput = z.infer<typeof getJobDetailSchema>;
 const OJCP_TOOLS: Tool[] = [
   {
     name: "search_jobs",
-    description: "Search the JobOps workspace for open job opportunities.",
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    description: "Search FreeHire live for open job opportunities.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: {
       type: "object",
       properties: {
@@ -111,21 +132,8 @@ const OJCP_TOOLS: Tool[] = [
           type: "object",
           properties: {
             city: { type: "string" },
-            state: { type: "string" },
             country: { type: "string" },
             remote_ok: { type: "boolean" },
-            radius_miles: { type: "number", exclusiveMinimum: 0 },
-          },
-          additionalProperties: true,
-        },
-        filters: {
-          type: "object",
-          properties: {
-            employment_type: { type: "string" },
-            salary_min: { type: "number" },
-            salary_max: { type: "number" },
-            experience_level: { type: "string" },
-            posted_within_days: { type: "integer", minimum: 0 },
           },
           additionalProperties: true,
         },
@@ -189,7 +197,7 @@ function normalizeEnum(value: string | null | undefined): string | undefined {
   return normalized;
 }
 
-function parseSkills(value: string | null): string[] | undefined {
+function parseSkills(value: string | null | undefined): string[] | undefined {
   if (!value?.trim()) return undefined;
   try {
     const parsed = JSON.parse(value) as unknown;
@@ -210,14 +218,14 @@ function parseSkills(value: string | null): string[] | undefined {
   return skills.length > 0 ? skills : undefined;
 }
 
-function isRemoteJob(job: Job): boolean {
+function isRemoteJob(job: OjcpJob): boolean {
   return (
     job.isRemote === true ||
     /\bremote\b/i.test(`${job.location ?? ""} ${job.workFromHomeType ?? ""}`)
   );
 }
 
-function mapSalary(job: Job): Record<string, unknown> | undefined {
+function mapSalary(job: OjcpJob): Record<string, unknown> | undefined {
   if (job.salaryMinAmount == null && job.salaryMaxAmount == null)
     return undefined;
   return {
@@ -231,7 +239,7 @@ function mapSalary(job: Job): Record<string, unknown> | undefined {
   };
 }
 
-function mapApplyPath(job: Job): Record<string, unknown> {
+function mapApplyPath(job: OjcpJob): Record<string, unknown> {
   return {
     type: "external_redirect",
     url: job.applicationLink ?? job.jobUrl,
@@ -240,7 +248,7 @@ function mapApplyPath(job: Job): Record<string, unknown> {
 }
 
 export function mapJobPosting(
-  job: Job,
+  job: OjcpJob,
   options: { includeDescription: boolean },
 ): Record<string, unknown> {
   const description = stripHtmlTags(job.jobDescription ?? "");
@@ -248,7 +256,7 @@ export function mapJobPosting(
   const datePosted =
     toIsoDate(job.datePosted) ?? toIsoDate(job.discoveredAt) ?? "1970-01-01";
   return {
-    ojcp_id: `${OJCP_ID_PREFIX}${job.id}`,
+    ojcp_id: job.id,
     title: job.title,
     employer: {
       "@type": "Organization",
@@ -258,6 +266,9 @@ export function mapJobPosting(
         : {}),
       ...(job.companyLogo ? { logo: job.companyLogo } : {}),
     },
+    ...(job.visaSponsorMatch
+      ? { visa_sponsor_match: job.visaSponsorMatch }
+      : {}),
     datePosted,
     ...(toIsoDate(job.deadline)
       ? { validThrough: toIsoDate(job.deadline) }
@@ -285,125 +296,157 @@ export function mapJobPosting(
   };
 }
 
-function searchTerms(query: string): string[] {
-  return (query.toLowerCase().match(/[\p{L}\p{N}+#./-]+/gu) ?? []).filter(
-    (term) => !SEARCH_STOP_WORDS.has(term),
-  );
+type OjcpWarning = { code: string; message: string };
+
+function pruneCache<T extends { expiresAt: number }>(
+  cache: Map<string, T>,
+  maxEntries: number,
+): void {
+  const now = Date.now();
+  for (const [key, value] of cache) {
+    if (value.expiresAt <= now) cache.delete(key);
+  }
+  while (cache.size > maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
 }
 
-function searchRank(job: Job, terms: string[]): number | null {
-  const title = job.title.toLowerCase();
-  const employer = job.employer.toLowerCase();
-  const location = job.location?.toLowerCase() ?? "";
-  const skills = job.skills?.toLowerCase() ?? "";
-  const description = stripHtmlTags(job.jobDescription ?? "").toLowerCase();
-  const other = [
-    job.jobType,
-    job.jobLevel,
-    job.jobFunction,
-    job.disciplines,
-    isRemoteJob(job) ? "remote" : null,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  const all = `${title} ${employer} ${location} ${skills} ${description} ${other}`;
-  if (!terms.every((term) => all.includes(term))) return null;
-  return terms.reduce(
-    (score, term) =>
-      score +
-      (title.includes(term) ? 8 : 0) +
-      (employer.includes(term) ? 5 : 0) +
-      (skills.includes(term) ? 4 : 0) +
-      (location.includes(term) ? 3 : 0) +
-      (other.includes(term) ? 2 : 0) +
-      (description.includes(term) ? 1 : 0),
-    0,
-  );
+function toOjcpJob(input: CreateJobInput, discoveredAt: string): OjcpJob {
+  const sourceId =
+    input.sourceJobId?.trim() ||
+    createHash("sha256").update(input.jobUrl).digest("hex").slice(0, 24);
+  return {
+    ...input,
+    id: `${OJCP_ID_PREFIX}${encodeURIComponent(sourceId)}`,
+    discoveredAt,
+  };
 }
 
-function matchesFilters(
-  job: Job,
-  input: SearchJobsInput,
-  now: number,
-): boolean {
-  if (job.status === "expired") return false;
-  const filters = input.filters;
-  if (
-    filters?.employment_type &&
-    normalizeEnum(job.jobType) !== normalizeEnum(filters.employment_type)
-  ) {
-    return false;
+function cacheDetails(jobs: OjcpJob[]): void {
+  const expiresAt = Date.now() + DETAIL_CACHE_TTL_MS;
+  for (const job of jobs) {
+    detailCache.delete(job.id);
+    detailCache.set(job.id, { expiresAt, job });
   }
-  if (
-    filters?.experience_level &&
-    normalizeEnum(job.jobLevel) !== normalizeEnum(filters.experience_level)
-  ) {
-    return false;
-  }
-  if (filters?.salary_min !== undefined) {
-    const jobMaximum = job.salaryMaxAmount ?? job.salaryMinAmount;
-    if (jobMaximum == null || jobMaximum < filters.salary_min) return false;
-  }
-  if (filters?.salary_max !== undefined) {
-    const jobMinimum = job.salaryMinAmount ?? job.salaryMaxAmount;
-    if (jobMinimum == null || jobMinimum > filters.salary_max) return false;
-  }
-  if (filters?.posted_within_days !== undefined) {
-    const posted = Date.parse(job.datePosted ?? job.discoveredAt);
-    const cutoff = now - filters.posted_within_days * 86_400_000;
-    if (Number.isNaN(posted) || posted < cutoff) return false;
-  }
-
-  const remote = isRemoteJob(job);
-  if (input.location?.remote_ok === false && remote) return false;
-  const requestedLocations = [
-    input.location?.city,
-    input.location?.state,
-    input.location?.country,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => value.toLowerCase());
-  if (requestedLocations.length > 0) {
-    const location = job.location?.toLowerCase() ?? "";
-    const matchesLocation = requestedLocations.every((value) =>
-      location.includes(value),
-    );
-    if (!matchesLocation && !(input.location?.remote_ok && remote))
-      return false;
-  }
-  return true;
+  pruneCache(detailCache, DETAIL_CACHE_MAX_ENTRIES);
 }
 
-export function searchJobRecords(
-  jobs: Job[],
-  input: SearchJobsInput,
-  now = Date.now(),
-): Record<string, unknown> {
-  const terms = searchTerms(input.query);
-  // ponytail: an in-memory scan is enough for a personal workspace; add SQLite
-  // FTS when measured search latency makes the extra index worth maintaining.
-  const ranked = jobs
-    .filter((job) => matchesFilters(job, input, now))
-    .map((job) => ({ job, rank: searchRank(job, terms) }))
-    .filter((item): item is { job: Job; rank: number } => item.rank !== null)
-    .sort(
-      (left, right) =>
-        right.rank - left.rank ||
-        Date.parse(right.job.datePosted ?? right.job.discoveredAt) -
-          Date.parse(left.job.datePosted ?? left.job.discoveredAt),
-    );
-  const { limit, offset } = input.pagination;
-  const warnings = [
+function unsupportedFilters(input: SearchJobsInput): string[] {
+  return [
+    ...(input.location?.state ? ["location.state"] : []),
     ...(input.location?.radius_miles !== undefined
-      ? [
-          {
-            code: "radius_not_applied",
-            message:
-              "JobOps stores text locations, so radius_miles was treated as a location hint only.",
-          },
-        ]
+      ? ["location.radius_miles"]
       : []),
+    ...(input.filters?.employment_type ? ["filters.employment_type"] : []),
+    ...(input.filters?.salary_min !== undefined ? ["filters.salary_min"] : []),
+    ...(input.filters?.salary_max !== undefined ? ["filters.salary_max"] : []),
+    ...(input.filters?.experience_level ? ["filters.experience_level"] : []),
+    ...(input.filters?.posted_within_days !== undefined
+      ? ["filters.posted_within_days"]
+      : []),
+  ];
+}
+
+function searchCacheKey(input: SearchJobsInput): string {
+  return JSON.stringify({
+    query: input.query,
+    location: input.location,
+    pagination: input.pagination,
+    hasCandidateContext: Boolean(input.candidate_context),
+  });
+}
+
+async function enrichSponsorMatches(
+  jobs: OjcpJob[],
+  country: string | undefined,
+): Promise<{ jobs: OjcpJob[]; warning?: OjcpWarning }> {
+  if (!country) {
+    return {
+      jobs,
+      warning: {
+        code: "visa_sponsor_not_checked",
+        message: "A country is required for visa sponsor matching.",
+      },
+    };
+  }
+
+  try {
+    const countryKey = normalizeCountryKey(country);
+    const checks = await Promise.all(
+      jobs.map((job) =>
+        visaSponsors.searchSponsorsExact(job.employer, { countryKey }),
+      ),
+    );
+    if (checks.length > 0 && !checks.some((check) => check.available)) {
+      return {
+        jobs,
+        warning: {
+          code: "visa_sponsor_data_unavailable",
+          message: `Visa sponsor data is unavailable for ${country}.`,
+        },
+      };
+    }
+
+    return {
+      jobs: jobs.map((job, index) => {
+        const check = checks[index];
+        if (!check?.available || !check.providerIds[0]) return job;
+        const matchedOrganisations = [
+          ...new Set(
+            check.results.map((result) => result.sponsor.organisationName),
+          ),
+        ];
+        return {
+          ...job,
+          visaSponsorMatch: {
+            exact_name_match: matchedOrganisations.length > 0,
+            provider_id: check.providerIds[0],
+            ...(matchedOrganisations.length > 0
+              ? { matched_organisations: matchedOrganisations }
+              : {}),
+          },
+        };
+      }),
+    };
+  } catch (error) {
+    logger.warn("OJCP visa sponsor enrichment failed", {
+      route: "POST /ojcp/mcp",
+      error: sanitizeUnknown(error),
+    });
+    return {
+      jobs,
+      warning: {
+        code: "visa_sponsor_check_failed",
+        message: "Visa sponsor matching was temporarily unavailable.",
+      },
+    };
+  }
+}
+
+async function searchJobsLive(
+  input: SearchJobsInput,
+): Promise<Record<string, unknown>> {
+  const page = await fetchFreeHirePage({
+    searchTerm: input.query,
+    selectedCountry: input.location?.country,
+    locations: input.location?.city ? [input.location.city] : undefined,
+    workplaceTypes:
+      input.location?.remote_ok === false ? ["hybrid", "onsite"] : undefined,
+    limit: input.pagination.limit,
+    offset: input.pagination.offset,
+    timeoutMs: FREEHIRE_TIMEOUT_MS,
+  });
+  const discoveredAt = new Date().toISOString();
+  const sponsorEnrichment = await enrichSponsorMatches(
+    page.jobs.map((job) => toOjcpJob(job, discoveredAt)),
+    input.location?.country,
+  );
+  cacheDetails(sponsorEnrichment.jobs);
+
+  const warnings = [
+    ...(sponsorEnrichment.warning ? [sponsorEnrichment.warning] : []),
     ...(input.candidate_context
       ? [
           {
@@ -418,26 +461,62 @@ export function searchJobRecords(
   return {
     ojcp_version: OJCP_VERSION,
     query: input.query,
-    total_results: ranked.length,
-    returned: Math.min(limit, Math.max(0, ranked.length - offset)),
-    offset,
-    jobs: ranked
-      .slice(offset, offset + limit)
-      .map(({ job }) => mapJobPosting(job, { includeDescription: false })),
+    total_results: page.total,
+    returned: sponsorEnrichment.jobs.length,
+    offset: page.offset,
+    jobs: sponsorEnrichment.jobs.map((job) =>
+      mapJobPosting(job, { includeDescription: false }),
+    ),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
 
-export async function searchJobs(input: SearchJobsInput) {
-  return searchJobRecords(await jobsRepo.getAllJobs(), input);
+export async function searchJobs(
+  input: SearchJobsInput,
+): Promise<Record<string, unknown>> {
+  const unsupported = unsupportedFilters(input);
+  if (unsupported.length > 0) {
+    throw ojcpError(
+      "unsupported_filter",
+      `FreeHire does not support: ${unsupported.join(", ")}.`,
+      { unsupported_filters: unsupported },
+    );
+  }
+
+  pruneCache(searchCache, SEARCH_CACHE_MAX_ENTRIES);
+  const key = searchCacheKey(input);
+  const cached = searchCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+
+  const existing = inFlightSearches.get(key);
+  if (existing) return existing;
+  if (inFlightSearches.size >= SEARCH_CONCURRENCY) {
+    throw ojcpError(
+      "provider_busy",
+      "Too many live searches are running. Try again shortly.",
+      { retry_after_seconds: 1 },
+    );
+  }
+
+  const search = searchJobsLive(input);
+  inFlightSearches.set(key, search);
+  try {
+    const result = await search;
+    searchCache.set(key, {
+      expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
+      result,
+    });
+    pruneCache(searchCache, SEARCH_CACHE_MAX_ENTRIES);
+    return result;
+  } finally {
+    inFlightSearches.delete(key);
+  }
 }
 
 export async function getJobDetail(input: GetJobDetailInput) {
-  const internalId = input.job_id.startsWith(OJCP_ID_PREFIX)
-    ? input.job_id.slice(OJCP_ID_PREFIX.length)
-    : null;
-  const job = internalId ? await jobsRepo.getJobById(internalId) : null;
-  if (!job || job.status === "expired") {
+  pruneCache(detailCache, DETAIL_CACHE_MAX_ENTRIES);
+  const job = detailCache.get(input.job_id)?.job;
+  if (!job) {
     throw ojcpError("job_not_found", `No job found with ID ${input.job_id}.`, {
       job_id: input.job_id,
     });
@@ -476,6 +555,12 @@ export async function getJobDetail(input: GetJobDetailInput) {
         }
       : {}),
   };
+}
+
+export function __resetOjcpCachesForTests(): void {
+  detailCache.clear();
+  searchCache.clear();
+  inFlightSearches.clear();
 }
 
 function ojcpError(
@@ -604,8 +689,7 @@ export function createOjcpManifest(req: Request) {
     ojcp_version: OJCP_VERSION,
     provider: {
       name: "JobOps",
-      description:
-        "Private, tenant-scoped job search and application workspace.",
+      description: "Live job search backed by FreeHire.",
     },
     mcp_endpoint: origin ? `${origin}/ojcp/mcp` : "/ojcp/mcp",
     tools: OJCP_TOOLS.map((tool) => tool.name),

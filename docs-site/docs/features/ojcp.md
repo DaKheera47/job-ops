@@ -1,35 +1,30 @@
 ---
 id: ojcp
 title: OJCP and MCP
-description: Search the public JobOps demo from MCP clients using OJCP-compatible tools.
+description: Search live FreeHire jobs from MCP clients using OJCP-compatible tools.
 sidebar_position: 13
 ---
 
 ## What it is
 
-In demo mode, JobOps exposes its stored jobs as an [Open Job Context Protocol](https://spec.ojcp.dev/0.1/) provider over MCP Streamable HTTP. The provider is disabled unless `DEMO_MODE=true`.
+JobOps exposes live [FreeHire](https://freehire.me/) search as an [Open Job Context Protocol](https://spec.ojcp.dev/0.1/) provider over MCP Streamable HTTP. Searches do not read or write the JobOps jobs database.
 
 The provider currently offers two read-only tools:
 
-- `search_jobs` searches open jobs in the local workspace.
-- `get_job_detail` returns the full stored details for one job.
+- `search_jobs` searches FreeHire in real time.
+- `get_job_detail` returns details cached from a recent search.
 
 Provider discovery is available at `/.well-known/ojcp.json`. The MCP endpoint is `/ojcp/mcp`.
 
 ## Why it exists
 
-The integration lets MCP-compatible agents search and inspect jobs without scraping the JobOps UI or learning its private REST API.
+The integration lets MCP-compatible agents discover current jobs without waiting for a JobOps pipeline run.
 
-Job data remains workspace-scoped. The MCP endpoint is currently unauthenticated and should only be exposed on localhost or a trusted private network.
+The MCP endpoint is unauthenticated. Search queries and location filters are sent to FreeHire, so place the endpoint behind your normal public rate limits.
 
 ## How to use it
 
-1. Deploy JobOps behind HTTPS with demo mode enabled:
-
-   ```bash
-   DEMO_MODE=true
-   ```
-
+1. Deploy JobOps behind HTTPS.
 2. Set the public base URL:
 
    ```bash
@@ -46,9 +41,10 @@ Job data remains workspace-scoped. The MCP endpoint is currently unauthenticated
    ```json
    {
      "query": "senior backend engineer remote",
-     "filters": {
-       "employment_type": "full_time",
-       "salary_min": 70000
+     "location": {
+       "city": "London",
+       "country": "United Kingdom",
+       "remote_ok": true
      },
      "pagination": {
        "limit": 10,
@@ -61,7 +57,7 @@ Job data remains workspace-scoped. The MCP endpoint is currently unauthenticated
 
    ```json
    {
-     "job_id": "jobops:example-id",
+     "job_id": "jobops:freehire:example-slug",
      "include_employer_context": true
    }
    ```
@@ -69,20 +65,20 @@ Job data remains workspace-scoped. The MCP endpoint is currently unauthenticated
 Defaults and constraints:
 
 - Search defaults to 10 results and supports at most 50 per call.
-- Expired jobs are not returned.
-- Search reads jobs already stored in JobOps; it does not start an extractor or pipeline run.
-- Demo mode refreshes US software-engineering jobs from LinkedIn, Indeed, and Hiring Cafe every 24 hours.
-- Each refresh deletes jobs posted more than 30 days ago.
+- FreeHire applies keyword, country, city, remote/work-mode, limit, and offset inputs.
+- State, radius, employment type, salary, experience level, and posting-age filters return `unsupported_filter` rather than inaccurate pagination.
+- Results include an exact employer-name match against the configured country sponsor register when that data is available. A register match does not guarantee that the vacancy offers sponsorship.
+- Full job details remain available for 10 minutes in the current server process. Restarting the server or using another replica may require a new search.
+- Identical searches may reuse a result for up to 15 seconds.
 - Apply paths are external redirects and do not support agent submission.
 - Candidate context requires `consent_scope` and is not currently used for personalization.
-- Radius searches are approximate because JobOps stores job locations as text.
 - The endpoint does not currently require authentication.
 
 ## Common problems
 
 ### The MCP client says Cannot POST /ojcp/mcp
 
-Demo mode is disabled, the running JobOps server predates the MCP route, or the client is pointed at the frontend development server instead of the backend.
+The running JobOps server predates the MCP route, or the client is pointed at the frontend development server instead of the backend.
 
 Restart the JobOps server and use `http://localhost:3001/ojcp/mcp` for the default local backend.
 
@@ -92,13 +88,13 @@ Restart the JobOps server and use `http://localhost:3001/ojcp/mcp` for the defau
 
 Set it to the externally reachable HTTPS origin and restart JobOps.
 
-### Search does not discover new jobs
+### Search returns a provider error
 
-`search_jobs` searches the existing JobOps database. Demo mode refreshes that database every 24 hours; check the server logs if all three upstream sources remain stale.
+FreeHire may be unavailable or may have exceeded its response deadline. Retry the search; the JobOps pipeline and database do not act as a fallback.
 
 ### A job ID from an earlier search is no longer available
 
-The job may have expired or been removed. Search results are temporary; call `search_jobs` again.
+The 10-minute detail cache expired, the server restarted, or the request reached another replica. Call `search_jobs` again.
 
 ## Related pages
 

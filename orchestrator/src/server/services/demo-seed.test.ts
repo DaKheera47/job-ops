@@ -14,7 +14,6 @@ import {
   DEMO_DEFAULT_SETTINGS,
   DEMO_DEFAULT_STAGE_EVENTS,
 } from "@server/config/demo-defaults";
-import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const originalEnv = { ...process.env };
@@ -88,7 +87,7 @@ describe.sequential("demo seed baseline", () => {
     expect(seededJobIds).toEqual(DEMO_DEFAULT_JOBS.map((job) => job.id).sort());
   });
 
-  it("resetDemoData restores defaults while preserving live demo jobs", async () => {
+  it("resetDemoData restores defaults without deleting another tenant", async () => {
     const { db, schema } = await import("../db/index");
     const { resetDemoData } = await import("./demo-mode");
     const { setSetting, getAllSettings } = await import(
@@ -104,14 +103,6 @@ describe.sequential("demo seed baseline", () => {
       title: "Mutated Job",
       employer: "Mutated Employer",
       jobUrl: "https://demo.job-ops.local/jobs/mutated",
-      status: "discovered",
-    });
-    await db.insert(schema.jobs).values({
-      id: "live-job",
-      source: "hiringcafe",
-      title: "Live Software Engineer",
-      employer: "Live Employer",
-      jobUrl: "https://hiring.cafe/jobs/live",
       status: "discovered",
     });
     await db.insert(schema.tenants).values({
@@ -134,11 +125,7 @@ describe.sequential("demo seed baseline", () => {
 
     const allJobs = await db.select({ id: schema.jobs.id }).from(schema.jobs);
     expect(allJobs.map((row) => row.id).sort()).toEqual(
-      [
-        ...DEMO_DEFAULT_JOBS.map((job) => job.id),
-        "live-job",
-        "other-tenant-job",
-      ].sort(),
+      [...DEMO_DEFAULT_JOBS.map((job) => job.id), "other-tenant-job"].sort(),
     );
 
     const allSettings = (await getAllSettings()) as Record<string, string>;
@@ -146,55 +133,6 @@ describe.sequential("demo seed baseline", () => {
       sortedPairs(DEMO_DEFAULT_SETTINGS as Record<string, string>),
     );
     expect(allSettings.pdfRenderer).toBe("latex");
-  });
-
-  it("deletes jobs posted more than 30 days before the cutoff", async () => {
-    const { runWithRequestContext } = await import("@infra/request-context");
-    const { db, schema } = await import("../db/index");
-    const jobsRepo = await import("../repositories/jobs");
-    await jobsRepo.createJob({
-      source: "indeed",
-      title: "Old Job",
-      employer: "Old Employer",
-      jobUrl: "https://example.com/old-job",
-      datePosted: "2026-06-01",
-    });
-    await jobsRepo.createJob({
-      source: "linkedin",
-      title: "Current Job",
-      employer: "Current Employer",
-      jobUrl: "https://example.com/current-job",
-      datePosted: "2026-08-01",
-    });
-    await db.insert(schema.tenants).values({
-      id: "tenant-retention-other",
-      name: "Other Retention Tenant",
-      slug: "other-retention-tenant",
-    });
-    await runWithRequestContext(
-      { requestId: "retention-other", tenantId: "tenant-retention-other" },
-      () =>
-        jobsRepo.createJob({
-          source: "indeed",
-          title: "Other Tenant Old Job",
-          employer: "Other Employer",
-          jobUrl: "https://example.com/other-old-job",
-          datePosted: "2026-06-01",
-        }),
-    );
-
-    expect(
-      await jobsRepo.deleteJobsOlderThan(new Date("2026-07-18T00:00:00.000Z")),
-    ).toBe(1);
-    expect((await jobsRepo.getAllJobs()).map((job) => job.title)).toEqual([
-      "Current Job",
-    ]);
-    expect(
-      await db
-        .select({ title: schema.jobs.title })
-        .from(schema.jobs)
-        .where(eq(schema.jobs.tenantId, "tenant-retention-other")),
-    ).toEqual([{ title: "Other Tenant Old Job" }]);
   });
 
   it("resetDemoData generates fresh PDF artifacts for seeded ready and applied jobs", async () => {

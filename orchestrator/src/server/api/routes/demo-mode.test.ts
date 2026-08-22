@@ -45,9 +45,6 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.data.resetCadenceHours).toBe(6);
       expect(body.data.baselineVersion).toBe(null);
       expect(body.data.baselineName).toBe(null);
-      expect((await fetch(`${baseUrl}/.well-known/ojcp.json`)).status).toBe(
-        404,
-      );
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }
