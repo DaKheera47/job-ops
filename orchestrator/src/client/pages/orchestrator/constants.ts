@@ -15,9 +15,7 @@ export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
   "jobops.pipeline.watchlist-sources";
 
-export const orderedSources: JobSource[] = [
-  ...PIPELINE_EXTRACTOR_SOURCE_IDS,
-].sort(
+export const orderedSources = [...PIPELINE_EXTRACTOR_SOURCE_IDS].sort(
   (left, right) =>
     EXTRACTOR_SOURCE_METADATA[left].order -
     EXTRACTOR_SOURCE_METADATA[right].order,
