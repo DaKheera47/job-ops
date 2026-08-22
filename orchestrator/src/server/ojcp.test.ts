@@ -21,7 +21,7 @@ vi.mock("../../../extractors/freehire/src/run.js", () => ({
 type RpcResponse = {
   result?: {
     serverInfo?: { name: string; version: string };
-    tools?: Array<{ name: string }>;
+    tools?: Array<{ name: string; inputSchema?: Record<string, unknown> }>;
     structuredContent?: Record<string, unknown>;
   };
   error?: {
@@ -144,6 +144,20 @@ describe.sequential("OJCP MCP", () => {
       "search_jobs",
       "get_job_detail",
     ]);
+    expect(
+      listed.result?.tools?.find((tool) => tool.name === "search_jobs")
+        ?.inputSchema,
+    ).toMatchObject({
+      properties: {
+        candidate_context: {
+          type: "object",
+          properties: {
+            consent_scope: { type: "array", minItems: 1 },
+          },
+          required: ["consent_scope"],
+        },
+      },
+    });
 
     const searchArguments = {
       query: "senior backend engineer",

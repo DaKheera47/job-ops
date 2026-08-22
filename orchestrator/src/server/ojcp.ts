@@ -57,6 +57,21 @@ const candidateContextSchema = z
   })
   .passthrough();
 
+const candidateContextInputSchema = {
+  type: "object" as const,
+  description:
+    "Optional candidate context. Omit unless explicit consent scopes are available.",
+  properties: {
+    consent_scope: {
+      type: "array" as const,
+      items: { type: "string" as const, minLength: 1 },
+      minItems: 1,
+    },
+  },
+  required: ["consent_scope"],
+  additionalProperties: true,
+};
+
 const searchJobsSchema = z
   .object({
     query: z.string().trim().min(1).max(500),
@@ -137,9 +152,7 @@ const OJCP_TOOLS: Tool[] = [
           },
           additionalProperties: true,
         },
-        candidate_context: {
-          $ref: "https://ojcp.dev/schemas/v0.1/candidate-context.json",
-        },
+        candidate_context: candidateContextInputSchema,
         pagination: {
           type: "object",
           properties: {
@@ -165,9 +178,7 @@ const OJCP_TOOLS: Tool[] = [
           description: "The unique OJCP job identifier",
         },
         include_employer_context: { type: "boolean", default: true },
-        candidate_context: {
-          $ref: "https://ojcp.dev/schemas/v0.1/candidate-context.json",
-        },
+        candidate_context: candidateContextInputSchema,
       },
       required: ["job_id"],
       additionalProperties: true,
