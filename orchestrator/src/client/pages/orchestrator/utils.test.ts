@@ -1,3 +1,7 @@
+import {
+  EXTRACTOR_SOURCE_METADATA,
+  PIPELINE_EXTRACTOR_SOURCE_IDS,
+} from "@shared/extractors";
 import { createAppSettings, createJob } from "@shared/testing/factories.js";
 import { describe, expect, it } from "vitest";
 import {
@@ -24,20 +28,13 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(withoutKey)).not.toContain("adzuna");
   });
 
-  it("enables startupjobs without credentials", () => {
-    expect(getEnabledSources(createAppSettings())).toContain("startupjobs");
-  });
+  it("enables every credential-free pipeline source", () => {
+    const enabled = getEnabledSources(createAppSettings());
+    const credentialFree = PIPELINE_EXTRACTOR_SOURCE_IDS.filter(
+      (source) => !EXTRACTOR_SOURCE_METADATA[source].requiresCredentials,
+    );
 
-  it("enables workingnomads without credentials", () => {
-    expect(getEnabledSources(createAppSettings())).toContain("workingnomads");
-  });
-
-  it("enables golangjobs without credentials", () => {
-    expect(getEnabledSources(createAppSettings())).toContain("golangjobs");
-  });
-
-  it("enables jobindex without credentials", () => {
-    expect(getEnabledSources(createAppSettings())).toContain("jobindex");
+    expect(enabled).toEqual(expect.arrayContaining(credentialFree));
   });
 
   it("enables seek only when apify token is configured", () => {
@@ -45,10 +42,6 @@ describe("orchestrator utils", () => {
     const withoutToken = createAppSettings({ apifyTokenHint: null });
     expect(getEnabledSources(withToken)).toContain("seek");
     expect(getEnabledSources(withoutToken)).not.toContain("seek");
-  });
-
-  it("enables naukri without credentials", () => {
-    expect(getEnabledSources(createAppSettings())).toContain("naukri");
   });
 
   it("counts processing jobs in ready and discovered tabs", () => {
