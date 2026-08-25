@@ -419,6 +419,50 @@ describe("ManualImportSheet", () => {
       expect(urlInputs[0]).toHaveValue("https://example.com/job");
     });
 
+    it("preserves a manually entered URL when analyzing pasted text", async () => {
+      vi.mocked(api.inferManualJob).mockResolvedValue({
+        job: {
+          title: "Engineer",
+          employer: "Company",
+          jobUrl: "https://inferred.example.com/job",
+        },
+      });
+      vi.mocked(api.importManualJob).mockResolvedValue({ id: "job-2" } as any);
+
+      render(
+        <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
+      );
+
+      fireEvent.change(
+        screen.getByPlaceholderText("https://example.com/job-posting"),
+        { target: { value: "https://www.linkedin.com/jobs/view/123" } },
+      );
+      fireEvent.change(
+        screen.getByPlaceholderText(
+          "Paste the full job description here, or fetch it from a URL above...",
+        ),
+        { target: { value: "Software Engineer role at Acme Corp" } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+
+      await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /^(import & tailor|import without tailoring)$/i,
+        }),
+      );
+
+      await waitFor(() =>
+        expect(api.importManualJob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            job: expect.objectContaining({
+              jobUrl: "https://www.linkedin.com/jobs/view/123",
+            }),
+          }),
+        ),
+      );
+    });
+
     it("reports fetched URL provenance when import completes", async () => {
       const onImported = vi.fn().mockResolvedValue(undefined);
 

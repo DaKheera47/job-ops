@@ -6,6 +6,7 @@ import type {
   JobDateFilter,
   JobSort,
   SalaryFilter,
+  ScoreFilter,
   SponsorFilter,
 } from "../constants";
 
@@ -20,6 +21,8 @@ export interface OrchestratorFiltersProps {
   onSponsorFilterChange: (value: SponsorFilter) => void;
   salaryFilter: SalaryFilter;
   onSalaryFilterChange: (value: SalaryFilter) => void;
+  scoreFilter: ScoreFilter;
+  onScoreFilterChange: (value: ScoreFilter) => void;
   postedWithinDays: number | null;
   onPostedWithinChange: (value: number | null) => void;
   employmentTypes: EmploymentType[];
@@ -77,6 +80,14 @@ export type SalaryFilterPillProps = Pick<
 > & {
   salaryActive: boolean;
   salarySummary: string | null;
+};
+
+export type ScoreFilterPillProps = Pick<
+  OrchestratorFiltersProps,
+  "scoreFilter" | "onScoreFilterChange"
+> & {
+  scoreActive: boolean;
+  scoreSummary: string | null;
 };
 
 export type SortFilterPillProps = Pick<

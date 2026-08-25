@@ -11,7 +11,6 @@ import { logger } from "@infra/logger";
 import { processJob } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import { getSetting } from "@server/repositories/settings";
-import { generateJobBrief } from "@server/services/job-brief";
 import { inferManualJobDetails } from "@server/services/manualJob";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
@@ -370,13 +369,14 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           throw new Error("Invalid resume profile format");
         }
         const profile = rawProfile as Record<string, unknown>;
-        const [{ score, reason }, jobBrief] = await Promise.all([
-          scoreJobSuitability(processedJob, profile),
-          generateJobBrief(processedJob.jobDescription, {
-            jobId: processedJob.id,
-          }),
-        ]);
+        const {
+          score,
+          reason,
+          jobBrief,
+          jobUpdates = {},
+        } = await scoreJobSuitability(processedJob, profile);
         await jobsRepo.updateJob(processedJob.id, {
+          ...jobUpdates,
           status: "ready",
           suitabilityScore: score,
           suitabilityReason: reason,

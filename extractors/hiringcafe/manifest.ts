@@ -100,7 +100,7 @@ export const manifest: ExtractorManifest = {
   providesSources: ["hiringcafe"],
   capabilities: { locationEvidence: true },
   locationCapabilities: {
-    hiringcafe: { supportedCountryKeys: null },
+    hiringcafe: { supportedCountryKeys: null, supportsNativeRadius: true },
   },
   async run(context) {
     if (context.shouldCancel?.()) {
@@ -118,6 +118,7 @@ export const manifest: ExtractorManifest = {
       countryKey: country,
       searchTerms: context.searchTerms,
       locations: resolveContextLocations(context),
+      proximity: context.locationIntent?.proximity ?? undefined,
       workplaceTypes: resolveContextWorkplaceTypes(context),
       maxJobsPerTerm,
       shouldCancel: context.shouldCancel,

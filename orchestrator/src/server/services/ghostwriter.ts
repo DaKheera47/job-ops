@@ -74,6 +74,8 @@ const CHAT_RESPONSE_SCHEMA: JsonSchemaDefinition = {
     properties: {
       response: {
         type: "string",
+        description:
+          "The direct user-facing reply in plain text or Markdown. Do not serialize JSON into this string unless the user explicitly asks for JSON.",
       },
     },
     required: ["response"],
@@ -325,6 +327,12 @@ async function imageInputCapabilityReason(
     return /^google\/gemini|^gemini|^models\/gemini/.test(model)
       ? null
       : `The selected Gemini model (${input.model}) is not recognized as image-capable.`;
+  }
+
+  if (provider === "claude_cli") {
+    return /^(claude-|sonnet$|opus$|haiku$|fable$)/.test(model)
+      ? null
+      : `The selected Claude model (${input.model}) is not recognized as image-capable.`;
   }
 
   if (

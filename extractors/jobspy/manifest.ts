@@ -35,15 +35,27 @@ export const manifest: ExtractorManifest = {
     }
 
     const sites = context.selectedSources.filter(isJobSpySite);
+    const locations = context.sourceLocationPlan?.requestedCities;
+    const configuredResultsWanted = context.settings.jobspyResultsWanted
+      ? parseInt(context.settings.jobspyResultsWanted, 10)
+      : undefined;
+    const resultsWanted =
+      configuredResultsWanted && context.locationIntent?.proximity
+        ? Math.max(
+            1,
+            Math.ceil(
+              configuredResultsWanted / Math.max(1, locations?.length ?? 0),
+            ),
+          )
+        : configuredResultsWanted;
 
     const result = await runJobSpy({
       sites,
       searchTerms: context.searchTerms,
+      locations,
       location:
         context.settings.searchCities ?? context.settings.jobspyLocation,
-      resultsWanted: context.settings.jobspyResultsWanted
-        ? parseInt(context.settings.jobspyResultsWanted, 10)
-        : undefined,
+      resultsWanted,
       countryIndeed: context.settings.jobspyCountryIndeed,
       workplaceTypes: context.settings.workplaceTypes
         ? JSON.parse(context.settings.workplaceTypes)

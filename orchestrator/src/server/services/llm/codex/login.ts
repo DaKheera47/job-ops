@@ -311,6 +311,13 @@ export function getCodexDeviceAuthSnapshot(): CodexDeviceAuthSnapshot {
   return toSnapshot(activeSession);
 }
 
+export function consumeCompletedCodexDeviceAuth(): CodexDeviceAuthSnapshot | null {
+  if (activeSession?.status !== "completed") return null;
+  const snapshot = toSnapshot(activeSession);
+  activeSession = null;
+  return snapshot;
+}
+
 export async function startCodexDeviceAuth(
   forceRestart = false,
 ): Promise<CodexDeviceAuthSnapshot> {

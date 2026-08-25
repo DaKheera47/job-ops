@@ -29,6 +29,16 @@ function resolveLocationIntentSnapshot(args: {
       workplaceTypes: args.settings.workplaceTypes.value,
       searchScope: args.settings.locationSearchScope.value,
       matchStrictness: args.settings.locationMatchStrictness.value,
+      proximity:
+        args.settings.locationSearchMode.value === "radius" &&
+        args.settings.locationLatitude.value != null &&
+        args.settings.locationLongitude.value != null
+          ? {
+              latitude: args.settings.locationLatitude.value,
+              longitude: args.settings.locationLongitude.value,
+              radiusMiles: args.settings.locationRadiusMiles.value,
+            }
+          : null,
     })
   );
 }

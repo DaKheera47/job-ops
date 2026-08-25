@@ -21,6 +21,8 @@ Manual import accepts:
 
 When a URL is provided, backend fetch attempts depend on whether the page can be resolved with `curl`. Some job sites block or heavily script content, so certain links will not resolve cleanly.
 
+If you enter a URL and paste the description manually, the URL you entered is preserved through AI inference and takes precedence over any inferred URL.
+
 ## 2) AI inference
 
 Endpoint:

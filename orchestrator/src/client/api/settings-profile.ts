@@ -196,6 +196,30 @@ export async function saveOnboardingModel(input: {
   });
 }
 
+export async function saveOnboardingProfile(input: {
+  country?: string | null;
+  cities: string[];
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  requiresVisaSponsorship: boolean;
+}): Promise<OnboardingStatusResponse> {
+  return fetchApi<OnboardingStatusResponse>("/onboarding/actions/profile", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function confirmOnboardingResume(
+  source: string,
+): Promise<OnboardingStatusResponse> {
+  return fetchApi<OnboardingStatusResponse>(
+    "/onboarding/actions/resume/confirm",
+    {
+      method: "POST",
+      body: JSON.stringify({ source }),
+    },
+  );
+}
+
 export async function saveOnboardingRxResume(input: {
   apiKey?: string | null;
   baseUrl?: string | null;

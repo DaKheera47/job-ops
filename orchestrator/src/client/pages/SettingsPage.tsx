@@ -177,6 +177,8 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
           "glm",
           "gemini",
           "gemini_cli",
+          "claude",
+          "claude_cli",
           "ollama",
           "codex",
         ],

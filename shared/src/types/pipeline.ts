@@ -1,11 +1,89 @@
 import type { ExtractorSourceId } from "../extractors";
 import type {
+  LocationInputMode,
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
 import type { Job, JobStatus } from "./jobs";
-import type { LocationIntent } from "./location";
+import type { LocationIntent, LocationProximity } from "./location";
 import type { PdfRenderer } from "./settings";
+
+export const MIN_PIPELINE_RUN_BUDGET = 300;
+export const MAX_PIPELINE_RUN_BUDGET = 1000;
+
+export function normalizePipelineRunBudget(value: number): number {
+  return Math.min(
+    MAX_PIPELINE_RUN_BUDGET,
+    Math.max(MIN_PIPELINE_RUN_BUDGET, Math.round(value)),
+  );
+}
+
+export interface ExtractorLimits {
+  jobspyResultsWanted: number;
+  gradcrackerMaxJobsPerTerm: number;
+  ukvisajobsMaxJobs: number;
+  adzunaMaxJobsPerTerm: number;
+  startupjobsMaxJobsPerTerm: number;
+  workingnomadsMaxJobsPerTerm: number;
+  jobindexMaxJobsPerTerm: number;
+  seekMaxJobsPerTerm: number;
+  naukriMaxJobsPerTerm: number;
+}
+
+export function deriveExtractorLimits(args: {
+  budget: number;
+  searchTerms: string[];
+  sources: readonly string[];
+}): ExtractorLimits {
+  const budget = normalizePipelineRunBudget(args.budget);
+  const termCount = Math.max(1, args.searchTerms.length);
+  const perTermSources = [
+    "indeed",
+    "linkedin",
+    "glassdoor",
+    "gradcracker",
+    "adzuna",
+    "hiringcafe",
+    "startupjobs",
+    "workingnomads",
+    "jobindex",
+    "seek",
+    "naukri",
+  ] as const;
+  const weightedContributors =
+    perTermSources.filter((source) => args.sources.includes(source)).length *
+      termCount +
+    (args.sources.includes("ukvisajobs") ? 1 : 0);
+
+  if (weightedContributors <= 0) {
+    return {
+      jobspyResultsWanted: budget,
+      gradcrackerMaxJobsPerTerm: budget,
+      ukvisajobsMaxJobs: budget,
+      adzunaMaxJobsPerTerm: budget,
+      startupjobsMaxJobsPerTerm: budget,
+      workingnomadsMaxJobsPerTerm: budget,
+      jobindexMaxJobsPerTerm: budget,
+      seekMaxJobsPerTerm: budget,
+      naukriMaxJobsPerTerm: budget,
+    };
+  }
+
+  const perUnit = Math.max(1, Math.floor(budget / weightedContributors));
+  const remainder = Math.max(0, budget - perUnit * weightedContributors);
+
+  return {
+    jobspyResultsWanted: perUnit,
+    gradcrackerMaxJobsPerTerm: perUnit,
+    ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
+    adzunaMaxJobsPerTerm: perUnit,
+    startupjobsMaxJobsPerTerm: perUnit,
+    workingnomadsMaxJobsPerTerm: perUnit,
+    jobindexMaxJobsPerTerm: perUnit,
+    seekMaxJobsPerTerm: perUnit,
+    naukriMaxJobsPerTerm: perUnit,
+  };
+}
 
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
@@ -14,6 +92,7 @@ export interface PipelineConfig {
   outputDir: string; // Directory for generated PDFs
   locationIntent?: LocationIntent;
   scoringInstructions?: string;
+  runBudget?: number;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
@@ -143,6 +222,8 @@ export interface PipelineSearchPresetConfig {
   sources: ExtractorSourceId[];
   country: string;
   cityLocations: string[];
+  locationMode?: LocationInputMode;
+  proximity?: LocationProximity | null;
   workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -216,11 +297,33 @@ export interface PipelinePendingChallenge {
   sources: ExtractorSourceId[];
 }
 
+export interface PipelineFanoutRoleProgress {
+  role: string;
+  complete: number;
+  running: number;
+  queued: number;
+  check: number;
+}
+
+export interface PipelineFanoutProgress {
+  termCount: number;
+  locationCount: number;
+  sourceCount: number;
+  locations: string[];
+  sources: string[];
+  total: number;
+  capacity: number;
+  results: number;
+  unique: number;
+  roles: PipelineFanoutRoleProgress[];
+}
+
 export interface PipelineProgressState {
   step: PipelineProgressStep;
   message: string;
   detail?: string;
   pendingChallenges?: PipelinePendingChallenge[];
+  fanout?: PipelineFanoutProgress;
   crawlingSource: string | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
@@ -236,6 +339,7 @@ export interface PipelineProgressState {
   crawlingCurrentUrl?: string;
   jobsDiscovered: number;
   jobsScored: number;
+  jobsExceptional: number;
   jobsProcessed: number;
   totalToProcess: number;
   currentJob?: PipelineProgressCurrentJob;

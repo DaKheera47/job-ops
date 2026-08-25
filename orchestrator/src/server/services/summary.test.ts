@@ -78,7 +78,7 @@ describe("generateTailoring", () => {
       },
     };
 
-    await generateTailoring("Build APIs", profile);
+    await generateTailoring("<p>Build <strong>APIs</strong></p>", profile);
 
     expect(callJsonMock).toHaveBeenCalledTimes(1);
 
@@ -102,6 +102,11 @@ describe("generateTailoring", () => {
     );
     expect(request?.messages?.[0]?.content).toContain(
       'Keep "headline" in the exact original job-title wording from the JD.',
+    );
+    expect(request?.messages?.[0]?.content).toContain("Build APIs");
+    expect(request?.messages?.[0]?.content).not.toContain("<strong>");
+    expect(request?.messages?.[0]?.content).toContain(
+      '"basics":{"name":"Test User"',
     );
   });
 

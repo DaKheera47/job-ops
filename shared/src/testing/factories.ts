@@ -187,6 +187,26 @@ export const createAppSettings = (
     default: ["remote", "hybrid", "onsite"],
     override: null,
   },
+  onboardingProfileCompleted: {
+    value: false,
+    default: false,
+    override: null,
+  },
+  onboardingLlmCompleted: {
+    value: false,
+    default: false,
+    override: null,
+  },
+  onboardingResumeConfirmedSource: {
+    value: "",
+    default: "",
+    override: null,
+  },
+  onboardingLegacyMigrationPending: {
+    value: false,
+    default: false,
+    override: null,
+  },
   blockedCompanyKeywords: {
     value: [],
     default: [],
@@ -222,6 +242,14 @@ export const createAppSettings = (
     default: "",
     override: null,
   },
+  locationSearchMode: {
+    value: "radius",
+    default: "radius",
+    override: null,
+  },
+  locationLatitude: { value: null, default: null, override: null },
+  locationLongitude: { value: null, default: null, override: null },
+  locationRadiusMiles: { value: 50, default: 50, override: null },
   locationSearchScope: {
     value: "selected_only",
     default: "selected_only",

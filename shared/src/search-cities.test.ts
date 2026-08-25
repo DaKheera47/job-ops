@@ -95,4 +95,30 @@ describe("search-cities", () => {
     expect(matchesRequestedCountry("Bengaluru, India", "croatia")).toBe(false);
     expect(matchesRequestedCountry(undefined, "croatia")).toBe(false);
   });
+
+  it("matches ISO-2 codes and localized country names", () => {
+    expect(
+      matchesRequestedCountry("Amsterdam Zuid, NH, NL", "netherlands"),
+    ).toBe(true);
+    expect(matchesRequestedCountry("Berlin, DE", "germany")).toBe(false);
+    expect(matchesRequestedCountry("Amsterdam, Netherlands", "NL")).toBe(true);
+    expect(matchesRequestedCountry("Berlin, BE, DE", "germany")).toBe(true);
+    expect(matchesRequestedCountry("Amsterdam, Nederland", "netherlands")).toBe(
+      true,
+    );
+    expect(matchesRequestedCountry("Berlin, Deutschland", "germany")).toBe(
+      true,
+    );
+    expect(matchesRequestedCountry("Madrid, España", "spain")).toBe(true);
+    expect(matchesRequestedCountry("İstanbul, Türkiye", "turkey")).toBe(true);
+  });
+
+  it("does not confuse country codes with subdivision abbreviations", () => {
+    expect(matchesRequestedCountry("San Francisco, CA", "canada")).toBe(false);
+    expect(matchesRequestedCountry("San Francisco, CA, US", "canada")).toBe(
+      false,
+    );
+    expect(matchesRequestedCountry("Indianapolis, IN", "india")).toBe(false);
+    expect(matchesRequestedCountry("IN", "india")).toBe(true);
+  });
 });

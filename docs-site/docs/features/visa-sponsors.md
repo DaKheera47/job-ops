@@ -16,6 +16,7 @@ Available providers:
 | Country | Source | What it lists |
 |---------|--------|---------------|
 | United Kingdom (`uk`) | [GOV.UK register of licensed sponsors](https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers) | Worker and Temporary Worker licensed sponsors, with routes and type/rating |
+| Netherlands (`nl`) | [IND public register of recognised sponsors](https://ind.nl/en/public-register-recognised-sponsors/public-register-work) | Recognised sponsors for the residence purposes work and highly skilled migrant, with KvK number |
 | United States (`us`) | [USCIS H-1B Employer Data Hub](https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub) | Employers with H-1B approvals in the latest published fiscal year (sponsorship history signal) |
 
 For each company, it shows:

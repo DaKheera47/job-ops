@@ -7,6 +7,7 @@ import type {
   JobDateFilter,
   JobSort,
   SalaryFilter,
+  ScoreFilter,
   SponsorFilter,
 } from "./constants";
 import { JobCommandBar } from "./JobCommandBar";
@@ -14,6 +15,7 @@ import { JobDetailPanel } from "./JobDetailPanel";
 import { JobListPanel } from "./JobListPanel";
 import { OrchestratorFilters } from "./OrchestratorFilters";
 import { OrchestratorSummary } from "./OrchestratorSummary";
+import type { SelectedJobLoadState } from "./useOrchestratorData";
 
 interface EmptyStateAction {
   label: string;
@@ -26,6 +28,8 @@ interface OrchestratorJobsWorkspaceProps {
   jobs: JobListItem[];
   activeJobs: JobListItem[];
   selectedJob: Job | null;
+  selectedJobListItem: JobListItem | null;
+  selectedJobLoadState: SelectedJobLoadState;
   selectedJobId: string | null;
   selectedJobIds: Set<string>;
   activeTab: FilterTab;
@@ -37,6 +41,7 @@ interface OrchestratorJobsWorkspaceProps {
   sourceFilter: JobSource | "all";
   sponsorFilter: SponsorFilter;
   salaryFilter: SalaryFilter;
+  scoreFilter: ScoreFilter;
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   locationFilter: string;
@@ -56,6 +61,7 @@ interface OrchestratorJobsWorkspaceProps {
   onSourceFilterChange: (value: JobSource | "all") => void;
   onSponsorFilterChange: (value: SponsorFilter) => void;
   onSalaryFilterChange: (value: SalaryFilter) => void;
+  onScoreFilterChange: (value: ScoreFilter) => void;
   onPostedWithinChange: (value: number | null) => void;
   onEmploymentTypesChange: (value: EmploymentType[]) => void;
   onLocationFilterChange: (value: string) => void;
@@ -66,8 +72,9 @@ interface OrchestratorJobsWorkspaceProps {
   onToggleSelectJob: (jobId: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onSelectJobId: (jobId: string | null) => void;
-  onJobUpdated: () => Promise<void>;
+  onJobUpdated: (job?: Job) => Promise<void>;
   onPauseRefreshChange: (paused: boolean) => void;
+  onRetrySelectedJob: () => void;
 }
 
 export const OrchestratorJobsWorkspace: React.FC<
@@ -78,6 +85,8 @@ export const OrchestratorJobsWorkspace: React.FC<
   jobs,
   activeJobs,
   selectedJob,
+  selectedJobListItem,
+  selectedJobLoadState,
   selectedJobId,
   selectedJobIds,
   activeTab,
@@ -89,6 +98,7 @@ export const OrchestratorJobsWorkspace: React.FC<
   sourceFilter,
   sponsorFilter,
   salaryFilter,
+  scoreFilter,
   postedWithinDays,
   employmentTypes,
   locationFilter,
@@ -108,6 +118,7 @@ export const OrchestratorJobsWorkspace: React.FC<
   onSourceFilterChange,
   onSponsorFilterChange,
   onSalaryFilterChange,
+  onScoreFilterChange,
   onPostedWithinChange,
   onEmploymentTypesChange,
   onLocationFilterChange,
@@ -120,6 +131,7 @@ export const OrchestratorJobsWorkspace: React.FC<
   onSelectJobId,
   onJobUpdated,
   onPauseRefreshChange,
+  onRetrySelectedJob,
 }) => (
   <>
     <OrchestratorSummary stats={stats} isPipelineRunning={isPipelineRunning} />
@@ -145,6 +157,8 @@ export const OrchestratorJobsWorkspace: React.FC<
         onSponsorFilterChange={onSponsorFilterChange}
         salaryFilter={salaryFilter}
         onSalaryFilterChange={onSalaryFilterChange}
+        scoreFilter={scoreFilter}
+        onScoreFilterChange={onScoreFilterChange}
         postedWithinDays={postedWithinDays}
         onPostedWithinChange={onPostedWithinChange}
         employmentTypes={employmentTypes}
@@ -182,9 +196,12 @@ export const OrchestratorJobsWorkspace: React.FC<
             activeTab={activeTab}
             activeJobs={activeJobs}
             selectedJob={selectedJob}
+            selectedJobListItem={selectedJobListItem}
+            selectedJobLoadState={selectedJobLoadState}
             onSelectJobId={onSelectJobId}
             onJobUpdated={onJobUpdated}
             onPauseRefreshChange={onPauseRefreshChange}
+            onRetrySelectedJob={onRetrySelectedJob}
           />
         )}
       </div>

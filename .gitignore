@@ -9,6 +9,7 @@ node_modules/
 **/.docusaurus/
 docs-site/.docusaurus/
 docs-site/build/
+orchestrator/build/
 
 # Data directory (bind mount in Docker)
 data/

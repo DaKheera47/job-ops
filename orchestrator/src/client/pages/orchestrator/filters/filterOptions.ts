@@ -3,6 +3,7 @@ import type {
   FilterTab,
   JobSort,
   SalaryFilterMode,
+  ScoreFilterMode,
   SponsorFilter,
 } from "../constants";
 
@@ -24,6 +25,15 @@ export const salaryModeOptions: Array<{
   { value: "at_least", label: "at least" },
   { value: "at_most", label: "at most" },
   { value: "between", label: "between" },
+];
+
+export const scoreModeOptions: Array<{
+  value: ScoreFilterMode;
+  label: string;
+}> = [
+  { value: "any", label: "Any" },
+  { value: "has", label: "Has a score" },
+  { value: "missing", label: "No score" },
 ];
 
 export const sortFieldOrder: JobSort["key"][] = [

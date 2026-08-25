@@ -455,9 +455,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
         jobDescription: rawDescription,
       });
       const normalized = normalizeDraft(response.job, rawDescription.trim());
-      if (fetchedSourceUrl && !normalized.jobUrl) {
-        normalized.jobUrl = fetchedSourceUrl;
-      }
+      normalized.jobUrl =
+        fetchedSourceUrl || fetchUrl.trim() || normalized.jobUrl;
       setDraft(normalized);
       setWarning(response.warning ?? null);
       setImportSource(fetchedSourceUrl ? "fetched_url" : "pasted_description");

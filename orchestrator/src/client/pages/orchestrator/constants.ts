@@ -15,9 +15,7 @@ export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
   "jobops.pipeline.watchlist-sources";
 
-export const orderedSources: JobSource[] = [
-  ...PIPELINE_EXTRACTOR_SOURCE_IDS,
-].sort(
+export const orderedSources = [...PIPELINE_EXTRACTOR_SOURCE_IDS].sort(
   (left, right) =>
     EXTRACTOR_SOURCE_METADATA[left].order -
     EXTRACTOR_SOURCE_METADATA[right].order,
@@ -106,6 +104,14 @@ export interface SalaryFilter {
   max: number | null;
 }
 
+export type ScoreFilterMode = "any" | "has" | "missing";
+
+export interface ScoreFilter {
+  mode: ScoreFilterMode;
+  min: number | null;
+  max: number | null;
+}
+
 export type EmploymentType =
   | "full_time"
   | "part_time"
@@ -164,6 +170,7 @@ export interface JobFilters {
   sourceFilter: JobSource | "all";
   sponsorFilter: SponsorFilter;
   salaryFilter: SalaryFilter;
+  scoreFilter: ScoreFilter;
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   location: string;

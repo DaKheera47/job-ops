@@ -3,6 +3,7 @@ import { getOriginalEnvValue } from "@server/services/envSettings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { mapGlmProviderAlias } from "@shared/settings-registry";
 import { toStringOrNull } from "@shared/utils/type-conversion";
+import { ClaudeCliClient } from "./claude-cli/client";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
 import {
@@ -42,6 +43,7 @@ export class LlmService {
   private readonly strategy: (typeof strategies)[LlmProvider];
   private readonly codexClient: CodexClient;
   private readonly geminiCliClient: GeminiCliClient;
+  private readonly claudeCliClient: ClaudeCliClient;
 
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
@@ -81,6 +83,7 @@ export class LlmService {
     this.strategy = strategy;
     this.codexClient = new CodexClient();
     this.geminiCliClient = new GeminiCliClient();
+    this.claudeCliClient = new ClaudeCliClient();
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
@@ -90,6 +93,10 @@ export class LlmService {
 
     if (this.provider === "gemini_cli") {
       return this.callGeminiCliJson(options);
+    }
+
+    if (this.provider === "claude_cli") {
+      return this.callClaudeCliJson(options);
     }
 
     if (this.strategy.requiresApiKey && !this.apiKey) {
@@ -151,6 +158,10 @@ export class LlmService {
 
     if (this.provider === "gemini_cli") {
       return this.geminiCliClient.validateCredentials();
+    }
+
+    if (this.provider === "claude_cli") {
+      return this.claudeCliClient.validateCredentials();
     }
 
     if (this.strategy.requiresApiKey && !this.apiKey) {
@@ -219,6 +230,11 @@ export class LlmService {
       return sortModels(models, getPreferredModel(this.provider));
     }
 
+    if (this.provider === "claude_cli") {
+      const models = await this.claudeCliClient.listModels();
+      return sortModels(models, getPreferredModel(this.provider));
+    }
+
     if (this.strategy.requiresApiKey && !this.apiKey) {
       throw new Error("LLM API key is missing.");
     }
@@ -228,7 +244,8 @@ export class LlmService {
       this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
-      this.provider !== "ollama"
+      this.provider !== "ollama" &&
+      this.provider !== "requesty"
     ) {
       return [];
     }
@@ -245,6 +262,9 @@ export class LlmService {
       }
       if (this.provider === "glm") {
         return this.listGlmModels();
+      }
+      if (this.provider === "requesty") {
+        return this.listRequestyModels();
       }
       return this.listOllamaModels();
     })();
@@ -321,6 +341,48 @@ export class LlmService {
 
         if (attempt < maxRetries && shouldRetryAttempt({ message })) {
           logger.warn("Gemini CLI attempt failed, retrying", {
+            jobId: jobId ?? "unknown",
+            attempt: attempt + 1,
+            maxRetries,
+            message,
+          });
+          continue;
+        }
+
+        return { success: false, error: message };
+      }
+    }
+
+    return { success: false, error: "All retry attempts failed" };
+  }
+
+  private async callClaudeCliJson<T>(
+    options: LlmRequestOptions<T>,
+  ): Promise<LlmResponse<T>> {
+    const { maxRetries = 0, retryDelayMs = 500, signal, jobId } = options;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          logger.info("LLM retry attempt", {
+            jobId: jobId ?? "unknown",
+            attempt,
+            maxRetries,
+          });
+          await sleep(getRetryDelayMs(retryDelayMs, attempt));
+        }
+
+        const result = await this.claudeCliClient.callJson({
+          ...options,
+          signal,
+        });
+        const parsed = parseJsonContent<T>(result.text, jobId);
+        return { success: true, data: parsed };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (attempt < maxRetries && shouldRetryAttempt({ message })) {
+          logger.warn("Claude CLI attempt failed, retrying", {
             jobId: jobId ?? "unknown",
             attempt: attempt + 1,
             maxRetries,
@@ -562,6 +624,28 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listRequestyModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Requesty returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   private async listOllamaModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/api/tags"), {
       method: "GET",
@@ -606,9 +690,11 @@ function normalizeProvider(
   if (normalized === "glm") return "glm";
   if (normalized === "gemini") return "gemini";
   if (normalized === "gemini_cli") return "gemini_cli";
+  if (normalized === "claude_cli") return "claude_cli";
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
+  if (normalized === "requesty") return "requesty";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,
@@ -658,6 +744,7 @@ function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "gemini" || provider === "gemini_cli") {
     return "google/gemini-3-flash-preview";
   }
+  if (provider === "claude_cli") return "claude-sonnet-5";
   return null;
 }
 

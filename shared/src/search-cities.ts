@@ -1,22 +1,13 @@
-import { normalizeCountryKey } from "./location-support.js";
+import {
+  getCountryIso2Code,
+  getCountryNameVariants,
+  normalizeCountryKey,
+} from "./location-support.js";
 
 const LOCATION_ALIASES: Record<string, string> = {
   uk: "united kingdom",
   us: "united states",
   usa: "united states",
-};
-
-const COUNTRY_LOCATION_VARIANTS: Record<string, string[]> = {
-  "united kingdom": [
-    "uk",
-    "great britain",
-    "britain",
-    "england",
-    "scotland",
-    "wales",
-    "northern ireland",
-  ],
-  "united states": ["us", "usa", "united states of america"],
 };
 
 export function normalizeLocationToken(
@@ -107,10 +98,10 @@ function matchesRequestedLocationTokens(
   requestedLocation: string,
 ): boolean {
   const normalizedJobLocation = normalizeLocationToken(jobLocation)
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
   const normalizedRequestedLocation = normalizeLocationToken(requestedLocation)
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
   if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
 
@@ -132,6 +123,21 @@ function matchesRequestedLocationTokens(
   return false;
 }
 
+function matchesRequestedCountryCode(
+  jobLocation: string | undefined,
+  countryCode: string,
+): boolean {
+  const parts = (jobLocation ?? "")
+    .split(",")
+    .map((part) => normalizeLocationToken(part))
+    .filter(Boolean);
+  const normalizedCode = countryCode.toLowerCase();
+
+  // A two-part location is ambiguous: city/country and city/subdivision use
+  // the same shape (Berlin, DE vs Wilmington, DE).
+  return parts.length !== 2 && parts.at(-1) === normalizedCode;
+}
+
 export function matchesRequestedCountry(
   jobLocation: string | undefined,
   requestedCountry: string,
@@ -139,12 +145,10 @@ export function matchesRequestedCountry(
   const normalizedCountry = normalizeCountryKey(requestedCountry);
   if (!normalizedCountry) return false;
 
-  const candidates = [
-    normalizedCountry,
-    ...(COUNTRY_LOCATION_VARIANTS[normalizedCountry] ?? []),
-  ];
+  const iso2 = getCountryIso2Code(normalizedCountry);
+  if (iso2 && matchesRequestedCountryCode(jobLocation, iso2)) return true;
 
-  return candidates.some((candidate) =>
+  return getCountryNameVariants(normalizedCountry).some((candidate) =>
     matchesRequestedLocationTokens(jobLocation, candidate),
   );
 }

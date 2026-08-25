@@ -1,0 +1,307 @@
+import NumberFlow from "@number-flow/react";
+import type { PipelineProgressState } from "@shared/types";
+import { useReducedMotion } from "framer-motion";
+import { CircleX } from "lucide-react";
+import "slot-text/style.css";
+import { SlotText } from "slot-text/react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { PipelineActionRequired } from "./PipelineActionRequired";
+import { PipelineFanoutCard } from "./PipelineFanoutCard";
+
+const noop = () => {};
+
+export interface PipelineProgressCardProps {
+  progress: PipelineProgressState;
+  elapsedSeconds?: number;
+  currentCombination?: string;
+  solvingExtractor?: string | null;
+  onSolveChallenge?: (extractorId: string) => void;
+  resumingScoring?: boolean;
+  onResumeScoring?: () => void;
+}
+
+const stepTitles: Record<PipelineProgressState["step"], string> = {
+  idle: "Preparing search",
+  crawling: "Searching jobs",
+  challenge_required: "Browser check needed",
+  importing: "Importing jobs",
+  scoring: "Scoring matches",
+  processing: "Preparing applications",
+  completed: "Search complete",
+  cancelled: "Search cancelled",
+  failed: "Pipeline failed",
+  configuration_required: "Scoring paused",
+};
+
+const stepLabels: Record<PipelineProgressState["step"], string> = {
+  idle: "Connecting",
+  crawling: "Searching",
+  challenge_required: "Check needed",
+  importing: "Importing",
+  scoring: "Scoring",
+  processing: "Processing",
+  completed: "Complete",
+  cancelled: "Cancelled",
+  failed: "Failed",
+  configuration_required: "Action needed",
+};
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+const getPercentage = (progress: PipelineProgressState): number => {
+  switch (progress.step) {
+    case "challenge_required":
+      return 15;
+    case "crawling":
+      return progress.crawlingTermsTotal > 0
+        ? clamp(
+            5 +
+              (progress.crawlingTermsProcessed / progress.crawlingTermsTotal) *
+                10,
+            5,
+            15,
+          )
+        : 5;
+    case "importing":
+      return 20;
+    case "scoring":
+      return progress.jobsDiscovered > 0
+        ? clamp(
+            20 + (progress.jobsScored / progress.jobsDiscovered) * 30,
+            20,
+            50,
+          )
+        : 25;
+    case "processing":
+      return progress.totalToProcess > 0
+        ? clamp(
+            50 + (progress.jobsProcessed / progress.totalToProcess) * 50,
+            50,
+            100,
+          )
+        : 55;
+    case "completed":
+    case "cancelled":
+    case "failed":
+    case "configuration_required":
+      return 100;
+    default:
+      return 0;
+  }
+};
+
+const Metric = ({ label, value }: { label: string; value: number }) => (
+  <div className="flex flex-col gap-1 px-4 py-3">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <NumberFlow
+      className="font-mono text-lg font-semibold tabular-nums"
+      value={value}
+      locales="en-GB"
+      isolate
+    />
+  </div>
+);
+
+const liveStageCopy = (
+  progress: PipelineProgressState,
+): { before: string; title: string; after: string } | null => {
+  if (!progress.currentJob) return null;
+
+  switch (progress.step) {
+    case "importing":
+      return {
+        before: "Importing",
+        title: progress.currentJob.title,
+        after: "into your workspace",
+      };
+    case "scoring":
+      return {
+        before: "Ranking",
+        title: progress.currentJob.title,
+        after: "against your profile",
+      };
+    case "processing":
+      return {
+        before: "Preparing",
+        title: progress.currentJob.title,
+        after: "for review",
+      };
+    default:
+      return null;
+  }
+};
+
+const RollingStageText = ({ text }: { text: string }) => {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <span className="font-medium text-foreground" data-live-job-title="">
+      {prefersReducedMotion ? (
+        text
+      ) : (
+        <SlotText
+          text={text}
+          options={{
+            direction: "up",
+            stagger: 12,
+            duration: 240,
+            bounce: 0.25,
+            interrupt: false,
+          }}
+        />
+      )}
+    </span>
+  );
+};
+
+export const PipelineProgressCard = ({
+  progress,
+  elapsedSeconds,
+  currentCombination,
+  solvingExtractor = null,
+  onSolveChallenge = () => {},
+  resumingScoring = false,
+  onResumeScoring,
+}: PipelineProgressCardProps) => {
+  if (
+    progress.fanout &&
+    (progress.step === "crawling" || progress.step === "challenge_required")
+  ) {
+    return (
+      <PipelineFanoutCard
+        fanout={progress.fanout}
+        elapsedSeconds={elapsedSeconds ?? 0}
+        currentCombination={currentCombination}
+        challenges={progress.pendingChallenges}
+        solvingExtractor={solvingExtractor}
+        onSolveChallenge={onSolveChallenge}
+      />
+    );
+  }
+
+  const percentage = getPercentage(progress);
+  const remaining = Math.max(
+    progress.totalToProcess - progress.jobsProcessed,
+    0,
+  );
+  const awaitingScore = Math.max(
+    progress.jobsDiscovered - progress.jobsScored,
+    0,
+  );
+  const isScoring =
+    progress.step === "scoring" || progress.step === "configuration_required";
+  const stageCopy = liveStageCopy(progress);
+  const stageText = stageCopy
+    ? `${stageCopy.before} ${stageCopy.title} ${stageCopy.after}`
+    : null;
+  const showMetrics = progress.step !== "idle";
+  const badgeVariant =
+    progress.step === "failed"
+      ? "destructive"
+      : progress.step === "completed"
+        ? "secondary"
+        : "outline";
+
+  return (
+    <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
+      <CardHeader className="gap-4 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-2">
+            <CardTitle className="text-2xl tracking-tight">
+              {stepTitles[progress.step]}
+            </CardTitle>
+            <CardDescription
+              className="overflow-hidden text-base leading-6"
+              title={stageText ?? undefined}
+            >
+              {stageCopy ? (
+                <>
+                  {stageCopy.before} <RollingStageText text={stageCopy.title} />{" "}
+                  {stageCopy.after}
+                </>
+              ) : (
+                progress.message
+              )}
+            </CardDescription>
+            {progress.detail ? (
+              <p className="text-xs text-muted-foreground">{progress.detail}</p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {elapsedSeconds !== undefined ? (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:
+                {String(elapsedSeconds % 60).padStart(2, "0")} elapsed
+              </span>
+            ) : null}
+            <Badge variant={badgeVariant}>{stepLabels[progress.step]}</Badge>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <span className="self-end font-mono text-xs tabular-nums text-muted-foreground">
+            {Math.round(percentage)}%
+          </span>
+          <Progress
+            value={percentage}
+            aria-label={`${stepLabels[progress.step]}: ${Math.round(percentage)}%`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(percentage)}
+          />
+        </div>
+      </CardHeader>
+
+      {showMetrics || progress.error ? (
+        <>
+          <Separator />
+          <CardContent className="flex flex-col gap-4 p-6">
+            {showMetrics ? (
+              <section className="grid overflow-hidden rounded-lg border divide-y sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+                <Metric label="Discovered" value={progress.jobsDiscovered} />
+                <Metric label="Scored" value={progress.jobsScored} />
+                <Metric
+                  label={isScoring ? "Awaiting score" : "Prepared"}
+                  value={isScoring ? awaitingScore : progress.jobsProcessed}
+                />
+                <Metric
+                  label={isScoring ? "Exceptional matches" : "To prepare"}
+                  value={isScoring ? progress.jobsExceptional : remaining}
+                />
+              </section>
+            ) : null}
+
+            {progress.step === "failed" && progress.error ? (
+              <Alert variant="destructive">
+                <CircleX />
+                <AlertTitle>Pipeline stopped</AlertTitle>
+                <AlertDescription>{progress.error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {progress.step === "configuration_required" && progress.error ? (
+              <PipelineActionRequired
+                title="LLM configuration required"
+                description={progress.error}
+                actionLabel="Restart scoring"
+                pendingLabel="Resuming…"
+                pending={resumingScoring}
+                onAction={onResumeScoring ?? noop}
+              />
+            ) : null}
+          </CardContent>
+        </>
+      ) : null}
+    </Card>
+  );
+};

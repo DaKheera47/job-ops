@@ -1,77 +1,8 @@
-import type { OnboardingRequirement } from "@shared/types";
 import {
   bucketDurationMs,
   bucketFileSize,
   bucketQueryLength,
 } from "@/lib/analytics";
-import type { OnboardingPanelId } from "./types";
-
-export type OnboardingStepAnalyticsId =
-  | "account"
-  | "model"
-  | "resume"
-  | "first_run";
-
-export type OnboardingRequirementAnalyticsStatus =
-  | "ready"
-  | "needs_action"
-  | "invalid"
-  | "checking_unavailable"
-  | "complete"
-  | "not_applicable";
-
-export type OnboardingRequirementStatusOrMissing =
-  | "ready"
-  | "needs_action"
-  | "invalid"
-  | "checking_unavailable"
-  | "missing";
-
-export function toAnalyticsStep(
-  panel: OnboardingPanelId,
-): OnboardingStepAnalyticsId {
-  return panel === "first-run" ? "first_run" : panel;
-}
-
-export function getStepIndex(panel: OnboardingPanelId): number {
-  switch (panel) {
-    case "account":
-      return 1;
-    case "model":
-      return 2;
-    case "resume":
-      return 3;
-    case "first-run":
-      return 4;
-  }
-}
-
-export function getRequirementAnalyticsStatus(args: {
-  panel: OnboardingPanelId;
-  complete: boolean;
-  requirement: OnboardingRequirement | null;
-}): OnboardingRequirementAnalyticsStatus {
-  if (args.panel === "account") return "not_applicable";
-  if (args.panel === "first-run") {
-    return args.complete ? "complete" : "not_applicable";
-  }
-  return args.requirement?.status ?? "not_applicable";
-}
-
-export function getRequirementStatusOrMissing(
-  requirement: OnboardingRequirement | null | undefined,
-): OnboardingRequirementStatusOrMissing {
-  return requirement?.status ?? "missing";
-}
-
-export function getNextStep(
-  nextRequirementId: OnboardingRequirement["id"] | null,
-  complete: boolean,
-): "model" | "resume" | "first_run" | "none" {
-  if (nextRequirementId) return nextRequirementId;
-  return complete ? "first_run" : "none";
-}
-
 export function getTextLengthBucket(value: string): string {
   return bucketQueryLength(value.length);
 }

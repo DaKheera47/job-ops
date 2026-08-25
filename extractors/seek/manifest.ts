@@ -54,15 +54,16 @@ export const manifest: ExtractorManifest = {
       context.selectedCountry === "new zealand" ? "New Zealand" : "Australia";
 
     const cities = resolveSearchCities({
+      list: context.sourceLocationPlan?.requestedCities,
       single: context.settings.searchCities ?? context.settings.jobspyLocation,
     });
-    const location = cities[0] ?? `All ${countryLabel}`;
+    const locations = cities.length > 0 ? cities : [`All ${countryLabel}`];
 
     const result = await runSeek({
       searchTerms: context.searchTerms,
-      location,
+      locations,
       country: context.selectedCountry,
-      maxJobsPerTerm,
+      maxJobsPerTerm: Math.max(1, Math.ceil(maxJobsPerTerm / locations.length)),
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
         if (context.shouldCancel?.()) return;

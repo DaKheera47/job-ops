@@ -13,7 +13,8 @@ ENV DATA_DIR=/app/data
 ENV CODEX_HOME=/app/codex-home
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PATH=/root/.local/bin:${PATH}
-ARG CODEX_CLI_VERSION=0.120.0
+ARG CODEX_CLI_VERSION=0.144.6
+ARG CLAUDE_CLI_VERSION=2.1.211
 
 # Install runtime dependencies shared by build and production stages.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,6 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Codex CLI for local app-server based inference.
 RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
+
+# Install Claude Code CLI for headless claude_cli provider inference.
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CLI_VERSION}
 
 WORKDIR /app
 
@@ -76,6 +80,7 @@ COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -89,6 +94,7 @@ COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/fiveamsat/package*.json ./extractors/fiveamsat/
 COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
+COPY extractors/freehire/package*.json ./extractors/freehire/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install build-time Node dependencies on the native builder platform. The
@@ -103,6 +109,7 @@ COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
 COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
@@ -118,6 +125,7 @@ COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/fiveamsat ./extractors/fiveamsat
 COPY extractors/wazzuf ./extractors/wazzuf
+COPY extractors/freehire ./extractors/freehire
 COPY extractors/browser-utils ./extractors/browser-utils
 
 # ============================================================================
@@ -151,6 +159,7 @@ COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
@@ -164,6 +173,7 @@ COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/fiveamsat/package*.json ./extractors/fiveamsat/
 COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
+COPY extractors/freehire/package*.json ./extractors/freehire/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only.
@@ -243,6 +253,7 @@ COPY --from=docs-build /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
 COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
@@ -258,6 +269,7 @@ COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/fiveamsat ./extractors/fiveamsat
 COPY extractors/wazzuf ./extractors/wazzuf
+COPY extractors/freehire ./extractors/freehire
 COPY extractors/browser-utils ./extractors/browser-utils
 
 # Create runtime directories.

@@ -104,7 +104,7 @@ describe("useJobSelectionActions", () => {
   });
 
   it("caps select-all to the API max", () => {
-    const activeJobs = Array.from({ length: 101 }, (_, index) =>
+    const activeJobs = Array.from({ length: 501 }, (_, index) =>
       createJob({ id: `job-${index + 1}`, status: "discovered" }),
     );
     const loadJobs = vi.fn().mockResolvedValue(undefined);
@@ -120,11 +120,11 @@ describe("useJobSelectionActions", () => {
       result.current.toggleSelectAll(true);
     });
 
-    expect(result.current.selectedJobIds.size).toBe(100);
+    expect(result.current.selectedJobIds.size).toBe(500);
   });
 
   it("does not send action requests above the max selection size", async () => {
-    const activeJobs = Array.from({ length: 101 }, (_, index) =>
+    const activeJobs = Array.from({ length: 501 }, (_, index) =>
       createJob({ id: `job-${index + 1}`, status: "discovered" }),
     );
     const loadJobs = vi.fn().mockResolvedValue(undefined);
