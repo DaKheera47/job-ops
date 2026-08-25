@@ -29,6 +29,7 @@ describe("location-domain", () => {
       geoScope: "remote_worldwide_prioritize_selected",
       searchScope: "remote_worldwide_prioritize_selected",
       matchStrictness: "flexible",
+      proximity: null,
     });
   });
 
@@ -48,6 +49,7 @@ describe("location-domain", () => {
       geoScope: "selected_plus_remote_worldwide",
       searchScope: "selected_plus_remote_worldwide",
       matchStrictness: "flexible",
+      proximity: null,
     });
 
     expect(
@@ -181,6 +183,27 @@ describe("location-domain", () => {
     });
   });
 
+  it("matches structured country evidence using codes and localized names", () => {
+    const intent = {
+      selectedCountry: "netherlands",
+      cityLocations: [],
+      workplaceTypes: ["onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+    } as const;
+
+    expect(matchLocationIntent(intent, { country: "NL" })).toMatchObject({
+      matched: true,
+      countryMatched: true,
+    });
+    expect(matchLocationIntent(intent, { country: "Nederland" })).toMatchObject(
+      {
+        matched: true,
+        countryMatched: true,
+      },
+    );
+  });
+
   it("keeps flexible city matching available after country matches", () => {
     expect(
       matchLocationIntent(
@@ -222,18 +245,21 @@ describe("location-domain", () => {
     ).toEqual({
       requiresCityLocations: false,
       requiresSelectedCountry: false,
+      supportsNativeRadius: false,
       source: "gradcracker",
       supportedCountryKeys: ["united kingdom"],
     });
     expect(normalizeLocationSourceCapabilities({ source: "seek" })).toEqual({
       requiresCityLocations: false,
       requiresSelectedCountry: true,
+      supportsNativeRadius: false,
       source: "seek",
       supportedCountryKeys: ["australia", "new zealand"],
     });
     expect(normalizeLocationSourceCapabilities({ source: "naukri" })).toEqual({
       requiresCityLocations: false,
       requiresSelectedCountry: false,
+      supportsNativeRadius: false,
       source: "naukri",
       supportedCountryKeys: ["india"],
     });
@@ -242,6 +268,7 @@ describe("location-domain", () => {
     ).toEqual({
       requiresCityLocations: false,
       requiresSelectedCountry: false,
+      supportsNativeRadius: false,
       source: "startupjobs",
       supportedCountryKeys: null,
     });
@@ -256,8 +283,44 @@ describe("location-domain", () => {
     ).toEqual({
       requiresCityLocations: true,
       requiresSelectedCountry: true,
+      supportsNativeRadius: false,
       source: "glassdoor",
       supportedCountryKeys: ["united kingdom"],
+    });
+  });
+
+  it("marks native radius sources while allowing place expansion for city sources", () => {
+    const intent = createLocationIntent({
+      selectedCountry: "united kingdom",
+      cityLocations: [],
+      proximity: { latitude: 53.8, longitude: -1.55, radiusMiles: 25 },
+      workplaceTypes: ["onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
+    });
+    const plans = planLocationSources({
+      intent,
+      sources: ["linkedin", "glassdoor"],
+      capabilitiesBySource: {
+        linkedin: { source: "linkedin", supportsNativeRadius: true },
+        glassdoor: {
+          source: "glassdoor",
+          requiresCityLocations: true,
+          supportsNativeRadius: false,
+        },
+      },
+    });
+
+    expect(plans.plans[0]).toMatchObject({
+      canRun: true,
+      usesNativeRadius: true,
+    });
+    expect(plans.plans[1]).toMatchObject({
+      canRun: true,
+      usesNativeRadius: false,
+      reasons: expect.arrayContaining([
+        "The map radius will be expanded into nearby places.",
+      ]),
     });
   });
 

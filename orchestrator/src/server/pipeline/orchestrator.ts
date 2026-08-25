@@ -156,6 +156,16 @@ async function resolveLocationIntent(
     workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
     searchScope: settings.locationSearchScope,
     matchStrictness: settings.locationMatchStrictness,
+    proximity:
+      settings.locationSearchMode === "radius" &&
+      settings.locationLatitude != null &&
+      settings.locationLongitude != null
+        ? {
+            latitude: Number(settings.locationLatitude),
+            longitude: Number(settings.locationLongitude),
+            radiusMiles: Number(settings.locationRadiusMiles ?? 50),
+          }
+        : null,
   });
 }
 
@@ -323,7 +333,12 @@ export async function runPipeline(
       topN: mergedConfig.topN,
       minSuitabilityScore: mergedConfig.minSuitabilityScore,
       sources: mergedConfig.sources,
-      locationIntent: mergedConfig.locationIntent,
+      locationIntent: {
+        selectedCountry: locationIntent.selectedCountry,
+        cityCount: locationIntent.cityLocations.length,
+        radiusMiles: locationIntent.proximity?.radiusMiles ?? null,
+        hasProximity: Boolean(locationIntent.proximity),
+      },
     });
 
     try {
@@ -385,6 +400,8 @@ export async function runPipeline(
         const retryResult = await discoverJobsStep({
           mergedConfig: retryConfig,
           includeWatchlist: false,
+          preserveFanout: true,
+          fanoutSeedJobs: discoveredJobs,
           shouldCancel: () =>
             getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
@@ -434,15 +451,21 @@ export async function runPipeline(
 
       ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "scoring" });
-      try {
-        ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
-          profile,
-          scoringInstructions: mergedConfig.scoringInstructions,
-          shouldCancel: () =>
-            getPipelineState(scopeKey).cancelRequestedAt !== null,
-        }));
-      } catch (error) {
-        if (error instanceof LlmNotConfiguredError) {
+      while (true) {
+        try {
+          ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
+            profile,
+            scoringInstructions: mergedConfig.scoringInstructions,
+            visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
+            shouldCancel: () =>
+              getPipelineState(scopeKey).cancelRequestedAt !== null,
+          }));
+          break;
+        } catch (error) {
+          if (!(error instanceof LlmNotConfiguredError)) {
+            throw error;
+          }
+
           const message = error.message;
           progressHelpers.configurationRequired(message);
           pipelineLogger.warn("Pipeline paused — LLM not configured", error);
@@ -455,15 +478,6 @@ export async function runPipeline(
           ensureNotCancelled(scopeKey);
 
           pipelineLogger.info("LLM configured, resuming scoring");
-
-          ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
-            profile,
-            scoringInstructions: mergedConfig.scoringInstructions,
-            shouldCancel: () =>
-              getPipelineState(scopeKey).cancelRequestedAt !== null,
-          }));
-        } else {
-          throw error;
         }
       }
       await persistResultSummary({

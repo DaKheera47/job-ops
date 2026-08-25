@@ -35,6 +35,16 @@ async function resolveLocationIntent(
     workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
     geoScope: settings.locationSearchScope ?? null,
     matchStrictness: settings.locationMatchStrictness ?? null,
+    proximity:
+      settings.locationSearchMode === "radius" &&
+      settings.locationLatitude != null &&
+      settings.locationLongitude != null
+        ? {
+            latitude: Number(settings.locationLatitude),
+            longitude: Number(settings.locationLongitude),
+            radiusMiles: Number(settings.locationRadiusMiles ?? 50),
+          }
+        : null,
   });
 }
 

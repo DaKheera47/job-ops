@@ -82,8 +82,10 @@ vi.mock("@infra/request-context", () => ({
 }));
 
 import {
+  confirmOnboardingResumeAction,
   getOnboardingStatus,
   saveOnboardingModelAction,
+  saveOnboardingProfileAction,
   saveOnboardingRxResumeAction,
 } from "./onboarding-status";
 
@@ -108,6 +110,9 @@ describe("onboarding status engine", () => {
         llmBaseUrl: "",
         model: "gpt-4o",
         rxresumeUrl: null,
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: "1",
+        onboardingResumeConfirmedSource: "local:doc-1",
       };
       return values[key] ?? null;
     });
@@ -136,31 +141,119 @@ describe("onboarding status engine", () => {
     });
   });
 
-  it("returns model as next when LLM validation fails", async () => {
-    mocks.validateLlmCredentials.mockResolvedValue({
-      valid: false,
-      message: "LLM API key is missing.",
+  it("returns model as next when the connection has not been completed", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: "sk-test",
+        llmProvider: "openrouter",
+        llmBaseUrl: "",
+        model: "gpt-4o",
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: null,
+        onboardingResumeConfirmedSource: "local:doc-1",
+      };
+      return values[key] ?? null;
     });
 
     const status = await getOnboardingStatus();
 
     expect(status.complete).toBe(false);
     expect(status.nextRequirementId).toBe("model");
-    expect(status.requirements[0]).toMatchObject({
+    expect(status.requirements[1]).toMatchObject({
       id: "model",
       status: "needs_action",
       primaryAction: "connect_model",
     });
+    expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
   });
 
-  it("returns resume as next when the model is valid but no resume is ready", async () => {
+  it("validates and persists legacy onboarding state once", async () => {
+    const values: Record<string, string | null> = {
+      llmApiKey: "sk-test",
+      llmProvider: "openrouter",
+      llmBaseUrl: "",
+      model: "gpt-4o",
+      onboardingLegacyMigrationPending: "1",
+      onboardingProfileCompleted: null,
+      onboardingLlmCompleted: null,
+      onboardingResumeConfirmedSource: null,
+    };
+    mocks.getSetting.mockImplementation(async (key: string) =>
+      Object.hasOwn(values, key) ? values[key] : null,
+    );
+    mocks.applySettingsUpdates.mockImplementation(async (update) => {
+      if (update.onboardingProfileCompleted !== undefined) {
+        values.onboardingProfileCompleted = update.onboardingProfileCompleted
+          ? "1"
+          : "0";
+      }
+      if (update.onboardingLlmCompleted !== undefined) {
+        values.onboardingLlmCompleted = update.onboardingLlmCompleted
+          ? "1"
+          : "0";
+      }
+      if (update.onboardingResumeConfirmedSource !== undefined) {
+        values.onboardingResumeConfirmedSource =
+          update.onboardingResumeConfirmedSource;
+      }
+      values.onboardingLegacyMigrationPending = "0";
+      return {
+        shouldRefreshBackupScheduler: false,
+        shouldClearRxResumeCaches: false,
+        updatedSettingKeys: [],
+      };
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith({
+      onboardingProfileCompleted: true,
+      onboardingLegacyMigrationPending: false,
+      onboardingLlmCompleted: true,
+      onboardingResumeConfirmedSource: "local:doc-1",
+    });
+    expect(status.complete).toBe(true);
+  });
+
+  it("does not trust a completed Codex marker when refreshed auth is invalid", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: null,
+        llmProvider: "codex",
+        llmBaseUrl: "",
+        model: "gpt-5.4-mini",
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: "1",
+        onboardingResumeConfirmedSource: "local:doc-1",
+      };
+      return values[key] ?? null;
+    });
+    mocks.validateLlmCredentials.mockResolvedValue({
+      valid: false,
+      message: "Access token expired. Please login again.",
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(status.complete).toBe(false);
+    expect(status.nextRequirementId).toBe("model");
+    expect(status.requirements[1]).toMatchObject({
+      id: "model",
+      status: "needs_action",
+      title: "Reconnect Codex",
+      primaryAction: "connect_model",
+    });
+    expect(status.requirements[1]?.message).toMatch(/access token expired/i);
+  });
+
+  it("returns resume as next when no resume is ready", async () => {
     mocks.getDesignResumeStatus.mockResolvedValue({ exists: false });
 
     const status = await getOnboardingStatus();
 
     expect(status.complete).toBe(false);
     expect(status.nextRequirementId).toBe("resume");
-    expect(status.requirements[1]).toMatchObject({
+    expect(status.requirements[2]).toMatchObject({
       id: "resume",
       status: "needs_action",
       primaryAction: "upload_resume",
@@ -175,6 +268,9 @@ describe("onboarding status engine", () => {
         llmBaseUrl: "http://localhost:11434",
         model: null,
         rxresumeUrl: null,
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: "1",
+        onboardingResumeConfirmedSource: "local:doc-1",
       };
       return values[key] ?? null;
     });
@@ -183,7 +279,7 @@ describe("onboarding status engine", () => {
 
     expect(status.complete).toBe(false);
     expect(status.nextRequirementId).toBe("model");
-    expect(status.requirements[0]).toMatchObject({
+    expect(status.requirements[1]).toMatchObject({
       id: "model",
       status: "needs_action",
       title: "Choose an Ollama model",
@@ -191,37 +287,7 @@ describe("onboarding status engine", () => {
     });
   });
 
-  it("adds Ollama hardware and provider guidance to unavailable model checks", async () => {
-    mocks.getSetting.mockImplementation(async (key: string) => {
-      const values: Record<string, string | null> = {
-        llmApiKey: null,
-        llmProvider: "ollama",
-        llmBaseUrl: "http://localhost:11434",
-        model: "llama3:latest",
-        rxresumeUrl: null,
-      };
-      return values[key] ?? null;
-    });
-    mocks.validateLlmCredentials.mockResolvedValue({
-      valid: false,
-      message: "The operation timed out.",
-    });
-
-    const status = await getOnboardingStatus();
-
-    expect(status.requirements[0]).toMatchObject({
-      id: "model",
-      status: "checking_unavailable",
-    });
-    expect(status.requirements[0]?.message).toContain(
-      "Try a smaller or faster model",
-    );
-    expect(status.requirements[0]?.message).toContain(
-      "switch provider from the model step",
-    );
-  });
-
-  it("is complete when model and resume requirements validate", async () => {
+  it("is complete when all durable requirements are complete", async () => {
     const status = await getOnboardingStatus();
 
     expect(status).toMatchObject({
@@ -253,8 +319,8 @@ describe("onboarding status engine", () => {
     expect(mocks.validateRxResumeCredentials).not.toHaveBeenCalled();
     expect(status.complete).toBe(false);
     expect(status.nextRequirementId).toBe("resume");
-    expect(status.requirements).toHaveLength(1);
-    expect(status.requirements[0]).toMatchObject({
+    expect(status.requirements).toHaveLength(2);
+    expect(status.requirements[1]).toMatchObject({
       id: "resume",
       status: "needs_action",
       title: "Upload your existing resume, PDF or DOCX",
@@ -280,6 +346,70 @@ describe("onboarding status engine", () => {
       },
     });
     expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
+  });
+
+  it("persists profile run defaults and the durable completion marker", async () => {
+    await saveOnboardingProfileAction({
+      country: "United Kingdom",
+      cities: ["London", "Manchester"],
+      workplaceTypes: ["remote", "hybrid"],
+      requiresVisaSponsorship: true,
+    });
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchCities: "London|Manchester",
+        workplaceTypes: ["remote", "hybrid"],
+        jobspyCountryIndeed: "United Kingdom",
+        showSponsorInfo: true,
+        onboardingProfileCompleted: true,
+      }),
+    );
+  });
+
+  it("allows country-wide or remote preferences without selected cities", async () => {
+    await saveOnboardingProfileAction({
+      country: "United Kingdom",
+      cities: [],
+      workplaceTypes: ["remote"],
+      requiresVisaSponsorship: false,
+    });
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchCities: "",
+        workplaceTypes: ["remote"],
+        onboardingProfileCompleted: true,
+      }),
+    );
+  });
+
+  it("persists the model completion marker only after validation", async () => {
+    await saveOnboardingModelAction({
+      provider: "openrouter",
+      apiKey: "sk-valid",
+      model: "gpt-4o",
+    });
+
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmProvider: "openrouter",
+        llmApiKey: "sk-valid",
+        model: "gpt-4o",
+        onboardingLlmCompleted: true,
+      }),
+    );
+  });
+
+  it("confirms only the currently available resume source", async () => {
+    await confirmOnboardingResumeAction({ source: "local:doc-1" });
+    expect(mocks.applySettingsUpdates).toHaveBeenCalledWith({
+      onboardingResumeConfirmedSource: "local:doc-1",
+    });
+
+    await expect(
+      confirmOnboardingResumeAction({ source: "local:stale-document" }),
+    ).rejects.toMatchObject({ status: 422 });
   });
 
   it("rejects a new Ollama model action without an explicit model", async () => {
@@ -342,7 +472,7 @@ describe("onboarding status engine", () => {
       complete: false,
       nextRequirementId: "resume",
     });
-    expect(status.requirements[1]).toMatchObject({
+    expect(status.requirements[2]).toMatchObject({
       primaryAction: "select_rxresume_template",
     });
   });

@@ -737,6 +737,12 @@ async function closeCodexSessionForTests(): Promise<void> {
   });
 }
 
+export async function resetCodexSession(): Promise<void> {
+  await enqueueSessionOperation(async () => {
+    await resetSharedSession();
+  });
+}
+
 export class CodexClient {
   async getAuthStatus(signal?: AbortSignal): Promise<{
     valid: boolean;
@@ -749,7 +755,7 @@ export class CodexClient {
         task: async (session) => {
           const auth = (await session.request("getAuthStatus", {
             includeToken: false,
-            refreshToken: false,
+            refreshToken: true,
           })) as CodexAuthStatusResponse;
 
           if (!auth?.authMethod && auth?.requiresOpenaiAuth !== false) {

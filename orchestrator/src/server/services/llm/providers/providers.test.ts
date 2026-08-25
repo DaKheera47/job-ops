@@ -7,6 +7,7 @@ import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
+import { requestyStrategy } from "./requesty";
 
 const schema = {
   name: "test_schema",
@@ -33,6 +34,18 @@ describe("provider adapters", () => {
           model: "model-a",
         },
         expectedUrl: "https://openrouter.ai/api/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "requesty-json_schema",
+        strategy: requestyStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://router.requesty.ai/v1",
+          apiKey: "x",
+          model: "openai/gpt-4o-mini",
+        },
+        expectedUrl: "https://router.requesty.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {
@@ -184,6 +197,7 @@ describe("provider adapters", () => {
       choices: [{ message: { content: "ok" } }],
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
+    expect(requestyStrategy.extractText(response)).toBe("ok");
     expect(glmStrategy.extractText(response)).toBe("ok");
     expect(lmStudioStrategy.extractText(response)).toBe("ok");
     expect(ollamaStrategy.extractText(response)).toBe("ok");
@@ -384,5 +398,55 @@ describe("provider adapters", () => {
         },
       },
     });
+  });
+
+  it("strips JSON Schema keywords Anthropic does not support", () => {
+    const request = anthropicStrategy.buildRequest({
+      mode: "json_schema",
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "sk-ant",
+      model: "claude-sonnet-4-6",
+      messages: [{ role: "user", content: "hi" }],
+      jsonSchema: {
+        name: "job_brief",
+        schema: {
+          type: "object",
+          properties: {
+            they_want: {
+              type: "array",
+              maxItems: 6,
+              minItems: 1,
+              items: { type: "string", maxLength: 200 },
+            },
+            // A property legitimately named like a stripped keyword must survive.
+            format: { type: "string" },
+          },
+          required: ["they_want"],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    const sentSchema = (
+      request.body as {
+        output_config: { format: { schema: Record<string, unknown> } };
+      }
+    ).output_config.format.schema;
+    const properties = sentSchema.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+
+    expect(properties.they_want).not.toHaveProperty("maxItems");
+    expect(properties.they_want).not.toHaveProperty("minItems");
+    expect(properties.they_want.items).not.toHaveProperty("maxLength");
+    // The nested array type and its items are still present.
+    expect(properties.they_want).toMatchObject({
+      type: "array",
+      items: { type: "string" },
+    });
+    // A property whose name collides with a stripped keyword is preserved.
+    expect(properties).toHaveProperty("format");
+    expect(properties.format).toMatchObject({ type: "string" });
   });
 });

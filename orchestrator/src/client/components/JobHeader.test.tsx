@@ -1,4 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
+import type { JobListItem } from "@shared/types.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -60,6 +61,22 @@ describe("JobHeader", () => {
     expect(screen.getByText("Tech Corp")).toBeInTheDocument();
     expect(screen.getByText("London")).toBeInTheDocument();
     expect(screen.getByText("£60,000")).toBeInTheDocument();
+  });
+
+  it("renders lightweight list data without full-detail indicators", () => {
+    const {
+      isRemote: _isRemote,
+      sponsorMatchNames: _sponsorMatchNames,
+      suitabilityReason: _suitabilityReason,
+      tracerLinksEnabled: _tracerLinksEnabled,
+      ...summary
+    } = mockJob;
+
+    renderWithRouter(<JobHeader job={summary as JobListItem} />);
+
+    expect(screen.getByText("Software Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Tech Corp")).toBeInTheDocument();
+    expect(screen.queryByText("Tracer links off")).not.toBeInTheDocument();
   });
 
   it("links the title to the job page", () => {

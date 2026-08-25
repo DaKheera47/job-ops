@@ -25,6 +25,7 @@ type UseKeyboardShortcutsArgs = {
   activeJobs: JobListItem[];
   selectedJobId: string | null;
   selectedJob: JobListItem | null;
+  selectedJobSummary: JobListItem | null;
   selectedJobIds: Set<string>;
   isDesktop: boolean;
   handleSelectJobId: (id: string | null) => void;
@@ -47,6 +48,7 @@ export function useKeyboardShortcuts(args: UseKeyboardShortcutsArgs): void {
     activeJobs,
     selectedJobId,
     selectedJob,
+    selectedJobSummary,
     selectedJobIds,
     isDesktop: _isDesktop,
     handleSelectJobId,
@@ -253,8 +255,9 @@ export function useKeyboardShortcuts(args: UseKeyboardShortcutsArgs): void {
       },
 
       [SHORTCUTS.openListing.key]: () => {
-        if (!selectedJob) return;
-        const link = selectedJob.applicationLink || selectedJob.jobUrl;
+        const listingJob = selectedJob ?? selectedJobSummary;
+        if (!listingJob) return;
+        const link = listingJob.applicationLink || listingJob.jobUrl;
         if (link) window.open(link, "_blank", "noopener,noreferrer");
       },
 

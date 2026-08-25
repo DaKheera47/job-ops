@@ -28,6 +28,7 @@ const baseFilters: JobFilters = {
   sourceFilter: "all",
   sponsorFilter: "all",
   salaryFilter: { mode: "at_least", min: null, max: null },
+  scoreFilter: { mode: "any", min: null, max: null },
   postedWithinDays: null,
   employmentTypes: [],
   location: "",

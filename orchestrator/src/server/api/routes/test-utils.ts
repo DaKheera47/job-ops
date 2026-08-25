@@ -69,10 +69,6 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("@server/services/job-brief", () => ({
-  generateJobBrief: vi.fn().mockResolvedValue(null),
-}));
-
 vi.mock("@server/services/profile", () => ({
   getProfile: vi.fn().mockResolvedValue({}),
   clearProfileCache: vi.fn(),
@@ -104,6 +100,11 @@ vi.mock("@server/services/challenge-viewer", () => ({
 vi.mock("@server/services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),
+  searchSponsorsExact: vi.fn().mockResolvedValue({
+    available: false,
+    providerIds: [],
+    results: [],
+  }),
   getOrganizationDetails: vi.fn(),
   downloadLatestCsv: vi.fn(),
   calculateSponsorMatchSummary: vi.fn((results) => {

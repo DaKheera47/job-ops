@@ -1,15 +1,26 @@
 import type { JobSource } from "./types";
 
 const COUNTRY_ALIASES: Record<string, string> = {
+  britain: "united kingdom",
   "czech republic": "czechia",
   eg: "egypt",
+  england: "united kingdom",
+  "great britain": "united kingdom",
   "korea, republic of": "south korea",
+  netherland: "netherlands",
+  "northern ireland": "united kingdom",
   "republic of korea": "south korea",
   "russian federation": "russia",
+  scotland: "united kingdom",
+  "the netherlands": "netherlands",
+  turkiye: "turkey",
   uk: "united kingdom",
+  uae: "united arab emirates",
+  "united states of america": "united states",
   us: "united states",
   usa: "united states",
   türkiye: "turkey",
+  wales: "united kingdom",
 };
 
 const COUNTRY_LABELS: Record<string, string> = {
@@ -366,6 +377,78 @@ export function sourceRequiresCityLocations(source: JobSource): boolean {
 export function normalizeCountryKey(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
   return COUNTRY_ALIASES[normalized] ?? normalized;
+}
+
+const ISO2_ALIASES: Record<string, string> = {
+  czechia: "CZ",
+  "hong kong": "HK",
+  "south korea": "KR",
+  turkey: "TR",
+  "united arab emirates": "AE",
+  "united kingdom": "GB",
+  "united states": "US",
+};
+
+const COUNTRY_NAME_LOCALES = ["en", "de", "es", "fr", "it", "nl", "pt", "tr"];
+const regionNameMap = buildRegionNameMap();
+const validRegionCodes = new Set(regionNameMap.values());
+const localizedRegionNames = COUNTRY_NAME_LOCALES.map(
+  (locale) => new Intl.DisplayNames([locale], { type: "region" }),
+);
+const countryNameVariantCache = new Map<string, string[]>();
+
+function buildRegionNameMap(): Map<string, string> {
+  const names = new Intl.DisplayNames(["en"], { type: "region" });
+  const map = new Map<string, string>();
+
+  for (let first = 65; first <= 90; first += 1) {
+    for (let second = 65; second <= 90; second += 1) {
+      const iso2 = String.fromCharCode(first, second);
+      const displayName = names.of(iso2);
+      if (!displayName || displayName === iso2) continue;
+      map.set(normalizeCountryKey(displayName), iso2);
+    }
+  }
+
+  return map;
+}
+
+export function getCountryIso2Code(
+  country: string | null | undefined,
+): string | null {
+  const countryKey = normalizeCountryKey(country);
+  const code = countryKey.toUpperCase();
+  if (/^[A-Z]{2}$/.test(code) && validRegionCodes.has(code)) return code;
+  return ISO2_ALIASES[countryKey] ?? regionNameMap.get(countryKey) ?? null;
+}
+
+export function getCountryNameVariants(
+  country: string | null | undefined,
+): string[] {
+  const countryKey = normalizeCountryKey(country);
+  if (!countryKey) return [];
+
+  const cached = countryNameVariantCache.get(countryKey);
+  if (cached) return cached;
+
+  const iso2 = getCountryIso2Code(countryKey);
+  const variants = new Set([
+    countryKey,
+    ...Object.entries(COUNTRY_ALIASES)
+      .filter(([, canonical]) => canonical === countryKey)
+      .map(([alias]) => alias),
+  ]);
+
+  if (iso2) {
+    for (const names of localizedRegionNames) {
+      const displayName = names.of(iso2);
+      if (displayName && displayName !== iso2) variants.add(displayName);
+    }
+  }
+
+  const result = [...variants];
+  countryNameVariantCache.set(countryKey, result);
+  return result;
 }
 
 export function formatCountryLabel(value: string): string {

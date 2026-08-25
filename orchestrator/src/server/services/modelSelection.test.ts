@@ -537,7 +537,7 @@ describe("Model Selection Logic", () => {
       } as any);
 
       await pickProjectIdsForJob({
-        jobDescription: "desc",
+        jobDescription: "<p>desc</p>",
         eligibleProjects: [
           {
             id: "1",
@@ -552,6 +552,10 @@ describe("Model Selection Logic", () => {
       const fetchCall = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(fetchCall[1]?.body as string);
       expect(body.model).toBe("specific-project-model");
+      expect(body.messages[0].content).not.toContain("<p>");
+      expect(body.messages[0].content).toContain(
+        'Candidate projects (pick from these IDs only):\n[{"id":"1"',
+      );
     });
 
     it("should fall back to global model when specific not set", async () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  LOCATION_INPUT_MODE_VALUES,
   LOCATION_MATCH_STRICTNESS_VALUES,
   LOCATION_SEARCH_SCOPE_VALUES,
 } from "./location-preferences";
@@ -29,6 +30,12 @@ function parseIntOrNull(raw: string | undefined): number | null {
   if (!raw) return null;
   const parsed = parseInt(raw, 10);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseNumberOrNull(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
@@ -78,6 +85,7 @@ export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
 export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 export const DEFAULT_GLM_MODEL = "glm-5.1";
 export const DEFAULT_CODEX_MODEL = "gpt-5.4-mini";
+export const DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-5";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,
@@ -100,6 +108,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "claude_cli") {
+    return DEFAULT_CLAUDE_CLI_MODEL;
   }
 
   if (normalizedProvider === "glm") {
@@ -529,6 +541,35 @@ export const settingsRegistry = {
     parse: parseWorkplaceTypesOrNull,
     serialize: serializeNullableJsonArray,
   },
+  onboardingProfileCompleted: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  onboardingLlmCompleted: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  onboardingResumeConfirmedSource: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(300),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  onboardingLegacyMigrationPending: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
   blockedCompanyKeywords: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(200),
@@ -586,6 +627,35 @@ export const settingsRegistry = {
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
+  },
+  locationSearchMode: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_INPUT_MODE_VALUES),
+    default: () => "radius" as const,
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  locationLatitude: {
+    kind: "typed" as const,
+    schema: z.number().min(-90).max(90).nullable(),
+    default: (): number | null => null,
+    parse: parseNumberOrNull,
+    serialize: serializeNullableNumber,
+  },
+  locationLongitude: {
+    kind: "typed" as const,
+    schema: z.number().min(-180).max(180).nullable(),
+    default: (): number | null => null,
+    parse: parseNumberOrNull,
+    serialize: serializeNullableNumber,
+  },
+  locationRadiusMiles: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(200),
+    default: (): number => 50,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
   },
   locationSearchScope: {
     kind: "typed" as const,

@@ -93,7 +93,7 @@ OUTPUT FORMAT (JSON):
   scoringPromptTemplate: {
     label: "Job scoring prompt",
     description:
-      "Controls how suitability scoring evaluates the candidate profile against a job listing.",
+      "Controls how suitability scoring evaluates the candidate profile. Minified source job JSON and the output contract are appended automatically.",
     placeholders: [
       "profileJson",
       "jobTitle",
@@ -118,27 +118,8 @@ SCORING CRITERIA:
 CANDIDATE PROFILE:
 {{profileJson}}
 
-JOB LISTING:
-Title: {{jobTitle}}
-Employer: {{employer}}
-Location: {{location}}
-Salary: {{salary}}
-Degree Required: {{degreeRequired}}
-Disciplines: {{disciplines}}
-
-JOB DESCRIPTION:
-{{jobDescription}}
-
 SCORING INSTRUCTIONS:
 {{scoringInstructionsText}}
-
-IMPORTANT: Respond with ONLY a valid JSON object. No markdown, no code fences, no explanation outside the JSON.
-
-REQUIRED FORMAT (exactly this structure):
-{"score": <integer 0-100>, "reason": "<1-2 sentence explanation>"}
-
-EXAMPLE VALID RESPONSE:
-{"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}
 `.trim(),
   },
 } as const;

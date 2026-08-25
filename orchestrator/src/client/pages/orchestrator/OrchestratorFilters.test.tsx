@@ -65,6 +65,12 @@ const renderFilters = (
       max: null,
     },
     onSalaryFilterChange: vi.fn(),
+    scoreFilter: {
+      mode: "any" as const,
+      min: null,
+      max: null,
+    },
+    onScoreFilterChange: vi.fn(),
     postedWithinDays: null,
     onPostedWithinChange: vi.fn(),
     employmentTypes: [],

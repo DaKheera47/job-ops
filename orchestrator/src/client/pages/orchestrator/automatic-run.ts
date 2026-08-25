@@ -1,5 +1,6 @@
 import {
   buildLocationPreferencesSummary,
+  type LocationInputMode,
   type LocationMatchStrictness,
   type LocationSearchScope,
   normalizeLocationMatchStrictness,
@@ -9,7 +10,11 @@ import {
   parseSearchCitiesSetting,
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
-import type { JobSource } from "@shared/types";
+import {
+  deriveExtractorLimits,
+  type LocationProximity,
+  normalizePipelineRunBudget,
+} from "@shared/types";
 import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
@@ -29,6 +34,8 @@ export interface AutomaticRunValues {
   runBudget: number;
   country: string;
   cityLocations: string[];
+  locationMode: LocationInputMode;
+  proximity: LocationProximity | null;
   workplaceTypes: WorkplaceType[];
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -41,18 +48,6 @@ export interface AutomaticPresetValues {
   topN: number;
   minSuitabilityScore: number;
   runBudget: number;
-}
-
-export interface AutomaticEstimate {
-  discovered: {
-    min: number;
-    max: number;
-    cap: number;
-  };
-  processed: {
-    min: number;
-    max: number;
-  };
 }
 
 function isAutomaticPresetSelection(
@@ -110,32 +105,39 @@ function migrateLegacyRunMemoryStorage(raw: string): void {
 export const SEARCH_SCOPE_OPTIONS: Array<{
   value: LocationSearchScope;
   label: string;
+  description: string;
 }> = [
   {
     value: "selected_only",
     label: "Only selected locations",
+    description: "Limit results to your chosen map area or cities.",
   },
   {
     value: "selected_plus_remote_worldwide",
     label: "Selected locations + remote worldwide",
+    description: "Also include remote roles available worldwide.",
   },
   {
     value: "remote_worldwide_prioritize_selected",
     label: "Remote worldwide",
+    description: "Search globally and prioritise your selected locations.",
   },
 ];
 
 export const MATCH_STRICTNESS_OPTIONS: Array<{
   value: LocationMatchStrictness;
   label: string;
+  description: string;
 }> = [
   {
     value: "exact_only",
     label: "Exact matches only",
+    description: "Only jobs explicitly matching your selected location.",
   },
   {
     value: "flexible",
     label: "Include likely matches",
+    description: "Include nearby and plausibly compatible locations.",
   },
 ];
 
@@ -160,18 +162,6 @@ export function normalizeWorkplaceTypes(
   }
 
   return out.length > 0 ? out : [...WORKPLACE_TYPE_OPTIONS];
-}
-
-export interface ExtractorLimits {
-  jobspyResultsWanted: number;
-  gradcrackerMaxJobsPerTerm: number;
-  ukvisajobsMaxJobs: number;
-  adzunaMaxJobsPerTerm: number;
-  startupjobsMaxJobsPerTerm: number;
-  workingnomadsMaxJobsPerTerm: number;
-  jobindexMaxJobsPerTerm: number;
-  seekMaxJobsPerTerm: number;
-  naukriMaxJobsPerTerm: number;
 }
 
 export function inferAutomaticPresetSelection(args: {
@@ -210,69 +200,7 @@ export function inferAutomaticPresetSelection(args: {
   return "custom";
 }
 
-export function deriveExtractorLimits(args: {
-  budget: number;
-  searchTerms: string[];
-  sources: JobSource[];
-}): ExtractorLimits {
-  const budget = Math.max(1, Math.round(args.budget));
-  const termCount = Math.max(1, args.searchTerms.length);
-  const includesIndeed = args.sources.includes("indeed");
-  const includesLinkedIn = args.sources.includes("linkedin");
-  const includesGlassdoor = args.sources.includes("glassdoor");
-  const includesGradcracker = args.sources.includes("gradcracker");
-  const includesUkVisaJobs = args.sources.includes("ukvisajobs");
-  const includesAdzuna = args.sources.includes("adzuna");
-  const includesHiringCafe = args.sources.includes("hiringcafe");
-  const includesStartupJobs = args.sources.includes("startupjobs");
-  const includesWorkingNomads = args.sources.includes("workingnomads");
-  const includesJobindex = args.sources.includes("jobindex");
-  const includesSeek = args.sources.includes("seek");
-  const includesNaukri = args.sources.includes("naukri");
-
-  const weightedContributors =
-    (includesIndeed ? termCount : 0) +
-    (includesLinkedIn ? termCount : 0) +
-    (includesGlassdoor ? termCount : 0) +
-    (includesGradcracker ? termCount : 0) +
-    (includesUkVisaJobs ? 1 : 0) +
-    (includesAdzuna ? termCount : 0) +
-    (includesHiringCafe ? termCount : 0) +
-    (includesStartupJobs ? termCount : 0) +
-    (includesWorkingNomads ? termCount : 0) +
-    (includesJobindex ? termCount : 0) +
-    (includesSeek ? termCount : 0) +
-    (includesNaukri ? termCount : 0);
-
-  if (weightedContributors <= 0) {
-    return {
-      jobspyResultsWanted: budget,
-      gradcrackerMaxJobsPerTerm: budget,
-      ukvisajobsMaxJobs: budget,
-      adzunaMaxJobsPerTerm: budget,
-      startupjobsMaxJobsPerTerm: budget,
-      workingnomadsMaxJobsPerTerm: budget,
-      jobindexMaxJobsPerTerm: budget,
-      seekMaxJobsPerTerm: budget,
-      naukriMaxJobsPerTerm: budget,
-    };
-  }
-
-  const perUnit = Math.max(1, Math.floor(budget / weightedContributors));
-  const remainder = Math.max(0, budget - perUnit * weightedContributors);
-
-  return {
-    jobspyResultsWanted: perUnit,
-    gradcrackerMaxJobsPerTerm: perUnit,
-    ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
-    adzunaMaxJobsPerTerm: perUnit,
-    startupjobsMaxJobsPerTerm: perUnit,
-    workingnomadsMaxJobsPerTerm: perUnit,
-    jobindexMaxJobsPerTerm: perUnit,
-    seekMaxJobsPerTerm: perUnit,
-    naukriMaxJobsPerTerm: perUnit,
-  };
-}
+export { deriveExtractorLimits };
 
 export function parseSearchTermsInput(input: string): string[] {
   return input
@@ -309,6 +237,7 @@ export function summarizeLocationPreferences(
     AutomaticRunValues,
     | "country"
     | "cityLocations"
+    | "proximity"
     | "workplaceTypes"
     | "searchScope"
     | "matchStrictness"
@@ -317,6 +246,7 @@ export function summarizeLocationPreferences(
   return buildLocationPreferencesSummary({
     country: values.country,
     cityLocations: values.cityLocations,
+    proximity: values.proximity,
     workplaceTypes: values.workplaceTypes,
     searchScope: normalizeLocationSearchScope(values.searchScope),
     matchStrictness: normalizeLocationMatchStrictness(values.matchStrictness),
@@ -325,97 +255,6 @@ export function summarizeLocationPreferences(
 
 export function stringifySearchTerms(terms: string[]): string {
   return terms.join("\n");
-}
-
-export function calculateAutomaticEstimate(args: {
-  values: AutomaticRunValues;
-  sources: JobSource[];
-}): AutomaticEstimate {
-  const { values, sources } = args;
-  if (values.searchTerms.length === 0) {
-    return {
-      discovered: {
-        min: 0,
-        max: 0,
-        cap: 0,
-      },
-      processed: {
-        min: 0,
-        max: 0,
-      },
-    };
-  }
-
-  const termCount = values.searchTerms.length;
-  const hasGradcracker = sources.includes("gradcracker");
-  const hasUkVisaJobs = sources.includes("ukvisajobs");
-  const hasIndeed = sources.includes("indeed");
-  const hasLinkedIn = sources.includes("linkedin");
-  const hasGlassdoor = sources.includes("glassdoor");
-  const hasAdzuna = sources.includes("adzuna");
-  const hasHiringCafe = sources.includes("hiringcafe");
-  const hasStartupJobs = sources.includes("startupjobs");
-  const hasWorkingNomads = sources.includes("workingnomads");
-  const hasJobindex = sources.includes("jobindex");
-  const hasSeek = sources.includes("seek");
-  const hasNaukri = sources.includes("naukri");
-  const limits = deriveExtractorLimits({
-    budget: values.runBudget,
-    searchTerms: values.searchTerms,
-    sources,
-  });
-
-  const jobspySitesCount = [hasIndeed, hasLinkedIn, hasGlassdoor].filter(
-    Boolean,
-  ).length;
-  const jobspyCap = jobspySitesCount * limits.jobspyResultsWanted * termCount;
-  const gradcrackerCap = hasGradcracker
-    ? limits.gradcrackerMaxJobsPerTerm * termCount
-    : 0;
-  const ukvisaCap = hasUkVisaJobs ? limits.ukvisajobsMaxJobs : 0;
-  const adzunaCap = hasAdzuna ? limits.adzunaMaxJobsPerTerm * termCount : 0;
-  const hiringCafeCap = hasHiringCafe
-    ? limits.jobspyResultsWanted * termCount
-    : 0;
-  const startupJobsCap = hasStartupJobs
-    ? limits.startupjobsMaxJobsPerTerm * termCount
-    : 0;
-  const workingNomadsCap = hasWorkingNomads
-    ? limits.workingnomadsMaxJobsPerTerm * termCount
-    : 0;
-  const jobindexCap = hasJobindex
-    ? limits.jobindexMaxJobsPerTerm * termCount
-    : 0;
-  const seekCap = hasSeek ? limits.seekMaxJobsPerTerm * termCount : 0;
-  const naukriCap = hasNaukri ? limits.naukriMaxJobsPerTerm * termCount : 0;
-
-  const discoveredCap =
-    jobspyCap +
-    gradcrackerCap +
-    ukvisaCap +
-    adzunaCap +
-    hiringCafeCap +
-    startupJobsCap +
-    workingNomadsCap +
-    jobindexCap +
-    seekCap +
-    naukriCap;
-  const discoveredMin = Math.round(discoveredCap * 0.35);
-  const discoveredMax = Math.round(discoveredCap * 0.75);
-  const processedMin = Math.min(values.topN, discoveredMin);
-  const processedMax = Math.min(values.topN, discoveredMax);
-
-  return {
-    discovered: {
-      min: discoveredMin,
-      max: discoveredMax,
-      cap: discoveredCap,
-    },
-    processed: {
-      min: processedMin,
-      max: processedMax,
-    },
-  };
 }
 
 export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
@@ -436,7 +275,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     );
     const runBudget =
       typeof parsed.runBudget === "number"
-        ? Math.max(50, Math.round(parsed.runBudget))
+        ? normalizePipelineRunBudget(parsed.runBudget)
         : undefined;
     const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
       ? parsed.presetId
@@ -491,7 +330,17 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
 
 export function saveAutomaticRunMemory(memory: AutomaticRunMemory): void {
   try {
-    localStorage.setItem(getRunMemoryStorageKey(), JSON.stringify(memory));
+    localStorage.setItem(
+      getRunMemoryStorageKey(),
+      JSON.stringify(
+        memory.runBudget === undefined
+          ? memory
+          : {
+              ...memory,
+              runBudget: normalizePipelineRunBudget(memory.runBudget),
+            },
+      ),
+    );
   } catch {
     // Ignore localStorage failures
   }

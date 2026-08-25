@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { deduplicateJobsByTitleAndEmployer } from "./job-matching";
+import {
+  deduplicateJobsByTitleAndEmployer,
+  matchJobLocationIntent,
+} from "./job-matching";
+
+describe("map-radius location matching", () => {
+  const intent = {
+    selectedCountry: "united kingdom",
+    country: "united kingdom",
+    cityLocations: ["Leeds", "Wakefield"],
+    workplaceTypes: ["onsite" as const],
+    geoScope: "selected_only" as const,
+    searchScope: "selected_only" as const,
+    matchStrictness: "exact_only" as const,
+    proximity: { latitude: 53.8, longitude: -1.55, radiusMiles: 25 },
+  };
+
+  it("accepts expanded places and native-radius source results", () => {
+    expect(
+      matchJobLocationIntent({ location: "Wakefield" }, intent).matched,
+    ).toBe(true);
+    expect(
+      matchJobLocationIntent({ location: "West Yorkshire" }, intent, {
+        nativeRadiusApplied: true,
+      }).matched,
+    ).toBe(true);
+    expect(
+      matchJobLocationIntent({ location: "Manchester" }, intent).matched,
+    ).toBe(false);
+  });
+});
 
 function makeJob(
   overrides: Partial<{

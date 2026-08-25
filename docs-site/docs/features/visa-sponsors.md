@@ -17,6 +17,8 @@ Available providers:
 |---------|--------|---------------|
 | United Kingdom (`uk`) | [GOV.UK register of licensed sponsors](https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers) | Worker and Temporary Worker licensed sponsors, with routes and type/rating |
 | Canada (`ca`) | [ESDC positive LMIA employers list](https://open.canada.ca/data/en/dataset/90fed587-1364-4f33-a9ee-208181dc0b97) | Employers issued a positive Labour Market Impact Assessment in the latest published quarter, with program stream and approved positions |
+| Netherlands (`nl`) | [IND public register of recognised sponsors](https://ind.nl/en/public-register-recognised-sponsors/public-register-work) | Recognised sponsors for the residence purposes work and highly skilled migrant, with KvK number |
+| United States (`us`) | [USCIS H-1B Employer Data Hub](https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub) | Employers with H-1B approvals in the latest published fiscal year (sponsorship history signal) |
 
 For each company, it shows:
 

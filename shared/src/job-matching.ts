@@ -141,6 +141,7 @@ export function matchJobLocationIntent(
     isRemote?: boolean | null;
   },
   intent: LocationIntent,
+  context: { nativeRadiusApplied?: boolean } = {},
 ): {
   matched: boolean;
   reasonCode: string;
@@ -148,6 +149,23 @@ export function matchJobLocationIntent(
 } {
   const candidates = getJobLocationCandidates(job);
   const selectedCountry = intent.selectedCountry;
+
+  if (intent.proximity) {
+    const nearbyPlaceMatched = intent.cityLocations.some((place) =>
+      candidates.some((candidate) => matchesRequestedCity(candidate, place)),
+    );
+    if (nearbyPlaceMatched || context.nativeRadiusApplied) {
+      return { matched: true, reasonCode: "selected_location", priority: 1 };
+    }
+    if (
+      intent.workplaceTypes.includes("remote") &&
+      intent.geoScope !== "selected_only" &&
+      job.isRemote === true
+    ) {
+      return { matched: true, reasonCode: "remote_worldwide", priority: 0 };
+    }
+    return { matched: false, reasonCode: "no_match", priority: 0 };
+  }
 
   if (!selectedCountry) {
     return { matched: true, reasonCode: "unfiltered", priority: 0 };

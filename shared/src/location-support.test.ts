@@ -3,6 +3,8 @@ import {
   formatCountryLabel,
   getAdzunaCountryCode,
   getCompatibleSourcesForCountry,
+  getCountryIso2Code,
+  getCountryNameVariants,
   isGlassdoorCountry,
   isSourceAllowedForCountry,
   isUkCountry,
@@ -16,6 +18,18 @@ describe("location-support", () => {
     expect(normalizeCountryKey("us")).toBe("united states");
     expect(normalizeCountryKey("usa")).toBe("united states");
     expect(normalizeCountryKey("czech republic")).toBe("czechia");
+    expect(normalizeCountryKey("the netherlands")).toBe("netherlands");
+    expect(normalizeCountryKey("netherland")).toBe("netherlands");
+  });
+
+  it("resolves ISO-2 codes and localized country names", () => {
+    expect(getCountryIso2Code("netherlands")).toBe("NL");
+    expect(getCountryIso2Code("NL")).toBe("NL");
+    expect(getCountryIso2Code("united kingdom")).toBe("GB");
+    expect(getCountryIso2Code("USA")).toBe("US");
+    expect(getCountryNameVariants("netherlands")).toContain("Nederland");
+    expect(getCountryNameVariants("germany")).toContain("Deutschland");
+    expect(getCountryNameVariants("spain")).toContain("España");
   });
 
   it("formats country labels", () => {

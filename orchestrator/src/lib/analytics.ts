@@ -272,23 +272,21 @@ type ProductEventMap = {
   };
   onboarding_started: {
     entry_state: "account_required" | "launch";
-    next_step: "account" | "model" | "resume" | "first_run" | "none";
+    next_step: "account" | "profile" | "model" | "resume" | "none";
     has_session: boolean;
     demo_mode: boolean;
   };
   onboarding_step_viewed: {
-    step: "account" | "model" | "resume" | "first_run";
+    step: "profile" | "model" | "resume";
     step_index: number;
     requirement_status:
       | "ready"
       | "needs_action"
       | "invalid"
       | "checking_unavailable"
-      | "complete"
-      | "not_applicable";
+      | "missing";
   };
   onboarding_account_create_submitted: {
-    has_display_name: boolean;
     username_length_bucket: string;
   };
   onboarding_account_create_completed: {
@@ -296,12 +294,16 @@ type ProductEventMap = {
     error_category?: string;
     credential_length_bucket: string;
   };
-  onboarding_model_config_changed: {
-    provider: string;
-    changed_field: "provider" | "endpoint" | "api_key" | "model";
-    endpoint_mode: "default" | "custom" | "blank";
-    has_saved_key: boolean;
-    model_source: "default" | "custom" | "blank";
+  onboarding_profile_save_submitted: {
+    has_country: boolean;
+    city_count: number;
+    workplace_type_count: number;
+    requires_visa_sponsorship: boolean;
+  };
+  onboarding_profile_save_completed: {
+    result: "success" | "error";
+    error_category?: string;
+    http_status_bucket?: string;
   };
   onboarding_model_verify_submitted: {
     provider: string;
@@ -348,7 +350,13 @@ type ProductEventMap = {
   };
   onboarding_status_checked: {
     complete: boolean;
-    next_step: "model" | "resume" | "first_run" | "none";
+    next_step: "profile" | "model" | "resume" | "none";
+    profile_status:
+      | "ready"
+      | "needs_action"
+      | "invalid"
+      | "checking_unavailable"
+      | "missing";
     model_status:
       | "ready"
       | "needs_action"
@@ -362,47 +370,18 @@ type ProductEventMap = {
       | "checking_unavailable"
       | "missing";
   };
-  onboarding_search_terms_started: {
-    trigger: "auto" | "manual";
-    had_existing_terms: boolean;
-  };
-  onboarding_search_terms_completed: {
+  onboarding_resume_confirm_completed: {
     result: "success" | "error";
-    source?: "ai" | "fallback";
-    terms_count?: number;
+    source: "local" | "rxresume";
     error_category?: string;
+    http_status_bucket?: string;
+  };
+  onboarding_resume_confirm_submitted: {
+    source: "local" | "rxresume";
   };
   onboarding_completed: {
     duration_bucket: string;
     completed_steps: number;
-    search_terms_source: "ai" | "fallback" | "existing" | "unknown";
-  };
-  onboarding_exited: {
-    last_step: "account" | "model" | "resume" | "first_run";
-    last_requirement_status:
-      | "ready"
-      | "needs_action"
-      | "invalid"
-      | "checking_unavailable"
-      | "complete"
-      | "not_applicable";
-    duration_bucket: string;
-    exit_type: "route_change" | "tab_hidden" | "unload";
-  };
-  onboarding_inactive: {
-    last_step: "account" | "model" | "resume" | "first_run";
-    idle_bucket: "2m" | "5m" | "10m";
-    had_error_visible: boolean;
-  };
-  onboarding_error_shown: {
-    step: "account" | "model" | "resume" | "first_run";
-    error_category: string;
-    http_status_bucket?: string;
-  };
-  onboarding_coach_interacted: {
-    action: "replay" | "skip" | "done" | "start";
-    scope: "account" | "launch";
-    step: "account" | "model" | "resume" | "first_run";
   };
 };
 

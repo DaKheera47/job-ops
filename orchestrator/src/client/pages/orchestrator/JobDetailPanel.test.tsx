@@ -62,8 +62,12 @@ vi.mock("@client/components", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@client/components")>();
   return {
     ...actual,
-    JobHeader: ({ jobCTA }: { jobCTA?: React.ReactNode }) => (
-      <div data-testid="job-header">{jobCTA}</div>
+    JobHeader: ({ job, jobCTA }: { job: Job; jobCTA?: React.ReactNode }) => (
+      <div data-testid="job-header">
+        <span>{job.title}</span>
+        <span>{job.employer}</span>
+        {jobCTA}
+      </div>
     ),
     JobBriefPane: () => <div data-testid="job-brief-pane" />,
     TailoredSummary: () => <div data-testid="tailored-summary" />,
@@ -151,10 +155,26 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const renderJobDetailPanel = async (
-  props: React.ComponentProps<typeof JobDetailPanel>,
-) => {
-  const rendered = render(<JobDetailPanel {...props} />);
+type JobDetailPanelTestProps = Omit<
+  React.ComponentProps<typeof JobDetailPanel>,
+  "selectedJobListItem" | "selectedJobLoadState" | "onRetrySelectedJob"
+> &
+  Partial<
+    Pick<
+      React.ComponentProps<typeof JobDetailPanel>,
+      "selectedJobListItem" | "selectedJobLoadState" | "onRetrySelectedJob"
+    >
+  >;
+
+const renderJobDetailPanel = async (props: JobDetailPanelTestProps) => {
+  const rendered = render(
+    <JobDetailPanel
+      selectedJobListItem={props.selectedJob}
+      selectedJobLoadState="idle"
+      onRetrySelectedJob={vi.fn()}
+      {...props}
+    />,
+  );
   await act(async () => {
     await Promise.resolve();
   });
@@ -169,6 +189,69 @@ describe("JobDetailPanel", () => {
     mockSettings.settings = null;
     mockSettings.renderMarkdownInJobDescriptions = true;
     vi.mocked(api.getProfile).mockResolvedValue({});
+  });
+
+  it("shows the selected job summary and safe links while full details load", async () => {
+    const summary = createJob({
+      id: "job-2",
+      title: "Platform Engineer",
+      employer: "Example Ltd",
+      status: "discovered",
+      applicationLink: "https://example.com/apply/job-2",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "discovered",
+      activeJobs: [summary],
+      selectedJob: null,
+      selectedJobListItem: summary,
+      selectedJobLoadState: "loading",
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    expect(screen.getByText("Platform Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Example Ltd")).toBeInTheDocument();
+    expect(screen.getByTestId("job-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByText("Loading full job details…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open job listing/i }),
+    ).toHaveAttribute("href", "https://example.com/apply/job-2");
+    expect(screen.getByRole("tab", { name: /brief/i })).toBeDisabled();
+    expect(screen.queryByText("Start Tailoring")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /more actions/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the summary and offers retry when detail loading fails", async () => {
+    const onRetrySelectedJob = vi.fn();
+    const summary = createJob({
+      id: "job-2",
+      title: "Platform Engineer",
+      employer: "Example Ltd",
+      status: "discovered",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "discovered",
+      activeJobs: [summary],
+      selectedJob: null,
+      selectedJobListItem: summary,
+      selectedJobLoadState: "error",
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+      onRetrySelectedJob,
+    });
+
+    expect(screen.getByText("Platform Engineer")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load job details",
+    );
+    expect(screen.queryByTestId("job-detail-skeleton")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetrySelectedJob).toHaveBeenCalledTimes(1);
   });
 
   it("renders discovered jobs in the unified inspector", async () => {

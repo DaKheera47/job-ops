@@ -99,6 +99,48 @@ describe.sequential("database migrations", () => {
     );
   });
 
+  it("marks only existing workspaces for legacy onboarding migration", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const sqlite = new Database(dbPath);
+      sqlite.exec(\`
+        CREATE TABLE settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO settings(key, value) VALUES ('llmProvider', 'openrouter');
+      \`);
+      sqlite.close();
+
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+      const pending = migratedDb.prepare(
+        "SELECT value FROM settings WHERE key = 'onboardingLegacyMigrationPending'",
+      ).get();
+      if (pending?.value !== "1") {
+        throw new Error("Existing workspace was not marked for onboarding migration");
+      }
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: { ...process.env, DATA_DIR: tempDir },
+        stdio: "pipe",
+      },
+    );
+  });
+
   it("creates hosted usage tables with user-scoped foreign keys and indexes", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
     const script = `

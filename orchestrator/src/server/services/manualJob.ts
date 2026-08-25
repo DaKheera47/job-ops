@@ -4,6 +4,7 @@
 
 import { logger } from "@infra/logger";
 import type { ManualJobDraft } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 
@@ -94,7 +95,7 @@ export async function inferManualJobDetails(
   jobDescription: string,
 ): Promise<ManualJobInferenceResult> {
   const model = await resolveLlmModel();
-  const prompt = buildInferencePrompt(jobDescription);
+  const prompt = buildInferencePrompt(stripHtmlTags(jobDescription));
 
   const llm = await createConfiguredLlmService();
   const result = await llm.callJson<ManualJobApiResponse>({
@@ -123,7 +124,7 @@ export async function inferManualJobDetails(
 function buildInferencePrompt(jd: string): string {
   return `
 You are extracting structured data from a job posting.
-The input may be raw HTML from a job listing page or plain text - extract the relevant job information either way.
+The input is plain text from a job listing page.
 Return JSON only with the keys listed below. Use empty string if unknown.
 Do not guess or invent data. Ignore navigation, headers, footers, and other non-job content.
 

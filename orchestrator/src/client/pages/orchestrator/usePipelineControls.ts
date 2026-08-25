@@ -5,7 +5,13 @@ import {
   createLocationIntent,
   planLocationSources,
 } from "@shared/location-intelligence.js";
-import type { AppSettings, JobSource } from "@shared/types.js";
+import {
+  type AppSettings,
+  type JobSource,
+  type LocationInputMode,
+  type LocationProximity,
+  normalizePipelineRunBudget,
+} from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
@@ -108,6 +114,8 @@ export function usePipelineControls(
       scoringInstructions: string;
       country: string;
       cityLocations: string[];
+      locationMode: LocationInputMode;
+      proximity: LocationProximity | null;
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
@@ -125,6 +133,7 @@ export function usePipelineControls(
           scoringInstructions: config.scoringInstructions,
           country: config.country,
           cityLocations: config.cityLocations,
+          proximity: config.locationMode === "radius" ? config.proximity : null,
           workplaceTypes: config.workplaceTypes,
           searchScope: config.searchScope,
           matchStrictness: config.matchStrictness,
@@ -160,12 +169,20 @@ export function usePipelineControls(
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
+      const normalizedValues = {
+        ...values,
+        runBudget: normalizePipelineRunBudget(values.runBudget),
+      };
       const locationIntent = createLocationIntent({
-        selectedCountry: values.country,
-        cityLocations: values.cityLocations,
-        workplaceTypes: values.workplaceTypes,
-        searchScope: values.searchScope,
-        matchStrictness: values.matchStrictness,
+        selectedCountry: normalizedValues.country,
+        cityLocations: normalizedValues.cityLocations,
+        proximity:
+          normalizedValues.locationMode === "radius"
+            ? normalizedValues.proximity
+            : null,
+        workplaceTypes: normalizedValues.workplaceTypes,
+        searchScope: normalizedValues.searchScope,
+        matchStrictness: normalizedValues.matchStrictness,
       });
       const sourcePlan = planLocationSources({
         intent: locationIntent,
@@ -190,19 +207,23 @@ export function usePipelineControls(
       }
 
       const limits = deriveExtractorLimits({
-        budget: values.runBudget,
-        searchTerms: values.searchTerms,
+        budget: normalizedValues.runBudget,
+        searchTerms: normalizedValues.searchTerms,
         sources: compatibleSources,
       });
       try {
         const searchCities = serializeCityLocationsSetting(
-          values.cityLocations,
+          normalizedValues.cityLocations,
         );
         await api.updateSettings({
-          searchTerms: values.searchTerms,
-          workplaceTypes: values.workplaceTypes,
-          locationSearchScope: values.searchScope,
-          locationMatchStrictness: values.matchStrictness,
+          searchTerms: normalizedValues.searchTerms,
+          workplaceTypes: normalizedValues.workplaceTypes,
+          locationSearchScope: normalizedValues.searchScope,
+          locationMatchStrictness: normalizedValues.matchStrictness,
+          locationSearchMode: normalizedValues.locationMode,
+          locationLatitude: normalizedValues.proximity?.latitude ?? null,
+          locationLongitude: normalizedValues.proximity?.longitude ?? null,
+          locationRadiusMiles: normalizedValues.proximity?.radiusMiles ?? 50,
           jobspyResultsWanted: limits.jobspyResultsWanted,
           gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
           ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
@@ -211,12 +232,12 @@ export function usePipelineControls(
           jobindexMaxJobsPerTerm: limits.jobindexMaxJobsPerTerm,
           seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
           naukriMaxJobsPerTerm: limits.naukriMaxJobsPerTerm,
-          jobspyCountryIndeed: values.country,
+          jobspyCountryIndeed: normalizedValues.country,
           searchCities,
         });
         await refreshSettings();
         await startPipelineRun({
-          ...values,
+          ...normalizedValues,
           sources: compatibleSources,
           topN: values.topN,
           minSuitabilityScore: values.minSuitabilityScore,

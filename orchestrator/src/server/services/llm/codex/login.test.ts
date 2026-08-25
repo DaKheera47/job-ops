@@ -5,6 +5,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __resetCodexDeviceAuthForTests,
+  consumeCompletedCodexDeviceAuth,
   disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
@@ -154,6 +155,10 @@ describe("codex device login service", () => {
     const current = getCodexDeviceAuthSnapshot();
     expect(current.status).toBe("completed");
     expect(current.loginInProgress).toBe(false);
+
+    expect(consumeCompletedCodexDeviceAuth()?.status).toBe("completed");
+    expect(consumeCompletedCodexDeviceAuth()).toBeNull();
+    expect(getCodexDeviceAuthSnapshot().status).toBe("idle");
   });
 
   it("fails when the login process exits before yielding a device code", async () => {

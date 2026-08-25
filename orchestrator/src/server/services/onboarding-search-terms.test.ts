@@ -73,6 +73,9 @@ describe("suggestOnboardingSearchTerms", () => {
       terms: ["Senior Backend Engineer", "Platform Engineer"],
       source: "ai",
     });
+    expect(callJsonMock.mock.calls[0]?.[0]?.messages[0].content).toContain(
+      'Resume snapshot:\n{"headline":"Senior Backend Engineer"',
+    );
   });
 
   it("falls back to headline and visible experience titles when AI generation fails", async () => {

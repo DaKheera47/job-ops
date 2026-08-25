@@ -15,7 +15,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Tip } from "@/client/components/Tip";
 import {
   Accordion,
@@ -28,6 +28,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { ProjectSelector } from "../discovered-panel/ProjectSelector";
 import type { EditableSkillGroup } from "../tailoring-utils";
+import {
+  applySummaryTextareaHeight,
+  formatTextCount,
+  shouldPreserveManualHeight,
+  TAILOR_TEXTAREA_MIN_HEIGHT_PX,
+  type TextCountMode,
+} from "./summary-text-metrics";
 
 interface TailoringSectionsProps {
   catalog: ResumeProjectCatalogItem[];
@@ -364,6 +371,12 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   const [keywordDrafts, setKeywordDrafts] = useState<Record<string, string>>(
     {},
   );
+  const [summaryCountMode, setSummaryCountMode] =
+    useState<TextCountMode>("words");
+  const summaryFocusedRef = useRef(false);
+  const summaryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const summaryAutoHeightRef = useRef<number | null>(null);
+  const summaryResizeObserverRef = useRef<ResizeObserver | null>(null);
   const tracerToggleDisabled =
     disableInputs || (!tracerLinksEnabled && tracerEnableBlocked);
   const generateTooltip = "Generate";
@@ -383,6 +396,51 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
     resumeProjectsSettings,
     isResumeProjectsSettingsLoading,
   });
+  const syncSummaryTextareaHeight = useCallback(() => {
+    const textarea = summaryTextareaRef.current;
+    if (!textarea) return;
+    if (
+      summaryAutoHeightRef.current !== null &&
+      shouldPreserveManualHeight(
+        summaryAutoHeightRef.current,
+        Number.parseFloat(textarea.style.height),
+      )
+    ) {
+      return;
+    }
+    // While focused, keep trailing blank lines so Enter can grow the box.
+    summaryAutoHeightRef.current = applySummaryTextareaHeight(
+      textarea,
+      !summaryFocusedRef.current,
+    );
+  }, []);
+
+  const setSummaryTextareaRef = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      summaryResizeObserverRef.current?.disconnect();
+      summaryResizeObserverRef.current = null;
+      summaryTextareaRef.current = node;
+      summaryAutoHeightRef.current = null;
+      if (!node) return;
+      // Accordion remounts the field without changing `summary`, so measure here.
+      syncSummaryTextareaHeight();
+      if (typeof ResizeObserver === "undefined") return;
+      let lastWidth = node.clientWidth;
+      const observer = new ResizeObserver(() => {
+        if (node.clientWidth === lastWidth) return;
+        lastWidth = node.clientWidth;
+        syncSummaryTextareaHeight();
+      });
+      observer.observe(node);
+      summaryResizeObserverRef.current = observer;
+    },
+    [syncSummaryTextareaHeight],
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: summary is the intentional trigger
+  useLayoutEffect(() => {
+    syncSummaryTextareaHeight();
+  }, [summary, syncSummaryTextareaHeight]);
 
   return (
     <Accordion type="multiple" className="space-y-2">
@@ -443,17 +501,55 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
               </Button>
             </Tip>
           </div>
-          <label htmlFor="tailor-summary-edit" className="sr-only">
-            Tailored Summary
-          </label>
-          <textarea
-            id="tailor-summary-edit"
-            className={`${inputClass} min-h-[120px]`}
-            value={summary}
-            onChange={(event) => onSummaryChange(event.target.value)}
-            placeholder="Write a tailored summary for this role, or generate with AI..."
-            disabled={disableInputs}
-          />
+          <div className="relative">
+            <Tip
+              asChild
+              clickBehavior="none"
+              content={
+                summaryCountMode === "words"
+                  ? "Toggle to characters"
+                  : "Toggle to words"
+              }
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  actionButtonClass,
+                  "absolute right-1.5 top-1.5 z-10 h-auto border-0 bg-background/80 px-1 py-0.5 tabular-nums shadow-none underline-offset-2 hover:underline",
+                )}
+                onClick={() =>
+                  setSummaryCountMode((current) =>
+                    current === "words" ? "characters" : "words",
+                  )
+                }
+              >
+                {formatTextCount(summary, summaryCountMode)}
+              </Button>
+            </Tip>
+            <label htmlFor="tailor-summary-edit" className="sr-only">
+              Tailored Summary
+            </label>
+            <textarea
+              id="tailor-summary-edit"
+              ref={setSummaryTextareaRef}
+              className={`${inputClass} resize-y overflow-y-auto pt-7`}
+              style={{ minHeight: TAILOR_TEXTAREA_MIN_HEIGHT_PX }}
+              value={summary}
+              onChange={(event) => onSummaryChange(event.target.value)}
+              onFocus={() => {
+                summaryFocusedRef.current = true;
+                syncSummaryTextareaHeight();
+              }}
+              onBlur={() => {
+                summaryFocusedRef.current = false;
+                syncSummaryTextareaHeight();
+              }}
+              placeholder="Write a tailored summary for this role, or generate with AI..."
+              disabled={disableInputs}
+            />
+          </div>
         </AccordionContent>
       </AccordionItem>
 

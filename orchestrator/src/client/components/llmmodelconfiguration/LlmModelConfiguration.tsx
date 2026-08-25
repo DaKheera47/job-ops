@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { ClaudeCliSetupHint } from "@client/components/ClaudeCliSetupHint";
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
 import PurposeOverrideCard from "@client/components/llmmodelconfiguration/PurposeOverrideCard";
@@ -110,6 +111,8 @@ export function LlmModelConfiguration({
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
   const isGeminiCliProvider =
     providerConfig.normalizedProvider === "gemini_cli";
+  const isClaudeCliProvider =
+    providerConfig.normalizedProvider === "claude_cli";
   const requiresExplicitDefaultModel =
     providerConfig.normalizedProvider === "ollama";
   const deferredProvider = useDeferredValue(selectedProvider);
@@ -334,6 +337,7 @@ export function LlmModelConfiguration({
               />
             ) : null}
             {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
+            {isClaudeCliProvider ? <ClaudeCliSetupHint /> : null}
             {showBaseUrl ? (
               <SettingsInput
                 label={mode === "compact" ? "Base URL" : "LLM base URL"}

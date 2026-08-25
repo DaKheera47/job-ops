@@ -1,11 +1,13 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiClientError } from "@/client/api/core";
 import {
   AppErrorBoundary,
   buildFatalIssueUrl,
   createFatalErrorSnapshot,
   FatalErrorScreen,
+  isOpaqueCrossOriginError,
   sanitizeCrashText,
 } from "./AppErrorBoundary";
 
@@ -107,6 +109,27 @@ describe("AppErrorBoundary", () => {
     expect(screen.queryByText(/abc\.def\.ghi/)).not.toBeInTheDocument();
   });
 
+  it("ignores opaque cross-origin 'Script error.' events without crashing", async () => {
+    renderBoundary(<div>Healthy app</div>, "/jobs/discovered/abc123");
+
+    act(() => {
+      window.dispatchEvent(
+        new ErrorEvent("error", {
+          message: "Script error.",
+          filename: "",
+          lineno: 0,
+          colno: 0,
+          // No `error` object — the browser hides details for cross-origin scripts.
+        }),
+      );
+    });
+
+    expect(screen.getByText("Healthy app")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Something went wrong" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the fatal fallback for unhandled promise rejections", async () => {
     renderBoundary(<div>Healthy app</div>, "/overview");
     const event = new Event("unhandledrejection", {
@@ -128,6 +151,26 @@ describe("AppErrorBoundary", () => {
     fireEvent.click(screen.getByText("Technical details"));
     expect(screen.getByText(/token=\[redacted\]/)).toBeInTheDocument();
     expect(screen.queryByText(/abc123/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the app alive and shows a toast for recoverable API errors", async () => {
+    renderBoundary(<div>Healthy app</div>, "/jobs/ready");
+    const event = new Event("unhandledrejection", {
+      cancelable: true,
+    }) as PromiseRejectionEvent;
+    Object.defineProperty(event, "reason", {
+      value: new ApiClientError("API request failed", { status: 500 }),
+    });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(screen.getByText("Healthy app")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Something went wrong" }),
+    ).not.toBeInTheDocument();
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it("normalizes non-Error promise rejections safely", async () => {
@@ -175,6 +218,31 @@ describe("AppErrorBoundary", () => {
     expect(decoded).toContain("token=[redacted]");
     expect(decoded).not.toContain("top-secret");
     expect(decoded).not.toContain("hunter2");
+  });
+
+  it("classifies opaque cross-origin errors, but not real Error events", () => {
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", { message: "Script error.", filename: "" }),
+      ),
+    ).toBe(true);
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", {
+          message: "anything",
+          filename: "",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isOpaqueCrossOriginError(
+        new ErrorEvent("error", {
+          message: "Real failure",
+          filename: "https://avasar.slotify.dev/app.js",
+          error: new Error("Real failure"),
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("redacts long opaque values", () => {

@@ -215,3 +215,21 @@
   opacity: 0;
   transition: opacity 75ms ease-in;
 }
+
+.leaflet-container {
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.jobops-map-pin,
+.jobops-map-radius-handle {
+  border: 3px solid var(--background);
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--foreground) 25%, transparent);
+}
+
+.jobops-map-radius-handle {
+  cursor: ew-resize;
+}

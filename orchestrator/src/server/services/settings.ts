@@ -50,8 +50,14 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "gemini_cli") {
     return "";
   }
+  if (normalized === "claude_cli") {
+    return "";
+  }
   if (normalized === "codex") {
     return "";
+  }
+  if (normalized === "requesty") {
+    return "https://router.requesty.ai/v1";
   }
   return "https://openrouter.ai";
 }
@@ -82,6 +88,15 @@ function normalizeModelForProviderCompatibility(
       normalizedModel.startsWith("models/") ||
       normalizedModel.startsWith("gemini");
     if (!isGeminiModel) {
+      return null;
+    }
+  }
+
+  if (normalizedProvider === "claude_cli") {
+    const isClaudeModel =
+      ["sonnet", "opus", "haiku", "fable"].includes(normalizedModel) ||
+      normalizedModel.startsWith("claude-");
+    if (!isClaudeModel) {
       return null;
     }
   }
