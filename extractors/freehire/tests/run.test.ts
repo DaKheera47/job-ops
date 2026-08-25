@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildFreeHireSearchUrl,
+  fetchFreeHirePage,
   mapFreeHireJob,
   runFreeHire,
 } from "../src/run";
@@ -30,6 +31,7 @@ describe("FreeHire extractor", () => {
     expect(url.searchParams.get("work_mode")).toBe("remote,hybrid");
     expect(url.searchParams.get("description_format")).toBe("markdown");
     expect(url.searchParams.get("limit")).toBe("100");
+    expect(url.searchParams.get("offset")).toBe("0");
   });
 
   it("maps FreeHire fields into a normalized job", () => {
@@ -103,6 +105,35 @@ describe("FreeHire extractor", () => {
 
     expect(result).toEqual({ success: true, jobs: [expect.any(Object)] });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns upstream pagination for live consumers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            public_slug: "job-1",
+            url: "https://example.com/jobs/1",
+            title: "Software Engineer",
+            company: "Acme",
+          },
+        ],
+        meta: { limit: 20, offset: 40, total: 1234 },
+      }),
+    );
+
+    const result = await fetchFreeHirePage({
+      searchTerm: "software engineer",
+      limit: 20,
+      offset: 40,
+      timeoutMs: 5_000,
+      fetchImpl: fetchMock,
+    });
+
+    expect(result).toMatchObject({ limit: 20, offset: 40, total: 1234 });
+    expect(result.jobs).toHaveLength(1);
+    const requestedUrl = fetchMock.mock.calls[0][0] as URL;
+    expect(requestedUrl.searchParams.get("offset")).toBe("40");
   });
 
   it("returns a status-only error for failed upstream requests", async () => {

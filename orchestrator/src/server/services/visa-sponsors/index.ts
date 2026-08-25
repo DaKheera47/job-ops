@@ -40,6 +40,7 @@ export type VisaSponsorStatus = VisaSponsorStatusResponse;
 interface ProviderState {
   cache: VisaSponsor[] | null;
   cacheLoadedAt: Date | null;
+  exactNameIndex: Map<string, VisaSponsor[]> | null;
   isUpdating: boolean;
   updateError: string | null;
   scheduler: ReturnType<typeof createScheduler> | null;
@@ -53,6 +54,7 @@ function getOrCreateProviderState(providerId: string): ProviderState {
     state = {
       cache: null,
       cacheLoadedAt: null,
+      exactNameIndex: null,
       isUpdating: false,
       updateError: null,
       scheduler: null,
@@ -71,6 +73,20 @@ function getOrCreateProviderState(providerId: string): ProviderState {
 // ============================================================================
 
 export const parseCsv = parseVisaSponsorsCsv;
+
+export function buildExactSponsorIndex(
+  sponsors: VisaSponsor[],
+): Map<string, VisaSponsor[]> {
+  const index = new Map<string, VisaSponsor[]>();
+  for (const sponsor of sponsors) {
+    const normalizedName = normalizeCompanyName(sponsor.organisationName);
+    if (!normalizedName) continue;
+    const matches = index.get(normalizedName);
+    if (matches) matches.push(sponsor);
+    else index.set(normalizedName, [sponsor]);
+  }
+  return index;
+}
 
 // ============================================================================
 // Per-provider storage helpers
@@ -210,6 +226,7 @@ async function downloadLatestDataForProvider(
     // Bust cache
     state.cache = null;
     state.cacheLoadedAt = null;
+    state.exactNameIndex = null;
 
     console.log(
       `✅ Downloaded ${sponsors.length} sponsors for provider: ${id}`,
@@ -256,6 +273,7 @@ function loadSponsorsForProvider(providerId: string): VisaSponsor[] {
     const sponsors = parseCsv(content);
     state.cache = sponsors;
     state.cacheLoadedAt = new Date();
+    state.exactNameIndex = null;
     return sponsors;
   } catch (error) {
     console.error(`Failed to load sponsors for provider ${providerId}:`, error);
@@ -404,6 +422,58 @@ export async function searchSponsors(
   return results.slice(0, limit);
 }
 
+export async function searchSponsorsExact(
+  query: string,
+  options: { countryKey?: string } = {},
+): Promise<{
+  available: boolean;
+  providerIds: string[];
+  results: VisaSponsorSearchResult[];
+}> {
+  if (!query.trim()) return { available: true, providerIds: [], results: [] };
+
+  const providerData = await loadAllSponsors(options.countryKey);
+  const normalizedQuery = normalizeCompanyName(query);
+  if (!normalizedQuery) {
+    return {
+      available: providerData.some(({ sponsors }) => sponsors.length > 0),
+      providerIds: providerData.map(({ providerId }) => providerId),
+      results: [],
+    };
+  }
+  const results: VisaSponsorSearchResult[] = [];
+
+  for (const {
+    providerId,
+    countryKey: providerCountryKey,
+    sponsors,
+  } of providerData) {
+    const state = getOrCreateProviderState(providerId);
+    if (!state.exactNameIndex) {
+      state.exactNameIndex = buildExactSponsorIndex(sponsors);
+    }
+
+    const seenNames = new Set<string>();
+    for (const sponsor of state.exactNameIndex.get(normalizedQuery) ?? []) {
+      if (seenNames.has(sponsor.organisationName)) continue;
+      seenNames.add(sponsor.organisationName);
+      results.push({
+        providerId,
+        countryKey: providerCountryKey,
+        sponsor,
+        score: 100,
+        matchedName: normalizedQuery,
+      });
+    }
+  }
+
+  return {
+    available: providerData.some(({ sponsors }) => sponsors.length > 0),
+    providerIds: providerData.map(({ providerId }) => providerId),
+    results,
+  };
+}
+
 export function calculateSponsorMatchSummary(
   results: VisaSponsorSearchResult[],
 ): { sponsorMatchScore: number; sponsorMatchNames: string | null } {
@@ -498,15 +568,15 @@ export async function initialize(): Promise<void> {
         `📥 No data found for provider ${manifest.id}, downloading...`,
       );
       await downloadLatestDataForProvider(manifest);
-    } else {
-      const sponsors = loadSponsorsForProvider(manifest.id);
-      console.log(
-        `✅ Provider ${manifest.id} initialized with ${sponsors.length} sponsors`,
-      );
     }
 
     // Start per-provider scheduler
     const state = getOrCreateProviderState(manifest.id);
+    const sponsors = loadSponsorsForProvider(manifest.id);
+    state.exactNameIndex = buildExactSponsorIndex(sponsors);
+    console.log(
+      `✅ Provider ${manifest.id} initialized with ${sponsors.length} sponsors`,
+    );
     const schedulerName = `visa-sponsors-${manifest.id}`;
     state.scheduler = createScheduler(schedulerName, async () => {
       await downloadLatestDataForProvider(manifest);

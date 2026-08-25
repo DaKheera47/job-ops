@@ -28,6 +28,24 @@ export interface FreeHireResult {
   error?: string;
 }
 
+export interface FetchFreeHirePageOptions {
+  searchTerm: string;
+  selectedCountry?: string;
+  locations?: string[];
+  workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
+  limit: number;
+  offset?: number;
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
+}
+
+export interface FreeHirePage {
+  jobs: CreateJobInput[];
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -131,6 +149,7 @@ export function buildFreeHireSearchUrl(args: {
   locations?: string[];
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   limit: number;
+  offset?: number;
 }): URL {
   const url = new URL(FREEHIRE_SEARCH_URL);
   url.searchParams.set("q", args.searchTerm);
@@ -138,6 +157,10 @@ export function buildFreeHireSearchUrl(args: {
   url.searchParams.set("sort", "posted_at");
   url.searchParams.set("order", "desc");
   url.searchParams.set("limit", String(Math.min(100, Math.max(1, args.limit))));
+  url.searchParams.set(
+    "offset",
+    String(Math.max(0, Math.floor(args.offset ?? 0))),
+  );
 
   const countryCode = getCountryIso2Code(args.selectedCountry);
   if (countryCode) url.searchParams.set("countries", countryCode);
@@ -151,6 +174,52 @@ export function buildFreeHireSearchUrl(args: {
   return url;
 }
 
+export async function fetchFreeHirePage(
+  options: FetchFreeHirePageOptions,
+): Promise<FreeHirePage> {
+  const requestedLimit = Math.min(100, Math.max(1, Math.floor(options.limit)));
+  const requestedOffset = Math.max(0, Math.floor(options.offset ?? 0));
+  const response = await (options.fetchImpl ?? fetch)(
+    buildFreeHireSearchUrl({
+      searchTerm: options.searchTerm,
+      selectedCountry: options.selectedCountry,
+      locations: options.locations,
+      workplaceTypes: options.workplaceTypes,
+      limit: requestedLimit,
+      offset: requestedOffset,
+    }),
+    {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(options.timeoutMs ?? 20_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`FreeHire request failed with status ${response.status}`);
+  }
+
+  const payload = asRecord((await response.json()) as unknown);
+  if (!Array.isArray(payload?.data)) {
+    throw new Error("FreeHire returned an invalid jobs response");
+  }
+
+  const jobs: CreateJobInput[] = [];
+  const seenUrls = new Set<string>();
+  for (const value of payload.data) {
+    const job = mapFreeHireJob(value);
+    if (!job || seenUrls.has(job.jobUrl)) continue;
+    seenUrls.add(job.jobUrl);
+    jobs.push(job);
+  }
+
+  const meta = asRecord(payload.meta);
+  return {
+    jobs,
+    limit: asNumber(meta?.limit) ?? requestedLimit,
+    offset: asNumber(meta?.offset) ?? requestedOffset,
+    total: asNumber(meta?.total) ?? jobs.length,
+  };
+}
+
 export async function runFreeHire(
   options: RunFreeHireOptions = {},
 ): Promise<FreeHireResult> {
@@ -160,7 +229,6 @@ export async function runFreeHire(
   const maxJobsPerTerm = Number.isFinite(options.maxJobsPerTerm)
     ? Math.max(1, Math.floor(options.maxJobsPerTerm as number))
     : 50;
-  const fetchImpl = options.fetchImpl ?? fetch;
   const jobs: CreateJobInput[] = [];
   const seenUrls = new Set<string>();
 
@@ -177,32 +245,18 @@ export async function runFreeHire(
       });
 
       // ponytail: one API page per term; paginate if runs need more than 100 results per term.
-      const url = buildFreeHireSearchUrl({
+      const page = await fetchFreeHirePage({
         searchTerm,
         selectedCountry: options.selectedCountry,
         locations: options.locations,
         workplaceTypes: options.workplaceTypes,
         limit: maxJobsPerTerm,
+        fetchImpl: options.fetchImpl,
       });
-      const response = await fetchImpl(url, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (!response.ok) {
-        throw new Error(
-          `FreeHire request failed with status ${response.status}`,
-        );
-      }
-
-      const payload = asRecord((await response.json()) as unknown);
-      if (!Array.isArray(payload?.data)) {
-        throw new Error("FreeHire returned an invalid jobs response");
-      }
 
       let jobsFoundTerm = 0;
-      for (const value of payload.data) {
-        const job = mapFreeHireJob(value);
-        if (!job || seenUrls.has(job.jobUrl)) continue;
+      for (const job of page.jobs) {
+        if (seenUrls.has(job.jobUrl)) continue;
         seenUrls.add(job.jobUrl);
         jobs.push(job);
         jobsFoundTerm += 1;
