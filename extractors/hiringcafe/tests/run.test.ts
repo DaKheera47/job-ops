@@ -155,7 +155,7 @@ describe("Hiring Cafe SSR parser", () => {
       }),
     );
 
-    expect(url.origin).toBe("https://hiring.cafe");
+    expect(url.origin).toBe("https://hiringcafe.com");
     expect(url.searchParams.get("searchState")).toBe(
       JSON.stringify({ searchQuery: "web developer" }),
     );
@@ -192,10 +192,10 @@ describe("runHiringCafe", () => {
       }),
     ]);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("https://hiring.cafe/"),
+      expect.stringContaining("https://hiringcafe.com/"),
       expect.objectContaining({
         headers: expect.objectContaining({
-          "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
+          accept: expect.stringContaining("text/html"),
         }),
       }),
     );
@@ -221,7 +221,7 @@ describe("runHiringCafe", () => {
       },
     };
     const fetchMock = vi.fn((url: string) => {
-      if (url === "https://hiring.cafe/job/req-1") {
+      if (url === "https://hiringcafe.com/job/req-1") {
         return Promise.resolve(
           createTextResponse(createJobDetailHtml(detailJob)),
         );
@@ -243,10 +243,10 @@ describe("runHiringCafe", () => {
       jobDescription: "<p>Full detail page description.</p>",
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://hiring.cafe/job/req-1",
+      "https://hiringcafe.com/job/req-1",
       expect.objectContaining({
         headers: expect.objectContaining({
-          "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
+          accept: expect.stringContaining("text/html"),
         }),
       }),
     );
@@ -260,7 +260,7 @@ describe("runHiringCafe", () => {
       },
     });
     const fetchMock = vi.fn((url: string) => {
-      if (url === "https://hiring.cafe/job/req-1") {
+      if (url === "https://hiringcafe.com/job/req-1") {
         return Promise.resolve(
           createTextResponse("<html>challenges.cloudflare.com</html>"),
         );
@@ -278,7 +278,7 @@ describe("runHiringCafe", () => {
 
     expect(result).toMatchObject({
       success: false,
-      challengeRequired: "https://hiring.cafe/job/req-1",
+      challengeRequired: "https://hiringcafe.com/job/req-1",
     });
   });
 
@@ -290,7 +290,7 @@ describe("runHiringCafe", () => {
       },
     });
     const fetchMock = vi.fn((url: string) => {
-      if (url === "https://hiring.cafe/job/req-1") {
+      if (url === "https://hiringcafe.com/job/req-1") {
         return Promise.resolve(
           createTextResponse(createExpiredJobDetailHtml()),
         );
@@ -346,7 +346,7 @@ describe("runHiringCafe", () => {
     });
 
     const searchCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).startsWith("https://hiring.cafe/"),
+      String(url).startsWith("https://hiringcafe.com/"),
     );
     const url = new URL(String(searchCall?.[0]));
     const searchState = JSON.parse(
@@ -391,7 +391,7 @@ describe("runHiringCafe", () => {
       ),
     ).toBe(false);
     const searchCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).startsWith("https://hiring.cafe/"),
+      String(url).startsWith("https://hiringcafe.com/"),
     );
     const url = new URL(String(searchCall?.[0]));
     const searchState = JSON.parse(
