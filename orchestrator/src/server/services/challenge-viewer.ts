@@ -31,10 +31,20 @@ let viewerProcesses: ChildProcess[] = [];
 let startPromise: Promise<ViewerStatus> | null = null;
 const viewerTokens = new Map<string, number>();
 
+// Tracks processes that failed to spawn (e.g. Xvfb/x11vnc not installed).
+// Node reports these via an async "error" event while leaving exitCode === null
+// and killed === false, so without this marker they'd wrongly count as alive.
+const failedProcesses = new WeakSet<ChildProcess>();
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isProcessAlive(process: ChildProcess): boolean {
-  return process.exitCode === null && !process.killed;
+  return (
+    !failedProcesses.has(process) &&
+    process.pid !== undefined &&
+    process.exitCode === null &&
+    !process.killed
+  );
 }
 
 function isViewerRunning(): boolean {
@@ -57,6 +67,7 @@ function startProcess(command: string, args: string[], name: string) {
   });
 
   child.on("error", (error) => {
+    failedProcesses.add(child);
     logger.warn("Challenge viewer process failed to start", {
       process: name,
       error,

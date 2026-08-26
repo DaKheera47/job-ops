@@ -827,11 +827,33 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
     // DATA_DIR rather than under extractor source directories.
     const storageDir = join(getDataDir(), "cloudflare-cookies");
 
+    // The solver launches a *headed* browser, which needs a live display. On
+    // Linux that's the virtual display (Xvfb) started by the challenge viewer.
+    // If it isn't available (e.g. Xvfb/x11vnc/noVNC aren't installed, or we're
+    // running outside the Docker image that bakes them in), bail out with an
+    // actionable error instead of launching a headed browser that would crash
+    // with a cryptic "no DISPLAY environment variable specified" from Playwright.
+    const viewer = await ensureChallengeViewer();
+    if (!viewer.available) {
+      logger.warn("Challenge viewer unavailable; cannot solve challenge", {
+        route: "/api/pipeline/solve-challenge",
+        extractorId: body.extractorId,
+        reason: viewer.reason,
+      });
+      return fail(
+        res,
+        serviceUnavailable(
+          `Cannot open the challenge solver: ${viewer.reason} ` +
+            "The Cloudflare challenge solver needs a virtual display — run Job Ops " +
+            "via the provided Docker image (which bundles Xvfb/x11vnc/noVNC), or " +
+            "install those packages on the host.",
+        ),
+      );
+    }
+
     // Dynamic import: browser-utils pulls in playwright which is heavy.
     // A top-level import would slow down every server startup even though
     // most pipeline runs never hit a challenge.
-    await ensureChallengeViewer();
-
     const { solveChallenge } = await import("browser-utils");
     const result = await solveChallenge(
       challengeUrl,
