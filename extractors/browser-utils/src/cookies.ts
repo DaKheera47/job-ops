@@ -6,7 +6,9 @@ import { CookieJar as ToughCookieJar } from "tough-cookie";
 /**
  * Cookies worth persisting — CF clearance and common session cookies.
  * cf_clearance is the main one: it proves the browser passed a challenge.
- * The others are supporting cookies CF uses during challenge flow.
+ * _vcrcs is Vercel's equivalent (sites like hiringcafe.com run Vercel's
+ * security checkpoint behind Cloudflare). The others are supporting cookies
+ * CF uses during challenge flow.
  */
 const PERSIST_COOKIE_NAMES = new Set([
   "cf_clearance",
@@ -14,7 +16,11 @@ const PERSIST_COOKIE_NAMES = new Set([
   "cf_chl_2",
   "cf_chl_prog",
   "__cflb",
+  "_vcrcs",
 ]);
+
+/** Cookies that prove a challenge was passed (Cloudflare or Vercel). */
+const CLEARANCE_COOKIE_NAMES = new Set(["cf_clearance", "_vcrcs"]);
 const DEFAULT_COOKIE_STORAGE_DIR = "./storage";
 const DATA_DIR_COOKIE_STORAGE_DIRNAME = "cloudflare-cookies";
 
@@ -64,7 +70,7 @@ function isExpired(cookie: PlaywrightCookie): boolean {
 }
 
 function hasClearanceCookie(cookies: PlaywrightCookie[]): boolean {
-  return cookies.some((cookie) => cookie.name === "cf_clearance");
+  return cookies.some((cookie) => CLEARANCE_COOKIE_NAMES.has(cookie.name));
 }
 
 async function readPersistedCookieJar(

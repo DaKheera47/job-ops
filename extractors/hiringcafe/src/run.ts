@@ -10,13 +10,29 @@ import {
   toStringOrNull,
 } from "@shared/utils/type-conversion.js";
 import {
+  createPersistedFetchCookieJar,
+  getCloudflareCookieStorageDir,
+} from "browser-utils";
+import { Impit } from "impit";
+import {
   type HiringCafeCountryLocation,
   resolveHiringCafeCountryLocation,
 } from "./country-map.js";
 import { createDefaultSearchState } from "./default-search-state.js";
 
-const BASE_URL = "https://hiring.cafe/";
-const JOB_DETAIL_BASE_URL = "https://hiring.cafe/job/";
+const EXTRACTOR_ID = "hiringcafe";
+// hiring.cafe now 308-redirects to hiringcafe.com; target it directly so
+// challenge cookies are solved and reused on the same domain.
+const BASE_URL = "https://hiringcafe.com/";
+const JOB_DETAIL_BASE_URL = "https://hiringcafe.com/job/";
+// The site sits behind Cloudflare with Vercel hosting underneath — either
+// layer can serve the interstitial.
+const CHALLENGE_BODY_PATTERN =
+  /cloudflare|cf-browser-verification|challenge-platform|vercel security checkpoint|vercel-protection|_vcrcs/i;
+// Cloudflare rate-limits bursts of requests (429 + managed challenge after
+// ~4 rapid hits), so space requests out and back off before giving up.
+const REQUEST_DELAY_MS = 800;
+const RATE_LIMIT_RETRY_DELAYS_MS = [5_000, 15_000];
 const DEFAULT_MAX_JOBS_PER_TERM = 200;
 const DEFAULT_SEARCH_TERM = "web developer";
 const DEFAULT_DATE_FETCHED_PAST_N_DAYS = 30;
@@ -109,6 +125,62 @@ class HiringCafeChallengeError extends Error {
     this.name = "HiringCafeChallengeError";
     this.challengeUrl = challengeUrl;
   }
+}
+
+/**
+ * Default HTTP client: impit impersonates a real Firefox TLS fingerprint and
+ * shares the persisted cookie jar (and User-Agent) written by the headed
+ * challenge solver, so a solved cf_clearance/_vcrcs cookie is actually reused.
+ */
+async function createDefaultFetchImpl(): Promise<typeof fetch> {
+  const persistedCookies = await createPersistedFetchCookieJar(
+    EXTRACTOR_ID,
+    getCloudflareCookieStorageDir(),
+  );
+  const impit = new Impit({
+    browser: "firefox",
+    timeout: 30_000,
+    cookieJar: persistedCookies.cookieJar,
+    ...(persistedCookies.userAgent
+      ? { headers: { "user-agent": persistedCookies.userAgent } }
+      : {}),
+  });
+
+  // Impit enforces its own timeout and does not accept AbortSignal.
+  // ImpitResponse covers everything this extractor reads (ok/status/text).
+  return ((input: RequestInfo | URL, init?: RequestInit) => {
+    const { signal: _signal, ...rest } = init ?? {};
+    return impit.fetch(
+      typeof input === "string" ? input : input.toString(),
+      rest as Parameters<Impit["fetch"]>[1],
+    );
+  }) as unknown as typeof fetch;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Spaces requests out and retries 429 rate-limit responses with backoff, so a
+ * burst of detail-page fetches doesn't trip Cloudflare's rate rule (which
+ * serves a challenge page no human solve can meaningfully fix).
+ */
+function withThrottleAndRetry(fetchImpl: typeof fetch): typeof fetch {
+  let lastRequestAt = 0;
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const wait = lastRequestAt + REQUEST_DELAY_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    let response = await fetchImpl(input, init);
+    lastRequestAt = Date.now();
+    for (const delay of RATE_LIMIT_RETRY_DELAYS_MS) {
+      if (response.status !== 429) break;
+      await sleep(delay);
+      response = await fetchImpl(input, init);
+      lastRequestAt = Date.now();
+    }
+    return response;
+  }) as typeof fetch;
 }
 
 function toPositiveIntOrFallback(
@@ -320,7 +392,7 @@ function parseNextData(html: string, challengeUrl = BASE_URL): unknown {
     /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>\s*([\s\S]*?)\s*<\/script>/i,
   );
   if (!match) {
-    if (/cloudflare|cf-browser-verification|challenge-platform/i.test(html)) {
+    if (CHALLENGE_BODY_PATTERN.test(html)) {
       throw new HiringCafeChallengeError(challengeUrl);
     }
     throw new Error(
@@ -405,14 +477,13 @@ async function fetchHiringCafeSearchPage(args: {
     headers: {
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "en-US,en;q=0.9",
-      "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
     },
     signal: AbortSignal.timeout(20_000),
   });
 
   const body = await response.text();
   if (!response.ok) {
-    if (/cloudflare|cf-browser-verification|challenge-platform/i.test(body)) {
+    if (CHALLENGE_BODY_PATTERN.test(body)) {
       throw new HiringCafeChallengeError(url);
     }
     const statusText = response.statusText ? ` ${response.statusText}` : "";
@@ -443,14 +514,13 @@ async function fetchHiringCafeJobDetail(args: {
     headers: {
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "en-US,en;q=0.9",
-      "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
     },
     signal: AbortSignal.timeout(20_000),
   });
 
   const body = await response.text();
   if (!response.ok) {
-    if (/cloudflare|cf-browser-verification|challenge-platform/i.test(body)) {
+    if (CHALLENGE_BODY_PATTERN.test(body)) {
       throw new HiringCafeChallengeError(url.toString());
     }
     return null;
@@ -707,11 +777,12 @@ export async function runHiringCafe(
       : [null];
   const termTotal = searchTerms.length * runLocations.length;
   const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
-  const fetchImpl = options.fetchImpl ?? fetch;
   const jobs: CreateJobInput[] = [];
   const seen = new Set<string>();
 
   try {
+    const fetchImpl =
+      options.fetchImpl ?? withThrottleAndRetry(await createDefaultFetchImpl());
     const countryLocation = resolveHiringCafeCountryLocation(country);
 
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {

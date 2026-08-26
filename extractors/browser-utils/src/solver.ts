@@ -80,17 +80,19 @@ export async function solveChallenge(
       timeout: 30_000,
     });
 
-    // If there's no challenge, we're done — save cookies anyway since the
-    // browser session established a valid cf_clearance
+    // If there's no challenge, we're done — the site isn't challenging this
+    // browser at all (common when only the plain-HTTP fetch fingerprint gets
+    // blocked). Save whatever cookies exist, but don't demand a clearance
+    // cookie: none was ever issued, and erroring here would wrongly tell the
+    // user their solve failed.
     if (!(await isChallengePage(page))) {
       const cookiesSaved = await saveReusableCookies(
         context,
         extractorId,
         storageDir,
       );
-      if (cookiesSaved === null) return noReusableCookiesError();
       await showSolvedPage(page);
-      return { status: "solved", cookiesSaved };
+      return { status: "solved", cookiesSaved: cookiesSaved ?? 0 };
     }
 
     // Poll until the challenge is resolved or timeout
