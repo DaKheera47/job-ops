@@ -191,27 +191,27 @@ describe("scoreJobsStep auto-skip behavior", () => {
   it.each([
     { score: 90, exceptional: 0 },
     { score: 91, exceptional: 1 },
-  ])(
-    "reports $exceptional exceptional matches for a score of $score",
-    async ({ score, exceptional }) => {
-      const scorer = await import("@server/services/scorer");
-      const { progressHelpers } = await import("../progress");
-      vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
-        score,
-        reason: "Test score",
-        jobBrief: null,
-      });
+  ])("reports $exceptional exceptional matches for a score of $score", async ({
+    score,
+    exceptional,
+  }) => {
+    const scorer = await import("@server/services/scorer");
+    const { progressHelpers } = await import("../progress");
+    vi.mocked(scorer.scoreJobSuitability).mockResolvedValue({
+      score,
+      reason: "Test score",
+      jobBrief: null,
+    });
 
-      await scoreJobsStep({ profile: {} });
+    await scoreJobsStep({ profile: {} });
 
-      expect(progressHelpers.scoringJob).toHaveBeenCalledWith(
-        1,
-        1,
-        expect.objectContaining({ id: "job-1" }),
-        exceptional,
-      );
-    },
-  );
+    expect(progressHelpers.scoringJob).toHaveBeenCalledWith(
+      1,
+      1,
+      expect.objectContaining({ id: "job-1" }),
+      exceptional,
+    );
+  });
 
   it("does not auto-skip jobs when score equals threshold", async () => {
     const settingsRepo = await import("@server/repositories/settings");
