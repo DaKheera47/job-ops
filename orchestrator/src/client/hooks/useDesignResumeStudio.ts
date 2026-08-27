@@ -219,7 +219,7 @@ export function useDesignResumeStudio() {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, draft, document, notifyReadyPdfRefresh, queryClient, saveState]);
+  }, [dirty, draft, document, notifyReadyPdfRefresh, queryClient, saveState, recoverFromRevisionConflict]);
 
   const setDesignResume = (next: DesignResumeDocument) => {
     queryClient.setQueryData(queryKeys.designResume.current(), next);
