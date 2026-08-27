@@ -2,7 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClaudeCliClient } from "./claude-cli/client";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
+import { EMPTY_RESPONSE_ERROR } from "./policies/retry-policy";
 import { LlmService } from "./service";
+import type { JsonSchemaDefinition } from "./types";
+
+const TEST_SCHEMA: JsonSchemaDefinition = {
+  name: "test",
+  schema: {
+    type: "object",
+    properties: { value: { type: "string" } },
+    required: ["value"],
+    additionalProperties: false,
+  },
+};
+
+function completionResponse(content: string): Response {
+  return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 describe("LlmService provider normalization", () => {
   afterEach(() => {
@@ -195,6 +214,49 @@ describe("LlmService provider normalization", () => {
 
     expect(models[0]).toBe("claude-sonnet-5");
     expect(models.length).toBeGreaterThan(1);
+  });
+
+  it("retries a 200 response whose completion is empty and succeeds on the next attempt", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(completionResponse(""))
+      .mockResolvedValueOnce(completionResponse('{"value":"ok"}'));
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "sk-or-test",
+    });
+    const result = await llm.callJson<{ value: string }>({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: "Return JSON." }],
+      jsonSchema: TEST_SCHEMA,
+      maxRetries: 2,
+      retryDelayMs: 1,
+    });
+
+    expect(result).toEqual({ success: true, data: { value: "ok" } });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the empty completion once the retry budget is exhausted", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => completionResponse(""));
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "sk-or-test",
+    });
+    const result = await llm.callJson<{ value: string }>({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: "Return JSON." }],
+      jsonSchema: TEST_SCHEMA,
+      maxRetries: 2,
+      retryDelayMs: 1,
+    });
+
+    expect(result).toEqual({ success: false, error: EMPTY_RESPONSE_ERROR });
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
   it("lists Requesty models from the /models endpoint", async () => {

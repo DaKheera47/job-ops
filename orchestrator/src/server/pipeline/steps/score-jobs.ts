@@ -1,7 +1,11 @@
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
-import { scoreJobSuitability } from "@server/services/scorer";
+import {
+  LlmNotConfiguredError,
+  ScoringUnavailableError,
+  scoreJobSuitability,
+} from "@server/services/scorer";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { asyncPool } from "@server/utils/async-pool";
 import type { Job } from "@shared/types";
@@ -9,6 +13,16 @@ import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 
 const SCORING_CONCURRENCY = 4;
+
+/**
+ * A lone job failing transiently should not stop the run, but when this many
+ * jobs have failed before anything scored at all, the AI integration is down
+ * across the board (dead endpoint, missing CLI binary, hard outage) and
+ * pausing for the user beats burning retries on every remaining job. With the
+ * per-call retries the LLM service already performs, sporadic provider blips
+ * effectively never produce this many consecutive failures.
+ */
+const SYSTEMIC_FAILURE_THRESHOLD = 3;
 
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
@@ -40,6 +54,7 @@ export async function scoreJobsStep(args: {
   const scoredJobs: ScoredJob[] = [];
   let completed = 0;
   let exceptional = 0;
+  let failed = 0;
   const scoringInstructions = args.scoringInstructions?.trim();
 
   await asyncPool({
@@ -77,12 +92,38 @@ export async function scoreJobsStep(args: {
       const scoringResultPromise = scoringInstructions
         ? scoreJobSuitability(job, args.profile, { scoringInstructions })
         : scoreJobSuitability(job, args.profile);
-      const {
-        score,
-        reason,
-        jobBrief,
-        jobUpdates = {},
-      } = await scoringResultPromise;
+      let scoringResult: Awaited<typeof scoringResultPromise>;
+      try {
+        scoringResult = await scoringResultPromise;
+      } catch (error) {
+        // Configuration errors still abort the pool — every remaining job
+        // would fail the same way until the user fixes their settings.
+        if (!(error instanceof ScoringUnavailableError)) throw error;
+        failed += 1;
+        completed += 1;
+        if (scoredJobs.length === 0 && failed >= SYSTEMIC_FAILURE_THRESHOLD) {
+          throw new LlmNotConfiguredError(
+            `AI scoring failed for the first ${failed} jobs (${error.message}). Check your LLM configuration in Settings → Integrations, then resume scoring.`,
+          );
+        }
+        logger.warn("Job scoring failed — leaving unscored and continuing", {
+          jobId: job.id,
+          title: job.title,
+          error: error.message,
+        });
+        progressHelpers.scoringJob(
+          completed,
+          unprocessedJobs.length,
+          {
+            id: job.id,
+            title: `${job.title} (failed)`,
+            employer: job.employer,
+          },
+          exceptional,
+        );
+        return;
+      }
+      const { score, reason, jobBrief, jobUpdates = {} } = scoringResult;
       if (args.shouldCancel?.()) return;
 
       let sponsorMatchScore = 0;
@@ -152,6 +193,7 @@ export async function scoreJobsStep(args: {
   progressHelpers.scoringComplete(scoredJobs.length);
   logger.info("Scoring step completed", {
     scoredJobs: scoredJobs.length,
+    failedJobs: failed,
     concurrency: SCORING_CONCURRENCY,
   });
 

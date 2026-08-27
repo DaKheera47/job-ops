@@ -12,6 +12,7 @@ import {
   rememberSuccessfulMode,
 } from "./policies/mode-selection";
 import {
+  EMPTY_RESPONSE_ERROR,
   getRetryDelayMs,
   parseRetryAfterMs,
   shouldRetryAttempt,
@@ -474,7 +475,7 @@ export class LlmService {
         const content = this.strategy.extractText(data);
 
         if (!content) {
-          throw new Error("No content in response");
+          throw new Error(EMPTY_RESPONSE_ERROR);
         }
 
         const parsed = parseJsonContent<T>(content, jobId);

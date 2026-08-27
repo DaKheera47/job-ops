@@ -1038,7 +1038,7 @@ describe("salary penalty", () => {
       );
     });
 
-    it("should throw LlmNotConfiguredError for non-API-key errors", async () => {
+    it("should throw LlmNotConfiguredError when the provider rejects the credentials", async () => {
       const { scoreJobSuitability, LlmNotConfiguredError } = await import(
         "./scorer"
       );
@@ -1050,7 +1050,7 @@ describe("salary penalty", () => {
 
       callJsonMock.mockResolvedValue({
         success: false,
-        error: "Rate limit exceeded",
+        error: "LLM API error: 401 - Invalid API key",
       });
 
       const job = createJob({
@@ -1060,6 +1060,56 @@ describe("salary penalty", () => {
 
       await expect(scoreJobSuitability(job, {})).rejects.toThrow(
         LlmNotConfiguredError,
+      );
+    });
+
+    it("should throw ScoringUnavailableError for transient provider faults", async () => {
+      const { scoreJobSuitability, ScoringUnavailableError } = await import(
+        "./scorer"
+      );
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      callJsonMock.mockResolvedValue({
+        success: false,
+        error: "No content in response",
+      });
+
+      const job = createJob({
+        id: "test-job-2",
+        title: "Software Engineer",
+      });
+
+      await expect(scoreJobSuitability(job, {})).rejects.toThrow(
+        ScoringUnavailableError,
+      );
+    });
+
+    it("should throw ScoringUnavailableError when the AI returns no numeric score", async () => {
+      const { scoreJobSuitability, ScoringUnavailableError } = await import(
+        "./scorer"
+      );
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: { score: "not-a-number", reason: "Confused model" },
+      });
+
+      const job = createJob({
+        id: "test-job-3",
+        title: "Software Engineer",
+      });
+
+      await expect(scoreJobSuitability(job, {})).rejects.toThrow(
+        ScoringUnavailableError,
       );
     });
   });
