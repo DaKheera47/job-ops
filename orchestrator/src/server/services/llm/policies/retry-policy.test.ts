@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  EMPTY_RESPONSE_ERROR,
   getRetryDelayMs,
   parseRetryAfterMs,
   shouldRetryAttempt,
@@ -10,6 +11,21 @@ describe("shouldRetryAttempt", () => {
     expect(
       shouldRetryAttempt({ message: "Failed to parse JSON", status: 200 }),
     ).toBe(true);
+  });
+
+  it("retries empty completions", () => {
+    expect(
+      shouldRetryAttempt({ message: EMPTY_RESPONSE_ERROR, status: 200 }),
+    ).toBe(true);
+    expect(
+      shouldRetryAttempt({ message: EMPTY_RESPONSE_ERROR, status: undefined }),
+    ).toBe(true);
+  });
+
+  it("does not retry configuration errors", () => {
+    expect(shouldRetryAttempt({ message: "LLM API key not configured" })).toBe(
+      false,
+    );
   });
 
   it("retries on 429 and 5xx", () => {
