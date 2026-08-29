@@ -298,12 +298,14 @@ function LaunchSetup({
 }) {
   const queryClient = useQueryClient();
   const onboarding = useOnboardingStatus();
-  const flow = useOnboardingFlow();
-  const designResume = useDesignResume();
   const appStatus = useQuery({
     queryKey: queryKeys.app.status(),
     queryFn: api.getAppStatus,
   });
+  const flow = useOnboardingFlow({
+    allowSelfHosted: appStatus.data?.appMode !== "hosted",
+  });
+  const designResume = useDesignResume();
   const profileQuery = useQuery<ResumeProfile>({
     queryKey: queryKeys.profile.current(),
     queryFn: api.getProfile,
@@ -611,6 +613,7 @@ function LaunchSetup({
               ) : (
                 <ResumeStep
                   flow={flow}
+                  allowSelfHosted={appStatus.data?.appMode !== "hosted"}
                   requirement={resumeRequirement}
                   profile={profileQuery.data ?? null}
                   hasResume={Boolean(resumeSource)}
@@ -786,6 +789,7 @@ function ProfileStep(props: {
 
 function ResumeStep({
   flow,
+  allowSelfHosted,
   requirement,
   profile,
   hasResume,
@@ -794,6 +798,7 @@ function ResumeStep({
   onConfirm,
 }: {
   flow: ReturnType<typeof useOnboardingFlow>;
+  allowSelfHosted: boolean;
   requirement: OnboardingRequirement | null;
   profile: ResumeProfile | null;
   hasResume: boolean;
@@ -811,6 +816,7 @@ function ResumeStep({
       >
         <BaseResumeStep
           allowReactiveResume
+          allowSelfHostedReactiveResume={allowSelfHosted}
           baseResumeValidation={toValidationState(requirement)}
           baseResumeValue={flow.watch("rxresumeBaseResumeId")}
           hasRxResumeAccess={Boolean(flow.rxresumeApiKeyHint)}
