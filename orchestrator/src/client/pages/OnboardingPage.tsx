@@ -323,8 +323,8 @@ function LaunchSetup({
   const [cities, setCities] = useState("");
   const [workplaceTypes, setWorkplaceTypes] = useState<
     Array<"remote" | "hybrid" | "onsite">
-  >(["remote", "hybrid"]);
-  const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(false);
+  >(["remote", "hybrid", "onsite"]);
+  const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(true);
   const completionTrackedRef = useRef(false);
   const lastStepViewRef = useRef<string | null>(null);
   const lastStatusCheckRef = useRef<string | null>(null);
@@ -441,7 +441,7 @@ function LaunchSetup({
       setProfileBusy(true);
       applyStatus(
         await api.saveOnboardingProfile({
-          country: country.trim() || null,
+          country: country.trim(),
           cities: parsedCities,
           workplaceTypes,
           requiresVisaSponsorship,
@@ -715,7 +715,7 @@ function ProfileStep(props: {
       description="These preferences seed new runs and help Job Ops prioritize location-aware and visa-sponsor sources. You can change them later."
     >
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Country or market">
+        <Field label="Country or market (required)">
           <SearchableDropdown
             value={props.country}
             options={COUNTRY_OPTIONS}
@@ -780,7 +780,11 @@ function ProfileStep(props: {
       </Label>
       <StepActions
         onContinue={props.onContinue}
-        busy={props.busy || props.workplaceTypes.length === 0}
+        busy={
+          props.busy ||
+          !props.country.trim() ||
+          props.workplaceTypes.length === 0
+        }
         label="Save and continue"
       />
     </StepShell>

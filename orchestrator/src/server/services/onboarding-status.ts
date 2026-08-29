@@ -44,7 +44,7 @@ export type OnboardingModelActionInput = {
 };
 
 export type OnboardingProfileActionInput = {
-  country?: string | null;
+  country: string;
   cities: string[];
   workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
   requiresVisaSponsorship: boolean;
@@ -750,7 +750,7 @@ export async function saveOnboardingProfileAction(
     {
       searchCities: input.cities.join("|"),
       workplaceTypes: input.workplaceTypes,
-      jobspyCountryIndeed: input.country?.trim() || null,
+      jobspyCountryIndeed: input.country.trim(),
       showSponsorInfo: input.requiresVisaSponsorship,
       onboardingProfileCompleted: true,
     },
