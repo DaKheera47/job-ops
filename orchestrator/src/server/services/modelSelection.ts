@@ -94,6 +94,7 @@ function getDefaultBaseUrlForProvider(
   )
     return null;
   if (normalized === "requesty") return "https://router.requesty.ai/v1";
+  if (normalized === "orcarouter") return "https://api.orcarouter.ai/v1";
   return "https://openrouter.ai";
 }
 

@@ -21,6 +21,9 @@ describe("settings utils", () => {
     expect(getLlmProviderConfig("openrouter").keyHelperHref).toBe(
       "https://openrouter.ai/keys",
     );
+    expect(getLlmProviderConfig("orcarouter").keyHelperHref).toBe(
+      "https://www.orcarouter.ai/console",
+    );
     expect(getLlmProviderConfig("openai").keyHelperHref).toBe(
       "https://platform.openai.com/api-keys",
     );
@@ -119,6 +122,7 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("claude_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("ollama")).toBe(true);
     expect(supportsLlmModelSuggestions("requesty")).toBe(true);
+    expect(supportsLlmModelSuggestions("orcarouter")).toBe(true);
     expect(supportsLlmModelSuggestions("openrouter")).toBe(false);
   });
 });

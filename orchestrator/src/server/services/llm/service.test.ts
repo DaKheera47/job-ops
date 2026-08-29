@@ -283,4 +283,29 @@ describe("LlmService provider normalization", () => {
     const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
     expect(String(requestedUrl)).toBe("https://router.requesty.ai/v1/models");
   });
+
+  it("lists OrcaRouter models from the /models endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "openai/gpt-4o-mini" },
+            { id: "anthropic/claude-sonnet-4-5" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "orcarouter",
+      apiKey: "sk-orca-test",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toContain("openai/gpt-4o-mini");
+    expect(models).toContain("anthropic/claude-sonnet-4-5");
+    const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe("https://api.orcarouter.ai/v1/models");
+  });
 });
