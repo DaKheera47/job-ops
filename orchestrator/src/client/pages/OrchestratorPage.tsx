@@ -89,6 +89,10 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext: navigation.navigateWithContext,
   });
 
+  const openPreferredRunMode = useCallback(() => {
+    openRunMode(runMode);
+  }, [openRunMode, runMode]);
+
   const isFirstRunWorkspace =
     !isLoading && jobs.length === 0 && !isPipelineRunning;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
@@ -107,11 +111,11 @@ export const OrchestratorPage: React.FC = () => {
       return;
     }
 
-    openRunMode("automatic");
+    openPreferredRunMode();
   }, [
     canToggleSearchComposer,
     isSearchComposerVisible,
-    openRunMode,
+    openPreferredRunMode,
     setIsRunModeModalOpen,
   ]);
 
@@ -129,7 +133,10 @@ export const OrchestratorPage: React.FC = () => {
         }
         onOpenAutomaticRun={handleToggleAutomaticRun}
         onCancelPipeline={handleCancelPipeline}
-        onOpenManualImport={() => setIsManualImportOpen(true)}
+        onOpenManualImport={() => {
+          setRunMode("manual");
+          setIsManualImportOpen(true);
+        }}
       />
 
       <main
@@ -174,7 +181,7 @@ export const OrchestratorPage: React.FC = () => {
             filters={filters}
             navigation={navigation}
             ui={ui}
-            openRunMode={openRunMode}
+            openRunMode={openPreferredRunMode}
           />
         )}
       </main>

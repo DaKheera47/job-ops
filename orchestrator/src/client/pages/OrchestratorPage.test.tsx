@@ -11,6 +11,7 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
+import { RUN_MODE_STORAGE_KEY } from "./orchestrator/run-mode";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
@@ -1167,6 +1168,28 @@ describe("OrchestratorPage", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /run search/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("reopens the search composer in the last selected mode", () => {
+    localStorage.setItem(RUN_MODE_STORAGE_KEY, "manual");
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+
+    expect(
+      screen.getByRole("heading", { name: /review job details/i }),
     ).toBeInTheDocument();
   });
 
