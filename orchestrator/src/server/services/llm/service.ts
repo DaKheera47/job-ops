@@ -246,7 +246,8 @@ export class LlmService {
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
       this.provider !== "ollama" &&
-      this.provider !== "requesty"
+      this.provider !== "requesty" &&
+      this.provider !== "orcarouter"
     ) {
       return [];
     }
@@ -265,6 +266,9 @@ export class LlmService {
         return this.listGlmModels();
       }
       if (this.provider === "requesty") {
+        return this.listRequestyModels();
+      }
+      if (this.provider === "orcarouter") {
         return this.listRequestyModels();
       }
       return this.listOllamaModels();
@@ -696,6 +700,7 @@ function normalizeProvider(
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
   if (normalized === "requesty") return "requesty";
+  if (normalized === "orcarouter") return "orcarouter";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,

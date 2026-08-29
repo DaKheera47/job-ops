@@ -8,6 +8,7 @@ describe("resolveLlmApiKey", () => {
     process.env = { ...originalEnv };
     delete process.env.LLM_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
+    delete process.env.ORCAROUTER_API_KEY;
   });
 
   afterEach(() => {
@@ -52,6 +53,17 @@ describe("resolveLlmApiKey", () => {
         provider: "openrouter",
       }),
     ).toBe("sk-openrouter");
+  });
+
+  it("falls back to ORCAROUTER_API_KEY for orcarouter providers", async () => {
+    process.env.ORCAROUTER_API_KEY = "sk-orca-test";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "orcarouter",
+      }),
+    ).toBe("sk-orca-test");
   });
 
   it("ignores whitespace-only stored overrides", async () => {

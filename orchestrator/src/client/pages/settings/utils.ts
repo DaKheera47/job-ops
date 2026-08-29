@@ -22,6 +22,7 @@ export const formatSecretHint = (hint: string | null) =>
 
 export const LLM_PROVIDERS = [
   "openrouter",
+  "orcarouter",
   "requesty",
   "lmstudio",
   "ollama",
@@ -45,10 +46,12 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "claude_cli",
   "ollama",
   "requesty",
+  "orcarouter",
 ] as const;
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openrouter: "OpenRouter",
+  orcarouter: "OrcaRouter",
   requesty: "Requesty",
   lmstudio: "LM Studio",
   ollama: "Ollama",
@@ -64,6 +67,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "openrouter",
+  "orcarouter",
   "requesty",
   "openai",
   "anthropic",
@@ -84,6 +88,8 @@ const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
+  orcarouter:
+    "OrcaRouter uses your API key and routes requests across providers through an OpenAI-compatible endpoint with adaptive routing and guardrails.",
   requesty:
     "Requesty uses your API key and routes requests across providers through an OpenAI-compatible endpoint.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
@@ -111,6 +117,10 @@ const PROVIDER_KEY_HELPERS: Record<
   openrouter: {
     text: "Create a key at openrouter.ai",
     href: "https://openrouter.ai/keys",
+  },
+  orcarouter: {
+    text: "Create a key at orcarouter.ai/console",
+    href: "https://www.orcarouter.ai/console",
   },
   requesty: {
     text: "Create a key at app.requesty.ai/api-keys",

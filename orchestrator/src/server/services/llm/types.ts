@@ -1,5 +1,6 @@
 export type LlmProvider =
   | "openrouter"
+  | "orcarouter"
   | "requesty"
   | "lmstudio"
   | "ollama"
