@@ -186,6 +186,8 @@ These flags only affect hosted mode. Leaving `JOBOPS_APP_MODE` unset keeps the c
 
 When hosted mode is active, first-run setup is disabled. Hosted users must be created through hosted signup when `JOBOPS_HOSTED_SIGNUPS_ENABLED=true`, or by a later tenant-owner/admin user-management flow. Hosted signup appears on `/sign-in` as a **Create account** tab only when hosted mode and hosted signups are both enabled.
 
+The Tracking Inbox is available only in local/self-hosted mode. Hosted mode hides it from navigation and redirects direct `/tracking-inbox` links to **Overview**.
+
 ## Codex sign-in
 
 For full Codex auth troubleshooting (including device-code authorization errors), see:
