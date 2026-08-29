@@ -134,34 +134,37 @@ export function useDesignResumeStudio() {
    * subsequent save fail while the UI keeps rendering never-persisted edits
    * until a full page reload.
    */
-  const recoverFromRevisionConflict = async (
-    saveError: unknown,
-  ): Promise<boolean> => {
-    if (!isRevisionConflict(saveError)) return false;
-    if (conflictRecoveryAttemptsRef.current >= MAX_CONFLICT_RECOVERY_ATTEMPTS) {
-      return false;
-    }
-    try {
-      const latest = await api.getDesignResume();
-      conflictRecoveryAttemptsRef.current += 1;
-      if (conflictRecoveryAttemptsRef.current === 1) {
-        // Saves replace the whole document, so re-saving after a rebase makes
-        // this tab win over whatever bumped the revision. Say so instead of
-        // overwriting silently.
-        toast.info(
-          "Resume Studio was updated elsewhere. Your edits here were kept and re-saved.",
-        );
+  const recoverFromRevisionConflict = useCallback(
+    async (saveError: unknown): Promise<boolean> => {
+      if (!isRevisionConflict(saveError)) return false;
+      if (
+        conflictRecoveryAttemptsRef.current >= MAX_CONFLICT_RECOVERY_ATTEMPTS
+      ) {
+        return false;
       }
-      setDraft((current) =>
-        current ? { ...latest, resumeJson: current.resumeJson } : latest,
-      );
-      setDirty(true);
-      setSaveState("idle");
-      return true;
-    } catch {
-      return false;
-    }
-  };
+      try {
+        const latest = await api.getDesignResume();
+        conflictRecoveryAttemptsRef.current += 1;
+        if (conflictRecoveryAttemptsRef.current === 1) {
+          // Saves replace the whole document, so re-saving after a rebase makes
+          // this tab win over whatever bumped the revision. Say so instead of
+          // overwriting silently.
+          toast.info(
+            "Resume Studio was updated elsewhere. Your edits here were kept and re-saved.",
+          );
+        }
+        setDraft((current) =>
+          current ? { ...latest, resumeJson: current.resumeJson } : latest,
+        );
+        setDirty(true);
+        setSaveState("idle");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (
@@ -219,7 +222,15 @@ export function useDesignResumeStudio() {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, draft, document, notifyReadyPdfRefresh, queryClient, saveState, recoverFromRevisionConflict]);
+  }, [
+    dirty,
+    draft,
+    document,
+    notifyReadyPdfRefresh,
+    queryClient,
+    saveState,
+    recoverFromRevisionConflict,
+  ]);
 
   const setDesignResume = (next: DesignResumeDocument) => {
     queryClient.setQueryData(queryKeys.designResume.current(), next);
