@@ -37,6 +37,20 @@ import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
 import { trackProductEvent } from "@/lib/analytics";
 import { queryKeys } from "../lib/queryKeys";
 
+/**
+ * How many autosave revision conflicts in a row we resolve automatically by
+ * rebasing onto the server document before giving up and surfacing the error.
+ * The counter re-arms on every local edit, so a temporarily racing writer
+ * (another tab, an import) cannot wedge saving permanently.
+ */
+const MAX_CONFLICT_RECOVERY_ATTEMPTS = 3;
+
+function isRevisionConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { status, code } = error as { status?: unknown; code?: unknown };
+  return status === 409 || code === "CONFLICT";
+}
+
 export function useDesignResumeStudio() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -65,6 +79,7 @@ export function useDesignResumeStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const editVersionRef = useRef(0);
+  const conflictRecoveryAttemptsRef = useRef(0);
   const draftRef = useRef<DesignResumeDocument | null>(null);
   const readyPdfRefreshToastShownRef = useRef(false);
   draftRef.current = draft;
@@ -94,8 +109,62 @@ export function useDesignResumeStudio() {
 
   useEffect(() => {
     if (!document || dirty) return;
+    // Never adopt a stale refetch of the draft's own lineage: a slow GET can
+    // resolve after a save committed a newer revision, and adopting it would
+    // revert the studio to stale content and a stale revision that makes
+    // every following autosave fail with a conflict. A re-import legitimately
+    // resets the revision to 1, so a lower revision only counts as stale when
+    // the document is not newer by timestamp.
+    if (
+      draft &&
+      document.revision < draft.revision &&
+      document.updatedAt <= draft.updatedAt
+    ) {
+      return;
+    }
     setDraft(document);
-  }, [document, dirty]);
+  }, [document, dirty, draft]);
+
+  /**
+   * An autosave conflict means the server document moved on without us —
+   * another tab, an import, or a previously failed save. Rebase: adopt the
+   * server document's metadata (most importantly its revision) while keeping
+   * the local resumeJson, which holds the user's newest edits, then let the
+   * autosave cycle retry. Without this the stale revision makes every
+   * subsequent save fail while the UI keeps rendering never-persisted edits
+   * until a full page reload.
+   */
+  const recoverFromRevisionConflict = useCallback(
+    async (saveError: unknown): Promise<boolean> => {
+      if (!isRevisionConflict(saveError)) return false;
+      if (
+        conflictRecoveryAttemptsRef.current >= MAX_CONFLICT_RECOVERY_ATTEMPTS
+      ) {
+        return false;
+      }
+      try {
+        const latest = await api.getDesignResume();
+        conflictRecoveryAttemptsRef.current += 1;
+        if (conflictRecoveryAttemptsRef.current === 1) {
+          // Saves replace the whole document, so re-saving after a rebase makes
+          // this tab win over whatever bumped the revision. Say so instead of
+          // overwriting silently.
+          toast.info(
+            "Resume Studio was updated elsewhere. Your edits here were kept and re-saved.",
+          );
+        }
+        setDraft((current) =>
+          current ? { ...latest, resumeJson: current.resumeJson } : latest,
+        );
+        setDirty(true);
+        setSaveState("idle");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (
@@ -119,6 +188,7 @@ export function useDesignResumeStudio() {
           baseRevision,
           document: documentSnapshot,
         });
+        conflictRecoveryAttemptsRef.current = 0;
         if (editVersionRef.current === editVersionAtStart) {
           queryClient.setQueryData(queryKeys.designResume.current(), updated);
           queryClient.setQueryData(queryKeys.designResume.status(), {
@@ -145,13 +215,22 @@ export function useDesignResumeStudio() {
         );
         setSaveState("idle");
       } catch (saveError) {
+        if (await recoverFromRevisionConflict(saveError)) return;
         setSaveState("error");
         showErrorToast(saveError, "Failed to save Resume Studio.");
       }
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, draft, document, notifyReadyPdfRefresh, queryClient, saveState]);
+  }, [
+    dirty,
+    draft,
+    document,
+    notifyReadyPdfRefresh,
+    queryClient,
+    saveState,
+    recoverFromRevisionConflict,
+  ]);
 
   const setDesignResume = (next: DesignResumeDocument) => {
     queryClient.setQueryData(queryKeys.designResume.current(), next);
@@ -183,6 +262,7 @@ export function useDesignResumeStudio() {
         baseRevision,
         document: documentSnapshot,
       });
+      conflictRecoveryAttemptsRef.current = 0;
 
       if (editVersionRef.current === editVersionAtStart) {
         setDesignResume(updated);
@@ -213,6 +293,7 @@ export function useDesignResumeStudio() {
     updater: (resumeJson: DesignResumeJson) => DesignResumeJson,
   ) => {
     editVersionRef.current += 1;
+    conflictRecoveryAttemptsRef.current = 0;
     setDraft((current) => {
       if (!current) return current;
       return {
