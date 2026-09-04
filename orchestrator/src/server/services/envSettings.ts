@@ -26,6 +26,7 @@ export async function applyStoredEnvOverrides(): Promise<void> {
 
 export async function getEnvSettingsData(
   overrides?: Partial<Record<SettingKey, string>>,
+  options?: { allowLlmEnvironmentCredentials?: boolean },
 ): Promise<Partial<AppSettings>> {
   const activeOverrides = overrides || (await settingsRepo.getAllSettings());
   const values: Partial<AppSettings> = {};
@@ -48,6 +49,8 @@ export async function getEnvSettingsData(
                   activeOverrides.llmProvider ??
                     getOriginalEnvValue("LLM_PROVIDER"),
                 ) ?? null,
+              allowEnvironmentCredentials:
+                options?.allowLlmEnvironmentCredentials,
             })
           : normalizeEnvInput(rawValue);
       if (!effectiveSecret) {

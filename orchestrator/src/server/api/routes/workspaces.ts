@@ -1,6 +1,7 @@
 import { badRequest, conflict, forbidden, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { getUserId, isSystemAdmin } from "@infra/request-context";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import * as usersRepo from "@server/repositories/users";
 import { type Request, type Response, Router } from "express";
@@ -41,6 +42,15 @@ function isUsernameConflictError(error: unknown): boolean {
 workspacesRouter.get(
   "/users",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      fail(
+        res,
+        forbidden(
+          "Workspace user administration is unavailable in hosted mode",
+        ),
+      );
+      return;
+    }
     if (!requireSystemAdmin(res)) return;
     ok(res, { users: await usersRepo.listUsers() });
   }),
@@ -49,6 +59,13 @@ workspacesRouter.get(
 workspacesRouter.post(
   "/users",
   asyncRoute(async (req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      fail(
+        res,
+        forbidden("Hosted users must be created through hosted signup."),
+      );
+      return;
+    }
     if (!requireSystemAdmin(res)) return;
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -78,6 +95,15 @@ workspacesRouter.post(
 workspacesRouter.patch(
   "/users/:id/disabled",
   asyncRoute(async (req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      fail(
+        res,
+        forbidden(
+          "Workspace user administration is unavailable in hosted mode",
+        ),
+      );
+      return;
+    }
     if (!requireSystemAdmin(res)) return;
     const parsed = disableUserSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -110,6 +136,15 @@ workspacesRouter.patch(
 workspacesRouter.post(
   "/users/:id/reset-password",
   asyncRoute(async (req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      fail(
+        res,
+        forbidden(
+          "Workspace user administration is unavailable in hosted mode",
+        ),
+      );
+      return;
+    }
     if (!requireSystemAdmin(res)) return;
     const parsed = resetPasswordSchema.safeParse(req.body);
     if (!parsed.success) {

@@ -1,3 +1,4 @@
+import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import {
   createConfiguredLlmService,
@@ -132,6 +133,16 @@ export function normalizeBestMatchIndex(
 }
 
 export async function classifyWithSmartRouter(args: {
+  emailText: string;
+  activeJobs: Array<{ id: string; company: string; title: string }>;
+}): Promise<SmartRouterResult> {
+  return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+    result: await classifyWithSmartRouterImpl(args),
+    usedUnits: 1,
+  }));
+}
+
+async function classifyWithSmartRouterImpl(args: {
   emailText: string;
   activeJobs: Array<{ id: string; company: string; title: string }>;
 }): Promise<SmartRouterResult> {

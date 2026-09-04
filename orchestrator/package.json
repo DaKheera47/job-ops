@@ -90,6 +90,7 @@
     "remark-gfm": "^4.0.1",
     "slot-text": "^0.3.3",
     "sonner": "^2.0.7",
+    "stripe": "^22.6.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tinykeys": "^3.1.0",

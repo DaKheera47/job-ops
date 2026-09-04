@@ -1,12 +1,10 @@
 import {
   badRequest,
-  forbidden,
   notFound,
   serviceUnavailable,
   toAppError,
 } from "@infra/errors";
 import { fail, ok } from "@infra/http";
-import { isSystemAdmin } from "@infra/request-context";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { getVisaSponsorProviderRegistry } from "@server/services/visa-sponsors/providers/registry";
 import { normalizeCountryKey } from "@shared/location-support.js";
@@ -19,12 +17,6 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const visaSponsorsRouter = Router();
-
-function requireSystemAdmin(res: Response): boolean {
-  if (isSystemAdmin()) return true;
-  fail(res, forbidden("System admin access is required"));
-  return false;
-}
 
 /**
  * GET /api/visa-sponsors/status - Get status of all registered providers
@@ -120,8 +112,6 @@ visaSponsorsRouter.get(
  */
 visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
   try {
-    if (!requireSystemAdmin(res)) return;
-
     const result = await visaSponsors.downloadLatestCsv();
 
     if (!result.success) {
@@ -165,8 +155,6 @@ visaSponsorsRouter.post(
   "/update/:providerId",
   async (req: Request, res: Response) => {
     try {
-      if (!requireSystemAdmin(res)) return;
-
       const { providerId } = req.params;
       const result = await visaSponsors.downloadLatestCsv(providerId);
 

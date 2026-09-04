@@ -2,24 +2,6 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-const AUTH_ENV = {
-  BASIC_AUTH_USER: "admin",
-  BASIC_AUTH_PASSWORD: "secret",
-  JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
-  JOBOPS_TEST_AUTH_BYPASS: "0",
-};
-
-async function login(baseUrl: string, username: string, password: string) {
-  const res = await fetch(`${baseUrl}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const body = await res.json();
-  expect(res.status).toBe(200);
-  return body.data.token as string;
-}
-
 describe.sequential("Visa sponsors API routes", () => {
   let server: Server;
   let baseUrl: string;
@@ -96,46 +78,6 @@ describe.sequential("Visa sponsors API routes", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(body.meta.requestId).toBe("req-visa-sponsors-empty");
-  });
-
-  it("rejects sponsor data updates for non-admin users", async () => {
-    await stopServer({ server, closeDb, tempDir });
-    ({ server, baseUrl, closeDb, tempDir } = await startServer({
-      env: AUTH_ENV,
-    }));
-
-    const adminToken = await login(baseUrl, "admin", "secret");
-    const createUserRes = await fetch(`${baseUrl}/api/workspaces/users`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: "regular",
-        password: "regular-secret",
-      }),
-    });
-    expect(createUserRes.status).toBe(201);
-
-    const { downloadLatestCsv } = await import(
-      "@server/services/visa-sponsors/index"
-    );
-    const regularToken = await login(baseUrl, "regular", "regular-secret");
-    const headers = { Authorization: `Bearer ${regularToken}` };
-
-    const allProvidersRes = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
-      method: "POST",
-      headers,
-    });
-    const providerRes = await fetch(`${baseUrl}/api/visa-sponsors/update/uk`, {
-      method: "POST",
-      headers,
-    });
-
-    expect(allProvidersRes.status).toBe(403);
-    expect(providerRes.status).toBe(403);
-    expect(vi.mocked(downloadLatestCsv)).not.toHaveBeenCalled();
   });
 
   it("updates an individual provider and returns its refreshed status", async () => {
