@@ -1,6 +1,7 @@
 import {
   AppError,
   badRequest,
+  forbidden,
   serviceUnavailable,
   statusToCode,
   unauthorized,
@@ -8,7 +9,7 @@ import {
 } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
-import { getRequestId } from "@infra/request-context";
+import { getRequestId, isSystemAdmin } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
@@ -53,6 +54,12 @@ const RXRESUME_SAVE_VALIDATION_KEYS: Array<keyof UpdateSettingsInput> = [
   "rxresumeUrl",
   "rxresumeApiKey",
 ];
+
+function requireSystemAdmin(res: Response): boolean {
+  if (isSystemAdmin()) return true;
+  fail(res, forbidden("System admin access is required"));
+  return false;
+}
 
 function hasInputKey<K extends keyof UpdateSettingsInput>(
   input: UpdateSettingsInput,
@@ -450,6 +457,8 @@ settingsRouter.get(
 settingsRouter.post(
   "/codex-auth/start",
   asyncRoute(async (req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
+
     if (isDemoMode()) {
       fail(
         res,
@@ -483,6 +492,8 @@ settingsRouter.post(
 settingsRouter.post(
   "/codex-auth/disconnect",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
+
     if (isDemoMode()) {
       return sendDemoBlocked(
         res,
