@@ -59,6 +59,7 @@ vi.mock("../api", () => ({
   getJobStageEvents: vi.fn(),
   transitionJobStage: vi.fn(),
   updateJobStageEvent: vi.fn(),
+  getAuthScopedStorageKey: (key: string) => key,
 }));
 
 vi.mock("@/client/lib/celebrate", () => ({
@@ -158,6 +159,7 @@ const makeEvent = (overrides: Partial<StageEvent>): StageEvent => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
 
   vi.mocked(api.getJobs).mockResolvedValue({
     jobs: [makeJob({})],
@@ -189,7 +191,7 @@ describe("InProgressBoardPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["in_progress"],
+        statuses: ["applied", "in_progress"],
         view: "list",
       });
     });
@@ -207,6 +209,78 @@ describe("InProgressBoardPage", () => {
     );
 
     expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
+  });
+
+  it("keeps an applied job with no stage events in the Applied lane, not Recruiter Screen (#714)", async () => {
+    vi.mocked(api.getJobs).mockResolvedValue({
+      jobs: [makeJob({ status: "applied" })],
+      total: 1,
+      byStatus: {
+        discovered: 0,
+        processing: 0,
+        ready: 0,
+        applied: 1,
+        in_progress: 0,
+        skipped: 0,
+        expired: 0,
+      },
+      revision: "r1",
+    } as Awaited<ReturnType<typeof api.getJobs>>);
+    vi.mocked(api.getJobStageEvents).mockResolvedValue([]);
+
+    render(
+      <MemoryRouter>
+        <InProgressBoardPage />
+      </MemoryRouter>,
+    );
+
+    const appliedLane = await screen.findByRole("region", {
+      name: "Applied lane",
+    });
+    expect(
+      within(appliedLane).getByText("Backend Engineer"),
+    ).toBeInTheDocument();
+
+    const recruiterScreenLane = screen.getByRole("region", {
+      name: "Recruiter Screen lane",
+    });
+    expect(
+      within(recruiterScreenLane).queryByText("Backend Engineer"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("collapses and expands the Applied lane, persisting the preference", async () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <InProgressBoardPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("region", { name: "Applied lane" });
+    fireEvent.click(
+      screen.getByRole("button", { name: /collapse applied lane/i }),
+    );
+
+    const collapsedAppliedLane = screen.getByRole("region", {
+      name: "Applied lane",
+    });
+    expect(
+      within(collapsedAppliedLane).queryByText(
+        "Drop a card here or log a stage.",
+      ),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <InProgressBoardPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("region", { name: "Applied lane" });
+    expect(
+      screen.getByRole("button", { name: /expand applied lane/i }),
+    ).toBeInTheDocument();
   });
 
   it("transitions a job stage when dropped into another lane", async () => {

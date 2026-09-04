@@ -55,7 +55,6 @@ describe("orchestrator utils", () => {
     expect(getJobCounts(jobs)).toEqual({
       ready: 2,
       discovered: 2,
-      applied: 1,
       all: 4,
     });
   });

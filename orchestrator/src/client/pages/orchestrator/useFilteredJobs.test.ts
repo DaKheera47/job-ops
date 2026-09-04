@@ -91,7 +91,7 @@ describe("useFilteredJobs", () => {
     expect(result.current.map((job) => job.id)).toEqual(["match"]);
   });
 
-  it("filters applied jobs by applied date", () => {
+  it("filters jobs by applied date", () => {
     const jobs: Job[] = [
       {
         ...baseJob,
@@ -111,7 +111,7 @@ describe("useFilteredJobs", () => {
       useFilteredJobs(
         jobs,
         makeFilters({
-          activeTab: "applied",
+          activeTab: "all",
           dateFilter: {
             dimensions: ["applied"],
             startDate: "2026-04-01",

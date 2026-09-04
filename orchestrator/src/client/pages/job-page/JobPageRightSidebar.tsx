@@ -44,7 +44,6 @@ type JobPageRightSidebarProps = {
   pdfDownloadLabel: string;
   onStartTailoring: () => void;
   onMarkApplied: () => void;
-  onMoveToInProgress: () => void;
   onOpenLogEvent: () => void;
   onEditTailoring: () => void;
   onViewPdf: () => void;
@@ -76,7 +75,6 @@ export const JobPageRightSidebar: React.FC<JobPageRightSidebarProps> = ({
   pdfDownloadLabel,
   onStartTailoring,
   onMarkApplied,
-  onMoveToInProgress,
   onOpenLogEvent,
   onEditTailoring,
   onViewPdf,
@@ -136,20 +134,7 @@ export const JobPageRightSidebar: React.FC<JobPageRightSidebarProps> = ({
           </Button>
         )}
 
-        {isApplied && (
-          <Button
-            size="sm"
-            className="w-full justify-start"
-            variant="outline"
-            onClick={onMoveToInProgress}
-            disabled={isBusy}
-          >
-            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-            Move to In Progress
-          </Button>
-        )}
-
-        {isInProgress && (
+        {(isApplied || isInProgress) && (
           <Button
             size="sm"
             className="w-full justify-start"

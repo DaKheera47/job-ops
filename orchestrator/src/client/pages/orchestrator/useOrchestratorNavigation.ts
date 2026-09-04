@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { type FilterTab, tabs } from "./constants";
 
-const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
+const validTabs: FilterTab[] = ["ready", "discovered", "all"];
 
 const commandSelectionFilterKeys = [
   "source",
@@ -52,7 +52,7 @@ export function useOrchestratorNavigation({
   const selectedJobId = jobId || null;
 
   useEffect(() => {
-    if (tab === "in_progress") {
+    if (tab === "in_progress" || tab === "applied") {
       navigate("/applications/in-progress", { replace: true });
       return;
     }

@@ -11,7 +11,13 @@ import {
   type StageEvent,
 } from "@shared/types.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownAZ, Columns3, Plus } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  Plus,
+} from "lucide-react";
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,14 +39,13 @@ import {
 import { cn } from "@/lib/utils";
 import * as api from "../api";
 import { InProgressBoardCard } from "./InProgressBoardCard";
+import { IN_PROGRESS_BOARD_APPLIED_COLLAPSED_STORAGE_KEY } from "./orchestrator/constants";
 
 type BoardCard = {
   job: JobListItem;
   stage: ApplicationStage;
   latestEventAt: number | null;
 };
-
-type BoardStage = Exclude<ApplicationStage, "applied">;
 
 const sortByRecent = (a: BoardCard, b: BoardCard) => {
   if (a.latestEventAt != null && b.latestEventAt != null) {
@@ -57,12 +62,13 @@ const sortByTitle = (a: BoardCard, b: BoardCard) =>
 const sortByCompany = (a: BoardCard, b: BoardCard) =>
   a.job.employer.localeCompare(b.job.employer);
 
-const BOARD_STAGES = APPLICATION_STAGES.filter(
-  (stage) => stage !== "applied",
-) as BoardStage[];
+const BOARD_STAGES = APPLICATION_STAGES;
 
-const toBoardStage = (stage: ApplicationStage): BoardStage =>
-  stage === "applied" ? "recruiter_screen" : stage;
+const getAppliedCollapsedStorageKey = () =>
+  api.getAuthScopedStorageKey(IN_PROGRESS_BOARD_APPLIED_COLLAPSED_STORAGE_KEY);
+
+const readAppliedCollapsed = () =>
+  localStorage.getItem(getAppliedCollapsedStorageKey()) === "1";
 
 const getCardLeftAccentClass = (stage: ApplicationStage) => {
   if (stage === "technical_interview") {
@@ -110,12 +116,21 @@ export const InProgressBoardPage: React.FC = () => {
     job: JobListItem;
     stage: ApplicationStage;
   } | null>(null);
+  const [isAppliedCollapsed, setIsAppliedCollapsed] =
+    React.useState(readAppliedCollapsed);
+
+  React.useEffect(() => {
+    localStorage.setItem(
+      getAppliedCollapsedStorageKey(),
+      isAppliedCollapsed ? "1" : "0",
+    );
+  }, [isAppliedCollapsed]);
 
   const boardQuery = useQuery({
     queryKey: queryKeys.jobs.inProgressBoard(),
     queryFn: async () => {
       const response = await api.getJobs({
-        statuses: ["in_progress"],
+        statuses: ["applied", "in_progress"],
         view: "list",
       });
 
@@ -172,7 +187,8 @@ export const InProgressBoardPage: React.FC = () => {
           ? sortByCompany
           : sortByRecent;
 
-    const grouped: Record<BoardStage, BoardCard[]> = {
+    const grouped: Record<ApplicationStage, BoardCard[]> = {
+      applied: [],
       recruiter_screen: [],
       assessment: [],
       hiring_manager_screen: [],
@@ -183,7 +199,7 @@ export const InProgressBoardPage: React.FC = () => {
     };
 
     for (const card of cards) {
-      grouped[toBoardStage(card.stage)].push(card);
+      grouped[card.stage].push(card);
     }
 
     for (const stage of BOARD_STAGES) {
@@ -315,6 +331,8 @@ export const InProgressBoardPage: React.FC = () => {
             <div className="flex h-full min-w-max items-stretch gap-4">
               {BOARD_STAGES.map((stage) => {
                 const laneCards = lanes[stage];
+                const isCollapsedApplied =
+                  stage === "applied" && isAppliedCollapsed;
                 return (
                   <section
                     key={stage}
@@ -334,17 +352,48 @@ export const InProgressBoardPage: React.FC = () => {
                       }
                     }}
                     className={cn(
-                      "flex h-full w-[320px] flex-col rounded-xl border border-border/70 bg-muted/30 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.8)] transition-colors",
+                      "flex h-full flex-col rounded-xl border border-border/70 bg-muted/30 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.8)] transition-colors",
+                      isCollapsedApplied ? "w-11" : "w-[320px]",
                       dropTargetStage === stage &&
                         "border-sky-400/70 bg-sky-500/15",
                     )}
                   >
                     <header
-                      className={
-                        "flex items-center justify-between border-b border-border/60 px-3 py-2.5"
-                      }
+                      className={cn(
+                        "flex items-center border-b border-border/60 px-3 py-2.5",
+                        isCollapsedApplied
+                          ? "flex-col gap-2"
+                          : "justify-between",
+                      )}
                     >
-                      <h2 className="text-xs font-semibold tracking-[0.03em] text-foreground/90 uppercase">
+                      {stage === "applied" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 text-muted-foreground"
+                          aria-label={
+                            isAppliedCollapsed
+                              ? "Expand Applied lane"
+                              : "Collapse Applied lane"
+                          }
+                          onClick={() =>
+                            setIsAppliedCollapsed((collapsed) => !collapsed)
+                          }
+                        >
+                          {isAppliedCollapsed ? (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      )}
+                      <h2
+                        className={cn(
+                          "text-xs font-semibold tracking-[0.03em] text-foreground/90 uppercase",
+                          isCollapsedApplied && "[writing-mode:vertical-rl]",
+                        )}
+                      >
                         {STAGE_LABELS[stage]}
                       </h2>
                       <Badge
@@ -355,47 +404,54 @@ export const InProgressBoardPage: React.FC = () => {
                       </Badge>
                     </header>
 
-                    <div
-                      className={cn(
-                        "min-h-0 flex-1 space-y-2 p-2.5 [scrollbar-gutter:stable]",
-                        dragging ? "overflow-hidden" : "overflow-y-auto",
-                      )}
-                    >
-                      {laneCards.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-border/35 bg-background/20 px-2.5 py-2 text-[11px] text-muted-foreground/80">
-                          Drop a card here or log a stage.
-                        </div>
-                      ) : (
-                        laneCards.map(({ job, latestEventAt, stage }) => (
-                          <InProgressBoardCard
-                            key={job.id}
-                            job={job}
-                            stage={stage}
-                            latestEventAt={latestEventAt}
-                            jobPageLinkState={jobPageLinkState}
-                            isMoving={movingJobId === job.id}
-                            cardClassName={getCardLeftAccentClass(stage)}
-                            onDragStart={(event) => {
-                              if (
-                                (event.target as HTMLElement).closest(
-                                  "[data-board-card-menu]",
-                                )
-                              ) {
-                                event.preventDefault();
-                                return;
+                    {isCollapsedApplied ? null : (
+                      <div
+                        className={cn(
+                          "min-h-0 flex-1 space-y-2 p-2.5 [scrollbar-gutter:stable]",
+                          dragging ? "overflow-hidden" : "overflow-y-auto",
+                        )}
+                      >
+                        {laneCards.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-border/35 bg-background/20 px-2.5 py-2 text-[11px] text-muted-foreground/80">
+                            Drop a card here or log a stage.
+                          </div>
+                        ) : (
+                          laneCards.map(({ job, latestEventAt, stage }) => (
+                            <InProgressBoardCard
+                              key={job.id}
+                              job={job}
+                              stage={stage}
+                              latestEventAt={latestEventAt}
+                              jobPageLinkState={jobPageLinkState}
+                              isMoving={movingJobId === job.id}
+                              cardClassName={getCardLeftAccentClass(stage)}
+                              onDragStart={(event) => {
+                                if (
+                                  (event.target as HTMLElement).closest(
+                                    "[data-board-card-menu]",
+                                  )
+                                ) {
+                                  event.preventDefault();
+                                  return;
+                                }
+                                setDragging({
+                                  jobId: job.id,
+                                  fromStage: stage,
+                                });
+                                event.dataTransfer.effectAllowed = "move";
+                              }}
+                              onDragEnd={() => {
+                                setDragging(null);
+                                setDropTargetStage(null);
+                              }}
+                              onLogEvent={() =>
+                                setLogEventTarget({ job, stage })
                               }
-                              setDragging({ jobId: job.id, fromStage: stage });
-                              event.dataTransfer.effectAllowed = "move";
-                            }}
-                            onDragEnd={() => {
-                              setDragging(null);
-                              setDropTargetStage(null);
-                            }}
-                            onLogEvent={() => setLogEventTarget({ job, stage })}
-                          />
-                        ))
-                      )}
-                    </div>
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
                   </section>
                 );
               })}

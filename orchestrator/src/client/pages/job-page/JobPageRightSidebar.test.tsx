@@ -56,7 +56,6 @@ function renderRightSidebar(overrides: Parameters<typeof createJob>[0] = {}) {
       pdfDownloadLabel="Download old PDF"
       onStartTailoring={noop}
       onMarkApplied={noop}
-      onMoveToInProgress={noop}
       onOpenLogEvent={noop}
       onEditTailoring={noop}
       onViewPdf={noop}

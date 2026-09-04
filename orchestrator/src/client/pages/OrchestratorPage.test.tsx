@@ -587,6 +587,26 @@ describe("OrchestratorPage", () => {
     expect(screen.getByTestId("location").textContent).toContain("/discovered");
   });
 
+  it("redirects the removed Applied tab to the In Progress board", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/applied"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("location").textContent).toBe(
+      "/applications/in-progress",
+    );
+  });
+
   it("requests pipeline cancellation when running", async () => {
     mockIsPipelineRunning = true;
     window.matchMedia = createMatchMedia(
@@ -1594,7 +1614,7 @@ describe("OrchestratorPage", () => {
       expect(locationText()).toContain("/discovered");
     });
 
-    pressKey("4");
+    pressKey("3");
     await waitFor(() => {
       expect(locationText()).toContain("/all");
     });
