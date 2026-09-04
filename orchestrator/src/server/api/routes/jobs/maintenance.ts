@@ -1,5 +1,6 @@
-import { badRequest, toAppError } from "@infra/errors";
+import { badRequest, forbidden, toAppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
+import { isSystemAdmin } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import * as jobsRepo from "@server/repositories/jobs";
 import type { JobStatus } from "@shared/types";
@@ -7,6 +8,12 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const jobsMaintenanceRouter = Router();
+
+function requireSystemAdmin(res: Response): boolean {
+  if (isSystemAdmin()) return true;
+  fail(res, forbidden("System admin access is required"));
+  return false;
+}
 
 const jobStatusParamSchema = z.enum([
   "discovered",
@@ -22,6 +29,8 @@ jobsMaintenanceRouter.delete(
   "/status/:status",
   async (req: Request, res: Response) => {
     try {
+      if (!requireSystemAdmin(res)) return;
+
       if (isDemoMode()) {
         return sendDemoBlocked(
           res,
@@ -55,6 +64,8 @@ jobsMaintenanceRouter.delete(
   "/score/:threshold",
   async (req: Request, res: Response) => {
     try {
+      if (!requireSystemAdmin(res)) return;
+
       if (isDemoMode()) {
         return sendDemoBlocked(
           res,

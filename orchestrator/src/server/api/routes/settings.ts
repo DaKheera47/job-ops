@@ -310,6 +310,8 @@ settingsRouter.get(
 settingsRouter.patch(
   "/",
   asyncRoute(async (req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
+
     if (isDemoMode()) {
       return sendDemoBlocked(
         res,
