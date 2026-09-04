@@ -18,6 +18,10 @@ services:
       - ./data:/app/data
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
+      # Persist Tectonic's LaTeX support-bundle cache. Without this, every
+      # container recreate re-downloads the support bundle on the first PDF
+      # render, which is slow and can fail with HTTP 429 rate-limiting.
+      - tectonic-cache:/root/.cache/Tectonic
     environment:
       # Server config
       - NODE_ENV=production
@@ -104,3 +108,4 @@ secrets:
 volumes:
   data:
   codex-home:
+  tectonic-cache:
