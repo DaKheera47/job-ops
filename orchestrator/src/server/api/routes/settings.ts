@@ -310,8 +310,6 @@ settingsRouter.get(
 settingsRouter.patch(
   "/",
   asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSystemAdmin(res)) return;
-
     if (isDemoMode()) {
       return sendDemoBlocked(
         res,
@@ -319,6 +317,8 @@ settingsRouter.patch(
         { route: "PATCH /api/settings" },
       );
     }
+
+    if (!requireSystemAdmin(res)) return;
 
     const input = updateSettingsSchema.parse(req.body);
     if (shouldValidateRxResumeOnSave(input)) {

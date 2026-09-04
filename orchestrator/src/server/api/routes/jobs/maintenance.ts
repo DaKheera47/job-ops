@@ -29,8 +29,6 @@ jobsMaintenanceRouter.delete(
   "/status/:status",
   async (req: Request, res: Response) => {
     try {
-      if (!requireSystemAdmin(res)) return;
-
       if (isDemoMode()) {
         return sendDemoBlocked(
           res,
@@ -41,6 +39,8 @@ jobsMaintenanceRouter.delete(
           },
         );
       }
+
+      if (!requireSystemAdmin(res)) return;
 
       const parseResult = jobStatusParamSchema.safeParse(req.params.status);
       if (!parseResult.success) {
@@ -64,8 +64,6 @@ jobsMaintenanceRouter.delete(
   "/score/:threshold",
   async (req: Request, res: Response) => {
     try {
-      if (!requireSystemAdmin(res)) return;
-
       if (isDemoMode()) {
         return sendDemoBlocked(
           res,
@@ -76,6 +74,8 @@ jobsMaintenanceRouter.delete(
           },
         );
       }
+
+      if (!requireSystemAdmin(res)) return;
 
       const threshold = parseInt(req.params.threshold, 10);
       if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
