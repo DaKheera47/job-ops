@@ -1,13 +1,15 @@
-import { unprocessableEntity } from "@infra/errors";
+import { forbidden, unprocessableEntity } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
 import { getJobOpsAppStatus } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
+import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
+import { isHostedLocalProvider } from "@server/services/llm/hosted-policy";
 import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
@@ -44,7 +46,7 @@ export type OnboardingModelActionInput = {
 };
 
 export type OnboardingProfileActionInput = {
-  country: string;
+  country?: string | null;
   cities: string[];
   workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
   requiresVisaSponsorship: boolean;
@@ -88,6 +90,7 @@ export async function validateLlm(options: {
   provider?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
+  const hostedMode = getJobOpsAppStatus().appMode === "hosted";
   const [storedApiKey, storedProvider, storedBaseUrl] = await Promise.all([
     getSetting("llmApiKey"),
     getSetting("llmProvider"),
@@ -95,7 +98,9 @@ export async function validateLlm(options: {
   ]);
 
   const normalizedProvider = normalizeLlmProviderValue(
-    options.provider?.trim() || storedProvider?.trim() || undefined,
+    options.provider?.trim() ||
+      storedProvider?.trim() ||
+      (hostedMode ? "openrouter" : undefined),
   );
   const shouldUseBaseUrl =
     normalizedProvider === "lmstudio" ||
@@ -107,16 +112,38 @@ export async function validateLlm(options: {
   const resolvedBaseUrl = shouldUseBaseUrl
     ? hasExplicitBaseUrlOverride
       ? options.baseUrl?.trim() ||
-        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        (hostedMode
+          ? undefined
+          : getOriginalEnvValue("LLM_BASE_URL")?.trim()) ||
         getDefaultValidationBaseUrl(normalizedProvider)
       : storedBaseUrl?.trim() ||
-        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        (hostedMode
+          ? undefined
+          : getOriginalEnvValue("LLM_BASE_URL")?.trim()) ||
         undefined
     : undefined;
+  const userBaseUrl = hasExplicitBaseUrlOverride
+    ? options.baseUrl?.trim()
+    : storedBaseUrl?.trim();
   const resolvedApiKey = resolveLlmApiKey({
     storedApiKey: options.apiKey ?? storedApiKey,
     provider: normalizedProvider,
+    allowEnvironmentCredentials: !hostedMode,
   });
+
+  const hasCustomUserBaseUrl =
+    Boolean(userBaseUrl) &&
+    userBaseUrl !== getDefaultValidationBaseUrl(normalizedProvider);
+  if (
+    hostedMode &&
+    (isHostedLocalProvider(normalizedProvider) || hasCustomUserBaseUrl)
+  ) {
+    return {
+      valid: false,
+      message:
+        "Hosted LLM providers must use supported public provider endpoints.",
+    };
+  }
 
   logger.debug("LLM onboarding validation resolved config", {
     provider: normalizedProvider ?? null,
@@ -129,6 +156,8 @@ export async function validateLlm(options: {
     apiKey: resolvedApiKey,
     provider: normalizedProvider,
     baseUrl: resolvedBaseUrl,
+    allowEnvironmentCredentials: !hostedMode,
+    allowCliProviders: !hostedMode,
   });
   return llm.validateCredentials();
 }
@@ -575,9 +604,10 @@ async function migrateLegacyOnboardingState(args: {
 
 export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
   const appStatus = getJobOpsAppStatus();
-  const userEditableLlmSettings =
-    appStatus.capabilities.userEditableLlmSettings;
   const hostedMode = appStatus.appMode === "hosted";
+  const userEditableLlmSettings = hostedMode
+    ? (await getCurrentAccountEntitlements()).userEditableLlmSettings
+    : appStatus.capabilities.userEditableLlmSettings;
 
   if (isDemoMode()) {
     const requirements: OnboardingRequirement[] = [
@@ -681,6 +711,12 @@ async function persistOnboardingSettings(
 export async function saveOnboardingModelAction(
   input: OnboardingModelActionInput,
 ): Promise<OnboardingStatusResponse> {
+  if (
+    getJobOpsAppStatus().appMode === "hosted" &&
+    !(await getCurrentAccountEntitlements()).userEditableLlmSettings
+  ) {
+    throw forbidden("This hosted account uses the included Pro AI provider.");
+  }
   const provider = normalizeLlmProviderValue(input.provider);
   const [storedProvider, storedModel] = await Promise.all([
     getSetting("llmProvider"),
@@ -750,7 +786,7 @@ export async function saveOnboardingProfileAction(
     {
       searchCities: input.cities.join("|"),
       workplaceTypes: input.workplaceTypes,
-      jobspyCountryIndeed: input.country.trim(),
+      jobspyCountryIndeed: input.country?.trim() || null,
       showSponsorInfo: input.requiresVisaSponsorship,
       onboardingProfileCompleted: true,
     },

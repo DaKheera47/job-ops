@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { getSetting } from "@server/repositories/settings";
 import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
 import { safePdfFileName } from "@shared/filename-sanitizer";
@@ -413,6 +414,19 @@ export async function generatePdf(
 }
 
 export async function generateDesignResumePdf(options?: {
+  requestOrigin?: string | null;
+}): Promise<DesignResumePdfResponse> {
+  if (getJobOpsAppConfig().appMode !== "hosted") {
+    return generateDesignResumePdfImpl(options);
+  }
+  const { withHostedUsageReservation } = await import("./hosted-usage");
+  return withHostedUsageReservation({ action: "pdf_export" }, async () => ({
+    result: await generateDesignResumePdfImpl(options),
+    usedUnits: 1,
+  }));
+}
+
+async function generateDesignResumePdfImpl(options?: {
   requestOrigin?: string | null;
 }): Promise<DesignResumePdfResponse> {
   const renderer = await resolvePdfRenderer();

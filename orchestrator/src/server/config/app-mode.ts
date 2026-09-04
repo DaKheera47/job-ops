@@ -5,6 +5,7 @@ import type {
 } from "@shared/types";
 
 const APP_MODE_ENV_KEY = "JOBOPS_APP_MODE";
+const LEGACY_APP_MODE_ENV_KEY = "JOBOPS_MODE";
 const HOSTED_TENANT_ID_ENV_KEY = "JOBOPS_HOSTED_TENANT_ID";
 const HOSTED_SIGNUPS_ENV_KEY = "JOBOPS_HOSTED_SIGNUPS_ENABLED";
 const HOSTED_PLATFORM_LLM_ENV_KEY = "JOBOPS_HOSTED_PLATFORM_LLM_ENABLED";
@@ -24,7 +25,10 @@ function readTrimmedEnv(env: EnvSource, key: string): string {
 }
 
 function parseAppMode(env: EnvSource): JobOpsAppMode {
-  const rawMode = readTrimmedEnv(env, APP_MODE_ENV_KEY).toLowerCase();
+  const rawMode = (
+    readTrimmedEnv(env, APP_MODE_ENV_KEY) ||
+    readTrimmedEnv(env, LEGACY_APP_MODE_ENV_KEY)
+  ).toLowerCase();
   if (!rawMode) return "local";
   if (rawMode === "local" || rawMode === "hosted") return rawMode;
   throw new Error(

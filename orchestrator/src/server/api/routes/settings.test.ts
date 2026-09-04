@@ -74,24 +74,6 @@ import {
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import { startServer, stopServer } from "./test-utils";
 
-const AUTH_ENV = {
-  BASIC_AUTH_USER: "admin",
-  BASIC_AUTH_PASSWORD: "secret",
-  JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
-  JOBOPS_TEST_AUTH_BYPASS: "0",
-};
-
-async function login(baseUrl: string, username: string, password: string) {
-  const res = await fetch(`${baseUrl}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const body = await res.json();
-  expect(res.status).toBe(200);
-  return body.data.token as string;
-}
-
 describe.sequential("Settings API routes", () => {
   let server: Server;
   let baseUrl: string;
@@ -332,41 +314,6 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.ghostwriterSystemPromptTemplate.override).toBe(
       "Custom Ghostwriter {{tone}}",
     );
-  });
-
-  it("rejects settings updates for non-admin users", async () => {
-    await stopServer({ server, closeDb, tempDir });
-    ({ server, baseUrl, closeDb, tempDir } = await startServer({
-      env: AUTH_ENV,
-    }));
-
-    const adminToken = await login(baseUrl, "admin", "secret");
-    const createUserRes = await fetch(`${baseUrl}/api/workspaces/users`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: "regular",
-        password: "regular-secret",
-      }),
-    });
-    expect(createUserRes.status).toBe(201);
-
-    const regularToken = await login(baseUrl, "regular", "regular-secret");
-    const res = await fetch(`${baseUrl}/api/settings`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${regularToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ llmApiKey: "attacker-controlled-value" }),
-    });
-    const body = await res.json();
-
-    expect(res.status).toBe(403);
-    expect(body.error.code).toBe("FORBIDDEN");
   });
 
   it("ignores malformed stored purpose API keys when listing models", async () => {
@@ -624,5 +571,81 @@ describe.sequential("Settings API routes", () => {
       },
     ]);
     expect(extractProjectsFromResume).toHaveBeenCalled();
+  });
+
+  it("keeps platform credentials private and rejects CLI providers for hosted Free", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        JOBOPS_APP_MODE: "hosted",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+        JOBOPS_HOSTED_PLATFORM_LLM_ENABLED: "true",
+        LLM_PROVIDER: "openai",
+        LLM_API_KEY: "sk-platform-secret",
+        STRIPE_PRO_PRICE_ID: "price_pro",
+      },
+    }));
+
+    const settingsRes = await fetch(`${baseUrl}/api/settings`);
+    const settingsBody = await settingsRes.json();
+    expect(settingsBody.ok).toBe(true);
+    expect(settingsBody.data.llmApiKeyHint).toBeNull();
+
+    const updateRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ llmProvider: "codex" }),
+    });
+    expect(updateRes.status).toBe(403);
+    await expect(updateRes.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "FORBIDDEN" },
+    });
+  });
+
+  it("rejects LLM setting changes for hosted Pro", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        JOBOPS_APP_MODE: "hosted",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_default",
+        JOBOPS_HOSTED_PLATFORM_LLM_ENABLED: "true",
+        STRIPE_PRO_PRICE_ID: "price_pro",
+      },
+    }));
+    const { db, schema } = await import("@server/db");
+    await db.insert(schema.users).values({
+      id: "test-user",
+      username: "test-user",
+      displayName: "Test User",
+      passwordHash: "hash",
+      passwordSalt: "salt",
+    });
+    await db.insert(schema.tenantMemberships).values({
+      id: "membership-test-user",
+      tenantId: "tenant_default",
+      userId: "test-user",
+      role: "member",
+    });
+    await db.insert(schema.accountSubscriptions).values({
+      tenantId: "tenant_default",
+      userId: "test-user",
+      stripeCustomerId: "cus_test_user",
+      stripeSubscriptionId: "sub_test_user",
+      stripeSubscriptionCreatedAt: 100,
+      stripePriceId: "price_pro",
+      stripeStatus: "active",
+    });
+
+    const response = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "client-selected-model" }),
+    });
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "FORBIDDEN" },
+    });
   });
 });

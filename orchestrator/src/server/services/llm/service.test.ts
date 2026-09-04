@@ -25,6 +25,7 @@ function completionResponse(content: string): Response {
 
 describe("LlmService provider normalization", () => {
   afterEach(() => {
+    delete process.env.LLM_BASE_URL;
     vi.restoreAllMocks();
   });
 
@@ -36,6 +37,36 @@ describe("LlmService provider normalization", () => {
 
     expect(llm.getProvider()).toBe("lmstudio");
     expect(llm.getBaseUrl()).toBe("http://localhost:1234");
+  });
+
+  it("does not inherit the deployment base URL when environment credentials are disabled", () => {
+    process.env.LLM_BASE_URL = "https://internal.jobops.example/llm";
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "user-key",
+      allowEnvironmentCredentials: false,
+    });
+
+    expect(llm.getBaseUrl()).toBe("https://openrouter.ai");
+  });
+
+  it("defaults CLI providers off with environment credentials disabled", async () => {
+    const llm = new LlmService({
+      provider: "codex",
+      allowEnvironmentCredentials: false,
+    });
+
+    const result = await llm.callJson({
+      model: "codex-mini",
+      messages: [{ role: "user", content: "test" }],
+      jsonSchema: TEST_SCHEMA,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "CLI LLM providers are unavailable for this hosted account",
+    });
   });
 
   it("uses the dedicated provider for non-local OpenAI-compatible endpoints", () => {

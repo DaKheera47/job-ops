@@ -5,6 +5,10 @@ export const queryKeys = {
     all: ["app"] as const,
     status: () => [...queryKeys.app.all, "status"] as const,
   },
+  billing: {
+    all: ["billing"] as const,
+    status: () => [...queryKeys.billing.all, "status"] as const,
+  },
   designResume: {
     all: ["design-resume"] as const,
     current: () => [...queryKeys.designResume.all, "current"] as const,

@@ -175,7 +175,14 @@ export function createAuthGuard() {
     try {
       const payload = await verifyToken(token);
       const user = await usersRepo.getUserById(payload.userId);
-      if (!user || user.isDisabled || user.workspaceId !== payload.tenantId) {
+      const appConfig = getJobOpsAppConfig();
+      if (
+        !user ||
+        user.isDisabled ||
+        user.workspaceId !== payload.tenantId ||
+        (appConfig.appMode === "hosted" &&
+          user.workspaceId !== appConfig.hostedTenantId)
+      ) {
         return null;
       }
       return {
@@ -197,6 +204,12 @@ export function createAuthGuard() {
     if (normalizedPath === "/api/demo/info") return true;
     if (normalizedPath === "/api/app/status") return true;
     if (normalizedPath === "/api/profile/status") return true;
+    if (
+      normalizedMethod === "POST" &&
+      normalizedPath === "/api/billing/webhook" &&
+      getJobOpsAppConfig().appMode === "hosted"
+    )
+      return true;
     if (normalizedMethod === "POST" && normalizedPath === "/ojcp/mcp")
       return true;
     if (
@@ -398,6 +411,12 @@ export function createApp() {
     corsMiddleware(req, res, next);
   });
   app.use(requestContextMiddleware());
+  if (getJobOpsAppConfig().appMode === "hosted") {
+    app.use(
+      "/api/billing/webhook",
+      express.raw({ limit: "1mb", type: "application/json" }),
+    );
+  }
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
   app.use(
     "/api/design-resume/assets",

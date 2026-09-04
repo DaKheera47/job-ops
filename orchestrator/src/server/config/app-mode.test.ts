@@ -25,6 +25,15 @@ describe("hosted app-mode config", () => {
     );
   });
 
+  it("accepts JOBOPS_MODE as the hosted-mode alias", () => {
+    expect(
+      getJobOpsAppStatus({
+        JOBOPS_MODE: "hosted",
+        JOBOPS_HOSTED_TENANT_ID: "tenant_hosted",
+      }),
+    ).toMatchObject({ appMode: "hosted", hostedTenantConfigured: true });
+  });
+
   it("rejects an invalid app mode", () => {
     expect(() =>
       getJobOpsAppConfig({

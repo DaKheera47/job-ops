@@ -13,6 +13,7 @@ import {
   MAX_SEARCH_TERMS,
   normalizeSearchTerms,
 } from "@shared/utils/search-terms";
+import { withHostedUsageReservation } from "./hosted-usage";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { getProfile } from "./profile";
 
@@ -154,6 +155,13 @@ function buildPrompt(context: SearchTermContext): string {
 }
 
 export async function suggestOnboardingSearchTerms(): Promise<SearchTermsSuggestionResponse> {
+  return withHostedUsageReservation({ action: "job_search" }, async () => ({
+    result: await suggestOnboardingSearchTermsImpl(),
+    usedUnits: 1,
+  }));
+}
+
+async function suggestOnboardingSearchTermsImpl(): Promise<SearchTermsSuggestionResponse> {
   let profile: ResumeProfile;
 
   try {

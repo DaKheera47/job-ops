@@ -19,6 +19,7 @@ import {
   validateAndMaybePersistRxResumeMode,
 } from "@client/lib/rxresume-config";
 import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
+import { BillingSettingsSection } from "@client/pages/settings/components/BillingSettingsSection";
 import { ChatSettingsSection } from "@client/pages/settings/components/ChatSettingsSection";
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection";
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection";
@@ -127,6 +128,7 @@ const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
 };
 
 type SettingsSectionId =
+  | "billing"
   | "model"
   | "chat"
   | "prompt-templates"
@@ -140,6 +142,7 @@ type SettingsSectionId =
   | "danger-zone";
 
 type SettingsGroupId =
+  | "account"
   | "ai"
   | "scoring"
   | "integrations"
@@ -162,6 +165,18 @@ type SettingsNavGroup = {
 };
 
 const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
+  {
+    id: "account",
+    label: "Account",
+    items: [
+      {
+        id: "billing",
+        label: "Plan & Billing",
+        description: "Your hosted plan, included AI, and Stripe subscription.",
+        searchTerms: ["plan", "billing", "subscription", "stripe", "pro"],
+      },
+    ],
+  },
   {
     id: "ai",
     label: "AI",
@@ -289,6 +304,7 @@ const SECTION_FIELD_MAP: Record<
   SettingsSectionId,
   Array<keyof UpdateSettingsInput>
 > = {
+  billing: [],
   model: [
     "llmProvider",
     "llmBaseUrl",
@@ -771,6 +787,7 @@ export const SettingsPage: React.FC = () => {
 
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isBillingBusy, setIsBillingBusy] = useState(false);
   const [rxresumeValidationStatus, setRxresumeValidationStatus] =
     useState<RxResumeValidationBadgeState>(
       EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
@@ -826,6 +843,12 @@ export const SettingsPage: React.FC = () => {
     queryKey: queryKeys.app.status(),
     queryFn: api.getAppStatus,
   });
+  const isHostedMode = appStatusQuery.data?.appMode === "hosted";
+  const billingQuery = useQuery({
+    queryKey: queryKeys.billing.status(),
+    queryFn: api.getBillingStatus,
+    enabled: isHostedMode,
+  });
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups.list(),
     queryFn: api.getBackups,
@@ -835,10 +858,23 @@ export const SettingsPage: React.FC = () => {
   const backups = backupsQuery.data?.backups ?? [];
   const nextScheduled = backupsQuery.data?.nextScheduled ?? null;
   const isLoadingBackups = backupsQuery.isLoading;
-  const canEditLlmSettings =
-    appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true;
+  const canEditLlmSettings = isHostedMode
+    ? (billingQuery.data?.userEditableLlmSettings ?? false)
+    : (appStatusQuery.data?.capabilities.userEditableLlmSettings ?? true);
   useQueryErrorToast(appStatusQuery.error, "Failed to load app status");
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
+  useQueryErrorToast(billingQuery.error, "Failed to load billing status");
+
+  const openStripe = async (createSession: () => Promise<{ url: string }>) => {
+    setIsBillingBusy(true);
+    try {
+      const { url } = await createSession();
+      window.location.assign(url);
+    } catch (error) {
+      showErrorToast(error, "Failed to open Stripe");
+      setIsBillingBusy(false);
+    }
+  };
 
   const resumeProjectsValue = useWatch({
     control,
@@ -1424,10 +1460,12 @@ export const SettingsPage: React.FC = () => {
       SETTINGS_NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter(
-          (item) => canEditLlmSettings || item.id !== "model",
+          (item) =>
+            (item.id !== "billing" || isHostedMode) &&
+            (canEditLlmSettings || item.id !== "model"),
         ),
       })).filter((group) => group.items.length > 0),
-    [canEditLlmSettings],
+    [canEditLlmSettings, isHostedMode],
   );
 
   const filteredNavGroups = useMemo(
@@ -1504,6 +1542,16 @@ export const SettingsPage: React.FC = () => {
     }
 
     switch (sectionId) {
+      case "billing":
+        return billingQuery.data
+          ? {
+              label: billingQuery.data.plan === "pro" ? "Pro" : "Free",
+              variant:
+                billingQuery.data.plan === "pro"
+                  ? ("outline" as const)
+                  : ("secondary" as const),
+            }
+          : null;
       case "model":
         return model.llmProvider
           ? { label: "Configured", variant: "outline" as const }
@@ -1564,6 +1612,17 @@ export const SettingsPage: React.FC = () => {
 
   let activeSectionContent: React.ReactNode;
   switch (activeSection) {
+    case "billing":
+      activeSectionContent = (
+        <BillingSettingsSection
+          status={billingQuery.data}
+          isLoading={billingQuery.isLoading}
+          isBusy={isBillingBusy}
+          onUpgrade={() => void openStripe(api.createBillingCheckout)}
+          onManage={() => void openStripe(api.createBillingPortal)}
+        />
+      );
+      break;
     case "model":
       activeSectionContent = (
         <ModelSettingsSection
@@ -1739,36 +1798,38 @@ export const SettingsPage: React.FC = () => {
                 : null
             }
             actions={
-              <>
-                {activeSectionIsDirty ? (
+              activeSection === "billing" ? null : (
+                <>
+                  {activeSectionIsDirty ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      onClick={handleDiscardChanges}
+                      disabled={isLoading || isSaving || !isDirty}
+                    >
+                      Discard changes
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
                     className="whitespace-nowrap"
-                    onClick={handleDiscardChanges}
-                    disabled={isLoading || isSaving || !isDirty}
+                    onClick={handleReset}
+                    disabled={isLoading || isSaving || !settings}
                   >
-                    Discard changes
+                    Reset to defaults
                   </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="whitespace-nowrap"
-                  onClick={handleReset}
-                  disabled={isLoading || isSaving || !settings}
-                >
-                  Reset to defaults
-                </Button>
-                <Button
-                  type="button"
-                  className="whitespace-nowrap"
-                  onClick={handleSubmit(onSave)}
-                  disabled={isLoading || isSaving || !canSave}
-                >
-                  {isSaving ? "Saving..." : "Save changes"}
-                </Button>
-              </>
+                  <Button
+                    type="button"
+                    className="whitespace-nowrap"
+                    onClick={handleSubmit(onSave)}
+                    disabled={isLoading || isSaving || !canSave}
+                  >
+                    {isSaving ? "Saving..." : "Save changes"}
+                  </Button>
+                </>
+              )
             }
             footer={
               Object.keys(errors).length > 0 ? (

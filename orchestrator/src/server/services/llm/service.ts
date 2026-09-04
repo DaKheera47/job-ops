@@ -41,6 +41,7 @@ export class LlmService {
   private readonly provider: LlmProvider;
   private readonly baseUrl: string;
   private readonly apiKey: string | null;
+  private readonly allowCliProviders: boolean;
   private readonly strategy: (typeof strategies)[LlmProvider];
   private readonly codexClient: CodexClient;
   private readonly geminiCliClient: GeminiCliClient;
@@ -49,7 +50,9 @@ export class LlmService {
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
       toStringOrNull(options.baseUrl) ||
-      toStringOrNull(getOriginalEnvValue("LLM_BASE_URL")) ||
+      (options.allowEnvironmentCredentials === false
+        ? null
+        : toStringOrNull(getOriginalEnvValue("LLM_BASE_URL"))) ||
       null;
     const resolvedProvider = normalizeProvider(
       options.provider ?? getOriginalEnvValue("LLM_PROVIDER") ?? null,
@@ -64,6 +67,7 @@ export class LlmService {
     const apiKey = resolveLlmApiKey({
       storedApiKey: options.apiKey,
       provider: resolvedProvider,
+      allowEnvironmentCredentials: options.allowEnvironmentCredentials,
     });
 
     if (
@@ -81,6 +85,9 @@ export class LlmService {
     this.provider = resolvedProvider;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.allowCliProviders =
+      options.allowCliProviders ??
+      options.allowEnvironmentCredentials !== false;
     this.strategy = strategy;
     this.codexClient = new CodexClient();
     this.geminiCliClient = new GeminiCliClient();
@@ -88,6 +95,12 @@ export class LlmService {
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      return {
+        success: false,
+        error: "CLI LLM providers are unavailable for this hosted account",
+      };
+    }
     if (this.provider === "codex") {
       return this.callCodexJson(options);
     }
@@ -153,6 +166,12 @@ export class LlmService {
   }
 
   async validateCredentials(): Promise<LlmValidationResult> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      return {
+        valid: false,
+        message: "CLI LLM providers are unavailable for this hosted account.",
+      };
+    }
     if (this.provider === "codex") {
       return this.codexClient.validateCredentials();
     }
@@ -222,6 +241,11 @@ export class LlmService {
   }
 
   async listModels(): Promise<string[]> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      throw new Error(
+        "CLI LLM providers are unavailable for this hosted account.",
+      );
+    }
     if (this.provider === "codex") {
       return this.codexClient.listModels();
     }
@@ -721,6 +745,14 @@ function providerUsesConfiguredBaseUrl(provider: LlmProvider): boolean {
     provider === "ollama" ||
     provider === "openai_compatible" ||
     provider === "glm"
+  );
+}
+
+function isCliProvider(provider: LlmProvider): boolean {
+  return (
+    provider === "codex" ||
+    provider === "gemini_cli" ||
+    provider === "claude_cli"
   );
 }
 

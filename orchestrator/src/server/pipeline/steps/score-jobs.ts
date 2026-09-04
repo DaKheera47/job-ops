@@ -29,6 +29,7 @@ export async function scoreJobsStep(args: {
   scoringInstructions?: string;
   visaSponsorCountryKey?: string | null;
   shouldCancel?: () => boolean;
+  hostedUsageReserved?: boolean;
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
   logger.info("Running scoring step");
   const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
@@ -89,9 +90,17 @@ export async function scoreJobsStep(args: {
         return;
       }
 
-      const scoringResultPromise = scoringInstructions
-        ? scoreJobSuitability(job, args.profile, { scoringInstructions })
-        : scoreJobSuitability(job, args.profile);
+      const scoringResultPromise = args.hostedUsageReserved
+        ? scoreJobSuitability(
+            job,
+            args.profile,
+            scoringInstructions
+              ? { scoringInstructions, skipHostedUsage: true }
+              : { skipHostedUsage: true },
+          )
+        : scoringInstructions
+          ? scoreJobSuitability(job, args.profile, { scoringInstructions })
+          : scoreJobSuitability(job, args.profile);
       let scoringResult: Awaited<typeof scoringResultPromise>;
       try {
         scoringResult = await scoringResultPromise;

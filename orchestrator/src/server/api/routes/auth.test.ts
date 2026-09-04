@@ -184,6 +184,19 @@ describe.sequential("Auth routes", () => {
         workspaceId: "tenant_default",
         isSystemAdmin: false,
       });
+
+      const billingRes = await fetch(`${baseUrl}/api/billing/status`, {
+        headers: { Authorization: `Bearer ${signupBody.data.token}` },
+      });
+      expect(billingRes.status).toBe(200);
+      await expect(billingRes.json()).resolves.toMatchObject({
+        ok: true,
+        data: {
+          plan: "free",
+          platformAiIncluded: false,
+          subscription: null,
+        },
+      });
     });
 
     it("returns 409 for duplicate usernames", async () => {

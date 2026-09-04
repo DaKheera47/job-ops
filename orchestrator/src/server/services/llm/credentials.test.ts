@@ -77,4 +77,24 @@ describe("resolveLlmApiKey", () => {
       }),
     ).toBe("sk-env");
   });
+
+  it("does not fall through to any environment key when disabled", async () => {
+    process.env.LLM_API_KEY = "sk-platform";
+    process.env.OPENROUTER_API_KEY = "sk-provider-platform";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "openrouter",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "openrouter",
+        storedApiKey: "sk-user",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("sk-user");
+  });
 });

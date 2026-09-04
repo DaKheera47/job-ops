@@ -7,6 +7,7 @@ import type {
   DesignResumeAiFieldValueType,
   DesignResumeJson,
 } from "@shared/types";
+import { withHostedUsageReservation } from "../hosted-usage";
 import type { JsonSchemaDefinition } from "../llm/types";
 import { createConfiguredLlmService, resolveLlmModel } from "../modelSelection";
 import {
@@ -221,6 +222,15 @@ async function buildPrompt(
 }
 
 export async function generateDesignResumeFieldSuggestion(
+  input: DesignResumeAiFieldSuggestionRequest,
+): Promise<DesignResumeAiFieldSuggestionResponse> {
+  return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+    result: await generateDesignResumeFieldSuggestionImpl(input),
+    usedUnits: 1,
+  }));
+}
+
+async function generateDesignResumeFieldSuggestionImpl(
   input: DesignResumeAiFieldSuggestionRequest,
 ): Promise<DesignResumeAiFieldSuggestionResponse> {
   if (!input.prompt.trim()) {

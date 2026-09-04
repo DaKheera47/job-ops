@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import type { ExtractorRegistry } from "@server/extractors/registry";
 import { getExtractorRegistry } from "@server/extractors/registry";
+import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import {
   createConfiguredLlmService,
   resolveLlmModel,
@@ -494,63 +495,74 @@ export async function planPipelineSearch(
 
   const resumeContext = await getResumeContext();
 
-  try {
-    const model = await resolveLlmModel("tailoring");
-    const llm = await createConfiguredLlmService("tailoring");
-    const result = await llm.callJson<SearchPlanModelResponse>({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: buildPrompt({
-            prompt: input.prompt,
-            currentConfig: input.currentConfig,
-            runtimeSources,
-            resumeContext,
-          }),
-        },
-      ],
-      jsonSchema: SEARCH_PLAN_SCHEMA,
-    });
+  return withHostedUsageReservation({ action: "job_search" }, async () => {
+    try {
+      const model = await resolveLlmModel("tailoring");
+      const llm = await createConfiguredLlmService("tailoring");
+      const result = await llm.callJson<SearchPlanModelResponse>({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: buildPrompt({
+              prompt: input.prompt,
+              currentConfig: input.currentConfig,
+              runtimeSources,
+              resumeContext,
+            }),
+          },
+        ],
+        jsonSchema: SEARCH_PLAN_SCHEMA,
+      });
 
-    if (!result.success) {
-      logger.warn(
-        "Pipeline search planning fell back after AI generation failed",
-        {
-          route: "POST /api/pipeline/search-plan",
-          error: result.error,
-        },
-      );
-      return fallbackResponse({
+      if (!result.success) {
+        logger.warn(
+          "Pipeline search planning fell back after AI generation failed",
+          {
+            route: "POST /api/pipeline/search-plan",
+            error: result.error,
+          },
+        );
+        return {
+          result: fallbackResponse({
+            currentConfig: input.currentConfig,
+            registry,
+            warning:
+              "AI planning was unavailable, so the current settings were kept.",
+          }),
+          usedUnits: 1,
+        };
+      }
+
+      const normalized = normalizePipelineSearchPlanConfig({
+        candidate: result.data?.config,
         currentConfig: input.currentConfig,
         registry,
-        warning:
-          "AI planning was unavailable, so the current settings were kept.",
+        initialWarnings: normalizeWarnings(result.data?.warnings),
       });
+
+      return {
+        result: {
+          config: normalized.config,
+          summary: normalizeSummary(result.data?.summary, "ai"),
+          warnings: normalized.warnings,
+          source: "ai",
+        },
+        usedUnits: 1,
+      };
+    } catch (error) {
+      logger.warn("Pipeline search planning fell back after unexpected error", {
+        route: "POST /api/pipeline/search-plan",
+        error,
+      });
+      return {
+        result: fallbackResponse({
+          currentConfig: input.currentConfig,
+          registry,
+          warning: "AI planning failed, so the current settings were kept.",
+        }),
+        usedUnits: 1,
+      };
     }
-
-    const normalized = normalizePipelineSearchPlanConfig({
-      candidate: result.data?.config,
-      currentConfig: input.currentConfig,
-      registry,
-      initialWarnings: normalizeWarnings(result.data?.warnings),
-    });
-
-    return {
-      config: normalized.config,
-      summary: normalizeSummary(result.data?.summary, "ai"),
-      warnings: normalized.warnings,
-      source: "ai",
-    };
-  } catch (error) {
-    logger.warn("Pipeline search planning fell back after unexpected error", {
-      route: "POST /api/pipeline/search-plan",
-      error,
-    });
-    return fallbackResponse({
-      currentConfig: input.currentConfig,
-      registry,
-      warning: "AI planning failed, so the current settings were kept.",
-    });
-  }
+  });
 }

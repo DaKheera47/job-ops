@@ -1,5 +1,7 @@
 import { logger } from "@infra/logger";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as settingsRepo from "@server/repositories/settings";
+import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
   getDefaultModelForProvider,
@@ -166,18 +168,22 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrides =
     (typeof getAllSettings === "function" ? await getAllSettings() : null) ??
     {};
+  const hostedMode = getJobOpsAppConfig().appMode === "hosted";
+  const allowPlatformLlm =
+    !hostedMode || (await getCurrentAccountEntitlements()).platformAiIncluded;
   const providerOverride = settingsRegistry.llmProvider.parse(
     overrides.llmProvider,
   );
   const effectiveLlmProvider =
-    providerOverride ?? settingsRegistry.llmProvider.default();
+    providerOverride ??
+    (allowPlatformLlm ? settingsRegistry.llmProvider.default() : "openrouter");
   const purposeOverrides = readPurposeOverrides(overrides);
   const resolvedModelDefault =
     normalizeModelForProviderCompatibility(
       effectiveLlmProvider,
       getDefaultModelForProvider(
         effectiveLlmProvider,
-        getOriginalEnvValue("MODEL"),
+        allowPlatformLlm ? getOriginalEnvValue("MODEL") : null,
       ),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
@@ -227,7 +233,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     });
   }
 
-  const envSettings = await getEnvSettingsData(overrides);
+  const envSettings = await getEnvSettingsData(overrides, {
+    allowLlmEnvironmentCredentials: allowPlatformLlm,
+  });
 
   const result: Partial<AppSettings> = {
     ...envSettings,
@@ -261,7 +269,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         const provider =
           effectiveLlmProvider ?? settingsRegistry.llmProvider.default();
         defaultValue =
-          getOriginalEnvValue("LLM_BASE_URL") ||
+          (allowPlatformLlm ? getOriginalEnvValue("LLM_BASE_URL") : null) ||
           resolveDefaultLlmBaseUrl(provider);
       }
 

@@ -419,4 +419,55 @@ describe.sequential("hosted usage service", () => {
       ).toMatchObject({ usedUnits: 0, reservedUnits: 3, availableUnits: 97 });
     });
   });
+
+  it("updates an existing monthly counter when the account moves Free → Pro → Free", async () => {
+    enableHostedQuotas();
+    process.env.STRIPE_PRO_PRICE_ID = "price_pro";
+    await createUser("alice");
+    const service = await import("./hosted-usage");
+    const { saveSubscriptionState } = await import(
+      "@server/repositories/account-subscriptions"
+    );
+
+    await withUser("alice", async () => {
+      await service.consumeHostedUsage({ action: "job_search", units: 90 });
+      expect(
+        (await service.getHostedUsageSummary()).actions.find(
+          (action) => action.action === "job_search",
+        ),
+      ).toMatchObject({ limitUnits: 100, availableUnits: 10 });
+
+      await saveSubscriptionState({
+        scope: { tenantId: "tenant_default", userId: "alice" },
+        stripeCustomerId: "cus_alice",
+        stripeSubscriptionId: "sub_alice",
+        stripeSubscriptionCreatedAt: 100,
+        stripePriceId: "price_pro",
+        stripeStatus: "active",
+        currentPeriodEnd: 2_000_000_000,
+        cancelAtPeriodEnd: false,
+      });
+      expect(
+        (await service.getHostedUsageSummary()).actions.find(
+          (action) => action.action === "job_search",
+        ),
+      ).toMatchObject({ limitUnits: 500, availableUnits: 410 });
+
+      await saveSubscriptionState({
+        scope: { tenantId: "tenant_default", userId: "alice" },
+        stripeCustomerId: "cus_alice",
+        stripeSubscriptionId: "sub_alice",
+        stripeSubscriptionCreatedAt: 100,
+        stripePriceId: "price_pro",
+        stripeStatus: "canceled",
+        currentPeriodEnd: 2_000_000_000,
+        cancelAtPeriodEnd: false,
+      });
+      expect(
+        (await service.getHostedUsageSummary()).actions.find(
+          (action) => action.action === "job_search",
+        ),
+      ).toMatchObject({ limitUnits: 100, availableUnits: 10 });
+    });
+  });
 });
