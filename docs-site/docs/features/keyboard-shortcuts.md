@@ -29,8 +29,7 @@ It shows the same tab-scoped shortcuts in a compact layout.
 - `k` or `ArrowUp`: previous job
 - `1`: Ready tab
 - `2`: Discovered tab
-- `3`: Applied tab
-- `4`: All Jobs tab
+- `3`: All Jobs tab
 - `ArrowLeft`: previous tab
 - `ArrowRight`: next tab
 

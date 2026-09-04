@@ -14,6 +14,8 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
   "jobops.pipeline.watchlist-sources";
+export const IN_PROGRESS_BOARD_APPLIED_COLLAPSED_STORAGE_KEY =
+  "jobops.in-progress-board.applied-collapsed";
 
 export const orderedSources = [...PIPELINE_EXTRACTOR_SOURCE_IDS].sort(
   (left, right) =>
@@ -78,7 +80,7 @@ export const appliedDuplicateIndicator = {
   dot: "bg-yellow-400",
 };
 
-export type FilterTab = "ready" | "discovered" | "applied" | "all";
+export type FilterTab = "ready" | "discovered" | "all";
 export type DateFilterPreset = "7" | "14" | "30" | "90" | "custom";
 export type DateFilterDimension = "ready" | "applied" | "closed" | "discovered";
 
@@ -214,14 +216,12 @@ export const tabs: Array<{
     label: "Discovered",
     statuses: ["discovered", "processing"],
   },
-  { id: "applied", label: "Applied", statuses: ["applied"] },
   { id: "all", label: "All Jobs", statuses: [] },
 ];
 
 export const emptyStateCopy: Record<FilterTab, string> = {
   ready: "Run a search to discover and process new jobs.",
   discovered: "All discovered jobs have been processed.",
-  applied: "You have not applied to any jobs yet.",
   all: "No jobs in the system yet. Run a search to get started.",
 };
 

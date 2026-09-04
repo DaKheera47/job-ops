@@ -106,7 +106,6 @@ export const getCommandGroup = (status: JobStatus): CommandGroupId => {
 export const getFilterTab = (status: JobStatus): FilterTab => {
   if (status === "ready") return "ready";
   if (status === "discovered" || status === "processing") return "discovered";
-  if (status === "applied") return "applied";
   return "all";
 };
 

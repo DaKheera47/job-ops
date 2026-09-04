@@ -11,8 +11,9 @@ The In Progress Board is a kanban view for jobs that have moved beyond initial a
 
 ![In Progress Board kanban lanes](/img/features/in-progress-board.png)
 
-It groups jobs into post-application lanes:
+It groups jobs into lanes:
 
+- Applied
 - Recruiter Screen
 - Assessment
 - Team Match
@@ -20,6 +21,8 @@ It groups jobs into post-application lanes:
 - Final Round
 - Offer
 - Closed
+
+The **Applied** lane can be collapsed to a thin strip so it doesn't take up horizontal space, letting you focus on jobs that are actively moving through later stages. Your collapsed/expanded preference is remembered across visits.
 
 ## Why it exists
 
@@ -44,9 +47,9 @@ When you successfully move a job listing to the **Offer** stage (either by dragg
 
 ### Moving jobs into post-application
 
-Jobs typically move into post-application tracking when they receive a response after applying.
+Marking a job **Applied** puts it directly on the board in the Applied lane — there's no separate "move to in progress" step. From there, drag a card (or use the card menu's **Log event**) to record what actually happened: Recruiter Screen, Rejected, Withdrawn, or any other stage/outcome.
 
-This can happen via:
+Later stage changes can also happen via:
 
 - Tracking Inbox review/automation (recommended)
 - Manual stage transitions in job detail/timeline tools
@@ -76,8 +79,8 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/stage-events" \
 
 ### Board is empty
 
-- Confirm jobs have status `in_progress`.
-- Confirm stage events exist for applied jobs expected on the board.
+- Confirm jobs have status `applied` or `in_progress`.
+- Check whether the Applied lane is collapsed — expand it from the chevron in its header.
 
 ### A card appears in an unexpected lane
 

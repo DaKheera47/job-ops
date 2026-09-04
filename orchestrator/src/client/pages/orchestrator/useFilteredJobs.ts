@@ -47,8 +47,6 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
       filtered = filtered.filter(
         (job) => job.status === "discovered" || job.status === "processing",
       );
-    } else if (activeTab === "applied") {
-      filtered = filtered.filter((job) => job.status === "applied");
     } else if (activeTab === "all") {
       const includeClosedJobs = dateFilter.dimensions.includes("closed");
       if (!includeClosedJobs) {
