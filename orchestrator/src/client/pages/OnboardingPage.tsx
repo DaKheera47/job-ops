@@ -298,12 +298,14 @@ function LaunchSetup({
 }) {
   const queryClient = useQueryClient();
   const onboarding = useOnboardingStatus();
-  const flow = useOnboardingFlow();
-  const designResume = useDesignResume();
   const appStatus = useQuery({
     queryKey: queryKeys.app.status(),
     queryFn: api.getAppStatus,
   });
+  const flow = useOnboardingFlow({
+    allowSelfHosted: appStatus.data?.appMode !== "hosted",
+  });
+  const designResume = useDesignResume();
   const profileQuery = useQuery<ResumeProfile>({
     queryKey: queryKeys.profile.current(),
     queryFn: api.getProfile,
@@ -321,8 +323,8 @@ function LaunchSetup({
   const [cities, setCities] = useState("");
   const [workplaceTypes, setWorkplaceTypes] = useState<
     Array<"remote" | "hybrid" | "onsite">
-  >(["remote", "hybrid"]);
-  const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(false);
+  >(["remote", "hybrid", "onsite"]);
+  const [requiresVisaSponsorship, setRequiresVisaSponsorship] = useState(true);
   const completionTrackedRef = useRef(false);
   const lastStepViewRef = useRef<string | null>(null);
   const lastStatusCheckRef = useRef<string | null>(null);
@@ -439,7 +441,7 @@ function LaunchSetup({
       setProfileBusy(true);
       applyStatus(
         await api.saveOnboardingProfile({
-          country: country.trim() || null,
+          country: country.trim(),
           cities: parsedCities,
           workplaceTypes,
           requiresVisaSponsorship,
@@ -611,6 +613,7 @@ function LaunchSetup({
               ) : (
                 <ResumeStep
                   flow={flow}
+                  allowSelfHosted={appStatus.data?.appMode !== "hosted"}
                   requirement={resumeRequirement}
                   profile={profileQuery.data ?? null}
                   hasResume={Boolean(resumeSource)}
@@ -712,7 +715,7 @@ function ProfileStep(props: {
       description="These preferences seed new runs and help Job Ops prioritize location-aware and visa-sponsor sources. You can change them later."
     >
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Country or market">
+        <Field label="Country or market (required)">
           <SearchableDropdown
             value={props.country}
             options={COUNTRY_OPTIONS}
@@ -777,7 +780,11 @@ function ProfileStep(props: {
       </Label>
       <StepActions
         onContinue={props.onContinue}
-        busy={props.busy || props.workplaceTypes.length === 0}
+        busy={
+          props.busy ||
+          !props.country.trim() ||
+          props.workplaceTypes.length === 0
+        }
         label="Save and continue"
       />
     </StepShell>
@@ -786,6 +793,7 @@ function ProfileStep(props: {
 
 function ResumeStep({
   flow,
+  allowSelfHosted,
   requirement,
   profile,
   hasResume,
@@ -794,6 +802,7 @@ function ResumeStep({
   onConfirm,
 }: {
   flow: ReturnType<typeof useOnboardingFlow>;
+  allowSelfHosted: boolean;
   requirement: OnboardingRequirement | null;
   profile: ResumeProfile | null;
   hasResume: boolean;
@@ -811,6 +820,7 @@ function ResumeStep({
       >
         <BaseResumeStep
           allowReactiveResume
+          allowSelfHostedReactiveResume={allowSelfHosted}
           baseResumeValidation={toValidationState(requirement)}
           baseResumeValue={flow.watch("rxresumeBaseResumeId")}
           hasRxResumeAccess={Boolean(flow.rxresumeApiKeyHint)}

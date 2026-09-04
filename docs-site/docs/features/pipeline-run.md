@@ -65,6 +65,9 @@ value in this browser. If you picked **Custom**, it reopens in Custom mode with
 the same values. The pipeline run itself still derives per-source caps from the
 saved budget when you start the run.
 
+Run Search also remembers whether you last used **Automatic** or **Manual** in
+this browser and reopens that mode next time.
+
 #### Search area
 
 **Map radius** is the default search-area mode. It does not require an address or postcode.

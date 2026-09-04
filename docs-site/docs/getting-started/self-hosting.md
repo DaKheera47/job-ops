@@ -151,7 +151,7 @@ Open:
 The onboarding flow saves three durable setup decisions:
 
 1. **Workspace account**: On brand-new installs, create the first username/password account directly in onboarding. This first account becomes the system admin and owns the initial private workspace.
-2. **Search preferences**: Save your country, optional preferred cities, workplace style, and whether you need visa sponsorship. JobOps applies these values as defaults for future runs and sponsor-aware features.
+2. **Search preferences**: Select a required country, optionally enter preferred cities, and choose workplace styles. Remote, hybrid, and onsite are selected by default, and visa sponsorship is enabled by default. JobOps applies these values as defaults for future runs and sponsor-aware features.
 3. **LLM provider**: Choose OpenRouter by default, or connect another supported hosted or local provider. The step completes only after the server verifies and persists the connection.
 4. **Resume review**: Upload a PDF/DOCX/Reactive Resume JSON, or connect Reactive Resume. JobOps shows the parsed resume and requires confirmation of the current document before setup completes.
 
@@ -185,6 +185,8 @@ JOBOPS_HOSTED_QUOTAS_ENABLED=false
 These flags only affect hosted mode. Leaving `JOBOPS_APP_MODE` unset keeps the current first-run setup, private-workspace user creation, settings, and local behavior unchanged.
 
 When hosted mode is active, first-run setup is disabled. Hosted users must be created through hosted signup when `JOBOPS_HOSTED_SIGNUPS_ENABLED=true`, or by a later tenant-owner/admin user-management flow. Hosted signup appears on `/sign-in` as a **Create account** tab only when hosted mode and hosted signups are both enabled.
+
+The Tracking Inbox is available only in local/self-hosted mode. Hosted mode hides it from navigation and redirects direct `/tracking-inbox` links to **Overview**.
 
 ## Codex sign-in
 

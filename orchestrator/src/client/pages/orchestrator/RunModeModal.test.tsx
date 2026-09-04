@@ -1,6 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { trackProductEvent } from "@/lib/analytics";
 import { RunModeModal } from "./RunModeModal";
+
+vi.mock("@/lib/analytics", () => ({
+  trackProductEvent: vi.fn(),
+}));
 
 vi.mock("@client/components/ManualImportFlow", () => ({
   ManualImportFlow: () => <div data-testid="manual-flow">Manual flow</div>,
@@ -33,6 +38,13 @@ describe("RunModeModal", () => {
 
     expect(screen.getByTestId("automatic-tab")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /manual/i })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /manual/i }));
+
+    expect(trackProductEvent).toHaveBeenCalledWith(
+      "jobs_search_composer_mode_changed",
+      { from_mode: "automatic", to_mode: "manual" },
+    );
   });
 
   it("can hide mode tabs for the full-page composer", () => {
