@@ -242,6 +242,7 @@ export class LlmService {
 
     if (
       this.provider !== "openai" &&
+      this.provider !== "atlascloud" &&
       this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
@@ -253,6 +254,9 @@ export class LlmService {
     }
 
     const models = await (async () => {
+      if (this.provider === "atlascloud") {
+        return this.listAtlasCloudModels();
+      }
       if (this.provider === "openai") {
         return this.listOpenAiModels();
       }
@@ -541,6 +545,37 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listAtlasCloudModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/api/v1/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Atlas Cloud returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        id?: string | null;
+        type?: string | null;
+        display_console?: boolean | null;
+      }>;
+    };
+    return (payload.data ?? [])
+      .filter(
+        (entry) =>
+          entry.type?.trim().toLowerCase() === "text" &&
+          entry.display_console !== false,
+      )
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   private async listAnthropicModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/v1/models"), {
       method: "GET",
@@ -689,6 +724,9 @@ function normalizeProvider(
     return "openai_compatible";
   }
   if (normalized === "openai") return "openai";
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "atlascloud";
+  }
   if (normalized === "anthropic" || normalized === "claude") {
     return "anthropic";
   }
@@ -744,6 +782,7 @@ function normalizeGeminiModelName(value: string): string {
 }
 
 function getPreferredModel(provider: LlmProvider): string | null {
+  if (provider === "atlascloud") return "deepseek-ai/deepseek-v3.2";
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "anthropic") return "claude-sonnet-4-6";
   if (provider === "glm") return "glm-5.1";

@@ -43,7 +43,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`atlascloud`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -52,12 +52,14 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Purpose overrides can inherit the default provider or use a different provider, base URL, API key, and model. For example, you can use `ollama` locally by default and route tailoring to `openai` or `openrouter`.
 - Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
+  - `atlascloud` defaults to `deepseek-ai/deepseek-v3.2`
   - `openai` defaults to `gpt-5.4-mini`
   - `codex` defaults to `gpt-5.4-mini`
   - `glm` defaults to `glm-5.1`
   - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`
   - `claude_cli` defaults to `claude-sonnet-5`
 - The settings page shows provider-aware model pickers for:
+  - `atlascloud`: console-visible text models from the live Atlas Cloud catalog
   - `openai`: available text-generation models only
   - `glm`: available GLM text-generation models from the configured BigModel-compatible endpoint
   - `gemini`: available Gemini text-generation models only

@@ -48,6 +48,16 @@ describe("LlmService provider normalization", () => {
     expect(llm.getBaseUrl()).toBe("https://llm.example.com");
   });
 
+  it("uses the dedicated Atlas Cloud provider and endpoint", () => {
+    const llm = new LlmService({
+      provider: "atlascloud",
+      apiKey: "atlas-test",
+    });
+
+    expect(llm.getProvider()).toBe("atlascloud");
+    expect(llm.getBaseUrl()).toBe("https://api.atlascloud.ai");
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     const llm = new LlmService({
       provider: "openai-compatible",
@@ -282,6 +292,37 @@ describe("LlmService provider normalization", () => {
     expect(models).toContain("anthropic/claude-sonnet-4-5");
     const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
     expect(String(requestedUrl)).toBe("https://router.requesty.ai/v1/models");
+  });
+
+  it("lists console-visible Atlas Cloud text models", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "deepseek-ai/deepseek-v3.2",
+              type: "Text",
+              display_console: true,
+            },
+            { id: "hidden/text-model", type: "Text", display_console: false },
+            { id: "image/model", type: "Image", display_console: true },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "atlascloud",
+      apiKey: "atlas-test",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toEqual(["deepseek-ai/deepseek-v3.2"]);
+    const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe(
+      "https://api.atlascloud.ai/api/v1/models",
+    );
   });
 
   it("lists OrcaRouter models from the /models endpoint", async () => {

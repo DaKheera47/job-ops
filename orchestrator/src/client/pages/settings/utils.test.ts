@@ -18,6 +18,9 @@ describe("settings utils", () => {
   });
 
   it("exposes provider key links for hosted providers", () => {
+    expect(getLlmProviderConfig("atlascloud").keyHelperHref).toBe(
+      "https://www.atlascloud.ai/console/api-keys",
+    );
     expect(getLlmProviderConfig("openrouter").keyHelperHref).toBe(
       "https://openrouter.ai/keys",
     );
@@ -114,6 +117,7 @@ describe("settings utils", () => {
   });
 
   it("only enables model suggestions for supported providers", () => {
+    expect(supportsLlmModelSuggestions("atlascloud")).toBe(true);
     expect(supportsLlmModelSuggestions("openai")).toBe(true);
     expect(supportsLlmModelSuggestions("anthropic")).toBe(true);
     expect(supportsLlmModelSuggestions("glm")).toBe(true);

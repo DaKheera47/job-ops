@@ -7,6 +7,7 @@ describe("resolveLlmApiKey", () => {
     vi.resetModules();
     process.env = { ...originalEnv };
     delete process.env.LLM_API_KEY;
+    delete process.env.ATLASCLOUD_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
   });
@@ -53,6 +54,17 @@ describe("resolveLlmApiKey", () => {
         provider: "openrouter",
       }),
     ).toBe("sk-openrouter");
+  });
+
+  it("falls back to ATLASCLOUD_API_KEY for Atlas Cloud", async () => {
+    process.env.ATLASCLOUD_API_KEY = "atlas-test";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "atlascloud",
+      }),
+    ).toBe("atlas-test");
   });
 
   it("falls back to ORCAROUTER_API_KEY for orcarouter providers", async () => {

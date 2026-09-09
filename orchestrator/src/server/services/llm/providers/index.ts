@@ -1,5 +1,6 @@
 import type { LlmProvider, ProviderStrategy } from "../types";
 import { anthropicStrategy } from "./anthropic";
+import { atlasCloudStrategy } from "./atlascloud";
 import { claudeCliStrategy } from "./claude_cli";
 import { codexStrategy } from "./codex";
 import { geminiStrategy } from "./gemini";
@@ -14,6 +15,7 @@ import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
+  atlascloud: atlasCloudStrategy,
   openrouter: openRouterStrategy,
   orcarouter: orcaRouterStrategy,
   requesty: requestyStrategy,

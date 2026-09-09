@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { anthropicStrategy } from "./anthropic";
+import { atlasCloudStrategy } from "./atlascloud";
 import { geminiStrategy } from "./gemini";
 import { glmStrategy } from "./glm";
 import { lmStudioStrategy } from "./lmstudio";
@@ -25,6 +26,18 @@ const messages = [{ role: "user" as const, content: "hello" }];
 describe("provider adapters", () => {
   it("builds requests for each provider/mode path", () => {
     const cases = [
+      {
+        name: "atlascloud-json_schema",
+        strategy: atlasCloudStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.atlascloud.ai",
+          apiKey: "x",
+          model: "deepseek-ai/deepseek-v3.2",
+        },
+        expectedUrl: "https://api.atlascloud.ai/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
       {
         name: "openrouter-json_schema",
         strategy: openRouterStrategy,
@@ -210,6 +223,7 @@ describe("provider adapters", () => {
       choices: [{ message: { content: "ok" } }],
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
+    expect(atlasCloudStrategy.extractText(response)).toBe("ok");
     expect(orcaRouterStrategy.extractText(response)).toBe("ok");
     expect(requestyStrategy.extractText(response)).toBe("ok");
     expect(glmStrategy.extractText(response)).toBe("ok");
