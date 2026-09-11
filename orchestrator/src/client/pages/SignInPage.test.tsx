@@ -1,6 +1,8 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignInPage } from "./SignInPage";
 
 vi.mock("@client/api", () => ({
@@ -17,6 +19,7 @@ vi.mock("@client/api", () => ({
   getAuthBootstrapStatus: vi.fn(async () => ({
     setupRequired: false,
   })),
+  getSsoProviders: vi.fn(async () => []),
   hasAuthenticatedSession: vi.fn(() => false),
   restoreAuthSessionFromLegacyCredentials: vi.fn(async () => false),
   signupWithCredentials: vi.fn(async () => ({
@@ -25,21 +28,25 @@ vi.mock("@client/api", () => ({
     displayName: null,
     isSystemAdmin: true,
     isDisabled: false,
+    hasPassword: true,
     workspaceId: "tenant_default",
     workspaceName: "JobOps",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   })),
   signInWithCredentials: vi.fn(async () => undefined),
+  startSsoLogin: vi.fn(),
 }));
 
 import {
   getAppStatus,
   getAuthBootstrapStatus,
+  getSsoProviders,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
   signInWithCredentials,
   signupWithCredentials,
+  startSsoLogin,
 } from "@client/api";
 
 const localAppStatus = {
@@ -72,14 +79,38 @@ const hostedSignupDisabledAppStatus = {
   },
 };
 
+const realLocation = window.location;
+
+function renderSignInPage(
+  initialEntries: string[],
+  extraRoutes?: React.ReactNode,
+) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          {extraRoutes}
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 describe("SignInPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     vi.mocked(getAppStatus).mockResolvedValue(localAppStatus);
     vi.mocked(getAuthBootstrapStatus).mockResolvedValue({
       setupRequired: false,
     });
+    vi.mocked(getSsoProviders).mockResolvedValue([]);
     vi.mocked(hasAuthenticatedSession).mockReturnValue(false);
     vi.mocked(restoreAuthSessionFromLegacyCredentials).mockResolvedValue(false);
     const authUser = {
@@ -88,6 +119,7 @@ describe("SignInPage", () => {
       displayName: null,
       isSystemAdmin: true,
       isDisabled: false,
+      hasPassword: true,
       workspaceId: "tenant_default",
       workspaceName: "JobOps",
       createdAt: new Date().toISOString(),
@@ -97,14 +129,17 @@ describe("SignInPage", () => {
     vi.mocked(signInWithCredentials).mockResolvedValue(undefined);
   });
 
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: realLocation,
+    });
+  });
+
   it("signs in and returns to the requested next route", async () => {
-    render(
-      <MemoryRouter initialEntries={["/sign-in?next=%2Fjobs%2Fready"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/jobs/ready" element={<div>ready-page</div>} />
-        </Routes>
-      </MemoryRouter>,
+    renderSignInPage(
+      ["/sign-in?next=%2Fjobs%2Fready"],
+      <Route path="/jobs/ready" element={<div>ready-page</div>} />,
     );
 
     await waitFor(() => {
@@ -137,13 +172,7 @@ describe("SignInPage", () => {
       ]),
     );
 
-    render(
-      <MemoryRouter initialEntries={["/sign-in?user=remembered-admin"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderSignInPage(["/sign-in?user=remembered-admin"]);
 
     await waitFor(() => {
       expect(restoreAuthSessionFromLegacyCredentials).toHaveBeenCalledTimes(1);
@@ -165,13 +194,9 @@ describe("SignInPage", () => {
       setupRequired: true,
     });
 
-    render(
-      <MemoryRouter initialEntries={["/sign-in"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/onboarding" element={<div>onboarding</div>} />
-        </Routes>
-      </MemoryRouter>,
+    renderSignInPage(
+      ["/sign-in"],
+      <Route path="/onboarding" element={<div>onboarding</div>} />,
     );
 
     expect(await screen.findByText("onboarding")).toBeInTheDocument();
@@ -181,13 +206,7 @@ describe("SignInPage", () => {
   it("shows hosted signup tabs only when enabled by app status", async () => {
     vi.mocked(getAppStatus).mockResolvedValueOnce(hostedSignupAppStatus);
 
-    render(
-      <MemoryRouter initialEntries={["/sign-in"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderSignInPage(["/sign-in"]);
 
     expect(
       await screen.findByRole("tab", { name: "Create account" }),
@@ -200,13 +219,7 @@ describe("SignInPage", () => {
       hostedSignupDisabledAppStatus,
     );
 
-    render(
-      <MemoryRouter initialEntries={["/sign-in"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderSignInPage(["/sign-in"]);
 
     await waitFor(() => {
       expect(restoreAuthSessionFromLegacyCredentials).toHaveBeenCalledTimes(1);
@@ -224,19 +237,16 @@ describe("SignInPage", () => {
       displayName: "New User",
       isSystemAdmin: false,
       isDisabled: false,
+      hasPassword: true,
       workspaceId: "tenant_hosted",
       workspaceName: "JobOps",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
 
-    render(
-      <MemoryRouter initialEntries={["/sign-in?next=%2Fjobs%2Fall"]}>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/jobs/all" element={<div>all-jobs-page</div>} />
-        </Routes>
-      </MemoryRouter>,
+    renderSignInPage(
+      ["/sign-in?next=%2Fjobs%2Fall"],
+      <Route path="/jobs/all" element={<div>all-jobs-page</div>} />,
     );
 
     const signupTab = await screen.findByRole("tab", {
@@ -267,5 +277,84 @@ describe("SignInPage", () => {
     expect(localStorage.getItem("jobops.rememberedAuthUsers")).toContain(
       "new-user",
     );
+  });
+
+  it("hides the single sign-on divider when no provider is configured", async () => {
+    renderSignInPage(["/sign-in"]);
+
+    await waitFor(() => {
+      expect(getSsoProviders).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText("or continue with")).toBeNull();
+  });
+
+  it("starts a provider login and hands the browser to the identity provider", async () => {
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...realLocation, assign },
+    });
+    vi.mocked(getSsoProviders).mockResolvedValue([
+      { id: "google", displayName: "Google" },
+      { id: "oidc", displayName: "Pocket ID" },
+    ]);
+    vi.mocked(startSsoLogin).mockResolvedValue({
+      provider: "google",
+      authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?x=1",
+      state: "state-1",
+      flowToken: "flow-token-1",
+    });
+
+    renderSignInPage(["/sign-in?next=%2Fjobs%2Fall"]);
+
+    const googleButton = await screen.findByRole("button", {
+      name: "Continue with Google",
+    });
+    expect(
+      screen.getByRole("button", { name: "Continue with Pocket ID" }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(googleButton).toBeEnabled());
+
+    fireEvent.click(googleButton);
+
+    await waitFor(() => {
+      expect(startSsoLogin).toHaveBeenCalledWith("google");
+      expect(assign).toHaveBeenCalledWith(
+        "https://accounts.google.com/o/oauth2/v2/auth?x=1",
+      );
+    });
+    expect(
+      JSON.parse(sessionStorage.getItem("jobops.ssoFlow") ?? "null"),
+    ).toMatchObject({
+      provider: "google",
+      state: "state-1",
+      flowToken: "flow-token-1",
+      mode: "login",
+      next: "/jobs/all",
+    });
+  });
+
+  it("reports a failed provider start without leaving the page", async () => {
+    vi.mocked(getSsoProviders).mockResolvedValue([
+      { id: "github", displayName: "GitHub" },
+    ]);
+    vi.mocked(startSsoLogin).mockRejectedValue(
+      new Error("Single sign-on is disabled in the public demo."),
+    );
+
+    renderSignInPage(["/sign-in"]);
+
+    const githubButton = await screen.findByRole("button", {
+      name: "Continue with GitHub",
+    });
+    await waitFor(() => expect(githubButton).toBeEnabled());
+
+    fireEvent.click(githubButton);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Single sign-on is disabled in the public demo.",
+    );
+    expect(sessionStorage.getItem("jobops.ssoFlow")).toBeNull();
   });
 });

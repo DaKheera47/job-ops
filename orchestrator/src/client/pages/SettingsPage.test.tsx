@@ -73,6 +73,11 @@ vi.mock("../api", () => ({
   createWorkspaceUser: vi.fn(),
   setWorkspaceUserDisabled: vi.fn(),
   resetWorkspaceUserPassword: vi.fn(),
+  changeOwnPassword: vi.fn(),
+  getSsoProviders: vi.fn().mockResolvedValue([]),
+  listSsoIdentities: vi.fn().mockResolvedValue([]),
+  startSsoLink: vi.fn(),
+  unlinkSsoIdentity: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -1124,6 +1129,21 @@ describe("SettingsPage", () => {
     await openEnvironmentSection();
     expect(screen.queryByLabelText(/enable authentication/i)).toBeNull();
     expect(screen.queryByPlaceholderText("username")).toBeNull();
+  });
+
+  it("finds workspace access by searching for single sign-on", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    renderPage();
+
+    const search = await screen.findByLabelText(/search settings/i);
+    fireEvent.change(search, { target: { value: "single sign-on" } });
+
+    expect(
+      await screen.findAllByRole("button", { name: /workspace access/i }),
+    ).not.toHaveLength(0);
+    expect(
+      screen.queryAllByRole("button", { name: /display preferences/i }),
+    ).toHaveLength(0);
   });
 
   it("saves blocked company keywords from scoring settings", async () => {

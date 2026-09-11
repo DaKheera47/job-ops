@@ -200,8 +200,8 @@ const migrations = [
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     display_name TEXT,
-    password_hash TEXT NOT NULL,
-    password_salt TEXT NOT NULL,
+    password_hash TEXT,
+    password_salt TEXT,
     is_system_admin INTEGER NOT NULL DEFAULT 0,
     is_disabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -478,6 +478,25 @@ const migrations = [
 
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
     ON auth_sessions(revoked_at)`,
+
+  `CREATE TABLE IF NOT EXISTS sso_identities (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL CHECK (provider IN ('google', 'github', 'oidc')),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    email TEXT,
+    display_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(provider, issuer, subject),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_sso_identities_user_id
+    ON sso_identities(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_hosted_usage_counters_tenant_user_period
     ON hosted_usage_counters(tenant_id, user_id, period)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_hosted_usage_counters_tenant_user_period_action_unique
@@ -1695,6 +1714,47 @@ function rebuildPostApplicationPrivateTables(): void {
   }
 }
 
+function ensureNullableUserPasswordColumns(): void {
+  const columns = sqlite.prepare("PRAGMA table_info(users)").all() as Array<{
+    name: string;
+    notnull: number;
+  }>;
+  const passwordHash = columns.find(
+    (column) => column.name === "password_hash",
+  );
+  if (!passwordHash || passwordHash.notnull === 0) return;
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+  try {
+    sqlite.exec(`
+      DROP TABLE IF EXISTS users_new;
+      CREATE TABLE users_new (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        display_name TEXT,
+        password_hash TEXT,
+        password_salt TEXT,
+        is_system_admin INTEGER NOT NULL DEFAULT 0,
+        is_disabled INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_new (
+        id, username, display_name, password_hash, password_salt,
+        is_system_admin, is_disabled, created_at, updated_at
+      )
+      SELECT
+        id, username, display_name, password_hash, password_salt,
+        is_system_admin, is_disabled, created_at, updated_at
+      FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
 function seedLegacyOwnerFromBasicAuth(): void {
   const existing = sqlite
     .prepare("SELECT count(*) AS count FROM users")
@@ -1776,6 +1836,7 @@ function seedLegacyOnboardingMigration(): void {
 console.log("🔐 Applying tenancy compatibility migrations...");
 rebuildAccountSubscriptionsKey();
 ensureTenantColumns();
+ensureNullableUserPasswordColumns();
 seedLegacyOwnerFromBasicAuth();
 ensurePrivateUserColumns();
 rebuildPostApplicationPrivateTables();

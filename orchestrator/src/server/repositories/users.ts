@@ -13,8 +13,8 @@ export type AuthUser = {
   id: string;
   username: string;
   displayName: string | null;
-  passwordHash: string;
-  passwordSalt: string;
+  passwordHash: string | null;
+  passwordSalt: string | null;
   isSystemAdmin: boolean;
   isDisabled: boolean;
   tenantId: string;
@@ -27,13 +27,27 @@ export type PublicUser = {
   displayName: string | null;
   isSystemAdmin: boolean;
   isDisabled: boolean;
+  hasPassword: boolean;
   workspaceId: string;
   workspaceName: string;
   createdAt: string;
   updatedAt: string;
 };
 
-function normalizeUsername(username: string): string {
+export type SsoProvisionedUserInput =
+  | {
+      mode: "local";
+      username: string;
+      displayName?: string | null;
+    }
+  | {
+      mode: "hosted";
+      username: string;
+      displayName?: string | null;
+      tenantId: string;
+    };
+
+export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
 }
 
@@ -51,6 +65,7 @@ function mapUser(row: {
   displayName: string | null;
   isSystemAdmin: boolean;
   isDisabled: boolean;
+  passwordHash: string | null;
   workspaceId: string;
   workspaceName: string;
   createdAt: string;
@@ -62,6 +77,7 @@ function mapUser(row: {
     displayName: row.displayName,
     isSystemAdmin: row.isSystemAdmin,
     isDisabled: row.isDisabled,
+    hasPassword: row.passwordHash !== null,
     workspaceId: row.workspaceId,
     workspaceName: row.workspaceName,
     createdAt: row.createdAt,
@@ -106,6 +122,7 @@ export async function getUserById(id: string): Promise<PublicUser | null> {
       displayName: users.displayName,
       isSystemAdmin: users.isSystemAdmin,
       isDisabled: users.isDisabled,
+      passwordHash: users.passwordHash,
       workspaceId: tenantMemberships.tenantId,
       workspaceName: tenants.name,
       createdAt: users.createdAt,
@@ -128,6 +145,7 @@ export async function listUsers(): Promise<PublicUser[]> {
       displayName: users.displayName,
       isSystemAdmin: users.isSystemAdmin,
       isDisabled: users.isDisabled,
+      passwordHash: users.passwordHash,
       workspaceId: tenantMemberships.tenantId,
       workspaceName: tenants.name,
       createdAt: users.createdAt,
@@ -260,6 +278,103 @@ export async function createHostedTenantUser(input: {
   });
 
   if (!created) return null;
+  const user = await getUserById(userId);
+  if (!user) throw new Error("Failed to load created user");
+  return user;
+}
+
+/**
+ * Creates an account for an SSO identity that has no local password yet. The
+ * caller is responsible for enforcing the provider's signup policy.
+ */
+export async function createSsoProvisionedUser(
+  input: SsoProvisionedUserInput,
+): Promise<PublicUser | null> {
+  const now = new Date().toISOString();
+  const username = normalizeUsername(input.username);
+  const displayName = input.displayName?.trim() || null;
+  const userId = randomUUID();
+
+  if (input.mode === "hosted") {
+    const hostedTenantId = input.tenantId;
+    const created = db.transaction((tx) => {
+      const tenant = tx
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(eq(tenants.id, hostedTenantId))
+        .get();
+      if (!tenant) return false;
+
+      tx.insert(users)
+        .values({
+          id: userId,
+          username,
+          displayName,
+          passwordHash: null,
+          passwordSalt: null,
+          isSystemAdmin: false,
+          isDisabled: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      tx.insert(tenantMemberships)
+        .values({
+          id: randomUUID(),
+          userId,
+          tenantId: hostedTenantId,
+          role: "member",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      return true;
+    });
+
+    if (!created) return null;
+  } else {
+    const tenantId = randomUUID();
+
+    db.transaction((tx) => {
+      tx.insert(tenants)
+        .values({
+          id: tenantId,
+          name: displayName || username,
+          slug: `${slugify(username)}-${tenantId.slice(0, 8)}`,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      tx.insert(users)
+        .values({
+          id: userId,
+          username,
+          displayName,
+          passwordHash: null,
+          passwordSalt: null,
+          isSystemAdmin: false,
+          isDisabled: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      tx.insert(tenantMemberships)
+        .values({
+          id: randomUUID(),
+          userId,
+          tenantId,
+          role: "owner",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    });
+  }
+
   const user = await getUserById(userId);
   if (!user) throw new Error("Failed to load created user");
   return user;
