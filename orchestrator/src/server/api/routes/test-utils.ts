@@ -174,6 +174,10 @@ const isolatedEnvKeys = [
   "SSO_OIDC_ALLOWED_EMAIL_DOMAINS",
   "SSO_OIDC_ALLOW_INSECURE_HTTP",
   "SSO_REDIRECT_BASE_URL",
+  "WEBAUTHN_ORIGINS",
+  "WEBAUTHN_RP_ID",
+  "WEBAUTHN_RP_NAME",
+  "WEBAUTHN_CHALLENGE_TTL_MS",
 ] as const;
 
 const nativeFetch = globalThis.fetch;
