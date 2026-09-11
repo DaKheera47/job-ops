@@ -398,6 +398,11 @@ type ProductEventMap = {
     duration_bucket: string;
     completed_steps: number;
   };
+  passkey_register_completed: {
+    deviceType: string | null;
+    backedUp: boolean;
+  };
+  passkey_login_completed: Record<string, never>;
 };
 
 type ProductEventName = keyof ProductEventMap;

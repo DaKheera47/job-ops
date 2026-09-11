@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { PasskeysSection } from "@client/pages/settings/components/PasskeysSection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { EnvSettingsValues } from "@client/pages/settings/types";
@@ -305,6 +306,8 @@ export const EnvironmentSettingsSection: React.FC<
             Security
           </div>
           <AccountManagementSection />
+          <Separator />
+          <PasskeysSection />
         </div>
       </div>
     </SettingsSectionFrame>

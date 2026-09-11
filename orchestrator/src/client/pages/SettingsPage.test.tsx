@@ -73,6 +73,11 @@ vi.mock("../api", () => ({
   createWorkspaceUser: vi.fn(),
   setWorkspaceUserDisabled: vi.fn(),
   resetWorkspaceUserPassword: vi.fn(),
+  listPasskeys: vi.fn().mockResolvedValue([]),
+  renamePasskey: vi.fn(),
+  deletePasskey: vi.fn(),
+  getPasskeyRegistrationOptions: vi.fn(),
+  verifyPasskeyRegistration: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -1124,6 +1129,19 @@ describe("SettingsPage", () => {
     await openEnvironmentSection();
     expect(screen.queryByLabelText(/enable authentication/i)).toBeNull();
     expect(screen.queryByPlaceholderText("username")).toBeNull();
+  });
+
+  it("finds the workspace access section when searching for passkeys", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    renderPage();
+
+    const search = await screen.findByLabelText("Search settings");
+    fireEvent.change(search, { target: { value: "passkey" } });
+
+    expect(
+      await screen.findByRole("button", { name: /workspace access/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no settings matched/i)).toBeNull();
   });
 
   it("saves blocked company keywords from scoring settings", async () => {
