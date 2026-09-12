@@ -5,6 +5,7 @@ import {
   type Virtualizer,
   windowScroll,
 } from "@tanstack/react-virtual";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 export type VirtualListScrollAlignment = "auto" | "center" | "end" | "start";
 export type VirtualListScrollBehavior = "auto" | "instant" | "smooth";
@@ -29,6 +30,13 @@ type VirtualizedListBaseOptions = {
     height: number;
     width: number;
   };
+  /**
+   * Distance in pixels between the top of the scroll container and the top of
+   * the list. Window virtualizers measure scroll offsets in document
+   * coordinates, so a list rendered below other content needs this to line its
+   * rows up with the viewport. See {@link useWindowScrollMargin}.
+   */
+  scrollMargin?: number;
 };
 
 type WindowVirtualizedListOptions = VirtualizedListBaseOptions & {
@@ -213,6 +221,7 @@ export function useVirtualizedList<
     overscan = 8,
     enabled = true,
     initialRect,
+    scrollMargin = 0,
   } = options;
   const isElementMode = options.mode === "element";
   const isJsdom =
@@ -303,6 +312,7 @@ export function useVirtualizedList<
     overscan,
     enabled: enabled && isElementMode,
     initialRect,
+    scrollMargin,
     getScrollElement: () =>
       options.mode === "element" ? options.scrollElement : null,
     observeElementOffset: observeElementOffsetWithCleanup,
@@ -317,10 +327,70 @@ export function useVirtualizedList<
     overscan,
     enabled: enabled && !isElementMode,
     initialRect,
+    scrollMargin,
     observeElementOffset: observeWindowOffsetWithCleanup,
     scrollToFn: scrollWindow,
     useFlushSync: false,
   });
 
   return isElementMode ? elementVirtualizer : windowVirtualizer;
+}
+
+/**
+ * Tracks how far down the document a window-virtualized list starts.
+ *
+ * Window virtualizers work in document coordinates while rows are positioned
+ * relative to their container, so the two only agree when the virtualizer is
+ * told where the container sits. The offset is not static: content above the
+ * list (the pipeline progress card, expanded filters) mounts, grows, and
+ * unmounts while the list stays on screen, so this re-measures on layout
+ * changes rather than once on mount.
+ */
+export function useWindowScrollMargin<
+  TElement extends HTMLElement = HTMLDivElement,
+>() {
+  const [element, setElement] = useState<TElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  const ref = useCallback((node: TElement | null) => {
+    setElement(node);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!element) return;
+
+    const targetWindow = element.ownerDocument.defaultView;
+    if (!targetWindow) return;
+
+    const measure = () => {
+      const next = Math.round(
+        element.getBoundingClientRect().top + targetWindow.scrollY,
+      );
+      setScrollMargin((current) => (current === next ? current : next));
+    };
+
+    measure();
+
+    const observer =
+      typeof targetWindow.ResizeObserver === "function"
+        ? new targetWindow.ResizeObserver(measure)
+        : null;
+
+    if (observer) {
+      // The list itself moves when it is resized, and everything above it
+      // changes the document height as it grows or shrinks.
+      observer.observe(element);
+      const { body } = element.ownerDocument;
+      if (body) observer.observe(body);
+    }
+
+    targetWindow.addEventListener("resize", measure, addEventListenerOptions);
+
+    return () => {
+      observer?.disconnect();
+      targetWindow.removeEventListener("resize", measure);
+    };
+  }, [element]);
+
+  return { ref, scrollMargin };
 }
