@@ -271,6 +271,44 @@ class ReactCrashBoundary extends React.Component<
   }
 }
 
+function isOpenPanelRejection(reason: unknown): boolean {
+  if (!(reason instanceof Error) || typeof reason.stack !== "string") {
+    return false;
+  }
+
+  const lines = reason.stack.trim().split(/\r?\n/);
+  const header = reason.message
+    ? `${reason.name}: ${reason.message}`
+    : reason.name;
+  let hasOpenPanelFrame = false;
+
+  for (const [index, line] of lines.entries()) {
+    const frame = line.trim();
+    if (!frame || (index === 0 && frame === header)) continue;
+
+    // Accept Chrome and unambiguous Firefox/Safari frames, not message URLs.
+    const match =
+      /^at [^()]+ \((\S+:\d+(?::\d+)?)\)$/.exec(frame) ??
+      /^at (\S+:\d+(?::\d+)?)$/.exec(frame) ??
+      /^[^@\s()]*@(\S+:\d+(?::\d+)?)$/.exec(frame);
+    if (!match) return false;
+
+    const location = match[1].replace(/:\d+(?::\d+)?$/, "");
+    if (location === "https://openpanel.dev/op1.js") {
+      hasOpenPanelFrame = true;
+    } else if (
+      !/^(?:chrome-extension|moz-extension|safari-web-extension):\/\/[^/\s:?#]+\/[^\s()]+$/.test(
+        location,
+      )
+    ) {
+      // Application, unrelated third-party, and unknown frames stay fatal.
+      return false;
+    }
+  }
+
+  return hasOpenPanelFrame;
+}
+
 function isRecoverableApiError(reason: unknown): boolean {
   return (
     reason instanceof ApiClientError ||
@@ -328,6 +366,10 @@ export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
       if (isRecoverableApiError(reason)) {
         event.preventDefault();
         showErrorToast(reason, "API request failed");
+        return;
+      }
+      if (isOpenPanelRejection(reason)) {
+        // Keep browser diagnostics available for optional analytics failures.
         return;
       }
       event.preventDefault();
