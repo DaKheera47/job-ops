@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { forwardRef, useImperativeHandle } from "react";
 import {
   useVirtualizedList,
+  useWindowScrollMargin,
   type VirtualListHandle,
 } from "@/client/lib/virtual-list";
 import { Button } from "@/components/ui/button";
@@ -57,11 +58,14 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
     },
     ref,
   ) => {
+    const { ref: listRef, scrollMargin } =
+      useWindowScrollMargin<HTMLDivElement>();
     const virtualizer = useVirtualizedList({
       count: activeJobs.length,
       mode: "window",
       estimateSize: () => ROW_ESTIMATE,
       overscan: 8,
+      scrollMargin,
       getItemKey: (index) => activeJobs[index]?.id ?? index,
     });
 
@@ -147,6 +151,8 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
             </span>
           </div>
           <div
+            ref={listRef}
+            data-virtual-list="true"
             className="relative"
             style={{
               height: `${virtualizer.getTotalSize()}px`,
@@ -194,7 +200,7 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
                       "bg-primary/40 hover:bg-primary/20",
                   )}
                   style={{
-                    transform: `translateY(${virtualRow.start}px)`,
+                    transform: `translateY(${virtualRow.start - scrollMargin}px)`,
                   }}
                 >
                   <div className="relative h-4 w-4 shrink-0">
