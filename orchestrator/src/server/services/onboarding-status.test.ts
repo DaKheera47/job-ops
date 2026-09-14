@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getConfiguredRxResumeBaseResumeId: vi.fn(),
   getDesignResumeStatus: vi.fn(),
   getJobOpsAppStatus: vi.fn(),
+  getCurrentAccountEntitlements: vi.fn(),
   getResume: vi.fn(),
   getSetting: vi.fn(),
   isDemoMode: vi.fn(),
@@ -15,6 +16,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@server/config/app-mode", () => ({
   getJobOpsAppStatus: mocks.getJobOpsAppStatus,
+}));
+
+vi.mock("@server/services/account-entitlements", () => ({
+  getCurrentAccountEntitlements: mocks.getCurrentAccountEntitlements,
 }));
 
 vi.mock("@server/config/demo", () => ({
@@ -101,6 +106,13 @@ describe("onboarding status engine", () => {
         userEditableLlmSettings: true,
       },
       hostedTenantConfigured: false,
+    });
+    mocks.getCurrentAccountEntitlements.mockResolvedValue({
+      plan: "free",
+      platformAiIncluded: false,
+      userEditableLlmSettings: true,
+      hostedLimits: {},
+      subscription: null,
     });
     mocks.isDemoMode.mockReturnValue(false);
     mocks.getSetting.mockImplementation(async (key: string) => {
@@ -306,6 +318,13 @@ describe("onboarding status engine", () => {
         userEditableLlmSettings: false,
       },
       hostedTenantConfigured: true,
+    });
+    mocks.getCurrentAccountEntitlements.mockResolvedValue({
+      plan: "pro",
+      platformAiIncluded: true,
+      userEditableLlmSettings: false,
+      hostedLimits: {},
+      subscription: { status: "active" },
     });
     mocks.getDesignResumeStatus.mockResolvedValue({ exists: false });
     mocks.validateLlmCredentials.mockResolvedValue({

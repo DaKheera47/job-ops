@@ -23,12 +23,15 @@ export function resolveLlmApiKey(options: {
   storedApiKey?: string | null;
   purposeApiKey?: string | null;
   provider?: string | null;
+  allowEnvironmentCredentials?: boolean;
 }): string | null {
   const purposeApiKey = normalizeStoredApiKey(options.purposeApiKey);
   if (purposeApiKey) return purposeApiKey;
 
   const storedApiKey = normalizeStoredApiKey(options.storedApiKey);
   if (storedApiKey) return storedApiKey;
+
+  if (options.allowEnvironmentCredentials === false) return null;
 
   const envApiKey = toStringOrNull(getOriginalEnvValue("LLM_API_KEY"));
   if (envApiKey) return envApiKey;

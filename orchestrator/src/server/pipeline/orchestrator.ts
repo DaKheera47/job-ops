@@ -456,6 +456,7 @@ export async function runPipeline(
             profile,
             scoringInstructions: mergedConfig.scoringInstructions,
             visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
+            hostedUsageReserved: true,
             shouldCancel: () =>
               getPipelineState(scopeKey).cancelRequestedAt !== null,
           }));

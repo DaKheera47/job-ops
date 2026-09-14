@@ -84,6 +84,42 @@ export const tenantMemberships = sqliteTable(
   }),
 );
 
+export const accountSubscriptions = sqliteTable(
+  "account_subscriptions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    stripeCustomerId: text("stripe_customer_id").notNull(),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeSubscriptionCreatedAt: integer("stripe_subscription_created_at", {
+      mode: "number",
+    }),
+    stripePriceId: text("stripe_price_id"),
+    stripeStatus: text("stripe_status"),
+    currentPeriodEnd: integer("current_period_end", { mode: "number" }),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantUserUnique: uniqueIndex(
+      "idx_account_subscriptions_tenant_user_unique",
+    ).on(table.tenantId, table.userId),
+    customerUnique: uniqueIndex("idx_account_subscriptions_customer_unique").on(
+      table.stripeCustomerId,
+    ),
+    subscriptionUnique: uniqueIndex(
+      "idx_account_subscriptions_subscription_unique",
+    ).on(table.stripeSubscriptionId),
+  }),
+);
+
 export const HOSTED_USAGE_RESERVATION_STATUSES = [
   "reserved",
   "settled",

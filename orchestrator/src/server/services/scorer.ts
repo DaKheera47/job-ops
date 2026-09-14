@@ -6,6 +6,7 @@ import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import type { Job, JobBrief, UpdateJobInput } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
+import { withHostedUsageReservation } from "./hosted-usage";
 import {
   type JobFactPatch,
   PATCHABLE_JOB_FIELDS,
@@ -261,8 +262,18 @@ function applySalaryPenalty(
 export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
-  options: { scoringInstructions?: string } = {},
+  options: { scoringInstructions?: string; skipHostedUsage?: boolean } = {},
 ): Promise<SuitabilityResult> {
+  if (!options.skipHostedUsage) {
+    return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+      result: await scoreJobSuitability(job, profile, {
+        ...options,
+        skipHostedUsage: true,
+      }),
+      usedUnits: 1,
+    }));
+  }
+
   const [model, settings] = await Promise.all([
     resolveLlmModel("scoring"),
     getEffectiveSettings(),

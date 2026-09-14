@@ -144,7 +144,13 @@ authRouter.post(
 
     const { username, password } = parsed.data;
     const user = await usersRepo.getUserForLogin(username);
-    if (!user || user.isDisabled) {
+    const appConfig = getJobOpsAppConfig();
+    if (
+      !user ||
+      user.isDisabled ||
+      (appConfig.appMode === "hosted" &&
+        user.tenantId !== appConfig.hostedTenantId)
+    ) {
       fail(res, unauthorized("Invalid credentials"));
       return;
     }

@@ -1,6 +1,7 @@
 // src/server/services/modelSelection.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as settingsRepo from "../repositories/settings";
+import { getCurrentAccountEntitlements } from "./account-entitlements";
 import { resolveLlmModel, resolveLlmRuntimeSettings } from "./modelSelection";
 import { pickProjectIdsForJob } from "./projectSelection";
 import { scoreJobSuitability } from "./scorer";
@@ -17,6 +18,11 @@ vi.mock("./settings", () => ({
   getEffectiveSettings: vi.fn(),
 }));
 
+vi.mock("./account-entitlements", () => ({
+  getCurrentAccountEntitlements: vi.fn(),
+  FREE_HOSTED_MONTHLY_LIMITS: {},
+}));
+
 describe("Model Selection Logic", () => {
   const originalEnv = process.env;
 
@@ -28,6 +34,15 @@ describe("Model Selection Logic", () => {
       OPENROUTER_API_KEY: "test-key",
       MODEL: "env-model",
     };
+    delete process.env.JOBOPS_APP_MODE;
+    delete process.env.JOBOPS_HOSTED_TENANT_ID;
+    vi.mocked(getCurrentAccountEntitlements).mockResolvedValue({
+      plan: "free",
+      platformAiIncluded: false,
+      userEditableLlmSettings: true,
+      hostedLimits: {} as never,
+      subscription: null,
+    });
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       llmApiKey: "test-key",
@@ -80,6 +95,80 @@ describe("Model Selection Logic", () => {
           },
         ],
       }),
+    });
+  });
+
+  describe("Hosted AI entitlement boundary", () => {
+    beforeEach(() => {
+      process.env.JOBOPS_APP_MODE = "hosted";
+      process.env.JOBOPS_HOSTED_TENANT_ID = "tenant_hosted";
+      process.env.JOBOPS_HOSTED_PLATFORM_LLM_ENABLED = "true";
+      process.env.LLM_PROVIDER = "openai";
+      process.env.LLM_API_KEY = "sk-platform";
+      process.env.MODEL = "platform-model";
+    });
+
+    it("uses stored BYOK but never platform environment credentials for Free", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmProvider: "openai",
+        model: "user-model",
+        llmApiKey: "sk-user",
+      });
+
+      await expect(resolveLlmRuntimeSettings()).resolves.toMatchObject({
+        provider: "openai",
+        model: "user-model",
+        apiKey: "sk-user",
+        allowEnvironmentCredentials: false,
+        allowCliProviders: false,
+      });
+
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmProvider: "openai",
+      });
+      await expect(resolveLlmRuntimeSettings()).resolves.toMatchObject({
+        provider: "openai",
+        apiKey: null,
+      });
+    });
+
+    it("cannot select a process-authenticated CLI provider for Free", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmProvider: "codex",
+      });
+
+      await expect(resolveLlmRuntimeSettings()).resolves.toMatchObject({
+        provider: "openrouter",
+        apiKey: null,
+        allowCliProviders: false,
+      });
+    });
+
+    it("uses platform provider, model, and credentials only for entitled Pro", async () => {
+      vi.mocked(getCurrentAccountEntitlements).mockResolvedValue({
+        plan: "pro",
+        platformAiIncluded: true,
+        userEditableLlmSettings: false,
+        hostedLimits: {} as never,
+        subscription: {
+          status: "active",
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+        },
+      });
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmProvider: "openrouter",
+        model: "user-model",
+        llmApiKey: "sk-user",
+      });
+
+      await expect(resolveLlmRuntimeSettings()).resolves.toMatchObject({
+        provider: "openai",
+        model: "platform-model",
+        apiKey: "sk-platform",
+        allowEnvironmentCredentials: true,
+        allowCliProviders: true,
+      });
     });
   });
 

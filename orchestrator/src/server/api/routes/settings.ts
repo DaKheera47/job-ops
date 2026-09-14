@@ -10,8 +10,10 @@ import {
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { getRequestId, isSystemAdmin } from "@infra/request-context";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
+import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { setBackupSettings } from "@server/services/backup/index";
 import { getOriginalEnvValue } from "@server/services/envSettings";
@@ -23,6 +25,7 @@ import {
   startCodexDeviceAuth,
 } from "@server/services/llm/codex/login";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
+import { isHostedLocalProvider } from "@server/services/llm/hosted-policy";
 import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
@@ -54,9 +57,21 @@ const RXRESUME_SAVE_VALIDATION_KEYS: Array<keyof UpdateSettingsInput> = [
   "rxresumeUrl",
   "rxresumeApiKey",
 ];
+const LLM_SETTING_KEYS: Array<keyof UpdateSettingsInput> = [
+  "model",
+  "modelScorer",
+  "modelTailoring",
+  "modelProjectSelection",
+  "llmProvider",
+  "llmBaseUrl",
+  "llmApiKey",
+  "llmPurposeOverrides",
+  "llmPurposeApiKeys",
+];
+const CLI_PROVIDERS = new Set(["codex", "gemini_cli", "claude_cli"]);
 
 function requireSystemAdmin(res: Response): boolean {
-  if (isSystemAdmin()) return true;
+  if (getJobOpsAppConfig().appMode === "hosted" || isSystemAdmin()) return true;
   fail(res, forbidden("System admin access is required"));
   return false;
 }
@@ -70,6 +85,45 @@ function hasInputKey<K extends keyof UpdateSettingsInput>(
 
 function shouldValidateRxResumeOnSave(input: UpdateSettingsInput): boolean {
   return RXRESUME_SAVE_VALIDATION_KEYS.some((key) => hasInputKey(input, key));
+}
+
+async function assertLlmSettingsEditable(): Promise<void> {
+  if (getJobOpsAppConfig().appMode !== "hosted") return;
+  if (!(await getCurrentAccountEntitlements()).userEditableLlmSettings) {
+    throw forbidden("This hosted account uses the included Pro AI provider.");
+  }
+}
+
+function assertHostedProviderAllowed(
+  provider: string | null | undefined,
+): void {
+  if (getJobOpsAppConfig().appMode !== "hosted") return;
+  if (isHostedLocalProvider(provider)) {
+    throw forbidden(
+      "Local LLM providers are unavailable in hosted mode. Configure your own hosted HTTPS provider or upgrade to Pro.",
+    );
+  }
+  if (CLI_PROVIDERS.has(normalizeLlmProviderValue(provider) ?? "")) {
+    throw forbidden("CLI LLM providers are unavailable in hosted mode.");
+  }
+}
+
+function assertHostedBaseUrlAllowed(value: string | null | undefined): void {
+  if (getJobOpsAppConfig().appMode === "hosted" && value?.trim()) {
+    throw forbidden(
+      "Custom LLM base URLs are unavailable in hosted mode. Use a supported provider endpoint.",
+    );
+  }
+}
+
+function assertHostedLlmInputAllowed(input: UpdateSettingsInput): void {
+  if (getJobOpsAppConfig().appMode !== "hosted") return;
+  assertHostedProviderAllowed(input.llmProvider);
+  for (const override of Object.values(input.llmPurposeOverrides ?? {})) {
+    assertHostedProviderAllowed(override?.provider);
+    assertHostedBaseUrlAllowed(override?.baseUrl);
+  }
+  assertHostedBaseUrlAllowed(input.llmBaseUrl);
 }
 
 function isMissingRxResumeConfigValidationResult(input: {
@@ -196,6 +250,7 @@ async function resolveLlmConfig(input: {
   apiKey: string | null;
   baseUrl: string | undefined;
 }> {
+  const hostedMode = getJobOpsAppConfig().appMode === "hosted";
   const [storedApiKey, storedProvider, storedBaseUrl, storedPurposeApiKeys] =
     await Promise.all([
       getSetting("llmApiKey"),
@@ -212,7 +267,9 @@ async function resolveLlmConfig(input: {
     : null;
 
   const provider = normalizeLlmProviderValue(
-    input.provider?.trim() || storedProvider?.trim() || undefined,
+    input.provider?.trim() ||
+      storedProvider?.trim() ||
+      (hostedMode ? "openrouter" : undefined),
   );
   const usesBaseUrl =
     provider === "lmstudio" ||
@@ -224,12 +281,28 @@ async function resolveLlmConfig(input: {
   const baseUrl = usesBaseUrl
     ? hasExplicitBaseUrlOverride
       ? input.baseUrl?.trim() ||
-        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        (hostedMode
+          ? undefined
+          : getOriginalEnvValue("LLM_BASE_URL")?.trim()) ||
         getDefaultValidationBaseUrl(provider)
       : storedBaseUrl?.trim() ||
-        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        (hostedMode
+          ? undefined
+          : getOriginalEnvValue("LLM_BASE_URL")?.trim()) ||
         getDefaultValidationBaseUrl(provider)
     : undefined;
+  const userBaseUrl = hasExplicitBaseUrlOverride
+    ? input.baseUrl?.trim()
+    : storedBaseUrl?.trim();
+
+  const hasCustomUserBaseUrl =
+    Boolean(userBaseUrl) &&
+    userBaseUrl !== getDefaultValidationBaseUrl(provider);
+  if (hostedMode && (isHostedLocalProvider(provider) || hasCustomUserBaseUrl)) {
+    throw forbidden(
+      "Hosted LLM providers must use supported public provider endpoints.",
+    );
+  }
 
   return {
     provider,
@@ -237,6 +310,7 @@ async function resolveLlmConfig(input: {
       storedApiKey: input.apiKey ?? storedApiKey,
       purposeApiKey: storedPurposeApiKey,
       provider,
+      allowEnvironmentCredentials: !hostedMode,
     }),
     baseUrl,
   };
@@ -321,6 +395,10 @@ settingsRouter.patch(
     if (!requireSystemAdmin(res)) return;
 
     const input = updateSettingsSchema.parse(req.body);
+    if (LLM_SETTING_KEYS.some((key) => hasInputKey(input, key))) {
+      await assertLlmSettingsEditable();
+      assertHostedLlmInputAllowed(input);
+    }
     if (shouldValidateRxResumeOnSave(input)) {
       const validation = await validateRxResumeCredentials(
         buildRxResumeValidationOptions(input),
@@ -409,6 +487,8 @@ settingsRouter.post(
     const baseUrl =
       typeof req.body?.baseUrl === "string" ? req.body.baseUrl : undefined;
     const purpose = parseLlmPurpose(req.body?.purpose);
+    await assertLlmSettingsEditable();
+    assertHostedProviderAllowed(provider);
     const resolved = await resolveLlmConfig({
       provider,
       apiKey,
@@ -420,6 +500,8 @@ settingsRouter.post(
       provider: resolved.provider,
       apiKey: resolved.apiKey,
       baseUrl: resolved.baseUrl,
+      allowEnvironmentCredentials: getJobOpsAppConfig().appMode !== "hosted",
+      allowCliProviders: getJobOpsAppConfig().appMode !== "hosted",
     });
 
     try {
@@ -451,6 +533,11 @@ settingsRouter.post(
 settingsRouter.get(
   "/codex-auth",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      throw forbidden(
+        "Codex CLI authentication is unavailable in hosted mode.",
+      );
+    }
     const data = await getCodexAuthResponseData();
     ok(res, data);
   }),
@@ -467,6 +554,11 @@ settingsRouter.post(
         serviceUnavailable("Codex sign-in is disabled in the public demo."),
       );
       return;
+    }
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      throw forbidden(
+        "Codex CLI authentication is unavailable in hosted mode.",
+      );
     }
 
     const forceRestart = req.body?.forceRestart === true;
@@ -501,6 +593,11 @@ settingsRouter.post(
         res,
         "Codex sign-out is disabled in the public demo.",
         { route: "POST /api/settings/codex-auth/disconnect" },
+      );
+    }
+    if (getJobOpsAppConfig().appMode === "hosted") {
+      throw forbidden(
+        "Codex CLI authentication is unavailable in hosted mode.",
       );
     }
 
