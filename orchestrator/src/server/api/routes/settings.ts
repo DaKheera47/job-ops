@@ -90,7 +90,7 @@ function shouldValidateRxResumeOnSave(input: UpdateSettingsInput): boolean {
 async function assertLlmSettingsEditable(): Promise<void> {
   if (getJobOpsAppConfig().appMode !== "hosted") return;
   if (!(await getCurrentAccountEntitlements()).userEditableLlmSettings) {
-    throw forbidden("This hosted account uses the included Pro AI provider.");
+    throw forbidden("This hosted account uses the included AI provider.");
   }
 }
 
@@ -100,7 +100,7 @@ function assertHostedProviderAllowed(
   if (getJobOpsAppConfig().appMode !== "hosted") return;
   if (isHostedLocalProvider(provider)) {
     throw forbidden(
-      "Local LLM providers are unavailable in hosted mode. Configure your own hosted HTTPS provider or upgrade to Pro.",
+      "Local LLM providers are unavailable in hosted mode. Configure a supported hosted HTTPS provider.",
     );
   }
   if (CLI_PROVIDERS.has(normalizeLlmProviderValue(provider) ?? "")) {

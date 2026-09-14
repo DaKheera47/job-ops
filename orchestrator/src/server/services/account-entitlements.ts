@@ -47,7 +47,7 @@ export async function getCurrentAccountEntitlements(): Promise<AccountEntitlemen
       subscription.stripeStatus &&
       PRO_STATUSES.has(subscription.stripeStatus),
   );
-  const platformAiIncluded = pro && config.capabilities.platformLlm;
+  const platformAiIncluded = config.capabilities.platformLlm;
 
   return {
     plan: pro ? "pro" : "free",

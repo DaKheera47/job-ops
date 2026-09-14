@@ -573,7 +573,7 @@ describe.sequential("Settings API routes", () => {
     expect(extractProjectsFromResume).toHaveBeenCalled();
   });
 
-  it("keeps platform credentials private and rejects CLI providers for hosted Free", async () => {
+  it("keeps platform credentials private and rejects LLM edits for hosted Free", async () => {
     await stopServer({ server, closeDb, tempDir });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
