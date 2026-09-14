@@ -196,6 +196,40 @@ describe("buildJobChatPromptContext", () => {
     expect(context.profileSnapshot).toContain("Skills:");
   });
 
+  it("omits globally excluded projects from Ghostwriter context", async () => {
+    const job = createJob({ id: "job-project-policy" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "resumeProjects"
+        ? JSON.stringify({
+            maxProjects: 1,
+            lockedProjectIds: ["included"],
+            aiSelectableProjectIds: [],
+          })
+        : null,
+    );
+    vi.mocked(getProfile).mockResolvedValue({
+      sections: {
+        projects: {
+          items: ["included", "excluded"].map((id) => ({
+            id,
+            name: `${id} project`,
+            description: id,
+            summary: id,
+            date: "2026",
+            visible: false,
+          })),
+        },
+      },
+    });
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.profileSnapshot).toContain("included project");
+    expect(context.profileSnapshot).not.toContain("excluded project");
+    expect(context.systemPrompt).not.toContain("excluded project");
+  });
+
   it("falls back to empty profile snapshot when profile loading fails", async () => {
     const job = createJob({ id: "job-ctx-2" });
     vi.mocked(getJobById).mockResolvedValue(job);

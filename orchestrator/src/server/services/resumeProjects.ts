@@ -1,3 +1,5 @@
+import { getSetting } from "@server/repositories/settings";
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type {
   ResumeProfile,
   ResumeProjectCatalogItem,
@@ -153,6 +155,40 @@ export function resolveResumeProjectsSettings(args: {
     defaultResumeProjects,
     overrideResumeProjects,
     resumeProjects,
+  };
+}
+
+export async function filterProfileProjectsForAi(
+  profile: ResumeProfile,
+): Promise<ResumeProfile> {
+  const items = profile.sections?.projects?.items;
+  if (!items?.length) return profile;
+
+  const { catalog } = extractProjectsFromProfile(profile);
+  const { resumeProjects } = resolveResumeProjectsSettings({
+    catalog,
+    overrideRaw: await getSetting("resumeProjects"),
+  });
+  const resolution = resolveResumeProjectSelection({
+    catalog,
+    resumeProjects,
+  });
+  const allowedIds = new Set([
+    ...resolution.mustIncludeIds,
+    ...resolution.aiSelectableIds,
+  ]);
+
+  return {
+    ...profile,
+    sections: {
+      ...profile.sections,
+      projects: {
+        ...profile.sections?.projects,
+        items: items
+          .filter((item) => allowedIds.has(item.id))
+          .map((item) => ({ ...item, hidden: false, visible: true })),
+      },
+    },
   };
 }
 

@@ -110,6 +110,37 @@ describe("generateTailoring", () => {
     );
   });
 
+  it("omits globally excluded projects from the tailoring prompt", async () => {
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "resumeProjects"
+        ? JSON.stringify({
+            maxProjects: 1,
+            lockedProjectIds: ["included"],
+            aiSelectableProjectIds: [],
+          })
+        : null,
+    );
+
+    await generateTailoring("Build APIs", {
+      sections: {
+        projects: {
+          items: ["included", "excluded"].map((id) => ({
+            id,
+            name: `${id} project`,
+            description: id,
+            summary: id,
+            date: "2026",
+            visible: true,
+          })),
+        },
+      },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).toContain("included project");
+    expect(prompt).not.toContain("excluded project");
+  });
+
   it("removes language directives from constraints so explicit language settings win", async () => {
     vi.mocked(getWritingStyle).mockResolvedValue({
       tone: "friendly",

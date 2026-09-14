@@ -146,4 +146,37 @@ describe("summarizeJob project selection", () => {
       }),
     );
   });
+
+  it("does not call the selection model when must-include projects fill the target", async () => {
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue({
+      id: "job-1",
+      jobDescription: "Data acquisition engineer role.",
+      tailoredSummary: "Existing summary.",
+      tailoredHeadline: "Existing headline.",
+      tailoredSkills: JSON.stringify(["TypeScript"]),
+      selectedProjectIds: null,
+    } as any);
+    vi.mocked(settingsRepo.getSetting).mockResolvedValue(
+      JSON.stringify({
+        maxProjects: 3,
+        lockedProjectIds: ["mumtaz-urdu", "jobops", "indus-marine"],
+        aiSelectableProjectIds: [],
+      }),
+    );
+
+    expect(await summarizeJob("job-1")).toEqual({ success: true });
+    expect(pickProjectIdsForJob).not.toHaveBeenCalled();
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({ selectedProjectIds: "" }),
+    );
+  });
+
+  it("replaces only projects when projects are explicitly requested", async () => {
+    await summarizeJob("job-1", { force: true, fields: ["projects"] });
+
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith("job-1", {
+      selectedProjectIds: "mumtaz-urdu",
+    });
+  });
 });

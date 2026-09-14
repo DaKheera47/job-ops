@@ -371,6 +371,43 @@ describe("salary penalty", () => {
   });
 
   describe("profile prompt sanitization", () => {
+    it("omits globally excluded projects from scoring", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: { value: "", default: "", override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+      getSettingMock.mockImplementation(async (key) =>
+        key === "resumeProjects"
+          ? JSON.stringify({
+              maxProjects: 1,
+              lockedProjectIds: ["included"],
+              aiSelectableProjectIds: [],
+            })
+          : null,
+      );
+
+      await scoreJobSuitability(createJob({ id: "project-policy-score" }), {
+        sections: {
+          projects: {
+            items: ["included", "excluded"].map((id) => ({
+              id,
+              name: `${id} project`,
+              description: id,
+              summary: id,
+              date: "2026",
+              visible: false,
+            })),
+          },
+        },
+      });
+
+      expect(getScoringPrompt()).toContain("included project");
+      expect(getScoringPrompt()).not.toContain("excluded project");
+    });
+
     it("includes top-level education and the full top-level CV content", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({

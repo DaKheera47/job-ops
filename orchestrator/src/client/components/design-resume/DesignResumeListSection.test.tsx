@@ -101,7 +101,7 @@ describe("DesignResumeListSection", () => {
     );
 
     const maxProjectsInput = screen.getByLabelText(
-      "Maximum projects in Tailored Resumes",
+      "Target projects in tailored resumes",
     );
     expect(maxProjectsInput).toHaveValue(2);
 

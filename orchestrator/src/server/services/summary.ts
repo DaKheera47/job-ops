@@ -15,6 +15,7 @@ import {
   getEffectivePromptTemplate,
   renderPromptTemplate,
 } from "./prompt-templates";
+import { filterProfileProjectsForAi } from "./resumeProjects";
 import {
   getWritingStyle,
   stripKeywordLimitFromConstraints,
@@ -81,12 +82,13 @@ export async function generateTailoring(
   jobDescription: string,
   profile: ResumeProfile,
 ): Promise<TailoringResult> {
-  const [model, writingStyle] = await Promise.all([
+  const [model, writingStyle, aiProfile] = await Promise.all([
     resolveLlmModel("tailoring"),
     getWritingStyle(),
+    filterProfileProjectsForAi(profile),
   ]);
   const prompt = await buildTailoringPrompt(
-    profile,
+    aiProfile,
     jobDescription,
     writingStyle,
   );

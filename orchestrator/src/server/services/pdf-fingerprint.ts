@@ -5,6 +5,7 @@ import type {
   Job,
   JobPdfFreshness,
   PdfRenderer,
+  ResumeProjectsSettings,
   TypstTheme,
 } from "@shared/types";
 import { getCurrentDesignResumeOrNullOnLegacy } from "./design-resume";
@@ -33,16 +34,23 @@ export interface PdfFingerprintContext {
   pdfRenderer: PdfRenderer;
   typstTheme: TypstTheme;
   rxresumeBaseResumeId: string | null;
+  resumeProjects: ResumeProjectsSettings;
 }
 
 export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintContext> {
-  const [designResume, rawRenderer, rawTypstTheme, configuredBaseResume] =
-    await Promise.all([
-      getCurrentDesignResumeOrNullOnLegacy(),
-      settingsRepo.getSetting("pdfRenderer"),
-      settingsRepo.getSetting("typstTheme"),
-      getConfiguredRxResumeBaseResumeId(),
-    ]);
+  const [
+    designResume,
+    rawRenderer,
+    rawTypstTheme,
+    rawResumeProjects,
+    configuredBaseResume,
+  ] = await Promise.all([
+    getCurrentDesignResumeOrNullOnLegacy(),
+    settingsRepo.getSetting("pdfRenderer"),
+    settingsRepo.getSetting("typstTheme"),
+    settingsRepo.getSetting("resumeProjects"),
+    getConfiguredRxResumeBaseResumeId(),
+  ]);
 
   const parsedRenderer = settingsRegistry.pdfRenderer.parse(
     rawRenderer ?? undefined,
@@ -59,6 +67,9 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     pdfRenderer: parsedRenderer ?? settingsRegistry.pdfRenderer.default(),
     typstTheme: parsedTypstTheme ?? settingsRegistry.typstTheme.default(),
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
+    resumeProjects:
+      settingsRegistry.resumeProjects.parse(rawResumeProjects ?? undefined) ??
+      settingsRegistry.resumeProjects.default(),
   };
 }
 
@@ -73,6 +84,7 @@ export function createJobPdfFingerprint(
       ? { typstTheme: context.typstTheme }
       : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,
+    resumeProjects: context.resumeProjects,
     designResumeDocumentId: context.designResumeDocumentId,
     designResumeRevision: context.designResumeRevision,
     designResumeUpdatedAt: context.designResumeUpdatedAt,

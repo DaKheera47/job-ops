@@ -11,6 +11,11 @@ const context: PdfFingerprintContext = {
   pdfRenderer: "latex",
   typstTheme: "classic",
   rxresumeBaseResumeId: "rxresume-base-1",
+  resumeProjects: {
+    maxProjects: 3,
+    lockedProjectIds: ["must"],
+    aiSelectableProjectIds: ["selectable"],
+  },
 };
 
 describe("PDF freshness", () => {
@@ -102,6 +107,17 @@ describe("PDF freshness", () => {
         ...context,
         pdfRenderer: "typst",
         typstTheme: "compact",
+      }),
+    );
+  });
+
+  it("includes resume project policy changes", () => {
+    const job = createJob({ tailoredSummary: "Summary" });
+
+    expect(createJobPdfFingerprint(job, context)).not.toBe(
+      createJobPdfFingerprint(job, {
+        ...context,
+        resumeProjects: { ...context.resumeProjects, maxProjects: 4 },
       }),
     );
   });

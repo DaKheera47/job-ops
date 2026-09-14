@@ -375,10 +375,10 @@ export const ReactiveResumeConfigPanel: React.FC<
                           Visible in template
                         </TableHead>
                         <TableHead className="text-xs whitespace-wrap sm:whitespace-nowrap">
-                          Must Include
+                          Must include
                         </TableHead>
                         <TableHead className="text-xs whitespace-wrap sm:whitespace-nowrap">
-                          AI selectable
+                          AI can select
                         </TableHead>
                       </TableRow>
                     </TableHeader>

@@ -270,6 +270,10 @@ export function useTailoringDraft({
     });
   }, []);
 
+  const replaceSelectedProjects = useCallback((ids: Iterable<string>) => {
+    setSelectedIds(new Set(ids));
+  }, []);
+
   const handleAddSkillGroup = useCallback(() => {
     const nextId = createTailoredSkillDraftId();
     setSkillsDraft((prev) => [
@@ -318,6 +322,7 @@ export function useTailoringDraft({
     markSavedSnapshot,
     markSavedJob,
     handleToggleProject,
+    replaceSelectedProjects,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
     handleRemoveSkillGroup,
