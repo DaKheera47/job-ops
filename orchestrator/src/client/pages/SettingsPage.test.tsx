@@ -243,6 +243,24 @@ describe("SettingsPage", () => {
     expect(api.getBillingStatus).not.toHaveBeenCalled();
   });
 
+  it("does not request system backups for non-admin users", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    renderPage();
+
+    await waitFor(() => expect(api.getCurrentAuthUser).toHaveBeenCalled());
+    expect(api.getBackups).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("hides installation-wide database clearing from non-admin users", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    renderPage();
+
+    await openDangerZoneSection();
+    await waitFor(() => expect(api.getCurrentAuthUser).toHaveBeenCalled());
+    expect(screen.queryByText("Clear Entire Database")).not.toBeInTheDocument();
+  });
+
   afterAll(() => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,

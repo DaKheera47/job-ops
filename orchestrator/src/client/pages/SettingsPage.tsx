@@ -849,9 +849,15 @@ export const SettingsPage: React.FC = () => {
     queryFn: api.getBillingStatus,
     enabled: isHostedMode,
   });
+  const currentUserQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: api.getCurrentAuthUser,
+    retry: false,
+  });
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups.list(),
     queryFn: api.getBackups,
+    enabled: currentUserQuery.data?.isSystemAdmin === true,
   });
   const updateSettingsMutation = useUpdateSettingsMutation();
   const isLoading = settingsQuery.isLoading;
@@ -1750,7 +1756,11 @@ export const SettingsPage: React.FC = () => {
           statusesToClear={statusesToClear}
           toggleStatusToClear={toggleStatusToClear}
           handleClearByStatuses={handleClearByStatuses}
-          handleClearDatabase={handleClearDatabase}
+          handleClearDatabase={
+            currentUserQuery.data?.isSystemAdmin
+              ? handleClearDatabase
+              : undefined
+          }
           handleClearByScore={handleClearByScore}
           isLoading={isLoading}
           isSaving={isSaving}

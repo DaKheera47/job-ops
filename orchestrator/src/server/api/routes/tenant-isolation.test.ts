@@ -355,4 +355,68 @@ describe.sequential("Hosted current-user isolation", () => {
       bobSearches.data.searches[0].id,
     );
   });
+
+  it("keeps bulk job deletion scoped to the current hosted user", async () => {
+    const aliceToken = await signup(baseUrl, "alice", "alice-secret");
+    const bobToken = await signup(baseUrl, "bob", "bob-secret");
+    const aliceJob = await importManualJob(baseUrl, aliceToken, "Alice Role");
+    const bobJob = await importManualJob(baseUrl, bobToken, "Bob Role");
+
+    const databaseDelete = await fetch(`${baseUrl}/api/database`, {
+      method: "DELETE",
+      headers: authHeaders(bobToken),
+    });
+    expect(databaseDelete.status).toBe(403);
+
+    for (const [token, jobId] of [
+      [aliceToken, aliceJob.id],
+      [bobToken, bobJob.id],
+    ]) {
+      const res = await fetch(`${baseUrl}/api/jobs/${jobId}`, {
+        method: "PATCH",
+        headers: authHeaders(token),
+        body: JSON.stringify({ status: "ready", suitabilityScore: 10 }),
+      });
+      expect(res.status).toBe(200);
+    }
+
+    const statusDelete = await fetch(`${baseUrl}/api/jobs/status/ready`, {
+      method: "DELETE",
+      headers: authHeaders(aliceToken),
+    });
+    expect((await statusDelete.json()).data.count).toBe(1);
+
+    const bobAfterStatusDelete = await fetch(
+      `${baseUrl}/api/jobs/${bobJob.id}`,
+      { headers: { Authorization: `Bearer ${bobToken}` } },
+    );
+    expect(bobAfterStatusDelete.status).toBe(200);
+
+    const aliceLowScoreJob = await importManualJob(
+      baseUrl,
+      aliceToken,
+      "Alice Low Score Role",
+    );
+    const scorePatch = await fetch(
+      `${baseUrl}/api/jobs/${aliceLowScoreJob.id}`,
+      {
+        method: "PATCH",
+        headers: authHeaders(aliceToken),
+        body: JSON.stringify({ suitabilityScore: 10 }),
+      },
+    );
+    expect(scorePatch.status).toBe(200);
+
+    const scoreDelete = await fetch(`${baseUrl}/api/jobs/score/50`, {
+      method: "DELETE",
+      headers: authHeaders(aliceToken),
+    });
+    expect((await scoreDelete.json()).data.count).toBe(1);
+
+    const bobAfterScoreDelete = await fetch(
+      `${baseUrl}/api/jobs/${bobJob.id}`,
+      { headers: { Authorization: `Bearer ${bobToken}` } },
+    );
+    expect(bobAfterScoreDelete.status).toBe(200);
+  });
 });

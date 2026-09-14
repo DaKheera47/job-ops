@@ -66,8 +66,8 @@ jobsMaintenanceRouter.delete(
         );
       }
 
-      const threshold = parseInt(req.params.threshold, 10);
-      if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
+      const threshold = Number(req.params.threshold);
+      if (!Number.isInteger(threshold) || threshold < 0 || threshold > 100) {
         return fail(
           res,
           badRequest("Threshold must be a number between 0 and 100"),
