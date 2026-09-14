@@ -10,7 +10,10 @@ import {
   hydrateWatchlistSelectedSources,
   withWatchlistSourceTimeout,
 } from "@server/watchlist/results";
-import type { WatchlistResultsResponse } from "@shared/types";
+import {
+  MAX_WATCHLIST_SOURCES,
+  type WatchlistResultsResponse,
+} from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -29,7 +32,7 @@ const watchlistCheckSchema = z.object({
         sourceJobIds: z.array(z.string().trim().min(1).max(500)).max(200),
       }),
     )
-    .max(20),
+    .max(MAX_WATCHLIST_SOURCES),
 });
 
 const updateWatchlistSelectionsSchema = z.object({
@@ -48,7 +51,7 @@ const updateWatchlistSelectionsSchema = z.object({
         careersUrl: z.string().trim().url().max(2000),
       }),
     )
-    .max(10),
+    .max(MAX_WATCHLIST_SOURCES),
 });
 
 const watchlistSourceJobSchema = z.object({

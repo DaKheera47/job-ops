@@ -405,6 +405,8 @@ export interface WatchlistSource {
   sourceType: WatchedSourceType;
 }
 
+export const MAX_WATCHLIST_SOURCES = 50;
+
 export interface WatchlistSelectedSource {
   id: string;
   catalogSourceId: string | null;

@@ -1,6 +1,7 @@
 import { notFound } from "@infra/errors";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as watchlistRepo from "@server/repositories/watchlist";
+import { asyncPool } from "@server/utils/async-pool";
 import {
   getWatchlistSourceAdapter,
   listWatchlistSourceAdapters,
@@ -15,6 +16,8 @@ import type {
 } from "@shared/types";
 
 export const WATCHLIST_SOURCE_TIMEOUT_MS = 30000;
+// ponytail: preserve the old five-source peak; use tenant-wide scheduling if aggregate load becomes a problem.
+const WATCHLIST_SOURCE_CONCURRENCY = 5;
 
 export function getWatchlistSourceTypeDescriptors() {
   return listWatchlistSourceAdapters().map((adapter) => adapter.descriptor);
@@ -52,9 +55,11 @@ export async function getWatchlistResultsForSources(
     };
   }
 
-  const fetchedSources = await Promise.all(
-    selectedSources.map((source) => fetchWatchlistSource(source)),
-  );
+  const fetchedSources = await asyncPool({
+    items: selectedSources,
+    concurrency: WATCHLIST_SOURCE_CONCURRENCY,
+    task: fetchWatchlistSource,
+  });
   const successfulSources = fetchedSources.filter(
     (item): item is Extract<WatchlistSourceResult, { status: "success" }> =>
       item.status === "success",
