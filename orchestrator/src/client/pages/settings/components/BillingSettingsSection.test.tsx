@@ -25,8 +25,8 @@ describe("BillingSettingsSection", () => {
       <BillingSettingsSection
         status={{
           plan: "free",
-          platformAiIncluded: false,
-          userEditableLlmSettings: true,
+          platformAiIncluded: true,
+          userEditableLlmSettings: false,
           hostedLimits: limits,
           subscription: null,
           priceGbpMonthly: 30,
@@ -40,12 +40,13 @@ describe("BillingSettingsSection", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Free" })).toBeVisible();
+    expect(screen.getByText(/Included AI with lower/)).toBeVisible();
     expect(screen.getByText(/£30/)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
     expect(onUpgrade).toHaveBeenCalledOnce();
   });
 
-  it("renders active Pro with included AI and portal action", () => {
+  it("renders active Pro with higher limits and portal action", () => {
     render(
       <BillingSettingsSection
         status={{
@@ -69,7 +70,7 @@ describe("BillingSettingsSection", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Pro" })).toBeVisible();
-    expect(screen.getByText(/JobOps-funded AI/)).toBeVisible();
+    expect(screen.getByText(/Included AI with higher/)).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Manage subscription" }),
     ).toBeVisible();

@@ -66,8 +66,8 @@ describe.sequential("account entitlements", () => {
       withUser("alice", getCurrentAccountEntitlements),
     ).resolves.toMatchObject({
       plan: "free",
-      platformAiIncluded: false,
-      userEditableLlmSettings: true,
+      platformAiIncluded: true,
+      userEditableLlmSettings: false,
       hostedLimits: { job_search: 100 },
     });
 
@@ -93,7 +93,11 @@ describe.sequential("account entitlements", () => {
     });
     await expect(
       withUser("bob", getCurrentAccountEntitlements),
-    ).resolves.toMatchObject({ plan: "free" });
+    ).resolves.toMatchObject({
+      plan: "free",
+      platformAiIncluded: true,
+      hostedLimits: { job_search: 100 },
+    });
 
     await saveSubscriptionState({
       scope: { tenantId: "tenant_default", userId: "alice" },
@@ -107,7 +111,11 @@ describe.sequential("account entitlements", () => {
     });
     await expect(
       withUser("alice", getCurrentAccountEntitlements),
-    ).resolves.toMatchObject({ plan: "free", platformAiIncluded: false });
+    ).resolves.toMatchObject({
+      plan: "free",
+      platformAiIncluded: true,
+      hostedLimits: { job_search: 100 },
+    });
   });
 
   it("leaves local behavior unlimited and user-configurable without account context", async () => {

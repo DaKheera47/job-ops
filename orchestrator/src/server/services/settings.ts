@@ -244,6 +244,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     ...envSettings,
     llmPurposeApiKeyHints: readPurposeApiKeyHints(overrides),
   };
+  if (hostedMode && allowPlatformLlm) {
+    result.llmApiKeyHint = null;
+    result.llmPurposeApiKeyHints = {};
+  }
 
   const rawModel = overrides.model;
   const modelDef = settingsRegistry.model;

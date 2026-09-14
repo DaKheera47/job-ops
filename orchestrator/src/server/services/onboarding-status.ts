@@ -715,7 +715,7 @@ export async function saveOnboardingModelAction(
     getJobOpsAppStatus().appMode === "hosted" &&
     !(await getCurrentAccountEntitlements()).userEditableLlmSettings
   ) {
-    throw forbidden("This hosted account uses the included Pro AI provider.");
+    throw forbidden("This hosted account uses the included AI provider.");
   }
   const provider = normalizeLlmProviderValue(input.provider);
   const [storedProvider, storedModel] = await Promise.all([

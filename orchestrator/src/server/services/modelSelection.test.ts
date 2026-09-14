@@ -144,17 +144,13 @@ describe("Model Selection Logic", () => {
       });
     });
 
-    it("uses platform provider, model, and credentials only for entitled Pro", async () => {
+    it("uses platform provider, model, and credentials for hosted Free", async () => {
       vi.mocked(getCurrentAccountEntitlements).mockResolvedValue({
-        plan: "pro",
+        plan: "free",
         platformAiIncluded: true,
         userEditableLlmSettings: false,
         hostedLimits: {} as never,
-        subscription: {
-          status: "active",
-          currentPeriodEnd: null,
-          cancelAtPeriodEnd: false,
-        },
+        subscription: null,
       });
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
         llmProvider: "openrouter",

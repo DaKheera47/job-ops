@@ -28,6 +28,7 @@ export function BillingSettingsSection({
   onManage,
 }: BillingSettingsSectionProps) {
   const pro = status?.plan === "pro";
+  const includedAi = status?.platformAiIncluded;
   const periodEnd = formatPeriodEnd(
     status?.subscription?.currentPeriodEnd ?? null,
   );
@@ -50,12 +51,16 @@ export function BillingSettingsSection({
             </div>
             {pro ? (
               <p className="max-w-xl text-sm text-muted-foreground">
-                JobOps-funded AI and higher monthly hosted limits are included.
+                {includedAi
+                  ? "Included AI with higher monthly hosted limits."
+                  : "Higher monthly hosted limits. Connect your own AI provider."}
               </p>
             ) : (
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  Upgrade for included AI and higher monthly hosted limits.
+                  {includedAi
+                    ? "Included AI with lower monthly hosted limits. Upgrade for higher limits."
+                    : "Connect your own AI provider. Upgrade for higher monthly hosted limits."}
                 </p>
                 <p className="text-sm font-medium tabular-nums">
                   £30{" "}

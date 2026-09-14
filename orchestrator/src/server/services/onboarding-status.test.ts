@@ -308,7 +308,7 @@ describe("onboarding status engine", () => {
     });
   });
 
-  it("omits model onboarding when hosted platform LLM manages model settings", async () => {
+  it("omits model onboarding for hosted Free when platform LLM manages model settings", async () => {
     mocks.getJobOpsAppStatus.mockReturnValue({
       appMode: "hosted",
       capabilities: {
@@ -320,11 +320,11 @@ describe("onboarding status engine", () => {
       hostedTenantConfigured: true,
     });
     mocks.getCurrentAccountEntitlements.mockResolvedValue({
-      plan: "pro",
+      plan: "free",
       platformAiIncluded: true,
       userEditableLlmSettings: false,
       hostedLimits: {},
-      subscription: { status: "active" },
+      subscription: null,
     });
     mocks.getDesignResumeStatus.mockResolvedValue({ exists: false });
     mocks.validateLlmCredentials.mockResolvedValue({
