@@ -50,6 +50,7 @@ Use it to quickly answer:
 - Default window is `30d`.
 - Only jobs in statuses `applied` and `in_progress` are used as input.
 - Conversion counts any positive response-stage event (for example recruiter screen, assessment, interview stages, or offer).
+- Moving an application from a later stage back to **Applied** (dragging its card to the Applied lane, logging an Applied event, or a tracking-inbox update that resolves to Applied) retracts the stages and outcomes recorded before that move, so the funnel, conversion, and response-rate figures treat it as a fresh application, matching its lane on the In Progress board. Delete the mistaken event from the job timeline if you also want it gone from the history.
 - Conversion trend chart uses a rolling window up to 7 days.
 - Response rate by source is calculated across all time (not scoped to the duration selector), since response events may arrive well after the application window.
 - Sources with fewer than 5 applications are hidden by default in the Response Rate by Source chart. Check **Include small samples** to show them.

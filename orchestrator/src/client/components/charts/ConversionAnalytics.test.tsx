@@ -401,6 +401,86 @@ describe("ConversionAnalytics - Edge Cases", () => {
     });
   });
 
+  describe("Moving Back to Applied", () => {
+    const createRetractedScreeningJob = (id: string) =>
+      createJob(id, mockDate.toISOString(), [
+        createStageEvent({
+          id: `${id}-applied`,
+          applicationId: id,
+          toStage: "applied",
+          occurredAt: 1704844800000,
+        }),
+        createStageEvent({
+          id: `${id}-screen`,
+          applicationId: id,
+          fromStage: "applied",
+          toStage: "recruiter_screen",
+          occurredAt: 1704931200000,
+        }),
+        createStageEvent({
+          id: `${id}-back`,
+          applicationId: id,
+          fromStage: "recruiter_screen",
+          toStage: "applied",
+          occurredAt: 1705017600000,
+          metadata: { actor: "user", eventType: "status_update" },
+        }),
+      ]);
+
+    const readFunnel = () =>
+      JSON.parse(
+        screen.getByTestId("bar-chart-data").textContent ?? "[]",
+      ) as Array<{ name: string; value: number }>;
+
+    it("does not count a screening stage retracted by moving back to Applied", () => {
+      render(
+        <ConversionAnalytics
+          jobsWithEvents={[createRetractedScreeningJob("job-1")]}
+          error={null}
+          daysToShow={7}
+        />,
+      );
+
+      expect(readFunnel()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "Applied", value: 1 }),
+          expect.objectContaining({ name: "Screening", value: 0 }),
+        ]),
+      );
+      expect(screen.getByText("0.0%")).toBeInTheDocument();
+      expect(screen.getByText(/0 of 1 applications/)).toBeInTheDocument();
+    });
+
+    it("counts stages reached after the move back", () => {
+      const job = createRetractedScreeningJob("job-1");
+      job.events.push(
+        createStageEvent({
+          id: "job-1-assessment",
+          applicationId: "job-1",
+          fromStage: "applied",
+          toStage: "assessment",
+          occurredAt: 1705104000000,
+        }),
+      );
+
+      render(
+        <ConversionAnalytics
+          jobsWithEvents={[job]}
+          error={null}
+          daysToShow={7}
+        />,
+      );
+
+      expect(readFunnel()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "Screening", value: 1 }),
+        ]),
+      );
+      expect(screen.getByText("100.0%")).toBeInTheDocument();
+      expect(screen.getByText(/1 of 1 applications/)).toBeInTheDocument();
+    });
+  });
+
   describe("Date Range and Invalid Dates", () => {
     it("counts jobs with any non-null appliedAt (overall stats don't validate dates)", () => {
       const today = mockDate.toISOString();
