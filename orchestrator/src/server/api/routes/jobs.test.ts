@@ -1766,6 +1766,11 @@ describe.sequential("Jobs API routes", () => {
       method: "DELETE",
     });
     expect(nanRes.status).toBe(400);
+
+    const partialRes = await fetch(`${baseUrl}/api/jobs/score/50junk`, {
+      method: "DELETE",
+    });
+    expect(partialRes.status).toBe(400);
   });
 
   it("checks visa sponsor status for a job", async () => {

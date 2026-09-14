@@ -239,7 +239,8 @@ Per-search ranking preferences now live in **Run search**. Add them to the natur
 
 - Clear jobs by selected statuses
 - Clear jobs below a score threshold
-- Clear the full database
+- In hosted mode, job-clearing actions affect only the signed-in user's jobs
+- Clear the full database as a system admin; this affects every workspace
 
 ## API examples
 

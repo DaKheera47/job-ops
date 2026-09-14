@@ -28,7 +28,7 @@ type DangerZoneSectionProps = {
   statusesToClear: JobStatus[];
   toggleStatusToClear: (status: JobStatus) => void;
   handleClearByStatuses: () => void;
-  handleClearDatabase: () => void;
+  handleClearDatabase?: () => void;
   handleClearByScore?: (threshold: number) => void;
   isLoading: boolean;
   isSaving: boolean;
@@ -227,48 +227,52 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
           </div>
         )}
 
-        <Separator />
+        {handleClearDatabase && (
+          <>
+            <Separator />
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-3 rounded-md">
-          <div className="space-y-0.5">
-            <div className="text-sm font-semibold text-destructive">
-              Clear Entire Database
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-3 rounded-md">
+              <div className="space-y-0.5">
+                <div className="text-sm font-semibold text-destructive">
+                  Clear Entire Database
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Delete all jobs and pipeline runs from the database.
+                </div>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isLoading || isSaving}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear Database
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all jobs?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This deletes all jobs and pipeline runs from the database.
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleClearDatabase}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Clear database
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-            <div className="text-xs text-muted-foreground">
-              Delete all jobs and pipeline runs from the database.
-            </div>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isLoading || isSaving}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear Database
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear all jobs?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This deletes all jobs and pipeline runs from the database.
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleClearDatabase}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Clear database
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+          </>
+        )}
       </div>
     </SettingsSectionFrame>
   );
