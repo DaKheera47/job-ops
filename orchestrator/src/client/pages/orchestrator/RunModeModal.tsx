@@ -169,6 +169,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
           <TabsContent value="automatic" className="min-h-0 flex-1">
             <AutomaticRunTab
               open={open}
+              showPromptIntro={!showTopHeader}
               settings={settings}
               enabledSources={enabledSources}
               pipelineSources={pipelineSources}

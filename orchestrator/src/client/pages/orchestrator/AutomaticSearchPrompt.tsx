@@ -28,6 +28,7 @@ const SEARCH_PROMPT_EXAMPLES = [
 ];
 
 interface AutomaticSearchPromptProps {
+  showIntro?: boolean;
   searchPrompt: string;
   isPlanningSearch: boolean;
   planSummary: string | null;
@@ -39,6 +40,7 @@ interface AutomaticSearchPromptProps {
 }
 
 export function AutomaticSearchPrompt({
+  showIntro = true,
   searchPrompt,
   isPlanningSearch,
   planSummary,
@@ -50,18 +52,20 @@ export function AutomaticSearchPrompt({
 }: AutomaticSearchPromptProps) {
   return (
     <div className="mx-auto flex w-full max-w-[40rem] flex-col">
-      <div className="mb-7 space-y-3 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Search composer
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          What kind of jobs are you looking for?
-        </h1>
-        <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Describe the roles you want. Job Ops will turn that into search terms,
-          sources, filters, and ranking rules before anything runs.
-        </p>
-      </div>
+      {showIntro ? (
+        <div className="mb-7 space-y-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Search composer
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            What kind of jobs are you looking for?
+          </h1>
+          <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Describe the roles you want. Job Ops will turn that into search
+            terms, sources, filters, and ranking rules before anything runs.
+          </p>
+        </div>
+      ) : null}
 
       <Label htmlFor="search-plan-prompt" className="sr-only">
         What kind of jobs are you looking for?

@@ -64,6 +64,7 @@ import { getSourceStatus } from "./automatic-run-source-status";
 
 interface AutomaticRunTabProps {
   open: boolean;
+  showPromptIntro?: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -140,6 +141,7 @@ function normalizeRunBudget(value: number): number {
 
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   open,
+  showPromptIntro = true,
   settings,
   enabledSources,
   pipelineSources,
@@ -808,6 +810,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             className="mt-0 flex min-h-0 flex-1 flex-col items-center py-10 sm:py-14"
           >
             <AutomaticSearchPrompt
+              showIntro={showPromptIntro}
               searchPrompt={searchPrompt}
               isPlanningSearch={isPlanningSearch}
               planSummary={planSummary}

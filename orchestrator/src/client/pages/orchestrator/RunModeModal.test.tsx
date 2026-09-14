@@ -12,8 +12,15 @@ vi.mock("@client/components/ManualImportFlow", () => ({
 }));
 
 vi.mock("./AutomaticRunTab", () => ({
-  AutomaticRunTab: () => (
-    <div data-testid="automatic-tab">Automatic run tab</div>
+  AutomaticRunTab: ({
+    showPromptIntro = true,
+  }: {
+    showPromptIntro?: boolean;
+  }) => (
+    <div data-testid="automatic-tab">
+      {showPromptIntro ? <h1>What kind of jobs are you looking for?</h1> : null}
+      Automatic run tab
+    </div>
   ),
 }));
 
@@ -38,6 +45,11 @@ describe("RunModeModal", () => {
 
     expect(screen.getByTestId("automatic-tab")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /manual/i })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", {
+        name: /what kind of jobs are you looking for\?/i,
+      }),
+    ).toHaveLength(1);
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: /manual/i }));
 
