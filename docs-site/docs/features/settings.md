@@ -21,6 +21,7 @@ It lets you configure:
 - Reactive Resume project selection
 - Tracer Links readiness verification
 - Backup and scoring rules
+- Hosted plan, billing, and monthly usage
 - Data-clearing actions in the Danger Zone
 
 ## Why it exists
@@ -37,6 +38,12 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 4. Re-run the workflow that uses those settings (for example pipeline runs, Ghostwriter, or resume tailoring) to verify behavior.
 
 ## Section-by-section guide
+
+### Plan & Billing
+
+This section appears in hosted deployments. It shows your current Free or Pro plan, subscription controls, and monthly usage for job-source searches, pipeline runs, AI operations, Ghostwriter generations, and PDF exports.
+
+Each meter includes completed usage and work currently in progress. Limits reset monthly. If hosted quotas are disabled for the workspace, the section says so instead of showing meters.
 
 ### Model
 
