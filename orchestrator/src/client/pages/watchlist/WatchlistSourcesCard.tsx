@@ -1,8 +1,9 @@
 import * as api from "@client/api";
 import { StatusIndicator } from "@client/components/StatusIndicator";
-import type {
-  WatchlistSource,
-  WatchlistSourceTypeDescriptor,
+import {
+  MAX_WATCHLIST_SOURCES,
+  type WatchlistSource,
+  type WatchlistSourceTypeDescriptor,
 } from "@shared/types.js";
 import { Loader2, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,12 +23,7 @@ import {
   CUSTOM_SOURCE_VALUE,
   getNormalizedWatchlistCareersUrl,
   getWatchlistPreviewLabel,
-  WATCHLIST_SOURCE_COUNT_OPTIONS,
 } from "./utils";
-
-const MAX_WATCHLIST_SOURCES =
-  WATCHLIST_SOURCE_COUNT_OPTIONS[WATCHLIST_SOURCE_COUNT_OPTIONS.length - 1] ??
-  5;
 
 function getSourceDraftDetails(
   draftCatalogSourceId: string | null,
@@ -142,9 +138,9 @@ export function WatchlistSourcesCard({
   }, [catalogSources, defaultSourceType, sourceDrafts]);
 
   useEffect(() => {
-    const pendingUrls = logoCareersUrls.filter(
-      (item) => logoDataUrls[item.careersUrl] === undefined,
-    );
+    const pendingUrls = logoCareersUrls
+      .filter((item) => logoDataUrls[item.careersUrl] === undefined)
+      .slice(0, 5);
     if (pendingUrls.length === 0) return;
 
     let cancelled = false;
