@@ -21,6 +21,7 @@ export const formatSecretHint = (hint: string | null) =>
   hint ? `${hint}********` : "Not set";
 
 export const LLM_PROVIDERS = [
+  "atlascloud",
   "openrouter",
   "orcarouter",
   "requesty",
@@ -38,6 +39,7 @@ export const LLM_PROVIDERS = [
 
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 export const LLM_MODEL_SUGGESTION_PROVIDERS = [
+  "atlascloud",
   "openai",
   "anthropic",
   "glm",
@@ -50,6 +52,7 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
 ] as const;
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
+  atlascloud: "Atlas Cloud",
   openrouter: "OpenRouter",
   orcarouter: "OrcaRouter",
   requesty: "Requesty",
@@ -66,6 +69,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
 };
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
+  "atlascloud",
   "openrouter",
   "orcarouter",
   "requesty",
@@ -86,6 +90,8 @@ const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
 ]);
 
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
+  atlascloud:
+    "Atlas Cloud provides OpenAI-compatible access to hosted text models with one API key.",
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
   orcarouter:
@@ -114,6 +120,10 @@ const PROVIDER_KEY_HELPERS: Record<
   LlmProviderId,
   { text: string; href?: string }
 > = {
+  atlascloud: {
+    text: "Create a key at atlascloud.ai",
+    href: "https://www.atlascloud.ai/console/api-keys",
+  },
   openrouter: {
     text: "Create a key at openrouter.ai",
     href: "https://openrouter.ai/keys",

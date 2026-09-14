@@ -88,6 +88,9 @@ function getDefaultBaseUrlForProvider(
   provider: string | null | undefined,
 ): string | null {
   const normalized = provider?.trim().toLowerCase().replace(/-/g, "_");
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "https://api.atlascloud.ai";
+  }
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") return "https://api.openai.com";

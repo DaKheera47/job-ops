@@ -35,6 +35,9 @@ import { resolveRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "https://api.atlascloud.ai";
+  }
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") {

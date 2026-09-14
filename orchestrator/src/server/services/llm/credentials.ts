@@ -38,6 +38,12 @@ export function resolveLlmApiKey(options: {
 
   const provider = normalizeProviderName(options.provider);
   if (
+    (provider === "atlascloud" || provider === "atlas_cloud") &&
+    toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"));
+  }
+  if (
     provider === "openrouter" &&
     toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
   ) {

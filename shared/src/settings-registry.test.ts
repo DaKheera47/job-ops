@@ -366,6 +366,9 @@ describe("settingsRegistry helpers", () => {
     });
 
     it("uses provider-specific default models", () => {
+      expect(getDefaultModelForProvider("atlascloud")).toBe(
+        "deepseek-ai/deepseek-v3.2",
+      );
       expect(getDefaultModelForProvider("openai")).toBe("gpt-5.4-mini");
       expect(getDefaultModelForProvider("anthropic")).toBe("claude-sonnet-4-6");
       expect(getDefaultModelForProvider("glm")).toBe("glm-5.1");
