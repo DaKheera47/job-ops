@@ -11,6 +11,7 @@ import {
 import type React from "react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { trackProductEvent } from "@/lib/analytics";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import { AUTOMATIC_PRESETS, RUN_MEMORY_STORAGE_KEY } from "./automatic-run";
 
@@ -69,6 +70,11 @@ vi.mock("@/components/ui/select", () => ({
 
 vi.mock("@/lib/user-location", () => ({
   getDetectedCountryKey: getDetectedCountryKeyMock,
+}));
+
+vi.mock("@/lib/analytics", () => ({
+  bucketQueryLength: vi.fn(() => "11_30"),
+  trackProductEvent: vi.fn(),
 }));
 
 vi.mock("@client/api", () => ({
@@ -274,6 +280,18 @@ describe("AutomaticRunTab", () => {
     expect(onSaveAndRun).not.toHaveBeenCalled();
     expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     expect(screen.getByText("Review generated settings")).toBeInTheDocument();
+    expect(trackProductEvent).toHaveBeenCalledWith(
+      "jobs_search_composer_plan_generated",
+      {
+        result: "success",
+        prompt_length_bucket: "11_30",
+        source: "ai",
+      },
+    );
+    expect(trackProductEvent).toHaveBeenCalledWith(
+      "jobs_search_composer_details_opened",
+      { source: "generated_plan" },
+    );
     expect(
       screen.getByText("Focused the search on platform roles."),
     ).toBeInTheDocument();

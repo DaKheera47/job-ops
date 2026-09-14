@@ -5,6 +5,7 @@
 import { logger } from "@infra/logger";
 import type { ManualJobDraft } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
+import { withHostedUsageReservation } from "./hosted-usage";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 
@@ -92,6 +93,15 @@ const MANUAL_JOB_SCHEMA: JsonSchemaDefinition = {
 };
 
 export async function inferManualJobDetails(
+  jobDescription: string,
+): Promise<ManualJobInferenceResult> {
+  return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+    result: await inferManualJobDetailsImpl(jobDescription),
+    usedUnits: 1,
+  }));
+}
+
+async function inferManualJobDetailsImpl(
   jobDescription: string,
 ): Promise<ManualJobInferenceResult> {
   const model = await resolveLlmModel();

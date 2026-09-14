@@ -15,7 +15,7 @@ interface OrchestratorMobileJobDrawerProps {
   selectedJobLoadState: SelectedJobLoadState;
   onOpenChange: (open: boolean) => void;
   onSelectJobId: (jobId: string | null) => void;
-  onJobUpdated: () => Promise<void>;
+  onJobUpdated: (job?: Job) => Promise<void>;
   onPauseRefreshChange: (paused: boolean) => void;
   onRetrySelectedJob: () => void;
 }

@@ -255,6 +255,24 @@ beforeEach(() => {
 });
 
 describe("WatchlistPage", () => {
+  it("allows up to 50 watched sources", async () => {
+    renderPage();
+
+    expect(
+      await screen.findAllByRole("button", {
+        name: /remove watchlist source/i,
+      }),
+    ).toHaveLength(2);
+    const addSourceButton = screen.getByRole("button", {
+      name: /add source/i,
+    });
+    for (let sourceCount = 2; sourceCount < 50; sourceCount += 1) {
+      fireEvent.click(addSourceButton);
+    }
+
+    await waitFor(() => expect(addSourceButton).toBeDisabled());
+  });
+
   it("keeps Save sources disabled until the source draft becomes stale", async () => {
     renderPage();
 

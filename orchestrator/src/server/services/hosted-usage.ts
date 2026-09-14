@@ -10,17 +10,14 @@ import {
   type HostedUsageSummary,
 } from "@shared/types";
 import { and, eq } from "drizzle-orm";
+import {
+  FREE_HOSTED_MONTHLY_LIMITS,
+  getCurrentAccountEntitlements,
+} from "./account-entitlements";
 
 const { hostedUsageCounters, hostedUsageReservations } = schema;
 
-export const DEFAULT_HOSTED_MONTHLY_LIMITS: Record<HostedUsageAction, number> =
-  {
-    job_search: 100,
-    pipeline_run: 25,
-    tailoring: 250,
-    ghostwriter: 250,
-    pdf_export: 250,
-  };
+export const DEFAULT_HOSTED_MONTHLY_LIMITS = FREE_HOSTED_MONTHLY_LIMITS;
 
 type UsageScope = {
   tenantId: string;
@@ -200,9 +197,10 @@ function ensureCounter(
     userId: string;
     period: string;
     action: HostedUsageAction;
+    limitUnits: number;
   },
 ): UsageCounterRow {
-  const limitUnits = DEFAULT_HOSTED_MONTHLY_LIMITS[args.action];
+  const limitUnits = args.limitUnits;
   const now = new Date().toISOString();
 
   tx.insert(hostedUsageCounters)
@@ -350,6 +348,7 @@ export async function getHostedUsageSummary(
   }
 
   const scope = getHostedUsageScope();
+  const limits = (await getCurrentAccountEntitlements()).hostedLimits;
   const rows = await db
     .select()
     .from(hostedUsageCounters)
@@ -364,7 +363,7 @@ export async function getHostedUsageSummary(
   const actions: HostedUsageActionSummary[] = HOSTED_USAGE_ACTIONS.map(
     (action) => {
       const row = rowByAction.get(action);
-      const limitUnits = DEFAULT_HOSTED_MONTHLY_LIMITS[action];
+      const limitUnits = limits[action];
       const usedUnits = row?.usedUnits ?? 0;
       const reservedUnits = row?.reservedUnits ?? 0;
       return {
@@ -399,12 +398,14 @@ export async function requireHostedUsageAllowance(args: {
 
   const scope = getHostedUsageScope();
   const period = getHostedUsagePeriod(args.now);
+  const limits = (await getCurrentAccountEntitlements()).hostedLimits;
 
   return db.transaction((tx) => {
     const counter = ensureCounter(tx, {
       ...scope,
       period,
       action: args.action,
+      limitUnits: limits[args.action],
     });
     return assertAllowance({
       counter,
@@ -427,12 +428,14 @@ export async function consumeHostedUsage(args: {
 
   const scope = getHostedUsageScope();
   const period = getHostedUsagePeriod(args.now);
+  const limits = (await getCurrentAccountEntitlements()).hostedLimits;
 
   return db.transaction((tx) => {
     const counter = ensureCounter(tx, {
       ...scope,
       period,
       action: args.action,
+      limitUnits: limits[args.action],
     });
     const before = assertAllowance({
       counter,
@@ -462,6 +465,7 @@ export async function reserveHostedUsage(args: {
   const scope = getHostedUsageScope();
   const period = getHostedUsagePeriod(args.now);
   const idempotencyKey = args.idempotencyKey?.trim() || null;
+  const limits = (await getCurrentAccountEntitlements()).hostedLimits;
 
   return db.transaction((tx) => {
     if (idempotencyKey) {
@@ -476,6 +480,7 @@ export async function reserveHostedUsage(args: {
           ...scope,
           period,
           action: args.action,
+          limitUnits: limits[args.action],
         });
         return {
           allowance: toAllowanceSnapshot({
@@ -496,6 +501,7 @@ export async function reserveHostedUsage(args: {
       ...scope,
       period,
       action: args.action,
+      limitUnits: limits[args.action],
     });
     const before = assertAllowance({
       counter,
@@ -537,6 +543,9 @@ export async function settleHostedUsageReservation(args: {
 }): Promise<HostedUsageReservation> {
   const usedUnits = assertNonNegativeUnits(args.usedUnits);
   const scope = getHostedReservationMutationScope();
+  const limits = isHostedAppMode()
+    ? (await getCurrentAccountEntitlements()).hostedLimits
+    : FREE_HOSTED_MONTHLY_LIMITS;
   return db.transaction((tx) => {
     const reservation = getReservationById(tx, args.reservationId, scope);
     if (!reservation) {
@@ -554,6 +563,7 @@ export async function settleHostedUsageReservation(args: {
       userId: reservation.userId,
       period: reservation.period,
       action: reservation.action,
+      limitUnits: limits[reservation.action],
     });
     applyCounterDeltas(tx, counter, {
       usedUnits,
@@ -587,6 +597,9 @@ export async function refundHostedUsageReservation(
   reservationId: string,
 ): Promise<HostedUsageReservation> {
   const scope = getHostedReservationMutationScope();
+  const limits = isHostedAppMode()
+    ? (await getCurrentAccountEntitlements()).hostedLimits
+    : FREE_HOSTED_MONTHLY_LIMITS;
   return db.transaction((tx) => {
     const reservation = getReservationById(tx, reservationId, scope);
     if (!reservation) {
@@ -601,6 +614,7 @@ export async function refundHostedUsageReservation(
       userId: reservation.userId,
       period: reservation.period,
       action: reservation.action,
+      limitUnits: limits[reservation.action],
     });
     applyCounterDeltas(tx, counter, {
       reservedUnits: -reservation.reservedUnits,

@@ -112,6 +112,7 @@ function ResumeImportProgress({
 
 export const BaseResumeStep: React.FC<{
   allowReactiveResume?: boolean;
+  allowSelfHostedReactiveResume?: boolean;
   baseResumeValidation: ValidationState;
   baseResumeValue: string | null;
   hasRxResumeAccess: boolean;
@@ -134,6 +135,7 @@ export const BaseResumeStep: React.FC<{
   onTemplateResumeChange: (value: string | null) => void;
 }> = ({
   allowReactiveResume = true,
+  allowSelfHostedReactiveResume = true,
   baseResumeValidation,
   baseResumeValue,
   hasRxResumeAccess,
@@ -280,6 +282,7 @@ export const BaseResumeStep: React.FC<{
         </>
       ) : (
         <RxResumeStep
+          allowSelfHosted={allowSelfHostedReactiveResume}
           baseResumeValue={baseResumeValue}
           hasRxResumeAccess={hasRxResumeAccess}
           isBusy={isBusy}

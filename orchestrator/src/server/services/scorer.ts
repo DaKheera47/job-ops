@@ -6,11 +6,13 @@ import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import type { Job, JobBrief, UpdateJobInput } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
+import { withHostedUsageReservation } from "./hosted-usage";
 import {
   type JobFactPatch,
   PATCHABLE_JOB_FIELDS,
   validateAndApplyJobPatches,
 } from "./job-fact-patches";
+import { isConfigurationFailure } from "./llm/policies/configuration-error";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
@@ -22,6 +24,18 @@ export class LlmNotConfiguredError extends Error {
   constructor(message?: string) {
     super(message ?? "LLM API key not configured");
     this.name = "LlmNotConfiguredError";
+  }
+}
+
+/**
+ * A scoring attempt failed for a reason that is not a configuration problem —
+ * a transient provider fault, an unusable completion, an outage. The job can
+ * simply be scored again later; the user's settings need no attention.
+ */
+export class ScoringUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScoringUnavailableError";
   }
 }
 
@@ -249,8 +263,18 @@ function applySalaryPenalty(
 export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
-  options: { scoringInstructions?: string } = {},
+  options: { scoringInstructions?: string; skipHostedUsage?: boolean } = {},
 ): Promise<SuitabilityResult> {
+  if (!options.skipHostedUsage) {
+    return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+      result: await scoreJobSuitability(job, profile, {
+        ...options,
+        skipHostedUsage: true,
+      }),
+      usedUnits: 1,
+    }));
+  }
+
   const [model, settings, aiProfile] = await Promise.all([
     resolveLlmModel("scoring"),
     getEffectiveSettings(),
@@ -283,24 +307,31 @@ export async function scoreJobSuitability(
   });
 
   if (!result.success) {
-    logger.warn("Scoring failed — pausing pipeline", {
+    if (isConfigurationFailure(result.error)) {
+      logger.warn("Scoring failed — pausing pipeline", {
+        jobId: job.id,
+        error: result.error,
+      });
+      throw new LlmNotConfiguredError(
+        `AI scoring failed: ${result.error}. Check your LLM configuration in Settings → Integrations, then resume scoring.`,
+      );
+    }
+    logger.warn("Scoring failed", {
       jobId: job.id,
       error: result.error,
     });
-    throw new LlmNotConfiguredError(
-      `AI scoring failed: ${result.error}. Check your LLM configuration in Settings → Integrations, then resume scoring.`,
-    );
+    throw new ScoringUnavailableError(`AI scoring failed: ${result.error}`);
   }
 
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
   if (typeof score !== "number" || Number.isNaN(score)) {
-    logger.warn("Invalid score in AI response — pausing pipeline", {
+    logger.warn("Invalid score in AI response", {
       jobId: job.id,
     });
-    throw new LlmNotConfiguredError(
-      "AI returned invalid scoring data. Check your LLM configuration in Settings → Integrations, then resume scoring.",
+    throw new ScoringUnavailableError(
+      "AI returned invalid scoring data (no numeric score in the response)",
     );
   }
 

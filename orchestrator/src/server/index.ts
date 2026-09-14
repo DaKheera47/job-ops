@@ -78,13 +78,7 @@ async function startServer() {
 
     // Initialize visa sponsors service (downloads data if needed, starts scheduler)
     try {
-      if (process.env.DEMO_MODE === "true") {
-        console.log(
-          "ℹ️ Demo mode enabled. Skipping visa sponsors initialization.",
-        );
-      } else {
-        await initializeVisaSponsors();
-      }
+      await initializeVisaSponsors();
     } catch (error) {
       logger.warn("Failed to initialize visa sponsors service", {
         error: sanitizeUnknown(error),

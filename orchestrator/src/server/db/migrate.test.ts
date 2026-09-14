@@ -161,7 +161,7 @@ describe.sequential("database migrations", () => {
         );
       }
 
-      for (const tableName of ["hosted_usage_counters", "hosted_usage_reservations"]) {
+      for (const tableName of ["account_subscriptions", "hosted_usage_counters", "hosted_usage_reservations"]) {
         if (!tableExists(tableName)) {
           throw new Error(\`\${tableName} was not created\`);
         }

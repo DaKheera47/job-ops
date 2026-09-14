@@ -51,6 +51,8 @@ const DEFAULT_SIDEBAR_SECTIONS = [
   "publications",
 ];
 
+const STANDARD_SECTION_KEYS = Object.keys(defaultV5ResumeData.sections);
+
 function asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as RecordLike)
@@ -792,21 +794,54 @@ export function prepareReactiveResumeV5DocumentForExternalUse(
   };
 }
 
+function mergeSectionWithTitleFallback(
+  upstreamSection: unknown,
+  localSection: unknown,
+): RecordLike {
+  const upstream = asRecord(upstreamSection) ?? {};
+  const local = asRecord(localSection) ?? {};
+
+  const upstreamTitle = toText(upstream.title);
+  const localTitle = toText(local.title);
+
+  const resolvedTitle =
+    localTitle.trim().length === 0 && upstreamTitle.trim().length > 0
+      ? upstreamTitle
+      : localTitle;
+
+  return {
+    ...structuredClone(local),
+    title: resolvedTitle,
+  };
+}
+
 export function mergeReactiveResumeV5Content(
   templateInput: unknown,
   contentInput: unknown,
   options: { requestOrigin?: string | null } = {},
 ): RecordLike {
   void options;
+
   const template = parseV5ResumeData(templateInput) as RecordLike;
   const content = parseV5ResumeData(contentInput) as RecordLike;
+
+  const templateSections = asRecord(template.sections) ?? {};
+  const contentSections = asRecord(content.sections) ?? {};
+  const mergedSections: RecordLike = structuredClone(contentSections);
+
+  for (const sectionKey of STANDARD_SECTION_KEYS) {
+    mergedSections[sectionKey] = mergeSectionWithTitleFallback(
+      templateSections[sectionKey],
+      contentSections[sectionKey],
+    );
+  }
 
   return {
     ...template,
     picture: structuredClone(content.picture),
     basics: structuredClone(content.basics),
-    summary: structuredClone(content.summary),
-    sections: structuredClone(content.sections),
+    summary: mergeSectionWithTitleFallback(template.summary, content.summary),
+    sections: mergedSections,
     customSections: structuredClone(content.customSections),
   };
 }

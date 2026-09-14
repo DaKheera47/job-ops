@@ -55,6 +55,7 @@ const sidebars: SidebarsConfig = {
         "extractors/golang-jobs",
         "extractors/jobindex",
         "extractors/seek",
+        "extractors/freehire",
         "extractors/manual",
         "extractors/ukvisajobs",
       ],

@@ -4,6 +4,7 @@ import type {
   JobDateFilter,
   JobSort,
   SalaryFilter,
+  ScoreFilter,
 } from "../constants";
 import { dateFilterDimensionOrder } from "../constants";
 
@@ -93,4 +94,19 @@ export const formatSalarySummary = (
     return `≥ ${formatMoney(salaryFilter.min)}`;
   }
   return null;
+};
+
+export const isScoreFilterActive = (scoreFilter: ScoreFilter) =>
+  scoreFilter.mode !== "any";
+
+export const formatScoreSummary = (scoreFilter: ScoreFilter): string | null => {
+  if (scoreFilter.mode === "missing") return "No score";
+  if (scoreFilter.mode !== "has") return null;
+
+  if (scoreFilter.min != null && scoreFilter.max != null) {
+    return `${scoreFilter.min}–${scoreFilter.max}`;
+  }
+  if (scoreFilter.min != null) return `≥ ${scoreFilter.min}`;
+  if (scoreFilter.max != null) return `≤ ${scoreFilter.max}`;
+  return "Has a score";
 };

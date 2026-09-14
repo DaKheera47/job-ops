@@ -84,6 +84,7 @@ When you add a custom source URL, JobOps asks that source adapter to derive a re
 
 ### Source URL rules
 
+- You can save up to 50 watched sources per user and workspace.
 - Use the public careers URL, not an individual job posting URL.
 - JobOps validates the URL through the selected source adapter when you save sources.
 - Built-in catalog companies are saved as curated sources.

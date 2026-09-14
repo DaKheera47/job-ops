@@ -10,6 +10,7 @@ export const RxResumeStep: React.FC<{
   isBusy: boolean;
   isResumeReady: boolean;
   hasRxResumeAccess: boolean;
+  allowSelfHosted?: boolean;
   isSelfHosted: boolean;
   rxresumeApiKey: string;
   rxresumeUrl: string;
@@ -21,6 +22,7 @@ export const RxResumeStep: React.FC<{
   onRxresumeUrlChange: (value: string) => void;
 }> = ({
   baseResumeValue,
+  allowSelfHosted = true,
   hasRxResumeAccess,
   isBusy,
   isResumeReady,
@@ -60,30 +62,34 @@ export const RxResumeStep: React.FC<{
         disabled={isBusy}
       />
 
-      <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3">
-        <label
-          htmlFor="rxresume-self-hosted"
-          className="flex cursor-pointer items-start gap-3"
-        >
-          <Checkbox
-            id="rxresume-self-hosted"
-            checked={isSelfHosted}
-            onCheckedChange={(checked) => onSelfHostedChange(Boolean(checked))}
-            disabled={isBusy}
-          />
-          <div className="space-y-1">
-            <div className="text-sm font-medium">
-              Self-hosted Reactive Resume?
+      {allowSelfHosted ? (
+        <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3">
+          <label
+            htmlFor="rxresume-self-hosted"
+            className="flex cursor-pointer items-start gap-3"
+          >
+            <Checkbox
+              id="rxresume-self-hosted"
+              checked={isSelfHosted}
+              onCheckedChange={(checked) =>
+                onSelfHostedChange(Boolean(checked))
+              }
+              disabled={isBusy}
+            />
+            <div className="space-y-1">
+              <div className="text-sm font-medium">
+                Self-hosted Reactive Resume?
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Turn this on only if you run your own instance and need a custom
+                base URL.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Turn this on only if you run your own instance and need a custom
-              base URL.
-            </p>
-          </div>
-        </label>
-      </div>
+          </label>
+        </div>
+      ) : null}
 
-      {isSelfHosted ? (
+      {allowSelfHosted && isSelfHosted ? (
         <SettingsInput
           label="Custom URL"
           inputProps={{

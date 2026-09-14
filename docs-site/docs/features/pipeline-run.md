@@ -65,6 +65,9 @@ value in this browser. If you picked **Custom**, it reopens in Custom mode with
 the same values. The pipeline run itself still derives per-source caps from the
 saved budget when you start the run.
 
+Run Search also remembers whether you last used **Automatic** or **Manual** in
+this browser and reopens that mode next time.
+
 #### Search area
 
 **Map radius** is the default search-area mode. It does not require an address or postcode.
@@ -153,6 +156,8 @@ through the active search term, location, and job board one value at a time.
   in-run title/employer deduplication.
 - A browser-check row pauses only the affected extractor. Use **Solve** to open
   the challenge viewer; other extractors continue running.
+- An extractor that does not finish within 10 minutes is marked as failed. The
+  remaining extractors continue instead of leaving the run stuck indefinitely.
 
 After discovery, the scoring card shows the job currently being ranked and
 updates its counters live. **Exceptional matches** counts jobs with a

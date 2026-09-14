@@ -70,3 +70,28 @@ npm --workspace docs-site run build
 - **Symptom**: Chat responses from Ghostwriter are empty, or show a validation/structure error.
 - **Root cause**: Standard Gemini REST API expects `responseMimeType` and `responseSchema` at the top level of `generationConfig`. The app was passing them wrapped in a nested `responseFormat` structure, causing Gemini to silently ignore the schema constraints and return responses with an unexpected shape (e.g. `{ "coverLetter": "..." }` instead of `{ "response": "..." }`).
 - **Fix**: The Gemini integration was updated to correctly pass structured schema parameters. A runtime validation was added to surface formatting issues immediately as an error rather than failing silently with an empty message. If you still encounter issues, verify you are using a model that fully supports JSON schema structured outputs.
+
+## Client crash screen after an analytics failure
+
+### What it is
+
+Identifiable failures from the optional OpenPanel analytics script no longer replace the app with the **Something went wrong** screen. You can keep using the app, and the browser can still show the failure in its console.
+
+### Why it exists
+
+An analytics request can fail, including when a browser extension interferes with it. Keeping that failure from triggering the crash screen does not repair the analytics provider's or extension's network request.
+
+### How to use it
+
+1. Update your JobOps deployment using the [self-hosting guide](/docs/getting-started/self-hosting).
+2. Reload the app and retry the action.
+3. If the crash screen remains, expand **Technical details** and inspect the error, stack, route, and app version.
+4. Use **Open GitHub issue** to report the remaining application crash with its diagnostics and the steps that led to it.
+
+### Common problems
+
+Only stacks attributed entirely to the configured OpenPanel script and optional browser extension frames receive this handling. Stackless failures cannot be safely attributed. Ordinary application failures, mixed application/analytics stacks, and unknown sources still show the crash screen and diagnostics.
+
+### Related pages
+
+- [Self-hosting guide](/docs/getting-started/self-hosting)

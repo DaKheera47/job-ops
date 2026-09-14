@@ -42,6 +42,7 @@ type SupportedImportMediaType =
 type SupportedRuntimeProvider =
   | "openai"
   | "openrouter"
+  | "orcarouter"
   | "glm"
   | "gemini"
   | "gemini_cli"
@@ -337,6 +338,9 @@ function normalizeRuntimeProvider(
   if (normalized === "openrouter" || normalized === "open_router") {
     return "openrouter";
   }
+  if (normalized === "orcarouter" || normalized === "orca_router") {
+    return "orcarouter";
+  }
   const mapped = mapGlmProviderAlias(normalized ?? "");
   if (mapped === "glm") return "glm";
   if (mapped === "gemini") return "gemini";
@@ -465,7 +469,7 @@ function appendVersionedPath(baseUrl: string, path: string): string {
 
 function resolveChatCompletionsUrl(
   baseUrlOrEndpoint: string,
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter",
 ): string {
   const normalized = normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint);
   if (
@@ -1107,7 +1111,7 @@ function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, OrcaRouter, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -1164,6 +1168,7 @@ function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
     provider === "glm" ||
     provider === "ollama" ||
     provider === "lmstudio" ||
+    provider === "orcarouter" ||
     provider === "codex"
   );
 }
@@ -1172,6 +1177,7 @@ function providerRequiresApiKey(provider: SupportedRuntimeProvider): boolean {
   return (
     provider === "openai" ||
     provider === "openrouter" ||
+    provider === "orcarouter" ||
     provider === "gemini" ||
     provider === "glm"
   );
@@ -1497,16 +1503,17 @@ async function extractWithGemini(args: {
 }
 
 function getDefaultChatCompletionsBaseUrl(
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio",
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter",
 ): string {
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "glm") return "https://api.z.ai/api/paas/v4";
+  if (provider === "orcarouter") return "https://api.orcarouter.ai/v1";
   return "https://api.openai.com";
 }
 
 async function extractWithTextChatCompletions(args: {
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio";
+  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter";
   apiKey: string | null;
   baseUrl: string | null;
   model: string;
@@ -1799,7 +1806,8 @@ async function extractResumeFromProvider(args: {
     args.provider === "openai_compatible" ||
     args.provider === "glm" ||
     args.provider === "ollama" ||
-    args.provider === "lmstudio"
+    args.provider === "lmstudio" ||
+    args.provider === "orcarouter"
   ) {
     const text = args.documentText?.trim();
     if (!text) {

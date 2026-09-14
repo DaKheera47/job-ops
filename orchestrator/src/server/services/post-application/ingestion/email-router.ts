@@ -1,3 +1,4 @@
+import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import {
   createConfiguredLlmService,
@@ -44,8 +45,20 @@ const SMART_ROUTER_SCHEMA: JsonSchemaDefinition = {
       },
       stageEventPayload: {
         type: ["object", "null"],
-        description: "Structured metadata for a potential stage event.",
-        additionalProperties: true,
+        description:
+          "Structured metadata for a potential stage event, or null.",
+        properties: {
+          note: {
+            type: ["string", "null"],
+            description: "Optional short note summarizing the event.",
+          },
+          suggestedStageTarget: {
+            type: ["string", "null"],
+            description: "Optional stage target suggestion.",
+          },
+        },
+        required: ["note", "suggestedStageTarget"],
+        additionalProperties: false,
       },
       reason: {
         type: "string",
@@ -132,6 +145,16 @@ export function normalizeBestMatchIndex(
 }
 
 export async function classifyWithSmartRouter(args: {
+  emailText: string;
+  activeJobs: Array<{ id: string; company: string; title: string }>;
+}): Promise<SmartRouterResult> {
+  return withHostedUsageReservation({ action: "tailoring" }, async () => ({
+    result: await classifyWithSmartRouterImpl(args),
+    usedUnits: 1,
+  }));
+}
+
+async function classifyWithSmartRouterImpl(args: {
   emailText: string;
   activeJobs: Array<{ id: string; company: string; title: string }>;
 }): Promise<SmartRouterResult> {

@@ -3,6 +3,7 @@ import type {
   FilterTab,
   JobSort,
   SalaryFilterMode,
+  ScoreFilterMode,
   SponsorFilter,
 } from "../constants";
 
@@ -26,6 +27,15 @@ export const salaryModeOptions: Array<{
   { value: "between", label: "between" },
 ];
 
+export const scoreModeOptions: Array<{
+  value: ScoreFilterMode;
+  label: string;
+}> = [
+  { value: "any", label: "Any" },
+  { value: "has", label: "Has a score" },
+  { value: "missing", label: "No score" },
+];
+
 export const sortFieldOrder: JobSort["key"][] = [
   "score",
   "datePosted",
@@ -38,7 +48,6 @@ export const sortFieldOrder: JobSort["key"][] = [
 export const tabDescriptions: Partial<Record<FilterTab, string>> = {
   discovered: "Jobs searched, ready to be tailored",
   ready: "Jobs with tailored CVs, ready to apply",
-  applied: "Jobs you've marked as applied",
 };
 
 export const datePresetOptions: Array<{

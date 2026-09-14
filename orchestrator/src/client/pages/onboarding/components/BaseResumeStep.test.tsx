@@ -124,4 +124,19 @@ describe("BaseResumeStep", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Reactive Resume JSON/i)).not.toBeInTheDocument();
   });
+
+  it("hides self-hosted Reactive Resume controls when disabled", () => {
+    render(
+      <BaseResumeStep
+        {...defaultProps}
+        allowSelfHostedReactiveResume={false}
+        resumeSetupMode="rxresume"
+      />,
+    );
+
+    expect(
+      screen.queryByText("Self-hosted Reactive Resume?"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Custom URL")).not.toBeInTheDocument();
+  });
 });

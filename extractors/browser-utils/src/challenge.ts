@@ -20,6 +20,9 @@ const CF_CHALLENGE_MARKERS = [
   // Cloudflare's "managed challenge" / interstitial
   "cf-please-wait",
   "cf_chl_opt",
+  // Vercel's security checkpoint (used by e.g. hiringcafe.com behind CF)
+  "Vercel Security Checkpoint",
+  "vercel-protection",
 ] as const;
 
 /**

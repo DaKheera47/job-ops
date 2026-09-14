@@ -7,7 +7,9 @@ describe("resolveLlmApiKey", () => {
     vi.resetModules();
     process.env = { ...originalEnv };
     delete process.env.LLM_API_KEY;
+    delete process.env.ATLASCLOUD_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
+    delete process.env.ORCAROUTER_API_KEY;
   });
 
   afterEach(() => {
@@ -54,6 +56,28 @@ describe("resolveLlmApiKey", () => {
     ).toBe("sk-openrouter");
   });
 
+  it("falls back to ATLASCLOUD_API_KEY for Atlas Cloud", async () => {
+    process.env.ATLASCLOUD_API_KEY = "atlas-test";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "atlascloud",
+      }),
+    ).toBe("atlas-test");
+  });
+
+  it("falls back to ORCAROUTER_API_KEY for orcarouter providers", async () => {
+    process.env.ORCAROUTER_API_KEY = "sk-orca-test";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "orcarouter",
+      }),
+    ).toBe("sk-orca-test");
+  });
+
   it("ignores whitespace-only stored overrides", async () => {
     process.env.LLM_API_KEY = "sk-env";
     const { resolveLlmApiKey } = await loadResolver();
@@ -64,5 +88,25 @@ describe("resolveLlmApiKey", () => {
         provider: "openai",
       }),
     ).toBe("sk-env");
+  });
+
+  it("does not fall through to any environment key when disabled", async () => {
+    process.env.LLM_API_KEY = "sk-platform";
+    process.env.OPENROUTER_API_KEY = "sk-provider-platform";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "openrouter",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "openrouter",
+        storedApiKey: "sk-user",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("sk-user");
   });
 });

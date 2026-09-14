@@ -19,7 +19,6 @@ import { computeJobMatchScore } from "../orchestrator/JobCommandBar.utils";
 import type { RankedWatchlistJob, SourceSelectionDraft } from "./types";
 
 export const CUSTOM_SOURCE_VALUE = "__custom__";
-export const WATCHLIST_SOURCE_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
 
 let sourceDraftSequence = 0;
 

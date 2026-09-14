@@ -14,10 +14,10 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
   "jobops.pipeline.watchlist-sources";
+export const IN_PROGRESS_BOARD_APPLIED_COLLAPSED_STORAGE_KEY =
+  "jobops.in-progress-board.applied-collapsed";
 
-export const orderedSources: JobSource[] = [
-  ...PIPELINE_EXTRACTOR_SOURCE_IDS,
-].sort(
+export const orderedSources = [...PIPELINE_EXTRACTOR_SOURCE_IDS].sort(
   (left, right) =>
     EXTRACTOR_SOURCE_METADATA[left].order -
     EXTRACTOR_SOURCE_METADATA[right].order,
@@ -80,7 +80,7 @@ export const appliedDuplicateIndicator = {
   dot: "bg-yellow-400",
 };
 
-export type FilterTab = "ready" | "discovered" | "applied" | "all";
+export type FilterTab = "ready" | "discovered" | "all";
 export type DateFilterPreset = "7" | "14" | "30" | "90" | "custom";
 export type DateFilterDimension = "ready" | "applied" | "closed" | "discovered";
 
@@ -102,6 +102,14 @@ export type SalaryFilterMode = "at_least" | "at_most" | "between";
 
 export interface SalaryFilter {
   mode: SalaryFilterMode;
+  min: number | null;
+  max: number | null;
+}
+
+export type ScoreFilterMode = "any" | "has" | "missing";
+
+export interface ScoreFilter {
+  mode: ScoreFilterMode;
   min: number | null;
   max: number | null;
 }
@@ -164,6 +172,7 @@ export interface JobFilters {
   sourceFilter: JobSource | "all";
   sponsorFilter: SponsorFilter;
   salaryFilter: SalaryFilter;
+  scoreFilter: ScoreFilter;
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   location: string;
@@ -207,14 +216,12 @@ export const tabs: Array<{
     label: "Discovered",
     statuses: ["discovered", "processing"],
   },
-  { id: "applied", label: "Applied", statuses: ["applied"] },
   { id: "all", label: "All Jobs", statuses: [] },
 ];
 
 export const emptyStateCopy: Record<FilterTab, string> = {
   ready: "Run a search to discover and process new jobs.",
   discovered: "All discovered jobs have been processed.",
-  applied: "You have not applied to any jobs yet.",
   all: "No jobs in the system yet. Run a search to get started.",
 };
 

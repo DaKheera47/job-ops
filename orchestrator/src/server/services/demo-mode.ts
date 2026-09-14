@@ -1,4 +1,5 @@
 import { logger } from "@infra/logger";
+import { sanitizeUnknown } from "@infra/sanitize";
 import {
   DEMO_RESET_CADENCE_HOURS,
   isDemoMode,
@@ -50,7 +51,9 @@ export async function runDemoResetCycle(): Promise<void> {
       baselineVersion: DEMO_BASELINE_VERSION,
     });
   } catch (error) {
-    logger.error("Failed to reset demo dataset", { error });
+    logger.error("Failed to reset demo dataset", {
+      error: sanitizeUnknown(error),
+    });
     scheduleNextReset();
   } finally {
     isResetRunning = false;

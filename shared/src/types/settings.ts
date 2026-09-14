@@ -25,7 +25,9 @@ export interface ResumeProjectsSettings {
 }
 
 export const LLM_PROVIDER_VALUES = [
+  "atlascloud",
   "openrouter",
+  "orcarouter",
   "requesty",
   "lmstudio",
   "ollama",

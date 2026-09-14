@@ -57,7 +57,7 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
       if (!Array.isArray(parsed))
         return normalizeSources(allowedSources, allowedSources);
       const next = parsed.filter((value): value is JobSource =>
-        orderedSources.includes(value as JobSource),
+        orderedSources.includes(value),
       );
       migrateLegacyPipelineSourcesStorage(storageKey, raw);
       return normalizeSources(next, allowedSources);

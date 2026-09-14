@@ -3,6 +3,7 @@ import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { AppModeContext } from "./components/layout";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 
 vi.mock("./hooks/useDemoInfo", () => ({
@@ -170,5 +171,26 @@ describe("App demo banner", () => {
     );
 
     expect(screen.getByText("design-resume-page")).toBeInTheDocument();
+  });
+
+  it("redirects hosted users away from Tracking Inbox", () => {
+    vi.mocked(useDemoInfo).mockReturnValue({
+      demoMode: false,
+      resetCadenceHours: 6,
+      lastResetAt: null,
+      nextResetAt: null,
+      baselineVersion: null,
+      baselineName: null,
+    });
+
+    render(
+      <AppModeContext.Provider value={{ appMode: "hosted", isPending: false }}>
+        <MemoryRouter initialEntries={["/tracking-inbox"]}>
+          <App />
+        </MemoryRouter>
+      </AppModeContext.Provider>,
+    );
+
+    expect(screen.getByText("overview")).toBeInTheDocument();
   });
 });

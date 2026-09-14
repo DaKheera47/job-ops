@@ -204,4 +204,39 @@ describe("watchlist results service", () => {
       status: "discovered",
     });
   });
+
+  it("fetches at most five sources concurrently", async () => {
+    let activeFetches = 0;
+    let maxActiveFetches = 0;
+    const releaseFetches: Array<() => void> = [];
+    const fetchJobs = vi.fn(async () => {
+      activeFetches += 1;
+      maxActiveFetches = Math.max(maxActiveFetches, activeFetches);
+      await new Promise<void>((resolve) => releaseFetches.push(resolve));
+      activeFetches -= 1;
+      return { total: 0, fetched: 0, jobs: [] };
+    });
+    vi.mocked(getWatchlistSourceAdapter).mockReturnValue({ fetchJobs } as any);
+    const sources = Array.from({ length: 6 }, (_, index) => ({
+      ...workdaySource,
+      id: `workday-source-${index}`,
+      careersUrl: `https://company${index}.wd1.myworkdayjobs.com/External`,
+      sortOrder: index,
+    }));
+
+    const resultsPromise = getWatchlistResultsForSources(sources);
+
+    await vi.waitFor(() => expect(fetchJobs).toHaveBeenCalledTimes(5));
+    expect(maxActiveFetches).toBe(5);
+    for (const release of releaseFetches.splice(0)) release();
+
+    await vi.waitFor(() => expect(fetchJobs).toHaveBeenCalledTimes(6));
+    expect(maxActiveFetches).toBe(5);
+    for (const release of releaseFetches.splice(0)) release();
+
+    const results = await resultsPromise;
+    expect(results.sources.map((result) => result.source.id)).toEqual(
+      sources.map((source) => source.id),
+    );
+  });
 });

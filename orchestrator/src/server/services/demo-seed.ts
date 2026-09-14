@@ -12,6 +12,8 @@ import {
   seedDemoDesignResume,
 } from "@server/services/demo-pdf";
 import { resolvePdfFingerprintContext } from "@server/services/pdf-fingerprint";
+import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
+import { eq } from "drizzle-orm";
 
 type BuiltDemoBaseline = {
   resetAt: string;
@@ -100,12 +102,18 @@ export async function applyDemoBaseline(
   baseline: BuiltDemoBaseline,
 ): Promise<void> {
   db.transaction((tx) => {
-    tx.delete(stageEvents).run();
-    tx.delete(tasks).run();
-    tx.delete(interviews).run();
-    tx.delete(jobs).run();
-    tx.delete(pipelineRuns).run();
-    tx.delete(settings).run();
+    tx.delete(stageEvents)
+      .where(eq(stageEvents.tenantId, DEFAULT_TENANT_ID))
+      .run();
+    tx.delete(tasks).where(eq(tasks.tenantId, DEFAULT_TENANT_ID)).run();
+    tx.delete(interviews)
+      .where(eq(interviews.tenantId, DEFAULT_TENANT_ID))
+      .run();
+    tx.delete(jobs).where(eq(jobs.tenantId, DEFAULT_TENANT_ID)).run();
+    tx.delete(pipelineRuns)
+      .where(eq(pipelineRuns.tenantId, DEFAULT_TENANT_ID))
+      .run();
+    tx.delete(settings).where(eq(settings.tenantId, DEFAULT_TENANT_ID)).run();
 
     const settingRows = Object.entries(baseline.settings).map(
       ([key, value]) => ({

@@ -1,3 +1,4 @@
+import { triggerElementResize } from "@client/test/dom-measurement";
 import { setupWindowVirtualizerTestEnvironment } from "@client/test/virtualization";
 import { createJob } from "@shared/testing/factories.js";
 import {
@@ -7,7 +8,9 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { createRef, type Ref } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { VirtualListHandle } from "@/client/lib/virtual-list";
 import { JobListPanel } from "./JobListPanel";
 
 const createJobs = (count: number) =>
@@ -362,6 +365,129 @@ describe("JobListPanel", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("select-job-35")).toBeInTheDocument();
+    });
+  });
+  describe("when content above the list shifts it down the document", () => {
+    const ROW_HEIGHT = 84;
+    const VIEWPORT_HEIGHT = 240;
+
+    const renderList = (
+      jobs: ReturnType<typeof createJobs>,
+      ref?: Ref<VirtualListHandle>,
+    ) =>
+      render(
+        <JobListPanel
+          ref={ref}
+          isLoading={false}
+          jobs={jobs}
+          activeJobs={jobs}
+          selectedJobId={null}
+          selectedJobIds={new Set()}
+          activeTab="ready"
+          onSelectJob={vi.fn()}
+          onToggleSelectJob={vi.fn()}
+          onToggleSelectAll={vi.fn()}
+        />,
+      );
+
+    const scrollWindowTo = (offset: number) => {
+      act(() => {
+        window.scrollY = offset;
+        window.dispatchEvent(new Event("scroll"));
+      });
+    };
+
+    const rowFor = (jobId: string) =>
+      screen.getByTestId(`select-${jobId}`).closest("[data-virtual-row]");
+
+    it("renders the rows the viewport actually covers", async () => {
+      virtualizationEnvironment = setupWindowVirtualizerTestEnvironment({
+        viewportHeight: VIEWPORT_HEIGHT,
+        rowHeight: ROW_HEIGHT,
+        listOffsetTop: 1200,
+      });
+      const jobs = createJobs(60);
+
+      renderList(jobs);
+
+      // Puts the 21st row exactly at the top of the viewport.
+      scrollWindowTo(1200 + 20 * ROW_HEIGHT);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("select-job-21")).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId("select-job-45")).not.toBeInTheDocument();
+      expect(rowFor("job-21")).toHaveStyle({
+        transform: `translateY(${20 * ROW_HEIGHT}px)`,
+      });
+    });
+
+    it("keeps the list container sized to the rows alone", async () => {
+      virtualizationEnvironment = setupWindowVirtualizerTestEnvironment({
+        viewportHeight: VIEWPORT_HEIGHT,
+        rowHeight: ROW_HEIGHT,
+        listOffsetTop: 1200,
+      });
+      const jobs = createJobs(60);
+
+      const { container } = renderList(jobs);
+
+      await waitFor(() => {
+        expect(container.querySelector("[data-virtual-list]")).toHaveStyle({
+          height: `${60 * ROW_HEIGHT}px`,
+        });
+      });
+    });
+
+    it("realigns when the pipeline card mounts above the list", async () => {
+      virtualizationEnvironment = setupWindowVirtualizerTestEnvironment({
+        viewportHeight: VIEWPORT_HEIGHT,
+        rowHeight: ROW_HEIGHT,
+        listOffsetTop: 400,
+      });
+      const jobs = createJobs(60);
+
+      renderList(jobs);
+      scrollWindowTo(400 + 20 * ROW_HEIGHT);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("select-job-21")).toBeInTheDocument();
+      });
+
+      // A search run starts: the pipeline progress card pushes the list down.
+      act(() => {
+        virtualizationEnvironment?.setListOffsetTop(1200);
+        triggerElementResize(document.body);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("select-job-3")).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId("select-job-31")).not.toBeInTheDocument();
+      expect(rowFor("job-11")).toHaveStyle({
+        transform: `translateY(${10 * ROW_HEIGHT}px)`,
+      });
+    });
+
+    it("scrolls to a row at its document position", async () => {
+      virtualizationEnvironment = setupWindowVirtualizerTestEnvironment({
+        viewportHeight: VIEWPORT_HEIGHT,
+        rowHeight: ROW_HEIGHT,
+        listOffsetTop: 1200,
+        documentHeight: 1200 + 60 * ROW_HEIGHT + VIEWPORT_HEIGHT,
+      });
+      const jobs = createJobs(60);
+      const handleRef = createRef<VirtualListHandle>();
+
+      renderList(jobs, handleRef);
+
+      act(() => {
+        handleRef.current?.scrollToIndex(30, { align: "start" });
+      });
+
+      await waitFor(() => {
+        expect(window.scrollY).toBe(1200 + 30 * ROW_HEIGHT);
+      });
     });
   });
 });

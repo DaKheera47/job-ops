@@ -99,6 +99,22 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it("allows the MCP endpoint without auth", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({ method: "POST", path: "/ojcp/mcp" });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(countUsers).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
   it("allows Resume Studio asset content without auth for PDF rendering", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 

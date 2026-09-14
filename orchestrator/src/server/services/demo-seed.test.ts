@@ -87,7 +87,7 @@ describe.sequential("demo seed baseline", () => {
     expect(seededJobIds).toEqual(DEMO_DEFAULT_JOBS.map((job) => job.id).sort());
   });
 
-  it("resetDemoData restores settings and data to demo defaults", async () => {
+  it("resetDemoData restores defaults without deleting another tenant", async () => {
     const { db, schema } = await import("../db/index");
     const { resetDemoData } = await import("./demo-mode");
     const { setSetting, getAllSettings } = await import(
@@ -105,13 +105,27 @@ describe.sequential("demo seed baseline", () => {
       jobUrl: "https://demo.job-ops.local/jobs/mutated",
       status: "discovered",
     });
+    await db.insert(schema.tenants).values({
+      id: "tenant-reset-other",
+      name: "Other Reset Tenant",
+      slug: "other-reset-tenant",
+    });
+    await db.insert(schema.jobs).values({
+      id: "other-tenant-job",
+      tenantId: "tenant-reset-other",
+      source: "manual",
+      title: "Other Tenant Job",
+      employer: "Other Tenant Employer",
+      jobUrl: "https://example.com/other-tenant-job",
+      status: "discovered",
+    });
     await setSetting("llmProvider", "openai");
 
     await resetDemoData();
 
     const allJobs = await db.select({ id: schema.jobs.id }).from(schema.jobs);
     expect(allJobs.map((row) => row.id).sort()).toEqual(
-      DEMO_DEFAULT_JOBS.map((job) => job.id).sort(),
+      [...DEMO_DEFAULT_JOBS.map((job) => job.id), "other-tenant-job"].sort(),
     );
 
     const allSettings = (await getAllSettings()) as Record<string, string>;

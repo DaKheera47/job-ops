@@ -11,11 +11,22 @@ import {
   within,
 } from "@testing-library/react";
 import type React from "react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JobDetailPanel } from "./JobDetailPanel";
 
+const LocationWatcher = () => {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+};
+
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
-  renderWithQueryClient(ui);
+  renderWithQueryClient(
+    <MemoryRouter>
+      <LocationWatcher />
+      {ui}
+    </MemoryRouter>,
+  );
 
 const mockSettings = {
   settings: null as AppSettings | null,
@@ -581,9 +592,8 @@ describe("JobDetailPanel", () => {
     expect(onJobUpdated).toHaveBeenCalled();
   });
 
-  it("moves an applied job to in progress from the action button", async () => {
+  it("navigates to the In Progress board from an applied job's action button", async () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(api.updateJob).mockResolvedValue(undefined as any);
 
     await renderJobDetailPanel({
       activeTab: "all",
@@ -594,15 +604,16 @@ describe("JobDetailPanel", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: /move to in progress/i }),
+      screen.getByRole("button", { name: /view in progress board/i }),
     );
 
     await waitFor(() =>
-      expect(api.updateJob).toHaveBeenCalledWith("job-1", {
-        status: "in_progress",
-      }),
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/applications/in-progress",
+      ),
     );
-    expect(onJobUpdated).toHaveBeenCalled();
+    expect(api.updateJob).not.toHaveBeenCalled();
+    expect(onJobUpdated).not.toHaveBeenCalled();
   });
 
   it("skips a job from the menu", async () => {

@@ -60,7 +60,7 @@ export const OrchestratorSearchComposer: React.FC<
     open={true}
     mode={mode}
     showCloseButton={false}
-    showModeTabs={false}
+    showModeTabs
     settings={settings}
     enabledSources={enabledSources}
     pipelineSources={pipelineSources}

@@ -15,6 +15,7 @@ import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { AppModeContext } from "./components/layout";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useAnalyticsIdentity } from "./hooks/useAnalyticsIdentity";
 import { useDemoInfo } from "./hooks/useDemoInfo";
@@ -195,7 +196,10 @@ export const App: React.FC = () => {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/tracer-links" element={<TracerLinksPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
-                <Route path="/tracking-inbox" element={<TrackingInboxPage />} />
+                <Route
+                  path="/tracking-inbox"
+                  element={<TrackingInboxRoute />}
+                />
                 <Route path="/watchlist" element={<WatchlistPage />} />
                 <Route path="/jobs/:tab" element={<OrchestratorPage />} />
                 <Route
@@ -212,3 +216,13 @@ export const App: React.FC = () => {
     </>
   );
 };
+
+function TrackingInboxRoute() {
+  const { appMode, isPending } = React.useContext(AppModeContext);
+
+  if (isPending) return null;
+  if (appMode === "hosted") {
+    return <Navigate to="/overview" replace />;
+  }
+  return <TrackingInboxPage />;
+}

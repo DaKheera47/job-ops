@@ -31,6 +31,7 @@ import { showErrorToast } from "@/client/lib/error-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { getDetectedCountryKey } from "@/lib/user-location";
 import { cn } from "@/lib/utils";
 import { AutomaticRankingPreferencesCard } from "./AutomaticRankingPreferencesCard";
@@ -680,6 +681,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const handleGenerateSearchPlan = async () => {
     const prompt = searchPrompt.trim();
     if (!prompt) return;
+    const promptLengthBucket = bucketQueryLength(prompt);
 
     setIsPlanningSearch(true);
     try {
@@ -687,13 +689,25 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         prompt,
         currentConfig: currentSavedSearchConfig,
       });
+      trackProductEvent("jobs_search_composer_plan_generated", {
+        result: "success",
+        prompt_length_bucket: promptLengthBucket,
+        source: result.source,
+      });
       applySearchConfig(result.config);
       setSelectedSavedSearchId(null);
       setPlanSummary(result.summary);
       setPlanWarnings(result.warnings);
       setPlanSource(result.source);
+      trackProductEvent("jobs_search_composer_details_opened", {
+        source: "generated_plan",
+      });
       setAutomaticTab("details");
     } catch (error) {
+      trackProductEvent("jobs_search_composer_plan_generated", {
+        result: "error",
+        prompt_length_bucket: promptLengthBucket,
+      });
       showErrorToast(error, "Failed to generate search settings");
     } finally {
       setIsPlanningSearch(false);
@@ -801,7 +815,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               planSource={planSource}
               onSearchPromptChange={setSearchPrompt}
               onGenerateSearchPlan={() => void handleGenerateSearchPlan()}
-              onConfigureManually={() => setAutomaticTab("details")}
+              onConfigureManually={() => {
+                trackProductEvent("jobs_search_composer_details_opened", {
+                  source: "manual",
+                });
+                setAutomaticTab("details");
+              }}
             />
           </TabsContent>
 

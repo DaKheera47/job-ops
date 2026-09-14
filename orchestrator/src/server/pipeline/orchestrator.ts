@@ -447,21 +447,26 @@ export async function runPipeline(
         jobsDiscovered,
       });
 
-      let unprocessedJobs: import("@shared/types").Job[] = [];
       let scoredJobs: import("./steps/types").ScoredJob[] = [];
 
       ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "scoring" });
-      try {
-        ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
-          profile,
-          scoringInstructions: mergedConfig.scoringInstructions,
-          visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
-          shouldCancel: () =>
-            getPipelineState(scopeKey).cancelRequestedAt !== null,
-        }));
-      } catch (error) {
-        if (error instanceof LlmNotConfiguredError) {
+      while (true) {
+        try {
+          ({ scoredJobs } = await scoreJobsStep({
+            profile,
+            scoringInstructions: mergedConfig.scoringInstructions,
+            visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
+            hostedUsageReserved: true,
+            shouldCancel: () =>
+              getPipelineState(scopeKey).cancelRequestedAt !== null,
+          }));
+          break;
+        } catch (error) {
+          if (!(error instanceof LlmNotConfiguredError)) {
+            throw error;
+          }
+
           const message = error.message;
           progressHelpers.configurationRequired(message);
           pipelineLogger.warn("Pipeline paused — LLM not configured", error);
@@ -474,16 +479,6 @@ export async function runPipeline(
           ensureNotCancelled(scopeKey);
 
           pipelineLogger.info("LLM configured, resuming scoring");
-
-          ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
-            profile,
-            scoringInstructions: mergedConfig.scoringInstructions,
-            visaSponsorCountryKey: mergedConfig.locationIntent?.selectedCountry,
-            shouldCancel: () =>
-              getPipelineState(scopeKey).cancelRequestedAt !== null,
-          }));
-        } else {
-          throw error;
         }
       }
       await persistResultSummary({
@@ -544,7 +539,7 @@ export async function runPipeline(
       await notifyPipelineWebhookStep("pipeline.completed", {
         pipelineRunId: pipelineRun.id,
         jobsDiscovered,
-        jobsScored: unprocessedJobs.length,
+        jobsScored: scoredJobs.length,
         jobsProcessed: processedCount,
       });
 

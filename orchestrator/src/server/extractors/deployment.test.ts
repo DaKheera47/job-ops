@@ -53,6 +53,19 @@ describe("extractor deployment config", () => {
     );
   });
 
+  it("ships the FreeHire extractor in Docker runtime images", async () => {
+    const dockerfile = await readFile(resolve(process.cwd(), "../Dockerfile"), {
+      encoding: "utf8",
+    });
+
+    expect(dockerfile).toContain(
+      "COPY extractors/freehire/package*.json ./extractors/freehire/",
+    );
+    expect(dockerfile).toContain(
+      "COPY extractors/freehire ./extractors/freehire",
+    );
+  });
+
   it("does not install a vanilla Node Playwright Firefox binary", async () => {
     // Camoufox is the only supported browser in production. The vanilla Firefox
     // fallback was removed so that a missing Camoufox binary surfaces as a hard
@@ -101,6 +114,16 @@ describe("extractor deployment config", () => {
 
     expect(composeFile).toContain("path: ./extractors/jobindex/src");
     expect(composeFile).toContain("target: /app/extractors/jobindex/src");
+  });
+
+  it("syncs the FreeHire extractor in compose development mode", async () => {
+    const composeFile = await readFile(
+      resolve(process.cwd(), "../docker-compose.yml"),
+      { encoding: "utf8" },
+    );
+
+    expect(composeFile).toContain("path: ./extractors/freehire/src");
+    expect(composeFile).toContain("target: /app/extractors/freehire/src");
   });
 
   it("syncs the Workday career board package in compose development mode", async () => {

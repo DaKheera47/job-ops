@@ -104,6 +104,7 @@ No manual updates. No spreadsheets. See the [tracking docs](https://jobops.dakhe
 
 JobOps works with the model provider you already use:
 
+- Atlas Cloud
 - Codex (local app-server in Docker, authenticated with `codex login`)
 - OpenAI
 - Claude (Anthropic)
@@ -174,11 +175,11 @@ Open-source tools and communities that make JobOps possible:
 
 <div align="center">
 
-<a href="https://www.star-history.com/#DaKheera47/job-ops&type=date&legend=top-left">
+<a href="https://star-history.dera.page/#DaKheera47/job-ops&type=date&legend=top-left">
 <picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&theme=dark&legend=top-left" />
-<source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
-<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
+<source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=DaKheera47/job-ops&type=date&theme=dark&legend=top-left" />
+<source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
+<img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
 </picture>
 </a>
 

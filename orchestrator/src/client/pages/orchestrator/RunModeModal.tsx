@@ -12,6 +12,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
@@ -147,7 +148,15 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
 
         <Tabs
           value={mode}
-          onValueChange={(value) => onModeChange(value as RunMode)}
+          onValueChange={(value) => {
+            const nextMode = value as RunMode;
+            if (nextMode === mode) return;
+            trackProductEvent("jobs_search_composer_mode_changed", {
+              from_mode: mode,
+              to_mode: nextMode,
+            });
+            onModeChange(nextMode);
+          }}
           className="flex min-h-0 flex-1 flex-col"
         >
           {showModeTabs ? (

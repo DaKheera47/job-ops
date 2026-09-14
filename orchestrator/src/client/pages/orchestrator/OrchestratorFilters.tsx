@@ -8,6 +8,7 @@ import { OrchestratorFilterBar } from "./filters/OrchestratorFilterBar";
 import { OrchestratorTabRow } from "./filters/OrchestratorTabRow";
 import { PostedWithinFilterPill } from "./filters/PostedWithinFilterPill";
 import { SalaryFilterPill } from "./filters/SalaryFilterPill";
+import { ScoreFilterPill } from "./filters/ScoreFilterPill";
 import { SortFilterPill } from "./filters/SortFilterPill";
 import { SourceFilterPill } from "./filters/SourceFilterPill";
 import { SponsorFilterPill } from "./filters/SponsorFilterPill";
@@ -27,6 +28,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSponsorFilterChange,
   salaryFilter,
   onSalaryFilterChange,
+  scoreFilter,
+  onScoreFilterChange,
   postedWithinDays,
   onPostedWithinChange,
   employmentTypes,
@@ -52,6 +55,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     sortDirectionLabel,
     salaryActive,
     salarySummary,
+    scoreActive,
+    scoreSummary,
   } = useFilterBarDerivedState({
     sourceFilter,
     sponsorFilter,
@@ -60,6 +65,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     employmentTypes,
     locationFilter,
     salaryFilter,
+    scoreFilter,
     sort,
     isFiltersOpen: isFiltersOpenProp,
     onFiltersOpenChange: onFiltersOpenChangeProp,
@@ -120,6 +126,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
               onSalaryFilterChange={onSalaryFilterChange}
               salaryActive={salaryActive}
               salarySummary={salarySummary}
+            />
+
+            <ScoreFilterPill
+              scoreFilter={scoreFilter}
+              onScoreFilterChange={onScoreFilterChange}
+              scoreActive={scoreActive}
+              scoreSummary={scoreSummary}
             />
 
             <span className="mx-1 h-6 w-px bg-border" aria-hidden="true" />

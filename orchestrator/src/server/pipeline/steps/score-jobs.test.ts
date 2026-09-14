@@ -19,9 +19,15 @@ vi.mock("@server/repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 
-vi.mock("@server/services/scorer", () => ({
-  scoreJobSuitability: vi.fn(),
-}));
+vi.mock("@server/services/scorer", () => {
+  class LlmNotConfiguredError extends Error {}
+  class ScoringUnavailableError extends Error {}
+  return {
+    scoreJobSuitability: vi.fn(),
+    LlmNotConfiguredError,
+    ScoringUnavailableError,
+  };
+});
 
 vi.mock("@server/services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
@@ -347,6 +353,105 @@ describe("scoreJobsStep auto-skip behavior", () => {
       0,
     );
     expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(2);
+  });
+
+  it("continues scoring remaining jobs when one job fails transiently", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
+    const { progressHelpers } = await import("../progress");
+    const { logger } = await import("@infra/logger");
+
+    vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
+      createJob({
+        id: "job-1",
+        title: "Failing Role",
+        employer: "Acme",
+        suitabilityScore: null,
+      }),
+      createJob({
+        id: "job-2",
+        title: "Healthy Role",
+        employer: "Beta",
+        suitabilityScore: null,
+      }),
+    ]);
+
+    vi.mocked(scorer.scoreJobSuitability)
+      .mockRejectedValueOnce(
+        new scorer.ScoringUnavailableError(
+          "AI scoring failed: No content in response",
+        ),
+      )
+      .mockResolvedValueOnce({
+        score: 72,
+        reason: "Second score",
+        jobBrief: null,
+      });
+
+    const result = await scoreJobsStep({ profile: {} });
+
+    expect(result.scoredJobs).toHaveLength(1);
+    expect(result.scoredJobs[0].id).toBe("job-2");
+    expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledWith(
+      "job-2",
+      expect.objectContaining({ suitabilityScore: 72 }),
+    );
+    expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Job scoring failed — leaving unscored and continuing",
+      expect.objectContaining({ jobId: "job-1" }),
+    );
+  });
+
+  it("pauses the run when every early job fails transiently", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
+
+    vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue(
+      Array.from({ length: 6 }, (_, index) =>
+        createJob({
+          id: `job-${index + 1}`,
+          title: `Role ${index + 1}`,
+          employer: "Acme",
+          suitabilityScore: null,
+        }),
+      ),
+    );
+
+    vi.mocked(scorer.scoreJobSuitability).mockRejectedValue(
+      new scorer.ScoringUnavailableError(
+        "AI scoring failed: No content in response",
+      ),
+    );
+
+    await expect(scoreJobsStep({ profile: {} })).rejects.toBeInstanceOf(
+      scorer.LlmNotConfiguredError,
+    );
+    expect(vi.mocked(jobsRepo.updateJob)).not.toHaveBeenCalled();
+  });
+
+  it("still halts the run when the LLM is genuinely not configured", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
+
+    vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
+      createJob({
+        id: "job-1",
+        title: "Software Engineer",
+        employer: "Acme",
+        suitabilityScore: null,
+      }),
+    ]);
+
+    vi.mocked(scorer.scoreJobSuitability).mockRejectedValue(
+      new scorer.LlmNotConfiguredError("LLM API key not configured"),
+    );
+
+    await expect(scoreJobsStep({ profile: {} })).rejects.toBeInstanceOf(
+      scorer.LlmNotConfiguredError,
+    );
+    expect(vi.mocked(jobsRepo.updateJob)).not.toHaveBeenCalled();
   });
 
   it("stops before processing when cancellation is requested", async () => {

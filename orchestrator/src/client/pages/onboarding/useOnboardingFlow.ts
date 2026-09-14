@@ -22,7 +22,7 @@ import {
 } from "./analytics";
 import type { OnboardingFormData, ResumeSetupMode } from "./types";
 
-export function useOnboardingFlow() {
+export function useOnboardingFlow({ allowSelfHosted = true } = {}) {
   const queryClient = useQueryClient();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { setBaseResumeId, syncBaseResumeId } =
@@ -87,11 +87,11 @@ export function useOnboardingFlow() {
       rxresumeApiKey: "",
       rxresumeBaseResumeId: selectedId,
     });
-    setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
+    setIsRxResumeSelfHosted(allowSelfHosted && Boolean(settings.rxresumeUrl));
     if (!resumeSetupModeTouchedRef.current) {
       setResumeSetupMode(selectedId ? "rxresume" : "upload");
     }
-  }, [reset, settings, syncBaseResumeId]);
+  }, [allowSelfHosted, reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
   const selectedProvider = normalizeLlmProvider(
@@ -140,7 +140,7 @@ export function useOnboardingFlow() {
 
   const handleSaveRxresume = useCallback(async () => {
     const values = getValues();
-    const selfHosted = isRxResumeSelfHosted;
+    const selfHosted = allowSelfHosted && isRxResumeSelfHosted;
 
     trackProductEvent("onboarding_rxresume_verify_submitted", {
       self_hosted: selfHosted,
@@ -179,7 +179,13 @@ export function useOnboardingFlow() {
     } finally {
       setIsSaving(false);
     }
-  }, [getValues, isRxResumeSelfHosted, refreshOnboardingState, setValue]);
+  }, [
+    allowSelfHosted,
+    getValues,
+    isRxResumeSelfHosted,
+    refreshOnboardingState,
+    setValue,
+  ]);
 
   const handleRxresumeSelfHostedChange = useCallback(
     (next: boolean) => {

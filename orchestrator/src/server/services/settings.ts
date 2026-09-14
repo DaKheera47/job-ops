@@ -1,5 +1,7 @@
 import { logger } from "@infra/logger";
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as settingsRepo from "@server/repositories/settings";
+import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
   getDefaultModelForProvider,
@@ -33,6 +35,9 @@ import { resolveRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "https://api.atlascloud.ai";
+  }
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") {
@@ -58,6 +63,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   }
   if (normalized === "requesty") {
     return "https://router.requesty.ai/v1";
+  }
+  if (normalized === "orcarouter") {
+    return "https://api.orcarouter.ai/v1";
   }
   return "https://openrouter.ai";
 }
@@ -163,18 +171,22 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrides =
     (typeof getAllSettings === "function" ? await getAllSettings() : null) ??
     {};
+  const hostedMode = getJobOpsAppConfig().appMode === "hosted";
+  const allowPlatformLlm =
+    !hostedMode || (await getCurrentAccountEntitlements()).platformAiIncluded;
   const providerOverride = settingsRegistry.llmProvider.parse(
     overrides.llmProvider,
   );
   const effectiveLlmProvider =
-    providerOverride ?? settingsRegistry.llmProvider.default();
+    providerOverride ??
+    (allowPlatformLlm ? settingsRegistry.llmProvider.default() : "openrouter");
   const purposeOverrides = readPurposeOverrides(overrides);
   const resolvedModelDefault =
     normalizeModelForProviderCompatibility(
       effectiveLlmProvider,
       getDefaultModelForProvider(
         effectiveLlmProvider,
-        getOriginalEnvValue("MODEL"),
+        allowPlatformLlm ? getOriginalEnvValue("MODEL") : null,
       ),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
@@ -224,12 +236,18 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     });
   }
 
-  const envSettings = await getEnvSettingsData(overrides);
+  const envSettings = await getEnvSettingsData(overrides, {
+    allowLlmEnvironmentCredentials: allowPlatformLlm,
+  });
 
   const result: Partial<AppSettings> = {
     ...envSettings,
     llmPurposeApiKeyHints: readPurposeApiKeyHints(overrides),
   };
+  if (hostedMode && allowPlatformLlm) {
+    result.llmApiKeyHint = null;
+    result.llmPurposeApiKeyHints = {};
+  }
 
   const rawModel = overrides.model;
   const modelDef = settingsRegistry.model;
@@ -258,7 +276,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         const provider =
           effectiveLlmProvider ?? settingsRegistry.llmProvider.default();
         defaultValue =
-          getOriginalEnvValue("LLM_BASE_URL") ||
+          (allowPlatformLlm ? getOriginalEnvValue("LLM_BASE_URL") : null) ||
           resolveDefaultLlmBaseUrl(provider);
       }
 

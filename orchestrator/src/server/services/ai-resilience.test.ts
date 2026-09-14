@@ -102,7 +102,7 @@ describe("AI Service Resilience", () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it("should throw LlmNotConfiguredError on API 500/400 errors", async () => {
+    it("should throw ScoringUnavailableError on API 5xx errors", async () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: false,
         status: 500,
@@ -114,7 +114,7 @@ describe("AI Service Resilience", () => {
       );
     });
 
-    it("should throw LlmNotConfiguredError on Malformed/Invalid JSON in API response", async () => {
+    it("should throw ScoringUnavailableError on Malformed/Invalid JSON in API response", async () => {
       const mockResponse = {
         ok: true,
         json: async () => ({

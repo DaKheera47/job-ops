@@ -21,7 +21,7 @@ import {
   deriveExtractorLimits,
   serializeCityLocationsSetting,
 } from "./automatic-run";
-import type { RunMode } from "./run-mode";
+import { loadRunMode, type RunMode, saveRunMode } from "./run-mode";
 
 type UsePipelineControlsArgs = {
   isPipelineRunning: boolean;
@@ -64,7 +64,7 @@ export function usePipelineControls(
   } = args;
 
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
-  const [runMode, setRunMode] = useState<RunMode>("automatic");
+  const [runMode, setRunModeState] = useState<RunMode>(loadRunMode);
   const [isCancelling, setIsCancelling] = useState(false);
 
   const { refreshSettings } = useSettings();
@@ -99,10 +99,18 @@ export function usePipelineControls(
     toast.success("Search completed");
   }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
-  const openRunMode = useCallback((mode: RunMode) => {
-    setRunMode(mode);
-    setIsRunModeModalOpen(true);
+  const setRunMode = useCallback((mode: RunMode) => {
+    setRunModeState(mode);
+    saveRunMode(mode);
   }, []);
+
+  const openRunMode = useCallback(
+    (mode: RunMode) => {
+      setRunMode(mode);
+      setIsRunModeModalOpen(true);
+    },
+    [setRunMode],
+  );
 
   const startPipelineRun = useCallback(
     async (config: {

@@ -100,6 +100,11 @@ vi.mock("@server/services/challenge-viewer", () => ({
 vi.mock("@server/services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),
+  searchSponsorsExact: vi.fn().mockResolvedValue({
+    available: false,
+    providerIds: [],
+    results: [],
+  }),
   getOrganizationDetails: vi.fn(),
   downloadLatestCsv: vi.fn(),
   calculateSponsorMatchSummary: vi.fn((results) => {
@@ -133,6 +138,10 @@ const isolatedEnvKeys = [
   "JOBOPS_HOSTED_QUOTAS_ENABLED",
   "JOBOPS_HOSTED_SIGNUPS_ENABLED",
   "JOBOPS_HOSTED_TENANT_ID",
+  "JOBOPS_PUBLIC_BASE_URL",
+  "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_PRO_PRICE_ID",
   "WEBHOOK_SECRET",
   "UKVISAJOBS_EMAIL",
   "UKVISAJOBS_PASSWORD",

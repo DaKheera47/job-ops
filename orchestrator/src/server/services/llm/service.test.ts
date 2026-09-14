@@ -2,10 +2,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClaudeCliClient } from "./claude-cli/client";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
+import { EMPTY_RESPONSE_ERROR } from "./policies/retry-policy";
 import { LlmService } from "./service";
+import type { JsonSchemaDefinition } from "./types";
+
+const TEST_SCHEMA: JsonSchemaDefinition = {
+  name: "test",
+  schema: {
+    type: "object",
+    properties: { value: { type: "string" } },
+    required: ["value"],
+    additionalProperties: false,
+  },
+};
+
+function completionResponse(content: string): Response {
+  return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 describe("LlmService provider normalization", () => {
   afterEach(() => {
+    delete process.env.LLM_BASE_URL;
     vi.restoreAllMocks();
   });
 
@@ -19,6 +39,36 @@ describe("LlmService provider normalization", () => {
     expect(llm.getBaseUrl()).toBe("http://localhost:1234");
   });
 
+  it("does not inherit the deployment base URL when environment credentials are disabled", () => {
+    process.env.LLM_BASE_URL = "https://internal.jobops.example/llm";
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "user-key",
+      allowEnvironmentCredentials: false,
+    });
+
+    expect(llm.getBaseUrl()).toBe("https://openrouter.ai");
+  });
+
+  it("defaults CLI providers off with environment credentials disabled", async () => {
+    const llm = new LlmService({
+      provider: "codex",
+      allowEnvironmentCredentials: false,
+    });
+
+    const result = await llm.callJson({
+      model: "codex-mini",
+      messages: [{ role: "user", content: "test" }],
+      jsonSchema: TEST_SCHEMA,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "CLI LLM providers are unavailable for this hosted account",
+    });
+  });
+
   it("uses the dedicated provider for non-local OpenAI-compatible endpoints", () => {
     const llm = new LlmService({
       provider: "openai_compatible",
@@ -27,6 +77,16 @@ describe("LlmService provider normalization", () => {
 
     expect(llm.getProvider()).toBe("openai_compatible");
     expect(llm.getBaseUrl()).toBe("https://llm.example.com");
+  });
+
+  it("uses the dedicated Atlas Cloud provider and endpoint", () => {
+    const llm = new LlmService({
+      provider: "atlascloud",
+      apiKey: "atlas-test",
+    });
+
+    expect(llm.getProvider()).toBe("atlascloud");
+    expect(llm.getBaseUrl()).toBe("https://api.atlascloud.ai");
   });
 
   it("normalizes the hyphenated openai-compatible alias", () => {
@@ -197,6 +257,49 @@ describe("LlmService provider normalization", () => {
     expect(models.length).toBeGreaterThan(1);
   });
 
+  it("retries a 200 response whose completion is empty and succeeds on the next attempt", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(completionResponse(""))
+      .mockResolvedValueOnce(completionResponse('{"value":"ok"}'));
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "sk-or-test",
+    });
+    const result = await llm.callJson<{ value: string }>({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: "Return JSON." }],
+      jsonSchema: TEST_SCHEMA,
+      maxRetries: 2,
+      retryDelayMs: 1,
+    });
+
+    expect(result).toEqual({ success: true, data: { value: "ok" } });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the empty completion once the retry budget is exhausted", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => completionResponse(""));
+
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "sk-or-test",
+    });
+    const result = await llm.callJson<{ value: string }>({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: "Return JSON." }],
+      jsonSchema: TEST_SCHEMA,
+      maxRetries: 2,
+      retryDelayMs: 1,
+    });
+
+    expect(result).toEqual({ success: false, error: EMPTY_RESPONSE_ERROR });
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
+
   it("lists Requesty models from the /models endpoint", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
@@ -220,5 +323,61 @@ describe("LlmService provider normalization", () => {
     expect(models).toContain("anthropic/claude-sonnet-4-5");
     const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
     expect(String(requestedUrl)).toBe("https://router.requesty.ai/v1/models");
+  });
+
+  it("lists console-visible Atlas Cloud text models", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "deepseek-ai/deepseek-v3.2",
+              type: "Text",
+              display_console: true,
+            },
+            { id: "hidden/text-model", type: "Text", display_console: false },
+            { id: "image/model", type: "Image", display_console: true },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "atlascloud",
+      apiKey: "atlas-test",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toEqual(["deepseek-ai/deepseek-v3.2"]);
+    const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe(
+      "https://api.atlascloud.ai/api/v1/models",
+    );
+  });
+
+  it("lists OrcaRouter models from the /models endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "openai/gpt-4o-mini" },
+            { id: "anthropic/claude-sonnet-4-5" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "orcarouter",
+      apiKey: "sk-orca-test",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toContain("openai/gpt-4o-mini");
+    expect(models).toContain("anthropic/claude-sonnet-4-5");
+    const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe("https://api.orcarouter.ai/v1/models");
   });
 });

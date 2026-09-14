@@ -18,8 +18,14 @@ describe("settings utils", () => {
   });
 
   it("exposes provider key links for hosted providers", () => {
+    expect(getLlmProviderConfig("atlascloud").keyHelperHref).toBe(
+      "https://www.atlascloud.ai/console/api-keys",
+    );
     expect(getLlmProviderConfig("openrouter").keyHelperHref).toBe(
       "https://openrouter.ai/keys",
+    );
+    expect(getLlmProviderConfig("orcarouter").keyHelperHref).toBe(
+      "https://www.orcarouter.ai/console",
     );
     expect(getLlmProviderConfig("openai").keyHelperHref).toBe(
       "https://platform.openai.com/api-keys",
@@ -111,6 +117,7 @@ describe("settings utils", () => {
   });
 
   it("only enables model suggestions for supported providers", () => {
+    expect(supportsLlmModelSuggestions("atlascloud")).toBe(true);
     expect(supportsLlmModelSuggestions("openai")).toBe(true);
     expect(supportsLlmModelSuggestions("anthropic")).toBe(true);
     expect(supportsLlmModelSuggestions("glm")).toBe(true);
@@ -119,6 +126,7 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("claude_cli")).toBe(true);
     expect(supportsLlmModelSuggestions("ollama")).toBe(true);
     expect(supportsLlmModelSuggestions("requesty")).toBe(true);
+    expect(supportsLlmModelSuggestions("orcarouter")).toBe(true);
     expect(supportsLlmModelSuggestions("openrouter")).toBe(false);
   });
 });

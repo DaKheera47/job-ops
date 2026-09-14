@@ -1,9 +1,16 @@
+/**
+ * A 2xx response whose completion carried no text. Shared with the LLM service
+ * so the throw site and the retry check cannot drift apart.
+ */
+export const EMPTY_RESPONSE_ERROR = "No content in response";
+
 export function shouldRetryAttempt(args: {
   message: string;
   status?: number;
 }): boolean {
   return (
     args.message.includes("parse") ||
+    args.message.includes(EMPTY_RESPONSE_ERROR) ||
     args.status === 429 ||
     (args.status !== undefined && args.status >= 500 && args.status <= 599) ||
     args.message.toLowerCase().includes("timeout") ||

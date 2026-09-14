@@ -23,6 +23,7 @@ export function resolveLlmApiKey(options: {
   storedApiKey?: string | null;
   purposeApiKey?: string | null;
   provider?: string | null;
+  allowEnvironmentCredentials?: boolean;
 }): string | null {
   const purposeApiKey = normalizeStoredApiKey(options.purposeApiKey);
   if (purposeApiKey) return purposeApiKey;
@@ -30,10 +31,18 @@ export function resolveLlmApiKey(options: {
   const storedApiKey = normalizeStoredApiKey(options.storedApiKey);
   if (storedApiKey) return storedApiKey;
 
+  if (options.allowEnvironmentCredentials === false) return null;
+
   const envApiKey = toStringOrNull(getOriginalEnvValue("LLM_API_KEY"));
   if (envApiKey) return envApiKey;
 
   const provider = normalizeProviderName(options.provider);
+  if (
+    (provider === "atlascloud" || provider === "atlas_cloud") &&
+    toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"));
+  }
   if (
     provider === "openrouter" &&
     toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
@@ -46,6 +55,13 @@ export function resolveLlmApiKey(options: {
     toStringOrNull(getOriginalEnvValue("REQUESTY_API_KEY"))
   ) {
     return toStringOrNull(getOriginalEnvValue("REQUESTY_API_KEY"));
+  }
+
+  if (
+    provider === "orcarouter" &&
+    toStringOrNull(getOriginalEnvValue("ORCAROUTER_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("ORCAROUTER_API_KEY"));
   }
 
   return null;

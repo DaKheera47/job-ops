@@ -11,6 +11,7 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
+import { RUN_MODE_STORAGE_KEY } from "./orchestrator/run-mode";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
@@ -157,6 +158,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
     pipelineTerminalEvent: mockPipelineTerminalEvent,
     setIsRefreshPaused: vi.fn(),
     loadJobs: mockLoadJobs,
+    applySelectedJobUpdate: vi.fn(),
   }),
 }));
 
@@ -584,6 +586,26 @@ describe("OrchestratorPage", () => {
 
     fireEvent.click(screen.getByText("To Discovered"));
     expect(screen.getByTestId("location").textContent).toContain("/discovered");
+  });
+
+  it("redirects the removed Applied tab to the In Progress board", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/applied"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("location").textContent).toBe(
+      "/applications/in-progress",
+    );
   });
 
   it("requests pipeline cancellation when running", async () => {
@@ -1169,6 +1191,28 @@ describe("OrchestratorPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("reopens the search composer in the last selected mode", () => {
+    localStorage.setItem(RUN_MODE_STORAGE_KEY, "manual");
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    openAutomaticRunComposer();
+
+    expect(
+      screen.getByRole("heading", { name: /review job details/i }),
+    ).toBeInTheDocument();
+  });
+
   it("opens manual import from the header and navigates to the imported job", async () => {
     window.matchMedia = createMatchMedia(
       true,
@@ -1593,7 +1637,7 @@ describe("OrchestratorPage", () => {
       expect(locationText()).toContain("/discovered");
     });
 
-    pressKey("4");
+    pressKey("3");
     await waitFor(() => {
       expect(locationText()).toContain("/all");
     });

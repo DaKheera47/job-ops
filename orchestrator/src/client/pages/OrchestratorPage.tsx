@@ -1,7 +1,9 @@
 import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { useSettings } from "@client/hooks/useSettings";
+import type { Job } from "@shared/types.js";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trackProductEvent } from "@/lib/analytics";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorJobWorkspaceContainer } from "./orchestrator/OrchestratorJobWorkspaceContainer";
 import { OrchestratorSearchComposer } from "./orchestrator/OrchestratorSearchComposer";
@@ -38,7 +40,19 @@ export const OrchestratorPage: React.FC = () => {
     pipelineTerminalEvent,
     setIsRefreshPaused,
     loadJobs,
+    applySelectedJobUpdate,
   } = useOrchestratorData(navigation.selectedJobId);
+
+  const handleJobUpdated = useCallback(
+    async (job?: Job) => {
+      if (job) {
+        applySelectedJobUpdate(job);
+        return;
+      }
+      await loadJobs();
+    },
+    [applySelectedJobUpdate, loadJobs],
+  );
 
   useNavigationRefresh(loadJobs);
 
@@ -76,9 +90,22 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext: navigation.navigateWithContext,
   });
 
+  const openPreferredRunMode = useCallback(() => {
+    openRunMode(runMode);
+  }, [openRunMode, runMode]);
+
   const isFirstRunWorkspace =
     !isLoading && jobs.length === 0 && !isPipelineRunning;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
+  const wasSearchComposerVisible = useRef(false);
+
+  useEffect(() => {
+    if (isSearchComposerVisible && !wasSearchComposerVisible.current) {
+      trackProductEvent("jobs_search_composer_opened", { mode: runMode });
+    }
+    wasSearchComposerVisible.current = isSearchComposerVisible;
+  }, [isSearchComposerVisible, runMode]);
+
   const canToggleSearchComposer = !isFirstRunWorkspace;
   const searchPresetProps = usePipelineSearchPresets({
     enabled: isSearchComposerVisible && runMode === "automatic",
@@ -94,11 +121,11 @@ export const OrchestratorPage: React.FC = () => {
       return;
     }
 
-    openRunMode("automatic");
+    openPreferredRunMode();
   }, [
     canToggleSearchComposer,
     isSearchComposerVisible,
-    openRunMode,
+    openPreferredRunMode,
     setIsRunModeModalOpen,
   ]);
 
@@ -116,7 +143,10 @@ export const OrchestratorPage: React.FC = () => {
         }
         onOpenAutomaticRun={handleToggleAutomaticRun}
         onCancelPipeline={handleCancelPipeline}
-        onOpenManualImport={() => setIsManualImportOpen(true)}
+        onOpenManualImport={() => {
+          setRunMode("manual");
+          setIsManualImportOpen(true);
+        }}
       />
 
       <main
@@ -156,12 +186,12 @@ export const OrchestratorPage: React.FC = () => {
             stats={stats}
             isLoading={isLoading}
             isPipelineRunning={isPipelineRunning}
-            loadJobs={loadJobs}
+            loadJobs={handleJobUpdated}
             setIsRefreshPaused={setIsRefreshPaused}
             filters={filters}
             navigation={navigation}
             ui={ui}
-            openRunMode={openRunMode}
+            openRunMode={openPreferredRunMode}
           />
         )}
       </main>

@@ -167,6 +167,24 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     [publishPipelineTerminal],
   );
 
+  const applySelectedJobUpdate = useCallback(
+    (job: Job): Job => {
+      const cached = selectedJobCacheRef.current.get(job.id);
+      if (cached && cached.updatedAt > job.updatedAt) {
+        return cached;
+      }
+      selectedJobCacheRef.current.set(job.id, job);
+      queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
+      setSelectedJob((current) => {
+        if (!current || current.id !== job.id) return current;
+        if (current.updatedAt > job.updatedAt) return current;
+        return job;
+      });
+      return job;
+    },
+    [queryClient],
+  );
+
   const loadSelectedJob = useCallback(
     async (jobId: string, seq: number) => {
       try {
@@ -175,9 +193,17 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
           queryFn: () => api.getJob(jobId),
           staleTime: 0,
         });
-        selectedJobCacheRef.current.set(jobId, fullJob);
+        const applied = applySelectedJobUpdate(fullJob);
         if (seq === selectedJobRequestSeqRef.current) {
-          setSelectedJob(fullJob);
+          setSelectedJob((current) => {
+            if (
+              current?.id === jobId &&
+              current.updatedAt > applied.updatedAt
+            ) {
+              return current;
+            }
+            return applied;
+          });
           setSelectedJobRequestState(null);
         }
       } catch (error) {
@@ -187,7 +213,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         }
       }
     },
-    [queryClient],
+    [applySelectedJobUpdate, queryClient],
   );
 
   const loadJobs = useCallback(async () => {
@@ -482,6 +508,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     isRefreshPaused,
     setIsRefreshPaused,
     loadJobs,
+    applySelectedJobUpdate,
     checkForJobChanges,
     checkPipelineStatus,
   };

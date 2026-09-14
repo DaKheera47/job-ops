@@ -35,6 +35,7 @@ import {
 import { discoverWatchlistJobsForPipeline } from "./watchlist-jobs";
 
 const DISCOVERY_CONCURRENCY = 3;
+const DISCOVERY_SOURCE_TIMEOUT_MS = 10 * 60 * 1000;
 
 type DiscoveryTaskResult = {
   discoveredJobs: CreateJobInput[];
@@ -49,6 +50,25 @@ type DiscoverySourceTask = {
   detail: string;
   run: () => Promise<DiscoveryTaskResult>;
 };
+
+async function withDiscoverySourceTimeout<T>(
+  run: Promise<T>,
+  onTimeout: () => void,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      onTimeout();
+      reject(new Error("timed out after 10 minutes"));
+    }, DISCOVERY_SOURCE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([run, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 function parseBlockedCompanyKeywords(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -298,7 +318,9 @@ export async function discoverJobsStep(args: {
           ),
         ) as Record<string, string | undefined>;
 
-        const result = await manifest.run({
+        let timedOut = false;
+        const shouldCancel = () => timedOut || args.shouldCancel?.() === true;
+        const run = manifest.run({
           source: grouped.sources[0],
           selectedSources: grouped.sources,
           settings: filteredSettings,
@@ -313,8 +335,9 @@ export async function discoverJobsStep(args: {
             ],
           ),
           getExistingJobUrls,
-          shouldCancel: args.shouldCancel,
+          shouldCancel,
           onProgress: (event) => {
+            if (shouldCancel()) return;
             const role =
               searchTerms.find((term) => event.currentUrl === term) ??
               searchTerms.find((term) =>
@@ -349,6 +372,9 @@ export async function discoverJobsStep(args: {
               });
             }
           },
+        });
+        const result = await withDiscoverySourceTimeout(run, () => {
+          timedOut = true;
         });
 
         if (!result.success) {

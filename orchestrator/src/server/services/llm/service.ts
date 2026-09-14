@@ -12,6 +12,7 @@ import {
   rememberSuccessfulMode,
 } from "./policies/mode-selection";
 import {
+  EMPTY_RESPONSE_ERROR,
   getRetryDelayMs,
   parseRetryAfterMs,
   shouldRetryAttempt,
@@ -40,6 +41,7 @@ export class LlmService {
   private readonly provider: LlmProvider;
   private readonly baseUrl: string;
   private readonly apiKey: string | null;
+  private readonly allowCliProviders: boolean;
   private readonly strategy: (typeof strategies)[LlmProvider];
   private readonly codexClient: CodexClient;
   private readonly geminiCliClient: GeminiCliClient;
@@ -48,7 +50,9 @@ export class LlmService {
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
       toStringOrNull(options.baseUrl) ||
-      toStringOrNull(getOriginalEnvValue("LLM_BASE_URL")) ||
+      (options.allowEnvironmentCredentials === false
+        ? null
+        : toStringOrNull(getOriginalEnvValue("LLM_BASE_URL"))) ||
       null;
     const resolvedProvider = normalizeProvider(
       options.provider ?? getOriginalEnvValue("LLM_PROVIDER") ?? null,
@@ -63,6 +67,7 @@ export class LlmService {
     const apiKey = resolveLlmApiKey({
       storedApiKey: options.apiKey,
       provider: resolvedProvider,
+      allowEnvironmentCredentials: options.allowEnvironmentCredentials,
     });
 
     if (
@@ -80,6 +85,9 @@ export class LlmService {
     this.provider = resolvedProvider;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.allowCliProviders =
+      options.allowCliProviders ??
+      options.allowEnvironmentCredentials !== false;
     this.strategy = strategy;
     this.codexClient = new CodexClient();
     this.geminiCliClient = new GeminiCliClient();
@@ -87,6 +95,12 @@ export class LlmService {
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      return {
+        success: false,
+        error: "CLI LLM providers are unavailable for this hosted account",
+      };
+    }
     if (this.provider === "codex") {
       return this.callCodexJson(options);
     }
@@ -152,6 +166,12 @@ export class LlmService {
   }
 
   async validateCredentials(): Promise<LlmValidationResult> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      return {
+        valid: false,
+        message: "CLI LLM providers are unavailable for this hosted account.",
+      };
+    }
     if (this.provider === "codex") {
       return this.codexClient.validateCredentials();
     }
@@ -221,6 +241,11 @@ export class LlmService {
   }
 
   async listModels(): Promise<string[]> {
+    if (!this.allowCliProviders && isCliProvider(this.provider)) {
+      throw new Error(
+        "CLI LLM providers are unavailable for this hosted account.",
+      );
+    }
     if (this.provider === "codex") {
       return this.codexClient.listModels();
     }
@@ -241,16 +266,21 @@ export class LlmService {
 
     if (
       this.provider !== "openai" &&
+      this.provider !== "atlascloud" &&
       this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
       this.provider !== "ollama" &&
-      this.provider !== "requesty"
+      this.provider !== "requesty" &&
+      this.provider !== "orcarouter"
     ) {
       return [];
     }
 
     const models = await (async () => {
+      if (this.provider === "atlascloud") {
+        return this.listAtlasCloudModels();
+      }
       if (this.provider === "openai") {
         return this.listOpenAiModels();
       }
@@ -264,6 +294,9 @@ export class LlmService {
         return this.listGlmModels();
       }
       if (this.provider === "requesty") {
+        return this.listRequestyModels();
+      }
+      if (this.provider === "orcarouter") {
         return this.listRequestyModels();
       }
       return this.listOllamaModels();
@@ -474,7 +507,7 @@ export class LlmService {
         const content = this.strategy.extractText(data);
 
         if (!content) {
-          throw new Error("No content in response");
+          throw new Error(EMPTY_RESPONSE_ERROR);
         }
 
         const parsed = parseJsonContent<T>(content, jobId);
@@ -533,6 +566,37 @@ export class LlmService {
     return (payload.data ?? [])
       .map((entry) => entry.id?.trim() ?? "")
       .filter(isOpenAiTextGenerationModel)
+      .filter(Boolean);
+  }
+
+  private async listAtlasCloudModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/api/v1/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Atlas Cloud returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        id?: string | null;
+        type?: string | null;
+        display_console?: boolean | null;
+      }>;
+    };
+    return (payload.data ?? [])
+      .filter(
+        (entry) =>
+          entry.type?.trim().toLowerCase() === "text" &&
+          entry.display_console !== false,
+      )
+      .map((entry) => entry.id?.trim() ?? "")
       .filter(Boolean);
   }
 
@@ -684,6 +748,9 @@ function normalizeProvider(
     return "openai_compatible";
   }
   if (normalized === "openai") return "openai";
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "atlascloud";
+  }
   if (normalized === "anthropic" || normalized === "claude") {
     return "anthropic";
   }
@@ -695,6 +762,7 @@ function normalizeProvider(
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
   if (normalized === "requesty") return "requesty";
+  if (normalized === "orcarouter") return "orcarouter";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,
@@ -718,6 +786,14 @@ function providerUsesConfiguredBaseUrl(provider: LlmProvider): boolean {
   );
 }
 
+function isCliProvider(provider: LlmProvider): boolean {
+  return (
+    provider === "codex" ||
+    provider === "gemini_cli" ||
+    provider === "claude_cli"
+  );
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -738,6 +814,7 @@ function normalizeGeminiModelName(value: string): string {
 }
 
 function getPreferredModel(provider: LlmProvider): string | null {
+  if (provider === "atlascloud") return "deepseek-ai/deepseek-v3.2";
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "anthropic") return "claude-sonnet-4-6";
   if (provider === "glm") return "glm-5.1";

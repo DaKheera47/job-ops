@@ -53,6 +53,21 @@ export function trackEvent(event: string, data?: Record<string, unknown>) {
 }
 
 type ProductEventMap = {
+  jobs_search_composer_opened: {
+    mode: "automatic" | "manual";
+  };
+  jobs_search_composer_mode_changed: {
+    from_mode: "automatic" | "manual";
+    to_mode: "automatic" | "manual";
+  };
+  jobs_search_composer_details_opened: {
+    source: "manual" | "generated_plan";
+  };
+  jobs_search_composer_plan_generated: {
+    result: "success" | "error";
+    prompt_length_bucket: string;
+    source?: "ai" | "fallback";
+  };
   jobs_pipeline_run_started: {
     mode: string;
     source_count?: number;

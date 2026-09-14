@@ -163,6 +163,39 @@ describe.sequential("Watchlist API routes", () => {
       );
     });
 
+    it("accepts up to 50 watchlist sources", async () => {
+      const selections = Array.from({ length: 50 }, (_, index) => ({
+        sourceType: "workday",
+        careersUrl: `https://company${index}.wd1.myworkdayjobs.com/External`,
+      }));
+
+      const acceptedRes = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selections }),
+      });
+      const acceptedBody = await acceptedRes.json();
+
+      expect(acceptedRes.status).toBe(200);
+      expect(acceptedBody.data.selectedSources).toHaveLength(50);
+
+      const rejectedRes = await fetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selections: [
+            ...selections,
+            {
+              sourceType: "workday",
+              careersUrl: "https://company50.wd1.myworkdayjobs.com/External",
+            },
+          ],
+        }),
+      });
+
+      expect(rejectedRes.status).toBe(400);
+    });
+
     it("caps oversized source-branding responses", async () => {
       vi.stubGlobal(
         "fetch",

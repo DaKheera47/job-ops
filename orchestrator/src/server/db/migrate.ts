@@ -40,6 +40,48 @@ function tableExists(tableName: string): boolean {
   return Boolean(row);
 }
 
+function rebuildAccountSubscriptionsKey(): void {
+  if (!tableExists("account_subscriptions")) return;
+  const userIdIsPrimaryKey = (
+    sqlite.prepare("PRAGMA table_info(account_subscriptions)").all() as Array<{
+      name: string;
+      pk: number;
+    }>
+  ).some((column) => column.name === "user_id" && column.pk > 0);
+  if (!userIdIsPrimaryKey) return;
+
+  sqlite.exec(`
+    PRAGMA foreign_keys = OFF;
+    CREATE TABLE account_subscriptions_new (
+      user_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL,
+      stripe_customer_id TEXT NOT NULL UNIQUE,
+      stripe_subscription_id TEXT UNIQUE,
+      stripe_subscription_created_at INTEGER,
+      stripe_price_id TEXT,
+      stripe_status TEXT,
+      current_period_end INTEGER,
+      cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      UNIQUE(tenant_id, user_id)
+    );
+    INSERT OR IGNORE INTO account_subscriptions_new
+      (user_id, tenant_id, stripe_customer_id, stripe_subscription_id,
+       stripe_subscription_created_at, stripe_price_id, stripe_status,
+       current_period_end, cancel_at_period_end, created_at, updated_at)
+    SELECT user_id, tenant_id, stripe_customer_id, stripe_subscription_id,
+      stripe_subscription_created_at, stripe_price_id, stripe_status,
+      current_period_end, cancel_at_period_end, created_at, updated_at
+    FROM account_subscriptions;
+    DROP TABLE account_subscriptions;
+    ALTER TABLE account_subscriptions_new RENAME TO account_subscriptions;
+    PRAGMA foreign_keys = ON;
+  `);
+}
+
 function addTenantColumn(tableName: string): void {
   if (!tableExists(tableName) || tableHasColumn(tableName, "tenant_id")) {
     return;
@@ -176,6 +218,23 @@ const migrations = [
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     UNIQUE(user_id, tenant_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS account_subscriptions (
+    user_id TEXT NOT NULL,
+    tenant_id TEXT NOT NULL,
+    stripe_customer_id TEXT NOT NULL UNIQUE,
+    stripe_subscription_id TEXT UNIQUE,
+    stripe_subscription_created_at INTEGER,
+    stripe_price_id TEXT,
+    stripe_status TEXT,
+    current_period_end INTEGER,
+    cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(tenant_id, user_id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS hosted_usage_counters (
@@ -1715,6 +1774,7 @@ function seedLegacyOnboardingMigration(): void {
 }
 
 console.log("🔐 Applying tenancy compatibility migrations...");
+rebuildAccountSubscriptionsKey();
 ensureTenantColumns();
 seedLegacyOwnerFromBasicAuth();
 ensurePrivateUserColumns();

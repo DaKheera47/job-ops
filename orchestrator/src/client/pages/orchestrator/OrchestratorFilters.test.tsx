@@ -51,7 +51,6 @@ const renderFilters = (
     counts: {
       ready: 2,
       discovered: 1,
-      applied: 3,
       all: 6,
     },
     onOpenCommandBar: vi.fn(),
@@ -65,6 +64,12 @@ const renderFilters = (
       max: null,
     },
     onSalaryFilterChange: vi.fn(),
+    scoreFilter: {
+      mode: "any" as const,
+      min: null,
+      max: null,
+    },
+    onScoreFilterChange: vi.fn(),
     postedWithinDays: null,
     onPostedWithinChange: vi.fn(),
     employmentTypes: [],
@@ -128,8 +133,8 @@ describe("OrchestratorFilters", () => {
   it("notifies when tabs and command search shortcut are used", () => {
     const { props } = renderFilters();
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: /applied/i }));
-    expect(props.onTabChange).toHaveBeenCalledWith("applied");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /all jobs/i }));
+    expect(props.onTabChange).toHaveBeenCalledWith("all");
 
     fireEvent.click(screen.getByRole("button", { name: /search jobs/i }));
     expect(props.onOpenCommandBar).toHaveBeenCalled();

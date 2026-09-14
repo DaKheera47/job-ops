@@ -1,4 +1,5 @@
 import { getPostingDateSortValue } from "@client/lib/job-posting-age";
+import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
 import type { AppSettings, JobListItem, JobSource } from "@shared/types";
 import type {
   DateFilterDimension,
@@ -259,7 +260,6 @@ export const getJobCounts = (
   const byTab: Record<FilterTab, number> = {
     ready: 0,
     discovered: 0,
-    applied: 0,
     all: jobs.length,
   };
 
@@ -267,7 +267,6 @@ export const getJobCounts = (
     if (job.closedAt != null) continue;
     if (job.status === "in_progress") continue;
     if (job.status === "ready" || job.status === "processing") byTab.ready += 1;
-    if (job.status === "applied") byTab.applied += 1;
     if (job.status === "discovered" || job.status === "processing")
       byTab.discovered += 1;
   }
@@ -298,50 +297,11 @@ export const getEnabledSources = (
   const hasApifyToken = Boolean(settings.apifyTokenHint);
 
   for (const source of orderedSources) {
-    if (source === "gradcracker") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "ukvisajobs") {
-      if (hasUkVisaJobsAuth) enabled.push(source);
-      continue;
-    }
-    if (source === "adzuna") {
-      if (hasAdzunaAuth) enabled.push(source);
-      continue;
-    }
-    if (source === "seek") {
-      if (hasApifyToken) enabled.push(source);
-      continue;
-    }
-    if (source === "naukri") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "hiringcafe") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "startupjobs") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "workingnomads") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "golangjobs") {
-      enabled.push(source);
-      continue;
-    }
-    if (source === "jobindex") {
-      enabled.push(source);
-      continue;
-    }
     if (
-      source === "indeed" ||
-      source === "linkedin" ||
-      source === "glassdoor"
+      !EXTRACTOR_SOURCE_METADATA[source].requiresCredentials ||
+      (source === "ukvisajobs" && hasUkVisaJobsAuth) ||
+      (source === "adzuna" && hasAdzunaAuth) ||
+      (source === "seek" && hasApifyToken)
     ) {
       enabled.push(source);
     }

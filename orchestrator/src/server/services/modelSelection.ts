@@ -1,6 +1,9 @@
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as settingsRepo from "@server/repositories/settings";
+import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
+import { isHostedLocalProvider } from "@server/services/llm/hosted-policy";
 import { LlmService } from "@server/services/llm/service";
 import { getEffectiveSettings } from "@server/services/settings";
 import {
@@ -10,6 +13,15 @@ import {
 import { LLM_PURPOSE_VALUES, type LlmPurpose } from "@shared/types";
 
 export type LlmModelPurpose = "default" | LlmPurpose;
+
+export type LlmRuntimeSettings = {
+  model: string;
+  provider: string | null;
+  baseUrl: string | null;
+  apiKey: string | null;
+  allowEnvironmentCredentials: boolean;
+  allowCliProviders: boolean;
+};
 
 const MODEL_KEY_BY_PURPOSE: Record<
   LlmPurpose,
@@ -76,6 +88,9 @@ function getDefaultBaseUrlForProvider(
   provider: string | null | undefined,
 ): string | null {
   const normalized = provider?.trim().toLowerCase().replace(/-/g, "_");
+  if (normalized === "atlascloud" || normalized === "atlas_cloud") {
+    return "https://api.atlascloud.ai";
+  }
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") return "https://api.openai.com";
@@ -94,6 +109,7 @@ function getDefaultBaseUrlForProvider(
   )
     return null;
   if (normalized === "requesty") return "https://router.requesty.ai/v1";
+  if (normalized === "orcarouter") return "https://api.orcarouter.ai/v1";
   return "https://openrouter.ai";
 }
 
@@ -113,21 +129,90 @@ function readPurposeApiKeys(raw: string | null | undefined) {
   return settingsRegistry.llmPurposeApiKeys.parse(raw ?? undefined) ?? {};
 }
 
+function isCliProvider(provider: string | null | undefined): boolean {
+  return ["codex", "gemini_cli", "claude_cli"].includes(provider ?? "");
+}
+
+async function resolveHostedLlmRuntimeSettings(
+  purpose: LlmModelPurpose,
+): Promise<LlmRuntimeSettings> {
+  const entitlements = await getCurrentAccountEntitlements();
+  if (entitlements.platformAiIncluded) {
+    const provider =
+      settingsRegistry.llmProvider.parse(getOriginalEnvValue("LLM_PROVIDER")) ??
+      "openrouter";
+    return {
+      provider,
+      model: getDefaultModelForProvider(provider, getOriginalEnvValue("MODEL")),
+      baseUrl:
+        (providerUsesConfiguredBaseUrl(provider)
+          ? getOriginalEnvValue("LLM_BASE_URL")?.trim()
+          : null) || getDefaultBaseUrlForProvider(provider),
+      apiKey: resolveLlmApiKey({ provider }),
+      allowEnvironmentCredentials: true,
+      allowCliProviders: true,
+    };
+  }
+
+  const overrides = await settingsRepo.getAllSettings();
+  const purposeOverrides =
+    settingsRegistry.llmPurposeOverrides.parse(overrides.llmPurposeOverrides) ??
+    {};
+  const purposeOverride = isLlmPurpose(purpose)
+    ? purposeOverrides[purpose]
+    : undefined;
+  const selectedProvider =
+    purposeOverride?.provider ??
+    settingsRegistry.llmProvider.parse(overrides.llmProvider) ??
+    "openrouter";
+  const provider =
+    isCliProvider(selectedProvider) || isHostedLocalProvider(selectedProvider)
+      ? "openrouter"
+      : selectedProvider;
+  const defaultModel =
+    settingsRegistry.model.parse(overrides.model) ??
+    getDefaultModelForProvider(provider);
+  const purposeModelKey = isLlmPurpose(purpose)
+    ? MODEL_KEY_BY_PURPOSE[purpose]
+    : null;
+  const model =
+    purposeOverride?.model?.trim() ||
+    (purposeModelKey ? overrides[purposeModelKey]?.trim() : null) ||
+    defaultModel;
+  const purposeApiKeys = readPurposeApiKeys(overrides.llmPurposeApiKeys);
+
+  return {
+    provider,
+    model,
+    baseUrl: getDefaultBaseUrlForProvider(provider),
+    apiKey: resolveLlmApiKey({
+      purposeApiKey: isLlmPurpose(purpose) ? purposeApiKeys[purpose] : null,
+      storedApiKey: overrides.llmApiKey,
+      provider,
+      allowEnvironmentCredentials: false,
+    }),
+    allowEnvironmentCredentials: false,
+    allowCliProviders: false,
+  };
+}
+
 export async function resolveLlmModel(
   purpose: LlmModelPurpose = "default",
 ): Promise<string> {
+  if (getJobOpsAppConfig().appMode === "hosted") {
+    return (await resolveHostedLlmRuntimeSettings(purpose)).model;
+  }
   const settings = await getEffectiveSettings();
   return resolveModelFromSettings(settings, purpose);
 }
 
 export async function resolveLlmRuntimeSettings(
   purpose: LlmModelPurpose = "default",
-): Promise<{
-  model: string;
-  provider: string | null;
-  baseUrl: string | null;
-  apiKey: string | null;
-}> {
+): Promise<LlmRuntimeSettings> {
+  if (getJobOpsAppConfig().appMode === "hosted") {
+    return resolveHostedLlmRuntimeSettings(purpose);
+  }
+
   const getAllSettings =
     "getAllSettings" in settingsRepo ? settingsRepo.getAllSettings : null;
   const [settings, overrides] = await Promise.all([
@@ -163,6 +248,8 @@ export async function resolveLlmRuntimeSettings(
       storedApiKey: overrides?.llmApiKey,
       provider,
     }),
+    allowEnvironmentCredentials: true,
+    allowCliProviders: true,
   };
 }
 
@@ -174,5 +261,7 @@ export async function createConfiguredLlmService(
     provider: runtime.provider,
     baseUrl: runtime.baseUrl,
     apiKey: runtime.apiKey,
+    allowEnvironmentCredentials: runtime.allowEnvironmentCredentials,
+    allowCliProviders: runtime.allowCliProviders,
   });
 }

@@ -81,7 +81,6 @@ Date filters work on every jobs tab:
 
 - `Ready`
 - `Discovered`
-- `Applied`
 - `All Jobs`
 
 Available date dimensions:
@@ -229,7 +228,6 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 - Open `Filters` and confirm at least one date dimension is selected.
 - Check that your date range matches the lifecycle timestamp you care about.
-- Remember that `Applied` still means jobs currently in the `applied` status, while `All Jobs` can be used for broader historical browsing.
 
 ## Related pages
 

@@ -2,7 +2,8 @@
  * Shared layout components for consistent page structure.
  */
 
-import { logout } from "@client/api";
+import { getAppStatus, logout } from "@client/api";
+import { useQuery } from "@tanstack/react-query";
 import {
   ExternalLink,
   LogOut,
@@ -10,8 +11,7 @@ import {
   Menu,
   UserRound,
 } from "lucide-react";
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useVersionCheck } from "../hooks/useVersionCheck";
+import { queryKeys } from "../lib/queryKeys";
 import {
   loadRememberedAuthUsers,
   type RememberedAuthUser,
@@ -39,6 +40,31 @@ import {
 import { isNavActive, NAV_LINKS } from "./navigation";
 import { StatusBadgeIndicator } from "./StatusIndicator";
 import { Tip } from "./Tip";
+
+export const AppModeContext = React.createContext({
+  appMode: "local" as "local" | "hosted",
+  isPending: false,
+});
+
+export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const appStatusQuery = useQuery({
+    queryKey: queryKeys.app.status(),
+    queryFn: getAppStatus,
+  });
+
+  return (
+    <AppModeContext.Provider
+      value={{
+        appMode: appStatusQuery.data?.appMode ?? "local",
+        isPending: appStatusQuery.isPending,
+      }}
+    >
+      {children}
+    </AppModeContext.Provider>
+  );
+};
 
 const buildSignInPath = (username: string, nextPath: string): string => {
   const params = new URLSearchParams();
@@ -89,6 +115,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const navOpen = controlledNavOpen ?? internalNavOpen;
   const setNavOpen = onNavOpenChange ?? setInternalNavOpen;
   const { version, updateAvailable } = useVersionCheck();
+  const { appMode } = React.useContext(AppModeContext);
+  const navLinks =
+    appMode === "hosted"
+      ? NAV_LINKS.filter(({ to }) => to !== "/tracking-inbox")
+      : NAV_LINKS;
 
   useEffect(() => {
     if (navOpen) {
@@ -132,7 +163,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {NAV_LINKS.map(({ to, label, icon: NavIcon, activePaths }) => (
+                {navLinks.map(({ to, label, icon: NavIcon, activePaths }) => (
                   <button
                     key={to}
                     type="button"

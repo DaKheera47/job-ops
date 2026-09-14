@@ -32,6 +32,7 @@ describe("LlmService", () => {
 
   afterEach(() => {
     delete process.env.LLM_PROVIDER;
+    delete process.env.LLM_BASE_URL;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.LLM_API_KEY;
     global.fetch = originalFetch;
