@@ -12,6 +12,7 @@ import {
   JOB_CHAT_MESSAGE_ROLES,
   JOB_CHAT_MESSAGE_STATUSES,
   JOB_CHAT_RUN_STATUSES,
+  PASSKEY_DEVICE_TYPES,
   POST_APPLICATION_INTEGRATION_STATUSES,
   POST_APPLICATION_MESSAGE_TYPES,
   POST_APPLICATION_PROCESSING_STATUSES,
@@ -760,6 +761,35 @@ export const authSessions = sqliteTable(
   (table) => ({
     expiresAtIndex: index("idx_auth_sessions_expires_at").on(table.expiresAt),
     revokedAtIndex: index("idx_auth_sessions_revoked_at").on(table.revokedAt),
+  }),
+);
+
+export const passkeyCredentials = sqliteTable(
+  "passkey_credentials",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    publicKey: text("public_key").notNull(),
+    counter: integer("counter").notNull().default(0),
+    transports: text("transports", { mode: "json" }).$type<string[] | null>(),
+    deviceType: text("device_type", { enum: PASSKEY_DEVICE_TYPES }),
+    backedUp: integer("backed_up", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    aaguid: text("aaguid"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    lastUsedAt: integer("last_used_at", { mode: "number" }),
+  },
+  (table) => ({
+    userIdIndex: index("idx_passkey_credentials_user_id").on(table.userId),
   }),
 );
 

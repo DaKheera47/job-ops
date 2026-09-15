@@ -147,6 +147,10 @@ const isolatedEnvKeys = [
   "UKVISAJOBS_PASSWORD",
   "ADZUNA_APP_ID",
   "ADZUNA_APP_KEY",
+  "WEBAUTHN_ORIGINS",
+  "WEBAUTHN_RP_ID",
+  "WEBAUTHN_RP_NAME",
+  "WEBAUTHN_CHALLENGE_TTL_MS",
 ] as const;
 
 const nativeFetch = globalThis.fetch;

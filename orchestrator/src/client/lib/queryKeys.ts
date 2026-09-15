@@ -5,6 +5,10 @@ export const queryKeys = {
     all: ["app"] as const,
     status: () => [...queryKeys.app.all, "status"] as const,
   },
+  auth: {
+    all: ["auth"] as const,
+    passkeys: () => [...queryKeys.auth.all, "passkeys"] as const,
+  },
   billing: {
     all: ["billing"] as const,
     status: () => [...queryKeys.billing.all, "status"] as const,
