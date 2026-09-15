@@ -180,6 +180,60 @@ describe.sequential("Manual jobs API routes", () => {
     expect(res.status).toBe(400);
   });
 
+  it("preserves the application URL path in validation errors", async () => {
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/jobs/backend-engineer",
+          applicationLink: "not-a-valid-url",
+          jobDescription: "Great role",
+        },
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.error.details.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_string",
+        validation: "url",
+        path: ["job", "applicationLink"],
+      }),
+    ]);
+  });
+
+  it("preserves field limits in manual import validation errors", async () => {
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobUrl: "https://example.com/jobs/backend-engineer",
+          jobDescription: "Great role",
+          disciplines: "x".repeat(201),
+        },
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.error.details.issues).toEqual([
+      expect.objectContaining({
+        code: "too_big",
+        maximum: 200,
+        path: ["job", "disciplines"],
+      }),
+    ]);
+  });
+
   it("skips tailoring and scoring when skipTailoring is true", async () => {
     const { processJob } = await import("@server/pipeline/index");
     const { scoreJobSuitability } = await import("@server/services/scorer");

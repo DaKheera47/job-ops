@@ -113,14 +113,17 @@ function isZodErrorLike(error: unknown): error is ZodError {
 export function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   if (isZodErrorLike(error)) {
-    const details =
+    const flattened =
       typeof error.flatten === "function"
         ? error.flatten()
-        : {
-            formErrors: [],
-            fieldErrors: {},
-            issues: error.issues,
-          };
+        : { formErrors: [], fieldErrors: {} };
+    const details = {
+      ...flattened,
+      // flatten() collapses nested paths such as job.applicationLink to job and
+      // drops constraints such as maximum. Keep the issues so clients can name
+      // the actual field and explain how to correct it.
+      issues: error.issues,
+    };
     return badRequest(error.message, details);
   }
   if (error instanceof Error && error.name === "AbortError") {

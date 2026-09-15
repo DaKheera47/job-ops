@@ -5,6 +5,7 @@ type ZodLikeIssue = {
   maximum?: number;
   expected?: string;
   received?: string;
+  origin?: string;
   type?: string;
   validation?: string;
   message?: string;
@@ -28,7 +29,7 @@ function toFriendlyFieldLabel(path: string): string | null {
   if (path === "jobDescription") return "job description";
   if (path === "job.jobUrl" || path === "jobUrl") return "job URL";
   if (path === "applicationLink" || path === "job.applicationLink") {
-    return "application link";
+    return "application URL";
   }
   if (/^sections\.skills\.items\.\d+\.name$/.test(path)) return "skill name";
   if (/^sections\.projects\.items\.\d+\.name$/.test(path))
@@ -96,9 +97,6 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
     /\binvalid\s+url\b/.test(normalizedIssueMessage);
 
   if (isInvalidUrl) {
-    if (label === "application link") {
-      return "Please enter a valid application link URL.";
-    }
     return label
       ? `Please enter a valid ${label}.`
       : "Please enter a valid URL.";
@@ -123,11 +121,24 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
     }
   }
 
+  const isStringIssue =
+    issue.type === "string" ||
+    issue.origin === "string" ||
+    /\bstring\b/i.test(issue.message ?? "");
+  const maximum =
+    issue.maximum ?? extractNumericConstraint(issue.message, "maximum");
+
   if (
-    issue.code === "too_small" &&
-    issue.type === "string" &&
-    issue.minimum === 1
+    label &&
+    isStringIssue &&
+    (issue.code === "too_big" || maximum !== null)
   ) {
+    return maximum === null
+      ? `${toSentenceCase(label)} is too long.`
+      : `${toSentenceCase(label)} must be ${maximum} characters or fewer.`;
+  }
+
+  if (issue.code === "too_small" && isStringIssue && issue.minimum === 1) {
     if (label) {
       return `Please enter a ${label} before continuing.`;
     }
