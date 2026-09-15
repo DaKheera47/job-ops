@@ -1,6 +1,5 @@
 import {
   AppError,
-  badRequest,
   conflict,
   notFound,
   requestTimeout,
@@ -246,7 +245,7 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return fail(res, badRequest(error.message, error.flatten()));
+      return fail(res, toAppError(error));
     }
     if (error instanceof Error && error.name === "AbortError") {
       return fail(res, requestTimeout());
@@ -271,7 +270,7 @@ manualJobsRouter.post("/infer", async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return fail(res, badRequest(error.message, error.flatten()));
+      return fail(res, toAppError(error));
     }
     fail(res, toAppError(error));
   }
@@ -397,7 +396,7 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return fail(res, badRequest(error.message, error.flatten()));
+      return fail(res, toAppError(error));
     }
     fail(res, toAppError(error));
   }

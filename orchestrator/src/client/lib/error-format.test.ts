@@ -51,7 +51,7 @@ describe("error-format", () => {
     ]);
 
     expect(formatUserFacingError(new Error(raw))).toBe(
-      "Please enter a valid application link URL.",
+      "Please enter a valid application URL.",
     );
   });
 
@@ -103,7 +103,28 @@ describe("error-format", () => {
     };
 
     expect(formatUserFacingError(error)).toBe(
-      "Please enter a valid application link URL.",
+      "Please enter a valid application URL.",
+    );
+  });
+
+  it("maps nested string length validation to the field and limit", () => {
+    const error = {
+      message: "Validation failed",
+      details: {
+        issues: [
+          {
+            origin: "string",
+            code: "too_big",
+            maximum: 200,
+            message: "Too big: expected string to have <=200 characters",
+            path: ["job", "disciplines"],
+          },
+        ],
+      },
+    };
+
+    expect(formatUserFacingError(error)).toBe(
+      "Disciplines must be 200 characters or fewer.",
     );
   });
 
