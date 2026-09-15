@@ -6,6 +6,7 @@
  */
 
 import { isExtractorSourceId, sourceLabel } from "@shared/extractors";
+import { getEffectiveStageHistory } from "@shared/stage-history";
 import type { JobSource, StageEvent } from "@shared/types.js";
 import { useMemo, useState } from "react";
 import {
@@ -90,7 +91,9 @@ const buildResponseRateBySource = (
     const existing = bySource.get(job.source) ?? { applied: 0, responded: 0 };
     existing.applied++;
 
-    const hasResponse = job.events.some((e) => RESPONSE_STAGES.has(e.toStage));
+    const hasResponse = getEffectiveStageHistory(job.events).some((e) =>
+      RESPONSE_STAGES.has(e.toStage),
+    );
     if (hasResponse) {
       existing.responded++;
     }

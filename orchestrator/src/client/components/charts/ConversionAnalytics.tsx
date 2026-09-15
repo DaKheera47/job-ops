@@ -3,6 +3,7 @@
  * Shows Application → Response conversion metrics including funnel, time-series, and insights.
  */
 
+import { getEffectiveStageHistory } from "@shared/stage-history";
 import type { StageEvent } from "@shared/types.js";
 import { useMemo } from "react";
 import {
@@ -272,17 +273,26 @@ export function ConversionAnalytics({
   error,
   daysToShow,
 }: ConversionAnalyticsProps) {
+  const effectiveJobs = useMemo(
+    () =>
+      jobsWithEvents.map((job) => ({
+        ...job,
+        events: getEffectiveStageHistory(job.events),
+      })),
+    [jobsWithEvents],
+  );
+
   const funnelData = useMemo(() => {
-    return buildFunnelData(jobsWithEvents);
-  }, [jobsWithEvents]);
+    return buildFunnelData(effectiveJobs);
+  }, [effectiveJobs]);
 
   const conversionTimeSeries = useMemo(() => {
-    return buildConversionTimeSeries(jobsWithEvents, daysToShow);
-  }, [jobsWithEvents, daysToShow]);
+    return buildConversionTimeSeries(effectiveJobs, daysToShow);
+  }, [effectiveJobs, daysToShow]);
 
   const overallConversion = useMemo(() => {
-    return calculateOverallConversion(jobsWithEvents);
-  }, [jobsWithEvents]);
+    return calculateOverallConversion(effectiveJobs);
+  }, [effectiveJobs]);
 
   return (
     <Card className="py-0">
