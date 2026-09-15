@@ -80,6 +80,7 @@ vi.mock("../api", () => ({
   getJobNotes: vi.fn(),
   getProfile: vi.fn(),
   getSettings: vi.fn(),
+  getResumeProjectsCatalog: vi.fn(),
   getJobEmails: vi.fn(),
   getJobDocuments: vi.fn(),
   createJobNote: vi.fn(),
@@ -200,6 +201,7 @@ beforeEach(() => {
   vi.mocked(api.getJob).mockResolvedValue(createJob() as Job);
   vi.mocked(api.getProfile).mockResolvedValue({});
   vi.mocked(api.getSettings).mockResolvedValue(createAppSettings());
+  vi.mocked(api.getResumeProjectsCatalog).mockResolvedValue([]);
   vi.mocked(api.getJobDocuments).mockResolvedValue([]);
   vi.mocked(api.getJobStageEvents).mockResolvedValue([]);
   vi.mocked(api.getJobTasks).mockResolvedValue([
@@ -488,6 +490,38 @@ describe("JobPage emails", () => {
       "border-input",
     );
     expect(api.getJobEmails).toHaveBeenCalledWith("job-1", { limit: 100 });
+  });
+});
+
+describe("JobPage project count", () => {
+  it("counts must-include projects when the job-specific selection is empty", async () => {
+    const projectIds = ["mumtaz-urdu", "jobops", "indus-marine"];
+    const appSettings = createAppSettings();
+    appSettings.resumeProjects.value = {
+      maxProjects: 3,
+      lockedProjectIds: projectIds,
+      aiSelectableProjectIds: [],
+    };
+    vi.mocked(api.getSettings).mockResolvedValue(appSettings);
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ selectedProjectIds: "" }) as Job,
+    );
+    vi.mocked(api.getResumeProjectsCatalog).mockResolvedValue(
+      projectIds.map((id) => ({
+        id,
+        name: id,
+        description: "",
+        date: "",
+        isVisibleInBase: true,
+      })),
+    );
+
+    renderJobPage("/job/job-1");
+
+    const projectsLabel = await screen.findByText("Projects Chosen");
+    await waitFor(() =>
+      expect(projectsLabel.parentElement).toHaveTextContent("3"),
+    );
   });
 });
 

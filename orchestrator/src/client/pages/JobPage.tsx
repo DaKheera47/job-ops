@@ -1,3 +1,4 @@
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import {
   type ApplicationStage,
   type ApplicationTask,
@@ -214,19 +215,30 @@ export const JobPage: React.FC = () => {
     activeMemoryView === "note" ? null : notesQuery.error,
     "Failed to load notes. Please try again.",
   );
-  const selectedProjectIds = React.useMemo(
+  const storedSelectedProjectIds = React.useMemo(
     () => parseSelectedProjectIds(job?.selectedProjectIds),
     [job?.selectedProjectIds],
   );
-  const selectedProjectIdsKey = selectedProjectIds.join(",");
+  const effectiveSelectedProjectIds = React.useMemo(() => {
+    const resumeProjects = settings?.resumeProjects.value;
+    if (!resumeProjects || catalog.length === 0) {
+      return storedSelectedProjectIds;
+    }
+
+    return resolveResumeProjectSelection({
+      catalog,
+      resumeProjects,
+      selectedProjectIds: storedSelectedProjectIds,
+    }).effectiveSelectedIds;
+  }, [catalog, settings?.resumeProjects.value, storedSelectedProjectIds]);
   const selectedProjects = React.useMemo(
     () =>
-      selectedProjectIds.map(
+      effectiveSelectedProjectIds.map(
         (projectId) =>
           catalog.find((project) => project.id === projectId)?.name ??
           projectId,
       ),
-    [catalog, selectedProjectIds],
+    [catalog, effectiveSelectedProjectIds],
   );
   const sourceLabel = job
     ? (sourceLabels[job.source] ?? formatJobSourceLabel(job.source))
@@ -254,13 +266,6 @@ export const JobPage: React.FC = () => {
   React.useEffect(() => {
     let isCancelled = false;
 
-    if (selectedProjectIdsKey.length === 0) {
-      setCatalog([]);
-      return () => {
-        isCancelled = true;
-      };
-    }
-
     void api
       .getResumeProjectsCatalog()
       .then((nextCatalog) => {
@@ -277,7 +282,7 @@ export const JobPage: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [selectedProjectIdsKey]);
+  }, []);
 
   const loadData = React.useCallback(async () => {
     if (!id) return;

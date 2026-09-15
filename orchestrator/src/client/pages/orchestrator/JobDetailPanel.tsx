@@ -28,6 +28,7 @@ import {
   STALE_PDF_MESSAGE,
 } from "@client/lib/pdf-freshness";
 import { downloadJobPdf, openJobPdf } from "@client/lib/private-pdf";
+import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type {
   Job,
   JobListItem,
@@ -319,16 +320,28 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         language: filenameLanguage,
       })}.pdf`
     : "resume.pdf";
-  const selectedProjectIds = useMemo(
+  const storedSelectedProjectIds = useMemo(
     () => selectedJob?.selectedProjectIds?.split(",").filter(Boolean) ?? [],
     [selectedJob?.selectedProjectIds],
   );
+  const effectiveSelectedProjectIds = useMemo(() => {
+    const resumeProjects = settings?.resumeProjects.value;
+    if (!resumeProjects || catalog.length === 0) {
+      return storedSelectedProjectIds;
+    }
+
+    return resolveResumeProjectSelection({
+      catalog,
+      resumeProjects,
+      selectedProjectIds: storedSelectedProjectIds,
+    }).effectiveSelectedIds;
+  }, [catalog, settings?.resumeProjects.value, storedSelectedProjectIds]);
   const selectedProjects = useMemo(
     () =>
-      selectedProjectIds
+      effectiveSelectedProjectIds
         .map((id) => catalog.find((project) => project.id === id)?.name ?? id)
         .filter(Boolean),
-    [catalog, selectedProjectIds],
+    [catalog, effectiveSelectedProjectIds],
   );
   const hasTailoredSummary = Boolean(selectedJob?.tailoredSummary);
   const hasTailoredSkills = Boolean(selectedJob?.tailoredSkills);
@@ -981,8 +994,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <KitStatus
                   icon={<FolderKanban className="h-4 w-4" />}
                   label="Selected projects"
-                  ready={selectedProjectIds.length > 0}
-                  readyLabel={`${selectedProjectIds.length} included`}
+                  ready={effectiveSelectedProjectIds.length > 0}
+                  readyLabel={`${effectiveSelectedProjectIds.length} included`}
                 />
                 <KitStatus
                   icon={<Link2 className="h-4 w-4" />}

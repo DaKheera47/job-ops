@@ -200,6 +200,7 @@ describe("JobDetailPanel", () => {
     mockSettings.settings = null;
     mockSettings.renderMarkdownInJobDescriptions = true;
     vi.mocked(api.getProfile).mockResolvedValue({});
+    vi.mocked(api.getResumeProjectsCatalog).mockResolvedValue([]);
   });
 
   it("shows the selected job summary and safe links while full details load", async () => {
@@ -282,6 +283,48 @@ describe("JobDetailPanel", () => {
         "Base description extracted from the job listing, editable if something looks off. Used by the Ghostwriter and for fit assessment.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("counts must-include projects in the application kit", async () => {
+    const projectIds = ["mumtaz-urdu", "jobops", "indus-marine"];
+    const appSettings = createAppSettings();
+    appSettings.resumeProjects.value = {
+      maxProjects: 3,
+      lockedProjectIds: projectIds,
+      aiSelectableProjectIds: [],
+    };
+    mockSettings.settings = appSettings;
+    vi.mocked(api.getResumeProjectsCatalog).mockResolvedValue(
+      projectIds.map((id) => ({
+        id,
+        name: id,
+        description: "",
+        date: "",
+        isVisibleInBase: true,
+      })),
+    );
+    const job = createJob({
+      status: "ready",
+      selectedProjectIds: "",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "ready",
+      activeJobs: [job],
+      selectedJob: job,
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /apply/i }));
+
+    const applyPanel = getApplyPanel();
+    expect(
+      await within(applyPanel).findByText("3 included"),
+    ).toBeInTheDocument();
+    for (const projectId of projectIds) {
+      expect(within(applyPanel).getByText(projectId)).toBeInTheDocument();
+    }
   });
 
   it("shows stale PDF copy and old-PDF actions in the application kit", async () => {
