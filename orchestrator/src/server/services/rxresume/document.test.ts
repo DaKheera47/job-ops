@@ -37,6 +37,53 @@ function mergeV5Documents(
 }
 
 describe("prepareReactiveResumeV5DocumentForExternalUse", () => {
+  it("preserves current inline links and migrates the legacy JobOps option", () => {
+    const document = buildDefaultReactiveResumeDocument();
+    document.sections = {
+      ...(document.sections as Record<string, unknown>),
+      experience: {
+        title: "Experience",
+        columns: 1,
+        hidden: false,
+        items: [
+          {
+            id: "experience-current",
+            hidden: false,
+            company: "Current",
+            position: "Engineer",
+            location: "",
+            period: "",
+            website: {
+              url: "https://current.example.com",
+              label: "",
+              inlineLink: true,
+            },
+            description: "",
+            roles: [],
+          },
+          {
+            id: "experience-legacy",
+            hidden: false,
+            company: "Legacy",
+            position: "Engineer",
+            location: "",
+            period: "",
+            website: { url: "https://legacy.example.com", label: "" },
+            options: { showLinkInTitle: true },
+            description: "",
+            roles: [],
+          },
+        ],
+      },
+    };
+
+    const prepared = prepareReactiveResumeV5DocumentForExternalUse(document);
+    const items = (prepared.sections as Record<string, any>).experience.items;
+
+    expect(items[0].website.inlineLink).toBe(true);
+    expect(items[1].website.inlineLink).toBe(true);
+  });
+
   it("wraps plain rich-text fields in HTML paragraphs for Reactive Resume", () => {
     const document = buildDefaultReactiveResumeDocument();
     document.summary = {

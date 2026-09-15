@@ -600,7 +600,11 @@ describe("design resume service", () => {
               icon: "github-logo",
               network: "GitHub",
               username: "user",
-              website: { url: "https://github.com/user", label: "" },
+              website: {
+                url: "https://github.com/user",
+                label: "",
+                inlineLink: true,
+              },
             },
           ],
         },
@@ -638,6 +642,9 @@ describe("design resume service", () => {
     expect(result.resumeJson.sections.profiles.items[0]).not.toHaveProperty(
       "options",
     );
+    expect(
+      result.resumeJson.sections.profiles.items[0]?.website.inlineLink,
+    ).toBe(true);
   });
 
   it("rejects legacy local documents and requires re-import", async () => {

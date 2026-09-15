@@ -83,6 +83,41 @@ describe("ItemDialog", () => {
     );
   });
 
+  it("saves the link-in-title toggle inside the website object", () => {
+    const onSave = vi.fn();
+    const fields: ItemFieldConfig[] = [
+      {
+        key: "website.inlineLink",
+        label: "Show link in title",
+        type: "toggle",
+      },
+    ];
+
+    render(
+      <ItemDialog
+        open
+        title="Edit experience"
+        description="Dialog description"
+        item={{
+          id: "experience-1",
+          website: { url: "https://acme.example.com", inlineLink: false },
+        }}
+        fields={fields}
+        onOpenChange={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Save item" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        website: expect.objectContaining({ inlineLink: true }),
+      }),
+    );
+  });
+
   it("shows AI assist only for opted-in fields", () => {
     const fields: ItemFieldConfig[] = [
       { key: "name", label: "Name", type: "text", aiAssist: true },

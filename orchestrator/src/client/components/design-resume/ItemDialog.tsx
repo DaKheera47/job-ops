@@ -496,7 +496,7 @@ export function ItemDialog({
         item ?? {
           id: createId(),
           hidden: false,
-          options: { showLinkInTitle: false },
+          website: { label: "", url: "", inlineLink: false },
         },
       ) as Record<string, unknown>,
     [item],

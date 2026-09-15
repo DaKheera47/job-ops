@@ -32,6 +32,10 @@ export const urlSchema = z.object({
   label: z.string(),
 });
 
+export const itemUrlSchema = urlSchema.extend({
+  inlineLink: z.boolean().optional(),
+});
+
 export const pictureSchema = z.object({
   hidden: z.boolean(),
   url: z.string(),
@@ -87,7 +91,7 @@ export const awardItemSchema = baseItemSchema.extend({
   title: z.string().min(1),
   awarder: z.string(),
   date: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
@@ -95,7 +99,7 @@ export const certificationItemSchema = baseItemSchema.extend({
   title: z.string().min(1),
   issuer: z.string(),
   date: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
@@ -106,7 +110,7 @@ export const educationItemSchema = baseItemSchema.extend({
   grade: z.string(),
   location: z.string(),
   period: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
@@ -124,7 +128,7 @@ export const experienceItemSchema = baseItemSchema.extend({
   position: z.string(),
   location: z.string(),
   period: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
   roles: z.array(roleItemSchema).catch([]),
 });
@@ -145,13 +149,13 @@ export const profileItemSchema = baseItemSchema.extend({
   icon: iconSchema,
   network: z.string().min(1),
   username: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
 });
 
 export const projectItemSchema = baseItemSchema.extend({
   name: z.string().min(1),
   period: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
@@ -159,14 +163,14 @@ export const publicationItemSchema = baseItemSchema.extend({
   title: z.string().min(1),
   publisher: z.string(),
   date: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
 export const referenceItemSchema = baseItemSchema.extend({
   name: z.string().min(1),
   position: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   phone: z.string(),
   description: z.string(),
 });
@@ -183,7 +187,7 @@ export const volunteerItemSchema = baseItemSchema.extend({
   organization: z.string().min(1),
   location: z.string(),
   period: z.string(),
-  website: urlSchema,
+  website: itemUrlSchema,
   description: z.string(),
 });
 
@@ -404,7 +408,67 @@ export const metadataSchema = z.object({
   notes: z.string(),
 });
 
-export const v5ResumeDataSchema = z.object({
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function migrateLegacyInlineLinkOptions(input: unknown): unknown {
+  const source = asRecord(input);
+  if (!source) return input;
+
+  let changed = false;
+  const migrateSection = (value: unknown): unknown => {
+    const section = asRecord(value);
+    if (!section || !Array.isArray(section.items)) return value;
+
+    let sectionChanged = false;
+    const items = section.items.map((item) => {
+      const itemRecord = asRecord(item);
+      const website = asRecord(itemRecord?.website);
+      const options = asRecord(itemRecord?.options);
+      if (
+        !itemRecord ||
+        !website ||
+        typeof website.inlineLink === "boolean" ||
+        typeof options?.showLinkInTitle !== "boolean"
+      ) {
+        return item;
+      }
+
+      changed = true;
+      sectionChanged = true;
+      return {
+        ...itemRecord,
+        website: {
+          ...website,
+          inlineLink: options.showLinkInTitle,
+        },
+      };
+    });
+
+    return sectionChanged ? { ...section, items } : value;
+  };
+
+  const sections = asRecord(source.sections);
+  const nextSections = sections
+    ? Object.fromEntries(
+        Object.entries(sections).map(([key, section]) => [
+          key,
+          migrateSection(section),
+        ]),
+      )
+    : source.sections;
+  const customSections = Array.isArray(source.customSections)
+    ? source.customSections.map(migrateSection)
+    : source.customSections;
+
+  return changed
+    ? { ...source, sections: nextSections, customSections }
+    : input;
+}
+
+const v5ResumeDataObjectSchema = z.object({
   picture: pictureSchema,
   basics: basicsSchema,
   summary: summarySchema,
@@ -412,6 +476,11 @@ export const v5ResumeDataSchema = z.object({
   customSections: customSectionsSchema,
   metadata: metadataSchema,
 });
+
+export const v5ResumeDataSchema = z.preprocess(
+  migrateLegacyInlineLinkOptions,
+  v5ResumeDataObjectSchema,
+);
 
 export type V5ResumeData = z.infer<typeof v5ResumeDataSchema>;
 

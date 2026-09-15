@@ -122,6 +122,23 @@ describe("importDesignResumeFromFile", () => {
   it("imports Reactive Resume JSON directly without model extraction", async () => {
     const resumeJson = buildDefaultReactiveResumeDocument() as DesignResumeJson;
     resumeJson.basics.name = "Jordan Park";
+    resumeJson.sections.experience.items = [
+      {
+        id: "experience-1",
+        hidden: false,
+        company: "Acme",
+        position: "Engineer",
+        location: "",
+        period: "",
+        website: {
+          url: "https://acme.example.com",
+          label: "",
+          inlineLink: true,
+        },
+        description: "",
+        roles: [],
+      },
+    ];
 
     const result = await importDesignResumeFromFile({
       fileName: "resume.json",
@@ -144,6 +161,9 @@ describe("importDesignResumeFromFile", () => {
       sourceResumeId: null,
     });
     expect(result.resumeJson.basics.name).toBe("Jordan Park");
+    expect(
+      result.resumeJson.sections.experience.items[0]?.website.inlineLink,
+    ).toBe(true);
   });
 
   it("accepts data-wrapped Reactive Resume JSON exports", async () => {
