@@ -206,6 +206,22 @@ function normalizeUrl(
   };
 }
 
+function normalizeItemUrl(
+  value: unknown,
+  publicBaseUrl: string | null,
+  legacyOptions?: unknown,
+): { url: string; label: string; inlineLink: boolean } {
+  const record = asRecord(value);
+  const options = asRecord(legacyOptions);
+  return {
+    ...normalizeUrl(value, publicBaseUrl),
+    inlineLink: toBoolean(
+      record?.inlineLink,
+      toBoolean(options?.showLinkInTitle, false),
+    ),
+  };
+}
+
 function absolutizeUrlString(
   value: string,
   publicBaseUrl: string | null,
@@ -320,13 +336,6 @@ function prepareSectionForExternalUse(
     items: asArray(record.items).map((item) =>
       prepareRichTextItemForExternalUse(item),
     ),
-  };
-}
-
-function normalizeOptions(value: unknown) {
-  const record = asRecord(value);
-  return {
-    showLinkInTitle: toBoolean(record?.showLinkInTitle, false),
   };
 }
 
@@ -524,8 +533,11 @@ export function normalizeReactiveResumeV5Document(
             icon: toText(record.icon),
             network: toText(record.network),
             username: toText(record.username),
-            website: normalizeUrl(record.website, publicBaseUrl),
-            options: normalizeOptions(record.options),
+            website: normalizeItemUrl(
+              record.website,
+              publicBaseUrl,
+              record.options,
+            ),
           };
         }),
       },
@@ -541,10 +553,13 @@ export function normalizeReactiveResumeV5Document(
             position: toText(record.position),
             location: toText(record.location),
             period: toText(record.period ?? record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
             roles: normalizeRoles(record.roles),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -562,9 +577,12 @@ export function normalizeReactiveResumeV5Document(
             grade: toText(record.grade ?? record.score),
             location: toText(record.location),
             period: toText(record.period ?? record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -578,9 +596,12 @@ export function normalizeReactiveResumeV5Document(
             hidden: resolveHidden(record, true),
             name: toText(record.name),
             period: toText(record.period ?? record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -639,9 +660,12 @@ export function normalizeReactiveResumeV5Document(
             title: toText(record.title),
             awarder: toText(record.awarder),
             date: toText(record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -656,9 +680,12 @@ export function normalizeReactiveResumeV5Document(
             title: toText(record.title ?? record.name),
             issuer: toText(record.issuer),
             date: toText(record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -673,9 +700,12 @@ export function normalizeReactiveResumeV5Document(
             title: toText(record.title ?? record.name),
             publisher: toText(record.publisher),
             date: toText(record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -690,9 +720,12 @@ export function normalizeReactiveResumeV5Document(
             organization: toText(record.organization),
             location: toText(record.location),
             period: toText(record.period ?? record.date),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },
@@ -706,10 +739,13 @@ export function normalizeReactiveResumeV5Document(
             hidden: resolveHidden(record, true),
             name: toText(record.name),
             position: toText(record.position ?? record.description),
-            website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
+            website: normalizeItemUrl(
+              record.website ?? record.url,
+              publicBaseUrl,
+              record.options,
+            ),
             phone: toText(record.phone),
             description: toText(record.description ?? record.summary),
-            options: normalizeOptions(record.options),
           };
         }),
       },

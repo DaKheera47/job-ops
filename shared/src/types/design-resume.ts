@@ -5,6 +5,10 @@ export interface ReactiveResumeV5Url extends ReactiveResumeV5LooseObject {
   label: string;
 }
 
+export interface ReactiveResumeV5ItemUrl extends ReactiveResumeV5Url {
+  inlineLink?: boolean;
+}
+
 export interface ReactiveResumeV5Options extends ReactiveResumeV5LooseObject {
   showLinkInTitle: boolean;
 }
@@ -75,7 +79,7 @@ export interface ReactiveResumeV5ProfileItem extends ReactiveResumeV5BaseItem {
   icon: string;
   network: string;
   username: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
 }
 
 export interface ReactiveResumeV5ExperienceItem
@@ -84,7 +88,7 @@ export interface ReactiveResumeV5ExperienceItem
   position: string;
   location: string;
   period: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
   roles: ReactiveResumeV5Role[];
 }
@@ -97,14 +101,14 @@ export interface ReactiveResumeV5EducationItem
   grade: string;
   location: string;
   period: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
 export interface ReactiveResumeV5ProjectItem extends ReactiveResumeV5BaseItem {
   name: string;
   period: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
@@ -132,7 +136,7 @@ export interface ReactiveResumeV5AwardItem extends ReactiveResumeV5BaseItem {
   title: string;
   awarder: string;
   date: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
@@ -141,7 +145,7 @@ export interface ReactiveResumeV5CertificationItem
   title: string;
   issuer: string;
   date: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
@@ -150,7 +154,7 @@ export interface ReactiveResumeV5PublicationItem
   title: string;
   publisher: string;
   date: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
@@ -159,7 +163,7 @@ export interface ReactiveResumeV5VolunteerItem
   organization: string;
   location: string;
   period: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   description: string;
 }
 
@@ -167,7 +171,7 @@ export interface ReactiveResumeV5ReferenceItem
   extends ReactiveResumeV5BaseItem {
   name: string;
   position: string;
-  website: ReactiveResumeV5Url;
+  website: ReactiveResumeV5ItemUrl;
   phone: string;
   description: string;
 }

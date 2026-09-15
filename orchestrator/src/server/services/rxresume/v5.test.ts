@@ -80,6 +80,48 @@ describe("rxresume v5 endpoints", () => {
     );
   });
 
+  it("preserves item inlineLink values returned by Reactive Resume", async () => {
+    const resume = structuredClone(sampleResume);
+    (resume.sections as Record<string, any>).experience.items = [
+      {
+        id: "experience-1",
+        hidden: false,
+        company: "Acme",
+        position: "Engineer",
+        location: "",
+        period: "",
+        website: {
+          url: "https://acme.example.com",
+          label: "",
+          inlineLink: true,
+        },
+        description: "",
+        roles: [],
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          id: "resume-123",
+          name: "Resume",
+          slug: "resume",
+          data: resume,
+        }),
+      ),
+    );
+
+    const result = await getResume("resume-123", {
+      baseUrl: "https://rxresu.me",
+      apiKey: "test-key",
+    });
+
+    expect(
+      (result.data as Record<string, any>).sections.experience.items[0].website
+        .inlineLink,
+    ).toBe(true);
+  });
+
   it("uses v5 get/list/import/delete/pdf endpoints", async () => {
     const mockFetch = vi
       .fn()

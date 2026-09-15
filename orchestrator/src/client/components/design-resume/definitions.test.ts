@@ -2,6 +2,27 @@ import { describe, expect, it } from "vitest";
 import { ITEM_DEFINITIONS } from "./definitions";
 
 describe("ITEM_DEFINITIONS", () => {
+  it("stores the link-in-title toggle on the Reactive Resume website field", () => {
+    const linkableDefinitions = ITEM_DEFINITIONS.filter((definition) =>
+      definition.fields.some((field) => field.key === "website.url"),
+    );
+
+    expect(linkableDefinitions).not.toHaveLength(0);
+    for (const definition of linkableDefinitions) {
+      expect(definition.fields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: "website.inlineLink",
+            type: "toggle",
+          }),
+        ]),
+      );
+      expect(definition.createItem()).toMatchObject({
+        website: { inlineLink: false },
+      });
+    }
+  });
+
   it("creates new project items without browser randomUUID support", () => {
     const originalCrypto = globalThis.crypto;
     Object.defineProperty(globalThis, "crypto", {
