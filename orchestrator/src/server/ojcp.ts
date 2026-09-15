@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { logger } from "@infra/logger";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { resolveRequestOrigin } from "@infra/request-origin";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -28,6 +29,8 @@ const SEARCH_CACHE_TTL_MS = 15_000;
 const SEARCH_CACHE_MAX_ENTRIES = 100;
 const SEARCH_CONCURRENCY = 10;
 const FREEHIRE_TIMEOUT_MS = 5_000;
+const OJCP_MCP_PATH = "/ojcp/mcp";
+const OJCP_MANIFEST_PATH = "/.well-known/ojcp.json";
 
 type VisaSponsorMatch = {
   exact_name_match: boolean;
@@ -45,6 +48,10 @@ type CachedDetail = { expiresAt: number; job: OjcpJob };
 type CachedSearch = {
   expiresAt: number;
   result: Record<string, unknown>;
+};
+type SearchExecution = {
+  result: Record<string, unknown>;
+  cacheHit: boolean;
 };
 
 const detailCache = new Map<string, CachedDetail>();
@@ -369,6 +376,219 @@ function searchCacheKey(input: SearchJobsInput): string {
   });
 }
 
+function bucketCount(value: number): string {
+  if (value <= 0) return "0";
+  if (value === 1) return "1";
+  if (value <= 10) return "2_10";
+  if (value <= 50) return "11_50";
+  if (value <= 100) return "51_100";
+  return "100_plus";
+}
+
+function bucketLatency(milliseconds: number): string {
+  if (milliseconds < 100) return "under_100ms";
+  if (milliseconds < 500) return "100_499ms";
+  if (milliseconds < 1_000) return "500_999ms";
+  if (milliseconds < 2_000) return "1_2s";
+  if (milliseconds < 5_000) return "2_5s";
+  return "5s_plus";
+}
+
+function bucketSearchLength(value: string): string {
+  const length = value.trim().length;
+  if (length <= 40) return "1_40";
+  if (length <= 120) return "41_120";
+  return "121_500";
+}
+
+function remoteMode(input: SearchJobsInput): string {
+  if (input.location?.remote_ok === true) return "remote_acceptable";
+  if (input.location?.remote_ok === false) return "non_remote";
+  return "unspecified";
+}
+
+function resultNumber(result: Record<string, unknown>, key: string): number {
+  const value = result[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function countSponsorMatches(result: Record<string, unknown>): number {
+  if (!Array.isArray(result.jobs)) return 0;
+  return result.jobs.reduce((count, job) => {
+    if (!job || typeof job !== "object" || Array.isArray(job)) return count;
+    const match = (job as Record<string, unknown>).visa_sponsor_match;
+    if (!match || typeof match !== "object" || Array.isArray(match)) {
+      return count;
+    }
+    return (match as Record<string, unknown>).exact_name_match === true
+      ? count + 1
+      : count;
+  }, 0);
+}
+
+function sponsorCheckStatus(
+  input: SearchJobsInput,
+  result: Record<string, unknown>,
+): string {
+  if (!input.location?.country) return "not_requested";
+  if (!Array.isArray(result.warnings)) return "available";
+
+  for (const warning of result.warnings) {
+    if (!warning || typeof warning !== "object" || Array.isArray(warning)) {
+      continue;
+    }
+    const code = (warning as Record<string, unknown>).code;
+    if (code === "visa_sponsor_data_unavailable") return "unavailable";
+    if (code === "visa_sponsor_check_failed") return "failed";
+  }
+  return "available";
+}
+
+function trackOjcpEvent(
+  req: Request,
+  event: string,
+  data: Record<string, unknown>,
+  urlPath = OJCP_MCP_PATH,
+): void {
+  void trackServerProductEvent(event, data, {
+    requestOrigin: resolveRequestOrigin(req),
+    urlPath,
+  });
+}
+
+function getOjcpErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof McpError)) return undefined;
+  const data = error.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return undefined;
+  }
+  const errorCode = (data as Record<string, unknown>).error_code;
+  return typeof errorCode === "string" ? errorCode : undefined;
+}
+
+function getUnsupportedFilter(error: unknown): string | undefined {
+  if (!(error instanceof McpError)) return undefined;
+  const data = error.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return undefined;
+  }
+  const details = (data as Record<string, unknown>).details;
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    return undefined;
+  }
+  const unsupportedFilters = (details as Record<string, unknown>)
+    .unsupported_filters;
+  return Array.isArray(unsupportedFilters) &&
+    typeof unsupportedFilters[0] === "string"
+    ? unsupportedFilters[0]
+    : undefined;
+}
+
+function trackSearchFailure(
+  req: Request,
+  error: unknown,
+  latencyMs: number,
+): void {
+  const errorCode = getOjcpErrorCode(error);
+  if (
+    errorCode === "invalid_request" ||
+    errorCode === "unsupported_filter" ||
+    errorCode === "provider_busy"
+  ) {
+    const filter = getUnsupportedFilter(error);
+    trackOjcpEvent(req, "ojcp_search_rejected", {
+      reason: errorCode,
+      latency_bucket: bucketLatency(latencyMs),
+      ...(filter ? { filter } : {}),
+    });
+    return;
+  }
+
+  trackOjcpEvent(req, "ojcp_search_failed", {
+    reason:
+      errorCode === "provider_error" ? "provider_error" : "upstream_error",
+    latency_bucket: bucketLatency(latencyMs),
+  });
+}
+
+function trackSearchCompleted(
+  req: Request,
+  input: SearchJobsInput,
+  execution: SearchExecution,
+  latencyMs: number,
+): void {
+  const { result } = execution;
+  trackOjcpEvent(req, "ojcp_search_completed", {
+    outcome: "success",
+    latency_bucket: bucketLatency(latencyMs),
+    cache_hit: execution.cacheHit,
+    search_length_bucket: bucketSearchLength(input.query),
+    returned_count_bucket: bucketCount(resultNumber(result, "returned")),
+    total_results_bucket: bucketCount(resultNumber(result, "total_results")),
+    limit_bucket: bucketCount(input.pagination.limit),
+    has_country: Boolean(input.location?.country),
+    has_city: Boolean(input.location?.city),
+    remote_mode: remoteMode(input),
+    has_candidate_context: Boolean(input.candidate_context),
+    sponsor_check: sponsorCheckStatus(input, result),
+    sponsor_match_bucket: bucketCount(countSponsorMatches(result)),
+    warning_present: Array.isArray(result.warnings),
+  });
+}
+
+async function callSearchJobs(
+  req: Request,
+  arguments_: unknown,
+): Promise<CallToolResult> {
+  const startedAt = Date.now();
+  try {
+    const input = parseInput(searchJobsSchema, arguments_);
+    const execution = await searchJobsWithMetadata(input);
+    trackSearchCompleted(req, input, execution, Date.now() - startedAt);
+    return toolResult(execution.result);
+  } catch (error) {
+    trackSearchFailure(req, error, Date.now() - startedAt);
+    throw error;
+  }
+}
+
+async function callGetJobDetail(
+  req: Request,
+  arguments_: unknown,
+): Promise<CallToolResult> {
+  const startedAt = Date.now();
+  let input: GetJobDetailInput | undefined;
+  try {
+    input = parseInput(getJobDetailSchema, arguments_);
+    const result = await getJobDetail(input);
+    trackOjcpEvent(req, "ojcp_detail_completed", {
+      outcome: "hit",
+      latency_bucket: bucketLatency(Date.now() - startedAt),
+      include_employer_context: input.include_employer_context,
+      has_candidate_context: Boolean(input.candidate_context),
+    });
+    return toolResult(result);
+  } catch (error) {
+    const errorCode = getOjcpErrorCode(error);
+    trackOjcpEvent(req, "ojcp_detail_completed", {
+      outcome:
+        errorCode === "job_not_found"
+          ? "not_found"
+          : errorCode === "invalid_request"
+            ? "invalid_request"
+            : "error",
+      latency_bucket: bucketLatency(Date.now() - startedAt),
+      ...(input
+        ? {
+            include_employer_context: input.include_employer_context,
+            has_candidate_context: Boolean(input.candidate_context),
+          }
+        : {}),
+    });
+    throw error;
+  }
+}
+
 async function enrichSponsorMatches(
   jobs: OjcpJob[],
   country: string | undefined,
@@ -482,9 +702,9 @@ async function searchJobsLive(
   };
 }
 
-export async function searchJobs(
+async function searchJobsWithMetadata(
   input: SearchJobsInput,
-): Promise<Record<string, unknown>> {
+): Promise<SearchExecution> {
   const unsupported = unsupportedFilters(input);
   if (unsupported.length > 0) {
     throw ojcpError(
@@ -497,10 +717,12 @@ export async function searchJobs(
   pruneCache(searchCache, SEARCH_CACHE_MAX_ENTRIES);
   const key = searchCacheKey(input);
   const cached = searchCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.result;
+  if (cached && cached.expiresAt > Date.now()) {
+    return { result: cached.result, cacheHit: true };
+  }
 
   const existing = inFlightSearches.get(key);
-  if (existing) return existing;
+  if (existing) return { result: await existing, cacheHit: false };
   if (inFlightSearches.size >= SEARCH_CONCURRENCY) {
     throw ojcpError(
       "provider_busy",
@@ -518,10 +740,16 @@ export async function searchJobs(
       result,
     });
     pruneCache(searchCache, SEARCH_CACHE_MAX_ENTRIES);
-    return result;
+    return { result, cacheHit: false };
   } finally {
     inFlightSearches.delete(key);
   }
+}
+
+export async function searchJobs(
+  input: SearchJobsInput,
+): Promise<Record<string, unknown>> {
+  return (await searchJobsWithMetadata(input)).result;
 }
 
 export async function getJobDetail(input: GetJobDetailInput) {
@@ -610,7 +838,7 @@ function toolResult(data: Record<string, unknown>): CallToolResult {
   };
 }
 
-function createOjcpServer(): Server {
+function createOjcpServer(req: Request): Server {
   const server = new Server(
     { name: "jobops-ojcp", version: OJCP_VERSION },
     { capabilities: { tools: {} } },
@@ -621,18 +849,10 @@ function createOjcpServer(): Server {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       if (request.params.name === "search_jobs") {
-        return toolResult(
-          await searchJobs(
-            parseInput(searchJobsSchema, request.params.arguments),
-          ),
-        );
+        return await callSearchJobs(req, request.params.arguments);
       }
       if (request.params.name === "get_job_detail") {
-        return toolResult(
-          await getJobDetail(
-            parseInput(getJobDetailSchema, request.params.arguments),
-          ),
-        );
+        return await callGetJobDetail(req, request.params.arguments);
       }
       throw ojcpError(
         "invalid_request",
@@ -673,7 +893,7 @@ export const ojcpMcpHandler: RequestHandler = async (req, res) => {
     return;
   }
 
-  const server = createOjcpServer();
+  const server = createOjcpServer(req);
   try {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -711,4 +931,10 @@ export function createOjcpManifest(req: Request) {
 export const ojcpManifestHandler: RequestHandler = (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.json(createOjcpManifest(req));
+  trackOjcpEvent(
+    req,
+    "ojcp_manifest_requested",
+    { outcome: "success", status_code: 200 },
+    OJCP_MANIFEST_PATH,
+  );
 };

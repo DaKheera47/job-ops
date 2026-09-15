@@ -12,10 +12,15 @@ import * as visaSponsors from "./services/visa-sponsors/index";
 
 const mocks = vi.hoisted(() => ({
   fetchFreeHirePage: vi.fn(),
+  trackServerProductEvent: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("../../../extractors/freehire/src/run.js", () => ({
   fetchFreeHirePage: mocks.fetchFreeHirePage,
+}));
+
+vi.mock("@infra/product-analytics", () => ({
+  trackServerProductEvent: mocks.trackServerProductEvent,
 }));
 
 type RpcResponse = {
@@ -58,6 +63,7 @@ describe.sequential("OJCP MCP", () => {
   beforeEach(async () => {
     const { __resetOjcpCachesForTests } = await import("./ojcp");
     __resetOjcpCachesForTests();
+    mocks.trackServerProductEvent.mockReset().mockResolvedValue(false);
     mocks.fetchFreeHirePage.mockReset().mockResolvedValue({
       jobs: [
         {
@@ -231,6 +237,49 @@ describe.sequential("OJCP MCP", () => {
       code: -32000,
       data: { ojcp_version: "0.1", error_code: "job_not_found" },
     });
+
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_manifest_requested",
+      { outcome: "success", status_code: 200 },
+      expect.objectContaining({ urlPath: "/.well-known/ojcp.json" }),
+    );
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_search_completed",
+      expect.objectContaining({
+        outcome: "success",
+        cache_hit: false,
+        search_length_bucket: "1_40",
+        returned_count_bucket: "1",
+        total_results_bucket: "100_plus",
+        has_country: true,
+        has_city: true,
+        remote_mode: "non_remote",
+        sponsor_check: "available",
+        sponsor_match_bucket: "1",
+      }),
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_search_completed",
+      expect.objectContaining({ cache_hit: true }),
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_detail_completed",
+      expect.objectContaining({ outcome: "hit" }),
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_detail_completed",
+      expect.objectContaining({ outcome: "not_found" }),
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
+    expect(
+      JSON.stringify(mocks.trackServerProductEvent.mock.calls),
+    ).not.toContain("senior backend engineer");
+    expect(
+      JSON.stringify(mocks.trackServerProductEvent.mock.calls),
+    ).not.toContain("example.com/jobs");
   });
 
   it("rejects filters that FreeHire cannot apply correctly", async () => {
@@ -252,6 +301,15 @@ describe.sequential("OJCP MCP", () => {
       },
     });
     expect(mocks.fetchFreeHirePage).not.toHaveBeenCalled();
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_search_rejected",
+      {
+        reason: "unsupported_filter",
+        filter: "filters.salary_min",
+        latency_bucket: expect.any(String),
+      },
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
   });
 
   it("returns a sanitized provider error when FreeHire fails", async () => {
@@ -270,5 +328,13 @@ describe.sequential("OJCP MCP", () => {
       data: { ojcp_version: "0.1", error_code: "provider_error" },
     });
     expect(JSON.stringify(response)).not.toContain("503");
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_search_failed",
+      {
+        reason: "upstream_error",
+        latency_bucket: expect.any(String),
+      },
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
   });
 });
