@@ -70,8 +70,51 @@ const LLM_SETTING_KEYS: Array<keyof UpdateSettingsInput> = [
 ];
 const CLI_PROVIDERS = new Set(["codex", "gemini_cli", "claude_cli"]);
 
+// These settings describe an individual search run. They are persisted in the
+// settings repository for extractor compatibility, but are not server-level
+// maintenance settings and must remain editable by authenticated non-admins.
+const NON_ADMIN_SEARCH_SETTING_KEYS = new Set<keyof UpdateSettingsInput>([
+  "searchTerms",
+  "workplaceTypes",
+  "locationSearchScope",
+  "locationMatchStrictness",
+  "locationSearchMode",
+  "locationLatitude",
+  "locationLongitude",
+  "locationRadiusMiles",
+  "jobspyResultsWanted",
+  "gradcrackerMaxJobsPerTerm",
+  "ukvisajobsMaxJobs",
+  "adzunaMaxJobsPerTerm",
+  "startupjobsMaxJobsPerTerm",
+  "jobindexMaxJobsPerTerm",
+  "seekMaxJobsPerTerm",
+  "naukriMaxJobsPerTerm",
+  "jobspyCountryIndeed",
+  "searchCities",
+  "jobspyLocation",
+]);
+
 function requireSystemAdmin(res: Response): boolean {
   if (getJobOpsAppConfig().appMode === "hosted" || isSystemAdmin()) return true;
+  fail(res, forbidden("System admin access is required"));
+  return false;
+}
+
+function requireSystemAdminOrSearchSettings(
+  res: Response,
+  input: UpdateSettingsInput,
+): boolean {
+  if (
+    getJobOpsAppConfig().appMode === "hosted" ||
+    isSystemAdmin() ||
+    Object.keys(input).every((key) =>
+      NON_ADMIN_SEARCH_SETTING_KEYS.has(key as keyof UpdateSettingsInput),
+    )
+  ) {
+    return true;
+  }
+
   fail(res, forbidden("System admin access is required"));
   return false;
 }
@@ -392,9 +435,8 @@ settingsRouter.patch(
       );
     }
 
-    if (!requireSystemAdmin(res)) return;
-
     const input = updateSettingsSchema.parse(req.body);
+    if (!requireSystemAdminOrSearchSettings(res, input)) return;
     if (LLM_SETTING_KEYS.some((key) => hasInputKey(input, key))) {
       await assertLlmSettingsEditable();
       assertHostedLlmInputAllowed(input);

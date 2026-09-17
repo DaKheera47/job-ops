@@ -74,6 +74,24 @@ import {
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import { startServer, stopServer } from "./test-utils";
 
+const AUTH_ENV = {
+  BASIC_AUTH_USER: "admin",
+  BASIC_AUTH_PASSWORD: "secret",
+  JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+  JOBOPS_TEST_AUTH_BYPASS: "0",
+};
+
+async function login(baseUrl: string, username: string, password: string) {
+  const res = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const body = await res.json();
+  expect(res.status).toBe(200);
+  return body.data.token as string;
+}
+
 describe.sequential("Settings API routes", () => {
   let server: Server;
   let baseUrl: string;
@@ -505,6 +523,66 @@ describe.sequential("Settings API routes", () => {
     expect(getBody.ok).toBe(true);
     expect(getBody.data.penalizeMissingSalary.value).toBe(true);
     expect(getBody.data.missingSalaryPenalty.value).toBe(20);
+  });
+
+  it("allows non-admin users to update search settings without widening access", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: AUTH_ENV,
+    }));
+
+    const adminToken = await login(baseUrl, "admin", "secret");
+    const createUserRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: "regular",
+        password: "regular-secret",
+      }),
+    });
+    expect(createUserRes.status).toBe(201);
+
+    const regularToken = await login(baseUrl, "regular", "regular-secret");
+    const searchSettingsRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${regularToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        searchTerms: ["backend engineer"],
+        workplaceTypes: ["remote"],
+        jobspyCountryIndeed: "united kingdom",
+        searchCities: "London",
+      }),
+    });
+    const searchSettingsBody = await searchSettingsRes.json();
+
+    expect(searchSettingsRes.status).toBe(200);
+    expect(searchSettingsBody.ok).toBe(true);
+    expect(searchSettingsBody.data.searchTerms.value).toEqual([
+      "backend engineer",
+    ]);
+    expect(searchSettingsBody.data.searchCities.value).toBe("London");
+
+    const protectedSettingsRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${regularToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        searchTerms: ["backend engineer"],
+        llmApiKey: "attacker-controlled-value",
+      }),
+    });
+    const protectedSettingsBody = await protectedSettingsRes.json();
+
+    expect(protectedSettingsRes.status).toBe(403);
+    expect(protectedSettingsBody.error.code).toBe("FORBIDDEN");
   });
 
   it("preserves upstream 404 from Reactive Resume project lookup", async () => {

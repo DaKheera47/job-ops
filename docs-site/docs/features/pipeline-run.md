@@ -181,6 +181,11 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 - Select a country and, in Map radius mode, place a centre point.
 - Wait for active save/run operations to finish.
 
+### Search says system admin access is required
+
+- Search settings saved by the Run Search form are scoped to the signed-in user's workspace and do not require system admin access.
+- If the request also changes a protected setting, remove that change or ask a system admin to update it in **Settings**.
+
 ### Radius search cannot resolve nearby places
 
 - Try the run again; the OpenStreetMap Overpass service can be temporarily busy.
