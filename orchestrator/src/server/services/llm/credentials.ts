@@ -44,6 +44,12 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"));
   }
   if (
+    (provider === "litellm" || provider === "litellm_proxy") &&
+    toStringOrNull(getOriginalEnvValue("LITELLM_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("LITELLM_API_KEY"));
+  }
+  if (
     provider === "openrouter" &&
     toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
   ) {

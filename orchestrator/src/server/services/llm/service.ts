@@ -18,6 +18,7 @@ import {
   shouldRetryAttempt,
 } from "./policies/retry-policy";
 import { strategies } from "./providers";
+import { normalizeLiteLlmBaseUrl } from "./providers/litellm";
 import type {
   JsonSchemaDefinition,
   LlmApiError,
@@ -267,6 +268,7 @@ export class LlmService {
     if (
       this.provider !== "openai" &&
       this.provider !== "atlascloud" &&
+      this.provider !== "litellm" &&
       this.provider !== "anthropic" &&
       this.provider !== "glm" &&
       this.provider !== "gemini" &&
@@ -280,6 +282,9 @@ export class LlmService {
     const models = await (async () => {
       if (this.provider === "atlascloud") {
         return this.listAtlasCloudModels();
+      }
+      if (this.provider === "litellm") {
+        return this.listLiteLlmModels();
       }
       if (this.provider === "openai") {
         return this.listOpenAiModels();
@@ -600,6 +605,56 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listLiteLlmModels(): Promise<string[]> {
+    const baseUrl = normalizeLiteLlmBaseUrl(this.baseUrl);
+    const headers = buildHeaders({
+      apiKey: this.apiKey,
+      provider: this.provider,
+    });
+
+    // /model/info carries each deployment's mode, so embedding, image and
+    // audio models can be kept out of a picker that only needs chat models.
+    // Keys scoped to specific models may not be allowed to read it, so fall
+    // back to the OpenAI-compatible list.
+    const infoResponse = await fetch(joinUrl(baseUrl, "/model/info"), {
+      method: "GET",
+      headers,
+    }).catch(() => null);
+    if (infoResponse?.ok) {
+      const payload = (await infoResponse.json()) as {
+        data?: Array<{
+          model_name?: string | null;
+          model_info?: { mode?: string | null } | null;
+        }>;
+      };
+      const models = (payload.data ?? [])
+        .filter((entry) => {
+          const mode = entry.model_info?.mode?.trim().toLowerCase();
+          return !mode || mode === "chat" || mode === "responses";
+        })
+        .map((entry) => entry.model_name?.trim() ?? "")
+        .filter(Boolean);
+      if (models.length > 0) return Array.from(new Set(models));
+    }
+
+    const response = await fetch(joinUrl(baseUrl, "/v1/models"), {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `LiteLLM returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   private async listAnthropicModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/v1/models"), {
       method: "GET",
@@ -751,6 +806,9 @@ function normalizeProvider(
   if (normalized === "atlascloud" || normalized === "atlas_cloud") {
     return "atlascloud";
   }
+  if (normalized === "litellm" || normalized === "litellm_proxy") {
+    return "litellm";
+  }
   if (normalized === "anthropic" || normalized === "claude") {
     return "anthropic";
   }
@@ -779,6 +837,7 @@ function normalizeProviderName(raw: string | null): string | undefined {
 
 function providerUsesConfiguredBaseUrl(provider: LlmProvider): boolean {
   return (
+    provider === "litellm" ||
     provider === "lmstudio" ||
     provider === "ollama" ||
     provider === "openai_compatible" ||

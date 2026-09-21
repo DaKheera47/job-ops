@@ -66,6 +66,7 @@ export type OnboardingRxResumeActionInput = {
 function getDefaultValidationBaseUrl(
   provider: string | undefined,
 ): string | undefined {
+  if (provider === "litellm") return "http://localhost:4000";
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "openai_compatible") return "https://api.openai.com";
@@ -103,6 +104,7 @@ export async function validateLlm(options: {
       (hostedMode ? "openrouter" : undefined),
   );
   const shouldUseBaseUrl =
+    normalizedProvider === "litellm" ||
     normalizedProvider === "lmstudio" ||
     normalizedProvider === "ollama" ||
     normalizedProvider === "glm" ||
@@ -390,6 +392,21 @@ async function buildModelRequirement(): Promise<OnboardingRequirement> {
       }
     }
 
+    if (normalizedProvider === "litellm" && !model?.trim()) {
+      return buildRequirement({
+        id: "model",
+        status: "needs_action",
+        title: "Choose a LiteLLM model",
+        message:
+          "LiteLLM is connected. Choose one of the models your proxy serves before continuing.",
+        primaryAction: "connect_model",
+        details: {
+          provider: normalizedProvider,
+          baseUrl: baseUrl?.trim() || null,
+        },
+      });
+    }
+
     if (normalizedProvider === "ollama" && !model?.trim()) {
       return buildRequirement({
         id: "model",
@@ -579,7 +596,11 @@ async function migrateLegacyOnboardingState(args: {
     ]);
     const normalizedProvider = normalizeLlmProviderValue(provider);
     update.onboardingLlmCompleted =
-      validation.valid && !(normalizedProvider === "ollama" && !model?.trim());
+      validation.valid &&
+      !(
+        (normalizedProvider === "ollama" || normalizedProvider === "litellm") &&
+        !model?.trim()
+      );
   }
 
   if (!args.hostedMode) {
@@ -728,6 +749,21 @@ export async function saveOnboardingModelAction(
     provider === "ollama" &&
     storedNormalizedProvider === "ollama" &&
     Boolean(storedModel?.trim());
+
+  const hasSavedLiteLlmModel =
+    provider === "litellm" &&
+    storedNormalizedProvider === "litellm" &&
+    Boolean(storedModel?.trim());
+
+  if (provider === "litellm" && !hasInputModel && !hasSavedLiteLlmModel) {
+    throw unprocessableEntity(
+      "Choose a LiteLLM model before continuing. If no models appear, check the proxy URL and virtual key.",
+      {
+        provider,
+        status: null,
+      },
+    );
+  }
 
   if (provider === "ollama" && !hasInputModel && !hasSavedOllamaModel) {
     throw unprocessableEntity(

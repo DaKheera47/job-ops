@@ -3,6 +3,7 @@ import { anthropicStrategy } from "./anthropic";
 import { atlasCloudStrategy } from "./atlascloud";
 import { geminiStrategy } from "./gemini";
 import { glmStrategy } from "./glm";
+import { liteLlmStrategy } from "./litellm";
 import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
@@ -37,6 +38,30 @@ describe("provider adapters", () => {
         },
         expectedUrl: "https://api.atlascloud.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "litellm-json_schema",
+        strategy: liteLlmStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "http://localhost:4000",
+          apiKey: "sk-virtual",
+          model: "claude-sonnet",
+        },
+        expectedUrl: "http://localhost:4000/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "litellm-trailing-v1-json_object",
+        strategy: liteLlmStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "http://litellm:4000/v1/",
+          apiKey: null,
+          model: "gpt-4.1-mini",
+        },
+        expectedUrl: "http://litellm:4000/v1/chat/completions",
+        expectedResponseFormat: "json_object",
       },
       {
         name: "openrouter-json_schema",
@@ -224,6 +249,7 @@ describe("provider adapters", () => {
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
     expect(atlasCloudStrategy.extractText(response)).toBe("ok");
+    expect(liteLlmStrategy.extractText(response)).toBe("ok");
     expect(orcaRouterStrategy.extractText(response)).toBe("ok");
     expect(requestyStrategy.extractText(response)).toBe("ok");
     expect(glmStrategy.extractText(response)).toBe("ok");
@@ -242,6 +268,44 @@ describe("provider adapters", () => {
     });
 
     expect(request.headers.Authorization).toBe("Bearer local-token");
+  });
+
+  it("sends the LiteLLM virtual key only when one is configured", () => {
+    const withKey = liteLlmStrategy.buildRequest({
+      mode: "none",
+      baseUrl: "http://localhost:4000",
+      apiKey: "sk-virtual",
+      model: "claude-sonnet",
+      messages,
+      jsonSchema: schema,
+    });
+    const keyless = liteLlmStrategy.buildRequest({
+      mode: "none",
+      baseUrl: "http://localhost:4000",
+      apiKey: null,
+      model: "claude-sonnet",
+      messages,
+      jsonSchema: schema,
+    });
+
+    expect(withKey.headers.Authorization).toBe("Bearer sk-virtual");
+    expect(keyless.headers.Authorization).toBeUndefined();
+    expect(liteLlmStrategy.requiresApiKey).toBe(false);
+  });
+
+  it("builds LiteLLM validation URLs with or without a trailing /v1", () => {
+    expect(
+      liteLlmStrategy.getValidationUrls({
+        baseUrl: "http://localhost:4000",
+        apiKey: null,
+      }),
+    ).toEqual(["http://localhost:4000/v1/models"]);
+    expect(
+      liteLlmStrategy.getValidationUrls({
+        baseUrl: "https://gateway.example.com/v1/",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://gateway.example.com/v1/models"]);
   });
 
   it("builds validation URLs for GLM base URLs and endpoints", () => {

@@ -91,6 +91,7 @@ function getDefaultBaseUrlForProvider(
   if (normalized === "atlascloud" || normalized === "atlas_cloud") {
     return "https://api.atlascloud.ai";
   }
+  if (normalized === "litellm") return "http://localhost:4000";
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") return "https://api.openai.com";
@@ -118,6 +119,7 @@ function providerUsesConfiguredBaseUrl(
 ): boolean {
   const normalized = provider?.trim().toLowerCase().replace(/[-.]/g, "_");
   return (
+    normalized === "litellm" ||
     normalized === "lmstudio" ||
     normalized === "ollama" ||
     normalized === "openai_compatible" ||

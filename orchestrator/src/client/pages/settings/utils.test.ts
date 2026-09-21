@@ -85,6 +85,20 @@ describe("settings utils", () => {
     expect(config.baseUrlHelper).toContain("http://172.17.0.1:11434");
   });
 
+  it("treats LiteLLM as a proxy with a base URL and an optional virtual key", () => {
+    const config = getLlmProviderConfig("litellm");
+
+    expect(config.label).toBe("LiteLLM");
+    expect(config.showApiKey).toBe(true);
+    expect(config.requiresApiKey).toBe(false);
+    expect(config.showBaseUrl).toBe(true);
+    expect(config.baseUrlPlaceholder).toBe("http://localhost:4000");
+    expect(config.baseUrlHelper).toContain("http://host.docker.internal:4000");
+    expect(config.keyHelperHref).toBe(
+      "https://docs.litellm.ai/docs/proxy/virtual_keys",
+    );
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     expect(normalizeLlmProvider("openai-compatible")).toBe("openai_compatible");
   });
@@ -118,6 +132,7 @@ describe("settings utils", () => {
 
   it("only enables model suggestions for supported providers", () => {
     expect(supportsLlmModelSuggestions("atlascloud")).toBe(true);
+    expect(supportsLlmModelSuggestions("litellm")).toBe(true);
     expect(supportsLlmModelSuggestions("openai")).toBe(true);
     expect(supportsLlmModelSuggestions("anthropic")).toBe(true);
     expect(supportsLlmModelSuggestions("glm")).toBe(true);

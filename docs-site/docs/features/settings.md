@@ -50,7 +50,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`atlascloud`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`atlascloud`, `litellm`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -65,8 +65,10 @@ Each meter includes completed usage and work currently in progress. Limits reset
   - `glm` defaults to `glm-5.1`
   - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`
   - `claude_cli` defaults to `claude-sonnet-5`
+  - `litellm` and `ollama` have no default; pick one of the models the server offers
 - The settings page shows provider-aware model pickers for:
   - `atlascloud`: console-visible text models from the live Atlas Cloud catalog
+  - `litellm`: chat models configured on your LiteLLM proxy (embedding, image and audio deployments are filtered out using `/model/info`; keys that cannot read it fall back to `/v1/models`)
   - `openai`: available text-generation models only
   - `glm`: available GLM text-generation models from the configured BigModel-compatible endpoint
   - `gemini`: available Gemini text-generation models only
@@ -75,6 +77,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
   - `ollama`: locally installed Ollama models
   - `orcarouter`: available models from the OrcaRouter gateway
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
+- For LiteLLM, JobOps uses `http://localhost:4000` by default. Point the base URL at your proxy (a trailing `/v1` is accepted) and, if the proxy enforces auth, enter a virtual key; one key then reaches every provider the proxy routes to, with its budgets and fallbacks applied.
 - For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save

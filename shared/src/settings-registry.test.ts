@@ -381,6 +381,7 @@ describe("settingsRegistry helpers", () => {
       expect(getDefaultModelForProvider("claude_cli")).toBe("claude-sonnet-5");
       expect(getDefaultModelForProvider("codex")).toBe("gpt-5.4-mini");
       expect(getDefaultModelForProvider("ollama")).toBe("");
+      expect(getDefaultModelForProvider("litellm")).toBe("");
       expect(getDefaultModelForProvider("openrouter")).toBe(
         "google/gemini-3-flash-preview",
       );

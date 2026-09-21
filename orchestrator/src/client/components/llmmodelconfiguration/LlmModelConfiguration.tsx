@@ -114,7 +114,8 @@ export function LlmModelConfiguration({
   const isClaudeCliProvider =
     providerConfig.normalizedProvider === "claude_cli";
   const requiresExplicitDefaultModel =
-    providerConfig.normalizedProvider === "ollama";
+    providerConfig.normalizedProvider === "ollama" ||
+    providerConfig.normalizedProvider === "litellm";
   const deferredProvider = useDeferredValue(selectedProvider);
   const deferredBaseUrl = useDeferredValue(baseUrl.value);
   const deferredApiKey = useDeferredValue(apiKey.value);

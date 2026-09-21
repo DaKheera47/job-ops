@@ -1,5 +1,6 @@
 export type LlmProvider =
   | "atlascloud"
+  | "litellm"
   | "openrouter"
   | "orcarouter"
   | "requesty"
