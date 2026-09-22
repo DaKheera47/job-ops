@@ -4,6 +4,7 @@ import { settingsRegistry } from "@shared/settings-registry";
 import type {
   Job,
   JobPdfFreshness,
+  PdfPaperSize,
   PdfRenderer,
   ResumeProjectsSettings,
   TypstTheme,
@@ -33,6 +34,7 @@ export interface PdfFingerprintContext {
   designResumeUpdatedAt: string | null;
   pdfRenderer: PdfRenderer;
   typstTheme: TypstTheme;
+  pdfPaperSize: PdfPaperSize;
   rxresumeBaseResumeId: string | null;
   resumeProjects: ResumeProjectsSettings;
 }
@@ -42,12 +44,14 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     designResume,
     rawRenderer,
     rawTypstTheme,
+    rawPaperSize,
     rawResumeProjects,
     configuredBaseResume,
   ] = await Promise.all([
     getCurrentDesignResumeOrNullOnLegacy(),
     settingsRepo.getSetting("pdfRenderer"),
     settingsRepo.getSetting("typstTheme"),
+    settingsRepo.getSetting("pdfPaperSize"),
     settingsRepo.getSetting("resumeProjects"),
     getConfiguredRxResumeBaseResumeId(),
   ]);
@@ -66,6 +70,9 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     designResumeUpdatedAt: designResume?.updatedAt ?? null,
     pdfRenderer: parsedRenderer ?? settingsRegistry.pdfRenderer.default(),
     typstTheme: parsedTypstTheme ?? settingsRegistry.typstTheme.default(),
+    pdfPaperSize:
+      settingsRegistry.pdfPaperSize.parse(rawPaperSize ?? undefined) ??
+      settingsRegistry.pdfPaperSize.default(),
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
     resumeProjects:
       settingsRegistry.resumeProjects.parse(rawResumeProjects ?? undefined) ??
@@ -82,6 +89,10 @@ export function createJobPdfFingerprint(
     renderer: context.pdfRenderer,
     ...(context.pdfRenderer === "typst"
       ? { typstTheme: context.typstTheme }
+      : {}),
+    // Omitted while unset so fingerprints stored before this field existed stay valid.
+    ...(context.pdfPaperSize !== "auto"
+      ? { paperSize: context.pdfPaperSize }
       : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,
     resumeProjects: context.resumeProjects,

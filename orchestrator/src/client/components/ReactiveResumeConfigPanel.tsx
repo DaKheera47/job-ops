@@ -6,8 +6,11 @@ import {
 } from "@client/pages/settings/resume-projects-state";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import {
+  PDF_PAPER_SIZE_LABELS,
+  PDF_PAPER_SIZE_VALUES,
   PDF_RENDERER_LABELS,
   PDF_RENDERER_VALUES,
+  type PdfPaperSize,
   type PdfRenderer,
   type ResumeProjectCatalogItem,
   TYPST_THEME_LABELS,
@@ -65,6 +68,9 @@ type ReactiveResumeConfigPanelProps = {
   typstTheme: TypstTheme;
   onTypstThemeChange: (theme: TypstTheme) => void;
   typstThemeError?: string;
+  pdfPaperSize: PdfPaperSize;
+  onPdfPaperSizeChange: (paperSize: PdfPaperSize) => void;
+  pdfPaperSizeError?: string;
   disabled?: boolean;
   hasRxResumeAccess?: boolean;
   showValidationStatus?: boolean;
@@ -129,6 +135,9 @@ export const ReactiveResumeConfigPanel: React.FC<
   typstTheme,
   onTypstThemeChange,
   typstThemeError,
+  pdfPaperSize,
+  onPdfPaperSizeChange,
+  pdfPaperSizeError,
   disabled = false,
   hasRxResumeAccess = false,
   showValidationStatus = false,
@@ -158,6 +167,13 @@ export const ReactiveResumeConfigPanel: React.FC<
     latex:
       "LaTeX renders PDFs locally with Jake's template and requires tectonic on the JobOps host.",
     typst: "Typst renders PDFs locally and supports selectable resume themes.",
+  };
+
+  const rendererDefaultPaperSizeText: Record<PdfRenderer, string> = {
+    rxresume:
+      "Renderer default keeps the page format saved on the resume itself. Free-form resumes always stay continuous.",
+    latex: "Renderer default is US Letter for the LaTeX template.",
+    typst: "Renderer default is A4 for Typst themes.",
   };
 
   return (
@@ -229,6 +245,34 @@ export const ReactiveResumeConfigPanel: React.FC<
           </p>
         </div>
       ) : null}
+
+      <div className="space-y-2">
+        <label htmlFor="pdfPaperSize" className="text-sm font-medium">
+          Paper size
+        </label>
+        <Select
+          value={pdfPaperSize}
+          onValueChange={(value) => onPdfPaperSizeChange(value as PdfPaperSize)}
+          disabled={disabled}
+        >
+          <SelectTrigger id="pdfPaperSize">
+            <SelectValue placeholder="Choose paper size" />
+          </SelectTrigger>
+          <SelectContent>
+            {PDF_PAPER_SIZE_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {PDF_PAPER_SIZE_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {pdfPaperSizeError ? (
+          <p className="text-xs text-destructive">{pdfPaperSizeError}</p>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          {rendererDefaultPaperSizeText[pdfRenderer]}
+        </p>
+      </div>
 
       {showValidationStatus && selectedValidationStatus ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">

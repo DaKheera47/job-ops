@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { settingsRegistry } from "./settings-registry";
 import { updateSettingsSchema } from "./settings-schema";
 
 describe("updateSettingsSchema", () => {
@@ -77,6 +78,32 @@ describe("updateSettingsSchema", () => {
     }
 
     expect(result.error.flatten().fieldErrors.typstTheme).toBeDefined();
+  });
+
+  it("accepts supported PDF paper size values and rejects unsupported ones", () => {
+    for (const pdfPaperSize of ["auto", "a4", "letter", null] as const) {
+      expect(updateSettingsSchema.parse({ pdfPaperSize })).toEqual({
+        pdfPaperSize,
+      });
+    }
+
+    const result = updateSettingsSchema.safeParse({
+      pdfPaperSize: "legal",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.flatten().fieldErrors.pdfPaperSize).toBeDefined();
+  });
+
+  it("defaults the PDF paper size to the renderer's own default", () => {
+    expect(settingsRegistry.pdfPaperSize.default()).toBe("auto");
+    expect(settingsRegistry.pdfPaperSize.parse("letter")).toBe("letter");
+    expect(settingsRegistry.pdfPaperSize.parse("legal")).toBeNull();
+    expect(settingsRegistry.pdfPaperSize.parse(undefined)).toBeNull();
   });
 
   it("accepts supported language mode and manual language values", () => {

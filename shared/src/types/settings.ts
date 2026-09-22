@@ -72,6 +72,14 @@ export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
 
 export type TypstTheme = (typeof TYPST_THEME_VALUES)[number];
 
+export const PDF_PAPER_SIZE_VALUES = ["auto", "a4", "letter"] as const;
+export type PdfPaperSize = (typeof PDF_PAPER_SIZE_VALUES)[number];
+export const PDF_PAPER_SIZE_LABELS: Record<PdfPaperSize, string> = {
+  auto: "Renderer default",
+  a4: "A4",
+  letter: "US Letter",
+};
+
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
   "manual",
   "match-resume",
@@ -250,6 +258,7 @@ export interface AppSettings {
   resumeProjects: Resolved<ResumeProjectsSettings>;
   pdfRenderer: Resolved<PdfRenderer>;
   typstTheme: Resolved<TypstTheme>;
+  pdfPaperSize: Resolved<PdfPaperSize>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;

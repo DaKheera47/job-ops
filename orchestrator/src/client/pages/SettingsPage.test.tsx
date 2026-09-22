@@ -870,6 +870,36 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("saves the PDF paper size from the Reactive Resume section", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      createAppSettings({
+        pdfPaperSize: { value: "letter", default: "auto", override: "letter" },
+      }),
+    );
+
+    renderPage();
+    await openReactiveResumeSection();
+
+    const paperSizeSelect = screen.getByRole("combobox", {
+      name: /paper size/i,
+    });
+    await waitFor(() => expect(paperSizeSelect).toBeEnabled());
+    expect(paperSizeSelect).toHaveTextContent("Renderer default");
+
+    fireEvent.click(paperSizeSelect);
+    fireEvent.click(await screen.findByText("US Letter"));
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ pdfPaperSize: "letter" }),
+    );
+  });
+
   it("blocks save and renders an inline alert when the v5 API key is invalid", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
 

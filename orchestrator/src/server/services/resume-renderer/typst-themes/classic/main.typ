@@ -1,4 +1,4 @@
-#set page(paper: "a4", margin: __PAGE_MARGIN__)
+#set page(paper: __PAGE_PAPER__, margin: __PAGE_MARGIN__)
 #set text(font: "Libertinus Serif", size: __BODY_SIZE__, lang: "en")
 #set par(leading: __PAR_LEADING__)
 

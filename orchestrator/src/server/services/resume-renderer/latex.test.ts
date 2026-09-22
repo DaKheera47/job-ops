@@ -10,6 +10,7 @@ import {
   readLatexTemplate,
   renderLatexPdf,
 } from "./latex";
+import { readPdfPageSizes } from "./test-utils";
 import type { ResumeRenderDocument } from "./types";
 
 const baseDocument: ResumeRenderDocument = {
@@ -77,6 +78,35 @@ describe("latex resume renderer", () => {
     const template = await readLatexTemplate();
     expect(template).toContain("Resume in Latex");
     expect(template).toContain("__BODY__");
+  });
+
+  it("leaves the paper size to the render call in the bundled template", async () => {
+    const template = await readLatexTemplate();
+
+    expect(template).toContain("\\documentclass[__PAPER_SIZE__,11pt]{article}");
+    expect(template).not.toMatch(/letterpaper|a4paper/);
+  });
+
+  it("renders the requested paper size as a document class option", () => {
+    const template = "\\documentclass[__PAPER_SIZE__,11pt]{article}";
+
+    expect(buildLatexDocument(baseDocument, template, "a4")).toBe(
+      "\\documentclass[a4paper,11pt]{article}",
+    );
+    expect(buildLatexDocument(baseDocument, template, "letter")).toBe(
+      "\\documentclass[letterpaper,11pt]{article}",
+    );
+  });
+
+  it("keeps rendering US Letter when the paper size is left to the renderer", () => {
+    const template = "\\documentclass[__PAPER_SIZE__,11pt]{article}";
+
+    expect(buildLatexDocument(baseDocument, template, "auto")).toBe(
+      "\\documentclass[letterpaper,11pt]{article}",
+    );
+    expect(buildLatexDocument(baseDocument, template)).toBe(
+      "\\documentclass[letterpaper,11pt]{article}",
+    );
   });
 
   it("uses the TECTONIC_BIN override when present", () => {
@@ -385,6 +415,33 @@ describe("latex resume renderer", () => {
         stdio: "ignore",
       });
       expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!tectonicAvailable())(
+    "renders physical pages in the requested paper size",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+      const expectedPageSizes = {
+        a4: { width: 595, height: 842 },
+        letter: { width: 612, height: 792 },
+        auto: { width: 612, height: 792 },
+      } as const;
+
+      for (const paperSize of ["a4", "letter", "auto"] as const) {
+        const outputPath = join(tempDir, `resume-${paperSize}.pdf`);
+        await renderLatexPdf({
+          document: baseDocument,
+          outputPath,
+          jobId: `job-render-${paperSize}`,
+          paperSize,
+        });
+
+        expect(await readPdfPageSizes(outputPath), paperSize).toEqual([
+          expectedPageSizes[paperSize],
+        ]);
+      }
     },
   );
 });

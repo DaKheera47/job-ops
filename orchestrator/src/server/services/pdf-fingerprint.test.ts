@@ -10,6 +10,7 @@ const context: PdfFingerprintContext = {
   designResumeUpdatedAt: "2026-05-01T10:00:00.000Z",
   pdfRenderer: "latex",
   typstTheme: "classic",
+  pdfPaperSize: "auto",
   rxresumeBaseResumeId: "rxresume-base-1",
   resumeProjects: {
     maxProjects: 3,
@@ -109,6 +110,36 @@ describe("PDF freshness", () => {
         typstTheme: "compact",
       }),
     );
+  });
+
+  it("keeps existing fingerprints valid while the paper size is left to the renderer", () => {
+    const job = createJob({
+      id: "job-1",
+      tailoredSummary: "Summary",
+      jobDescription: "Build things",
+      employer: "Acme",
+    });
+
+    expect(
+      createJobPdfFingerprint(job, { ...context, pdfPaperSize: "auto" }),
+    ).toBe("81b507dbebf69af4959b8bde9bb93465e790076876bb6dcdbea1de596e3276c5");
+  });
+
+  it("includes paper size changes for every renderer", () => {
+    const job = createJob({ tailoredSummary: "Summary" });
+
+    for (const pdfRenderer of ["rxresume", "latex", "typst"] as const) {
+      const fingerprints = (["auto", "a4", "letter"] as const).map(
+        (pdfPaperSize) =>
+          createJobPdfFingerprint(job, {
+            ...context,
+            pdfRenderer,
+            pdfPaperSize,
+          }),
+      );
+
+      expect(new Set(fingerprints).size, pdfRenderer).toBe(3);
+    }
   });
 
   it("includes resume project policy changes", () => {

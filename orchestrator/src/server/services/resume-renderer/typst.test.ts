@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
 import { afterEach, describe, expect, it } from "vitest";
+import { readPdfPageSizes } from "./test-utils";
 import type { ResumeRenderDocument } from "./types";
 import {
   buildTypstDocument,
@@ -238,6 +239,39 @@ describe("typst resume renderer", () => {
     );
 
     expect(typst).toContain('#let resume = json("resume-data.json")');
+  });
+
+  it("leaves the paper size to the render call in every theme template", async () => {
+    for (const theme of TYPST_THEME_VALUES) {
+      const template = await readTypstTemplate(theme);
+
+      expect(template, theme).toContain("paper: __PAGE_PAPER__");
+      expect(template, theme).not.toMatch(/paper:\s*"/);
+    }
+  });
+
+  it("renders the requested paper size using Typst's paper names", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const template = "#set page(paper: __PAGE_PAPER__)";
+
+    expect(buildTypstDocument(baseDocument, template, tokens, "letter")).toBe(
+      '#set page(paper: "us-letter")',
+    );
+    expect(buildTypstDocument(baseDocument, template, tokens, "a4")).toBe(
+      '#set page(paper: "a4")',
+    );
+  });
+
+  it("keeps rendering A4 when the paper size is left to the renderer", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const template = "#set page(paper: __PAGE_PAPER__)";
+
+    expect(buildTypstDocument(baseDocument, template, tokens, "auto")).toBe(
+      '#set page(paper: "a4")',
+    );
+    expect(buildTypstDocument(baseDocument, template, tokens)).toBe(
+      '#set page(paper: "a4")',
+    );
   });
 
   it("keeps links in the clean-print-cv adapter", async () => {
@@ -503,6 +537,51 @@ describe("typst resume renderer", () => {
         stdio: "ignore",
       });
       expect(stats.status).toBe(0);
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
+    "renders US Letter pages in every theme when requested",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+
+      for (const typstTheme of TYPST_THEME_VALUES) {
+        const outputPath = join(tempDir, `${typstTheme}-letter.pdf`);
+        await renderTypstPdf({
+          document: baseDocument,
+          outputPath,
+          jobId: `job-render-letter-${typstTheme}`,
+          typstTheme,
+          paperSize: "letter",
+        });
+
+        expect(await readPdfPageSizes(outputPath), typstTheme).toEqual([
+          { width: 612, height: 792 },
+        ]);
+      }
+    },
+  );
+
+  it.skipIf(!typstAvailable())(
+    "renders A4 pages in every theme by default",
+    async () => {
+      const tempDir = await createTempDir();
+      tempDirs.push(tempDir);
+
+      for (const typstTheme of TYPST_THEME_VALUES) {
+        const outputPath = join(tempDir, `${typstTheme}-default.pdf`);
+        await renderTypstPdf({
+          document: baseDocument,
+          outputPath,
+          jobId: `job-render-default-${typstTheme}`,
+          typstTheme,
+        });
+
+        expect(await readPdfPageSizes(outputPath), typstTheme).toEqual([
+          { width: 595, height: 842 },
+        ]);
+      }
     },
   );
 });
