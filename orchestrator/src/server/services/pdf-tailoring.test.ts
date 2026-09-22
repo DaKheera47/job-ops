@@ -662,23 +662,23 @@ describe("PDF Service Tailoring Logic", () => {
     );
   });
 
-  it.each(["latex", "typst"] as const)(
-    "passes the configured paper size to the local %s renderer",
-    async (renderer) => {
-      currentPdfRenderer.value = renderer;
-      currentPdfPaperSize.value = "letter";
+  it.each([
+    "latex",
+    "typst",
+  ] as const)("passes the configured paper size to the local %s renderer", async (renderer) => {
+    currentPdfRenderer.value = renderer;
+    currentPdfPaperSize.value = "letter";
 
-      await generatePdf("job-letter-paper", {}, "desc");
+    await generatePdf("job-letter-paper", {}, "desc");
 
-      expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
-        expect.objectContaining({
-          jobId: "job-letter-paper",
-          renderer,
-          paperSize: "letter",
-        }),
-      );
-    },
-  );
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-letter-paper",
+        renderer,
+        paperSize: "letter",
+      }),
+    );
+  });
 
   it("passes the configured paper size when rendering the Design Resume preview", async () => {
     currentPdfPaperSize.value = "a4";
