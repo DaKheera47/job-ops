@@ -8,6 +8,7 @@ describe("resolveLlmApiKey", () => {
     process.env = { ...originalEnv };
     delete process.env.LLM_API_KEY;
     delete process.env.ATLASCLOUD_API_KEY;
+    delete process.env.CHEAPER_INFERENCE_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
   });
@@ -65,6 +66,17 @@ describe("resolveLlmApiKey", () => {
         provider: "atlascloud",
       }),
     ).toBe("atlas-test");
+  });
+
+  it("falls back to CHEAPER_INFERENCE_API_KEY for Cheaper Inference", async () => {
+    process.env.CHEAPER_INFERENCE_API_KEY = "ci_live_test";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(
+      resolveLlmApiKey({
+        provider: "cheaperinference",
+      }),
+    ).toBe("ci_live_test");
   });
 
   it("falls back to ORCAROUTER_API_KEY for orcarouter providers", async () => {

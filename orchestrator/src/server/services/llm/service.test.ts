@@ -89,6 +89,16 @@ describe("LlmService provider normalization", () => {
     expect(llm.getBaseUrl()).toBe("https://api.atlascloud.ai");
   });
 
+  it("uses the dedicated Cheaper Inference provider and endpoint", () => {
+    const llm = new LlmService({
+      provider: "cheaperinference",
+      apiKey: "ci_live_test",
+    });
+
+    expect(llm.getProvider()).toBe("cheaperinference");
+    expect(llm.getBaseUrl()).toBe("https://api.cheaperinference.com/v1");
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     const llm = new LlmService({
       provider: "openai-compatible",
@@ -353,6 +363,33 @@ describe("LlmService provider normalization", () => {
     const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
     expect(String(requestedUrl)).toBe(
       "https://api.atlascloud.ai/api/v1/models",
+    );
+  });
+
+  it("lists Cheaper Inference text models", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "gpt-5.4-mini", type: "text" },
+            { id: "image-model", type: "image" },
+            { id: "video-model", type: "video" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "cheaperinference",
+      apiKey: "ci_live_test",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toEqual(["gpt-5.4-mini"]);
+    const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe(
+      "https://api.cheaperinference.com/v1/models",
     );
   });
 

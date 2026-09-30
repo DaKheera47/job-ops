@@ -50,7 +50,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`atlascloud`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`atlascloud`, `cheaperinference`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -60,6 +60,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 - Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
   - `atlascloud` defaults to `deepseek-ai/deepseek-v3.2`
+  - `cheaperinference` defaults to `gpt-5.4-mini`
   - `openai` defaults to `gpt-5.4-mini`
   - `codex` defaults to `gpt-5.4-mini`
   - `glm` defaults to `glm-5.1`
@@ -67,6 +68,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
   - `claude_cli` defaults to `claude-sonnet-5`
 - The settings page shows provider-aware model pickers for:
   - `atlascloud`: console-visible text models from the live Atlas Cloud catalog
+  - `cheaperinference`: text models from the live Cheaper Inference catalog
   - `openai`: available text-generation models only
   - `glm`: available GLM text-generation models from the configured BigModel-compatible endpoint
   - `gemini`: available Gemini text-generation models only

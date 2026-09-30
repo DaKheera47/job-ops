@@ -44,6 +44,12 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("ATLASCLOUD_API_KEY"));
   }
   if (
+    (provider === "cheaperinference" || provider === "cheaper_inference") &&
+    toStringOrNull(getOriginalEnvValue("CHEAPER_INFERENCE_API_KEY"))
+  ) {
+    return toStringOrNull(getOriginalEnvValue("CHEAPER_INFERENCE_API_KEY"));
+  }
+  if (
     provider === "openrouter" &&
     toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
   ) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { anthropicStrategy } from "./anthropic";
 import { atlasCloudStrategy } from "./atlascloud";
+import { cheaperInferenceStrategy } from "./cheaperinference";
 import { geminiStrategy } from "./gemini";
 import { glmStrategy } from "./glm";
 import { lmStudioStrategy } from "./lmstudio";
@@ -36,6 +37,18 @@ describe("provider adapters", () => {
           model: "deepseek-ai/deepseek-v3.2",
         },
         expectedUrl: "https://api.atlascloud.ai/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "cheaperinference-json_schema",
+        strategy: cheaperInferenceStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.cheaperinference.com/v1",
+          apiKey: "x",
+          model: "gpt-5.4-mini",
+        },
+        expectedUrl: "https://api.cheaperinference.com/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {
@@ -224,6 +237,7 @@ describe("provider adapters", () => {
     };
     expect(openRouterStrategy.extractText(response)).toBe("ok");
     expect(atlasCloudStrategy.extractText(response)).toBe("ok");
+    expect(cheaperInferenceStrategy.extractText(response)).toBe("ok");
     expect(orcaRouterStrategy.extractText(response)).toBe("ok");
     expect(requestyStrategy.extractText(response)).toBe("ok");
     expect(glmStrategy.extractText(response)).toBe("ok");
