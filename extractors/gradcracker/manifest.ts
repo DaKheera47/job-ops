@@ -22,6 +22,7 @@ export const manifest: ExtractorManifest = {
       : 50;
 
     const result = await runCrawler({
+      cookieStorageDir: context.cookieStorageDir,
       existingJobUrls,
       searchTerms: context.searchTerms,
       maxJobsPerTerm,

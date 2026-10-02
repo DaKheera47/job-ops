@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getProgress, resetProgress, subscribeToProgress } from "../progress";
 import { discoverJobsStep } from "./discover-jobs";
 
+const hiringCafeFetch = vi.hoisted(() => vi.fn());
+
+vi.mock("impit", () => ({
+  Impit: class {
+    fetch = hiringCafeFetch;
+  },
+}));
+
 vi.mock("@server/repositories/settings", () => ({
   getAllSettings: vi.fn(),
 }));
@@ -46,6 +54,145 @@ describe("discoverJobsStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetProgress();
+  });
+
+  it("retains Hiring Cafe listing jobs and pauses on a challenged detail page", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const { manifest: hiringCafeManifest } = await import(
+      "../../../../../extractors/hiringcafe/manifest"
+    );
+    const hits = ["req-1", "req-2", "req-3"].map((id) => ({
+      original_source_id: id,
+      requisition_id: id,
+      apply_url: `https://hiringcafe.com/job/${id}`,
+      job_information: {
+        title: `Engineer ${id}`,
+        ...(id === "req-1" ? { description: "Full description" } : {}),
+      },
+      v5_processed_job_data: {
+        company_name: "Acme",
+        formatted_workplace_location: "London, United Kingdom",
+        workplace_cities: ["London"],
+        workplace_countries: ["GB"],
+        requirements_summary: `Summary ${id}`,
+      },
+    }));
+    const searchHtml = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+      {
+        props: {
+          pageProps: {
+            ssrHits: hits,
+            ssrPage: 0,
+            ssrTotalCount: hits.length,
+            ssrPageSize: 40,
+            ssrIsLastPage: true,
+            ssrError: null,
+          },
+        },
+      },
+    )}</script>`;
+    hiringCafeFetch.mockImplementation(async (url: string) => ({
+      ok: !url.includes("/job/"),
+      status: url.includes("/job/") ? 403 : 200,
+      text: async () =>
+        url.includes("/job/")
+          ? "<html>challenges.cloudflare.com</html>"
+          : searchHtml,
+    }));
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["hiringcafe", hiringCafeManifest]]),
+      manifestBySource: new Map([["hiringcafe", hiringCafeManifest]]),
+      availableSources: ["hiringcafe"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+    });
+
+    expect(result.discoveredJobs).toEqual([
+      expect.objectContaining({
+        sourceJobId: "req-1",
+        jobDescription: "Full description",
+      }),
+      expect.objectContaining({
+        sourceJobId: "req-2",
+        jobDescription: "Summary req-2",
+      }),
+      expect.objectContaining({
+        sourceJobId: "req-3",
+        jobDescription: "Summary req-3",
+      }),
+    ]);
+    expect(result.sourceErrors).toEqual([expect.stringContaining("HTTP 403")]);
+    expect(result.pendingChallenges).toEqual([
+      expect.objectContaining({
+        extractorId: "hiringcafe",
+        url: "https://hiringcafe.com/job/req-2",
+        pauseOnRepeat: true,
+      }),
+    ]);
+    expect(hiringCafeFetch).toHaveBeenCalledWith(
+      "https://hiringcafe.com/job/req-2",
+      expect.anything(),
+    );
+    expect(hiringCafeFetch).not.toHaveBeenCalledWith(
+      "https://hiringcafe.com/job/req-3",
+      expect.anything(),
+    );
+
+    hiringCafeFetch.mockClear();
+    hiringCafeFetch.mockImplementation(async (url: string) => {
+      if (!url.includes("/job/")) {
+        return { ok: true, status: 200, text: async () => searchHtml };
+      }
+      const id = url.split("/").pop();
+      const hit = hits.find((job) => job.requisition_id === id);
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+            props: {
+              pageProps: {
+                job: {
+                  ...hit,
+                  job_information: {
+                    title: `Engineer ${id}`,
+                    description: `Full description ${id}`,
+                  },
+                },
+              },
+            },
+          })}</script>`,
+      };
+    });
+    const retryResult = await discoverJobsStep({
+      mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+      retryChallengeUrls: {
+        hiringcafe: "https://hiringcafe.com/job/req-2",
+      },
+      fanoutSeedJobs: result.discoveredJobs,
+    });
+
+    expect(hiringCafeFetch.mock.calls[0]?.[0]).toBe(
+      "https://hiringcafe.com/job/req-2",
+    );
+    expect(retryResult.pendingChallenges).toEqual([]);
+    expect(retryResult.discoveredJobs).toHaveLength(3);
+    expect(retryResult.discoveredJobs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceJobId: "req-2",
+          jobDescription: "Full description req-2",
+        }),
+      ]),
+    );
   });
 
   it("aggregates source errors for enabled sources", async () => {
@@ -363,6 +510,40 @@ describe("discoverJobsStep", () => {
     expect(result.sourceErrors).toEqual([
       "linkedin: ValueError: Invalid country string: eswatini (term: forecasting)",
     ]);
+  });
+
+  it("passes distinct tenant cookie directories to extractor runs", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const manifest = {
+      id: "hiringcafe",
+      displayName: "Hiring Cafe",
+      providesSources: ["hiringcafe"],
+      run: vi.fn().mockResolvedValue({ success: true, jobs: [] }),
+    };
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["hiringcafe", manifest as any]]),
+      manifestBySource: new Map([["hiringcafe", manifest as any]]),
+      availableSources: ["hiringcafe"],
+    } as any);
+
+    for (const tenantId of ["tenant-a", "tenant-b"]) {
+      await runWithRequestContext({ requestId: "test", tenantId }, () =>
+        discoverJobsStep({
+          mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+          includeWatchlist: false,
+        }),
+      );
+    }
+
+    const first = vi.mocked(manifest.run).mock.calls[0]?.[0];
+    const second = vi.mocked(manifest.run).mock.calls[1]?.[0];
+    expect(first.cookieStorageDir).toBeTruthy();
+    expect(second.cookieStorageDir).toBeTruthy();
+    expect(first.cookieStorageDir).not.toBe(second.cookieStorageDir);
   });
 
   it("throws when all requested sources are incompatible for country", async () => {

@@ -13,8 +13,8 @@
       "!!docs-site/build",
       "!!**/.venv",
       "!!.claude",
-      "!!data",
-      "!!storage"
+      "!!**/data",
+      "!!**/storage"
     ]
   },
   "css": {

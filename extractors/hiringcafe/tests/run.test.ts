@@ -252,22 +252,79 @@ describe("runHiringCafe", () => {
     );
   });
 
-  it("surfaces the challenged detail page URL when enrichment hits a challenge", async () => {
-    const searchHit = createRawJob({
-      requisition_id: "req-1",
-      job_information: {
-        title: "Web Developer",
-      },
-    });
+  it("keeps listing jobs and requests a solve after a detail challenge", async () => {
+    const searchHits = ["req-1", "req-2", "req-3"].map((id) =>
+      createRawJob({
+        original_source_id: id,
+        requisition_id: id,
+        job_information: { title: `Developer ${id}` },
+        v5_processed_job_data: {
+          ...createRawJob().v5_processed_job_data,
+          requirements_summary: `Summary ${id}`,
+        },
+      }),
+    );
     const fetchMock = vi.fn((url: string) => {
       if (url === "https://hiringcafe.com/job/req-1") {
         return Promise.resolve(
-          createTextResponse("<html>challenges.cloudflare.com</html>"),
+          createTextResponse(
+            createJobDetailHtml({
+              ...searchHits[0],
+              job_information: {
+                title: "Developer req-1",
+                description: "Full description",
+              },
+            }),
+          ),
+        );
+      }
+      if (url === "https://hiringcafe.com/job/req-2") {
+        return Promise.resolve(
+          createTextResponse("<html>challenges.cloudflare.com</html>", {
+            ok: false,
+            status: 429,
+          }),
         );
       }
 
-      return Promise.resolve(createTextResponse(createSearchHtml([searchHit])));
+      return Promise.resolve(createTextResponse(createSearchHtml(searchHits)));
     });
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "worldwide",
+      maxJobsPerTerm: 3,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(result).toMatchObject({
+      success: true,
+      jobs: [
+        { sourceJobId: "req-1", jobDescription: "Full description" },
+        { sourceJobId: "req-2", jobDescription: "Summary req-2" },
+        { sourceJobId: "req-3", jobDescription: "Summary req-3" },
+      ],
+      sourceErrors: [expect.stringContaining("HTTP 429")],
+    });
+    expect(result.challengeRequired).toBe("https://hiringcafe.com/job/req-2");
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "https://hiringcafe.com/job/req-3",
+      expect.anything(),
+    );
+  });
+
+  it("records the status when a detail request returns a challenge page with HTTP 200", async () => {
+    const searchHit = createRawJob({
+      requisition_id: "req-1",
+      job_information: { title: "Web Developer" },
+    });
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url === "https://hiringcafe.com/job/req-1"
+          ? createTextResponse("<html>challenges.cloudflare.com</html>")
+          : createTextResponse(createSearchHtml([searchHit])),
+      ),
+    );
 
     const result = await runHiringCafe({
       searchTerms: ["web developer"],
@@ -276,10 +333,50 @@ describe("runHiringCafe", () => {
       fetchImpl: fetchMock as typeof fetch,
     });
 
-    expect(result).toMatchObject({
-      success: false,
-      challengeRequired: "https://hiringcafe.com/job/req-1",
+    expect(result.success).toBe(true);
+    expect(result.jobs).toHaveLength(1);
+    expect(result.sourceErrors).toEqual([expect.stringContaining("HTTP 200")]);
+    expect(result.challengeRequired).toBe("https://hiringcafe.com/job/req-1");
+  });
+
+  it("retains a retried detail when its listing moved out of the search page", async () => {
+    const detailJob = createRawJob({
+      original_source_id: "job-old",
+      requisition_id: "req-old",
+      job_information: {
+        title: "Web Developer",
+        description: "Full description after solve",
+      },
     });
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url === "https://hiringcafe.com/job/req-old"
+          ? createTextResponse(createJobDetailHtml(detailJob))
+          : createTextResponse(createSearchHtml([])),
+      ),
+    );
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      retryChallengeUrl: "https://hiringcafe.com/job/req-old",
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://hiringcafe.com/job/req-old",
+    );
+    expect(result).toMatchObject({
+      success: true,
+      jobs: [
+        {
+          sourceJobId: "job-old",
+          jobDescription: "Full description after solve",
+        },
+      ],
+    });
+    expect(result.challengeRequired).toBeUndefined();
   });
 
   it("falls back to the search hit when enrichment finds an expired job", async () => {

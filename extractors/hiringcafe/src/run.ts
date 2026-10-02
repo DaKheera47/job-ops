@@ -104,6 +104,8 @@ export interface RunHiringCafeOptions {
   locationRadiusMiles?: number;
   proximity?: LocationProximity;
   maxJobsPerTerm?: number;
+  retryChallengeUrl?: string;
+  cookieStorageDir?: string;
   fetchImpl?: typeof fetch;
   shouldCancel?: () => boolean;
   onProgress?: (event: HiringCafeProgressEvent) => void;
@@ -113,17 +115,20 @@ export interface HiringCafeResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  sourceErrors?: string[];
   /** URL that needs a human to solve a Cloudflare challenge in a headed browser */
   challengeRequired?: string;
 }
 
 class HiringCafeChallengeError extends Error {
   readonly challengeUrl: string;
+  readonly status?: number;
 
-  constructor(challengeUrl = BASE_URL) {
-    super("Hiring Cafe returned a challenge page instead of search data.");
+  constructor(challengeUrl = BASE_URL, status?: number) {
+    super("Hiring Cafe returned a challenge page.");
     this.name = "HiringCafeChallengeError";
     this.challengeUrl = challengeUrl;
+    this.status = status;
   }
 }
 
@@ -132,10 +137,12 @@ class HiringCafeChallengeError extends Error {
  * shares the persisted cookie jar (and User-Agent) written by the headed
  * challenge solver, so a solved cf_clearance/_vcrcs cookie is actually reused.
  */
-async function createDefaultFetchImpl(): Promise<typeof fetch> {
+async function createDefaultFetchImpl(
+  cookieStorageDir?: string,
+): Promise<typeof fetch> {
   const persistedCookies = await createPersistedFetchCookieJar(
     EXTRACTOR_ID,
-    getCloudflareCookieStorageDir(),
+    getCloudflareCookieStorageDir(cookieStorageDir),
   );
   const impit = new Impit({
     browser: "firefox",
@@ -437,10 +444,19 @@ export function parseHiringCafeSsrPage(html: string): HiringCafeSsrPage {
 export function parseHiringCafeJobDetailPage(
   html: string,
   challengeUrl = BASE_URL,
+  status?: number,
 ): HiringCafeRawJob | null {
   if (isExpiredHiringCafeJobPage(html)) return null;
 
-  const data = parseNextData(html, challengeUrl);
+  let data: unknown;
+  try {
+    data = parseNextData(html, challengeUrl);
+  } catch (error) {
+    if (error instanceof HiringCafeChallengeError) {
+      throw new HiringCafeChallengeError(challengeUrl, status);
+    }
+    throw error;
+  }
 
   const props = asRecord(asRecord(data)?.props);
   const pageProps = asRecord(props?.pageProps);
@@ -484,7 +500,7 @@ async function fetchHiringCafeSearchPage(args: {
   const body = await response.text();
   if (!response.ok) {
     if (CHALLENGE_BODY_PATTERN.test(body)) {
-      throw new HiringCafeChallengeError(url);
+      throw new HiringCafeChallengeError(url, response.status);
     }
     const statusText = response.statusText ? ` ${response.statusText}` : "";
     throw new Error(
@@ -496,7 +512,7 @@ async function fetchHiringCafeSearchPage(args: {
     return parseHiringCafeSsrPage(body);
   } catch (error) {
     if (error instanceof HiringCafeChallengeError) {
-      throw new HiringCafeChallengeError(url);
+      throw new HiringCafeChallengeError(url, error.status);
     }
     throw error;
   }
@@ -521,13 +537,13 @@ async function fetchHiringCafeJobDetail(args: {
   const body = await response.text();
   if (!response.ok) {
     if (CHALLENGE_BODY_PATTERN.test(body)) {
-      throw new HiringCafeChallengeError(url.toString());
+      throw new HiringCafeChallengeError(url.toString(), response.status);
     }
     return null;
   }
 
   try {
-    return parseHiringCafeJobDetailPage(body, url.toString());
+    return parseHiringCafeJobDetailPage(body, url.toString(), response.status);
   } catch (error) {
     if (error instanceof HiringCafeChallengeError) throw error;
     return null;
@@ -779,14 +795,46 @@ export async function runHiringCafe(
   const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
   const jobs: CreateJobInput[] = [];
   const seen = new Set<string>();
+  const sourceErrors: string[] = [];
+  let skipDetailEnrichment = false;
+  let detailChallengeUrl: string | undefined;
+
+  const successfulResult = (): HiringCafeResult => ({
+    success: true,
+    jobs,
+    ...(sourceErrors.length > 0 ? { sourceErrors } : {}),
+    ...(detailChallengeUrl ? { challengeRequired: detailChallengeUrl } : {}),
+  });
 
   try {
     const fetchImpl =
-      options.fetchImpl ?? withThrottleAndRetry(await createDefaultFetchImpl());
+      options.fetchImpl ??
+      withThrottleAndRetry(
+        await createDefaultFetchImpl(options.cookieStorageDir),
+      );
     const countryLocation = resolveHiringCafeCountryLocation(country);
+    let retryRequisitionId: string | undefined;
+    let retriedDetailJob: HiringCafeRawJob | null = null;
+
+    if (options.retryChallengeUrl) {
+      const retryUrl = new URL(options.retryChallengeUrl);
+      if (
+        retryUrl.origin === new URL(BASE_URL).origin &&
+        /^\/job\/[^/]+$/.test(retryUrl.pathname)
+      ) {
+        retryRequisitionId = decodeURIComponent(
+          retryUrl.pathname.slice("/job/".length),
+        );
+        retriedDetailJob = await fetchHiringCafeJobDetail({
+          requisitionId: retryRequisitionId,
+          fetchImpl,
+        });
+      }
+    }
+    let retriedDetailApplied = false;
 
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
-      if (options.shouldCancel?.()) return { success: true, jobs };
+      if (options.shouldCancel?.()) return successfulResult();
 
       const runLocation = runLocations[runIndex];
       const cityLocationContext = await resolveSearchStateLocation({
@@ -799,7 +847,7 @@ export async function runHiringCafe(
       });
 
       for (let i = 0; i < searchTerms.length; i += 1) {
-        if (options.shouldCancel?.()) return { success: true, jobs };
+        if (options.shouldCancel?.()) return successfulResult();
 
         const searchTerm = searchTerms[i];
         const termIndex = runIndex * searchTerms.length + i + 1;
@@ -820,7 +868,7 @@ export async function runHiringCafe(
         let termCollected = 0;
 
         while (termCollected < maxJobsPerTerm && pageNo < PAGE_LIMIT) {
-          if (options.shouldCancel?.()) return { success: true, jobs };
+          if (options.shouldCancel?.()) return successfulResult();
 
           const page = await fetchHiringCafeSearchPage({
             searchState,
@@ -835,10 +883,29 @@ export async function runHiringCafe(
             const dedupeKey = getHiringCafeDedupeKey(rawJob);
             if (dedupeKey && seen.has(dedupeKey)) continue;
 
-            const enrichedRawJob = await enrichHiringCafeJobWithDetail({
-              rawJob,
-              fetchImpl,
-            });
+            let enrichedRawJob = rawJob;
+            if (
+              retriedDetailJob &&
+              getHiringCafeRequisitionId(rawJob) === retryRequisitionId
+            ) {
+              enrichedRawJob = retriedDetailJob;
+              retriedDetailApplied = true;
+            } else if (!skipDetailEnrichment) {
+              try {
+                enrichedRawJob = await enrichHiringCafeJobWithDetail({
+                  rawJob,
+                  fetchImpl,
+                });
+              } catch (error) {
+                if (!(error instanceof HiringCafeChallengeError)) throw error;
+                skipDetailEnrichment = true;
+                detailChallengeUrl = error.challengeUrl;
+                const status = error.status ? ` (HTTP ${error.status})` : "";
+                sourceErrors.push(
+                  `Hiring Cafe job detail request was challenged${status}; waiting for a solve before retrying detail pages.`,
+                );
+              }
+            }
             const mapped = mapHiringCafeJob(enrichedRawJob);
             if (!mapped) continue;
 
@@ -875,7 +942,25 @@ export async function runHiringCafe(
       }
     }
 
-    return { success: true, jobs };
+    // The listing can move out of the current search results between the
+    // paused run and its retry. Keep the successfully retried detail in that
+    // case so the original partial job can still be enriched before import.
+    if (retriedDetailJob && !retriedDetailApplied) {
+      const mapped = mapHiringCafeJob(retriedDetailJob);
+      if (
+        mapped &&
+        !jobs.some(
+          (job) =>
+            job.source === mapped.source &&
+            (job.sourceJobId === mapped.sourceJobId ||
+              job.jobUrl === mapped.jobUrl),
+        )
+      ) {
+        jobs.push(mapped);
+      }
+    }
+
+    return successfulResult();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return {

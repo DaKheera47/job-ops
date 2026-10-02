@@ -7,7 +7,7 @@ const challenge = {
   extractorId: "gradcracker",
   extractorName: "Gradcracker",
   url: "https://www.gradcracker.com/search/computing-technology/software-developer-graduate-jobs-in-london-and-south-east?order=dateAdded",
-  sources: ["gradcracker"],
+  sources: ["gradcracker" as const],
 };
 
 vi.mock("../repositories/pipeline", () => ({
@@ -112,5 +112,201 @@ describe.sequential("pipeline challenge handling", () => {
         ),
       }),
     );
+  });
+
+  it("holds partial Hiring Cafe jobs until solve, retries the detail URL, and imports the enriched job", async () => {
+    const pipeline = await import("./orchestrator");
+    const steps = await import("./steps");
+    const { runWithRequestContext } = await import("@infra/request-context");
+    const partialJob = {
+      source: "hiringcafe",
+      sourceJobId: "req-1",
+      title: "Engineer",
+      employer: "Acme",
+      jobUrl: "https://hiringcafe.com/job/req-1",
+      jobDescription: "Listing summary",
+    };
+    const detailChallenge = {
+      extractorId: "hiringcafe",
+      extractorName: "Hiring Cafe",
+      url: "https://hiringcafe.com/job/req-1",
+      sources: ["hiringcafe" as const],
+      pauseOnRepeat: true,
+    };
+    vi.mocked(steps.discoverJobsStep)
+      .mockReset()
+      .mockResolvedValueOnce({
+        discoveredJobs: [partialJob],
+        sourceErrors: ["Hiring Cafe detail challenged (HTTP 403)"],
+        pendingChallenges: [detailChallenge],
+      })
+      .mockResolvedValueOnce({
+        discoveredJobs: [
+          { ...partialJob, jobDescription: "Full detail description" },
+        ],
+        sourceErrors: [],
+        pendingChallenges: [],
+      });
+
+    const inTenantA = <T>(run: () => T) =>
+      runWithRequestContext(
+        { requestId: "request-a", tenantId: "tenant-a" },
+        run,
+      );
+    const inTenantB = <T>(run: () => T) =>
+      runWithRequestContext(
+        { requestId: "request-b", tenantId: "tenant-b" },
+        run,
+      );
+    const runPromise = inTenantA(() =>
+      pipeline.runPipeline({ sources: ["hiringcafe"] }),
+    );
+
+    await vi.waitFor(() => {
+      expect(inTenantA(() => pipeline.getPendingChallenges())).toHaveLength(1);
+    });
+    expect(vi.mocked(steps.importJobsStep)).not.toHaveBeenCalled();
+    expect(inTenantB(() => pipeline.getPendingChallenges())).toEqual([]);
+    expect(
+      inTenantB(() => pipeline.resolvePipelineChallenge("hiringcafe")),
+    ).toEqual({
+      resolved: false,
+      remaining: 0,
+    });
+
+    expect(
+      inTenantA(() => pipeline.resolvePipelineChallenge("hiringcafe")),
+    ).toEqual({
+      resolved: true,
+      remaining: 0,
+    });
+    await runPromise;
+
+    expect(vi.mocked(steps.discoverJobsStep)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(steps.discoverJobsStep)).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        retryChallengeUrls: {
+          hiringcafe: "https://hiringcafe.com/job/req-1",
+        },
+      }),
+    );
+    expect(vi.mocked(steps.importJobsStep)).toHaveBeenCalledWith({
+      discoveredJobs: [
+        expect.objectContaining({
+          sourceJobId: "req-1",
+          jobDescription: "Full detail description",
+        }),
+      ],
+    });
+  });
+
+  it("pauses again without importing partial jobs when a detail challenge returns after the solve", async () => {
+    const pipeline = await import("./orchestrator");
+    const steps = await import("./steps");
+    const partialJob = {
+      source: "hiringcafe",
+      sourceJobId: "req-1",
+      title: "Engineer",
+      employer: "Acme",
+      jobUrl: "https://hiringcafe.com/job/req-1",
+      jobDescription: "Listing summary",
+    };
+    const detailChallenge = {
+      extractorId: "hiringcafe",
+      extractorName: "Hiring Cafe",
+      url: "https://hiringcafe.com/job/req-1",
+      sources: ["hiringcafe" as const],
+      pauseOnRepeat: true,
+    };
+    vi.mocked(steps.discoverJobsStep)
+      .mockReset()
+      .mockResolvedValueOnce({
+        discoveredJobs: [partialJob],
+        sourceErrors: [],
+        pendingChallenges: [detailChallenge],
+      })
+      .mockResolvedValueOnce({
+        discoveredJobs: [partialJob],
+        sourceErrors: [],
+        pendingChallenges: [detailChallenge],
+      })
+      .mockResolvedValueOnce({
+        discoveredJobs: [
+          { ...partialJob, jobDescription: "Full detail description" },
+        ],
+        sourceErrors: [],
+        pendingChallenges: [],
+      });
+
+    const runPromise = pipeline.runPipeline({ sources: ["hiringcafe"] });
+    await vi.waitFor(() => {
+      expect(pipeline.getPendingChallenges()).toHaveLength(1);
+    });
+    pipeline.resolvePipelineChallenge("hiringcafe");
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(steps.discoverJobsStep)).toHaveBeenCalledTimes(2);
+      expect(pipeline.getPendingChallenges()).toHaveLength(1);
+    });
+    expect(vi.mocked(steps.importJobsStep)).not.toHaveBeenCalled();
+    pipeline.resolvePipelineChallenge("hiringcafe");
+
+    const result = await runPromise;
+    expect(result).toMatchObject({ success: true });
+    expect(vi.mocked(steps.discoverJobsStep)).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(steps.importJobsStep)).toHaveBeenCalledWith({
+      discoveredJobs: [
+        expect.objectContaining({ jobDescription: "Full detail description" }),
+      ],
+    });
+  });
+
+  it("fails an ordinary repeated challenge even when Hiring Cafe is also paused", async () => {
+    const pipeline = await import("./orchestrator");
+    const steps = await import("./steps");
+    const partialJob = {
+      source: "hiringcafe" as const,
+      sourceJobId: "req-1",
+      title: "Engineer",
+      employer: "Acme",
+      jobUrl: "https://hiringcafe.com/job/req-1",
+      jobDescription: "Listing summary",
+    };
+    const detailChallenge = {
+      extractorId: "hiringcafe",
+      extractorName: "Hiring Cafe",
+      url: "https://hiringcafe.com/job/req-1",
+      sources: ["hiringcafe" as const],
+      pauseOnRepeat: true,
+    };
+    vi.mocked(steps.discoverJobsStep)
+      .mockReset()
+      .mockResolvedValueOnce({
+        discoveredJobs: [partialJob],
+        sourceErrors: [],
+        pendingChallenges: [detailChallenge, challenge],
+      })
+      .mockResolvedValueOnce({
+        discoveredJobs: [partialJob],
+        sourceErrors: [],
+        pendingChallenges: [detailChallenge, challenge],
+      });
+
+    const runPromise = pipeline.runPipeline({
+      sources: ["hiringcafe", "gradcracker"],
+    });
+    await vi.waitFor(() => {
+      expect(pipeline.getPendingChallenges()).toHaveLength(2);
+    });
+    pipeline.resolvePipelineChallenge("hiringcafe");
+    pipeline.resolvePipelineChallenge("gradcracker");
+
+    const result = await runPromise;
+    expect(result).toMatchObject({
+      success: false,
+      error: expect.stringContaining("Gradcracker still returned"),
+    });
+    expect(vi.mocked(steps.discoverJobsStep)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(steps.importJobsStep)).not.toHaveBeenCalled();
   });
 });

@@ -121,6 +121,8 @@ export const manifest: ExtractorManifest = {
       proximity: context.locationIntent?.proximity ?? undefined,
       workplaceTypes: resolveContextWorkplaceTypes(context),
       maxJobsPerTerm,
+      retryChallengeUrl: context.retryChallengeUrl,
+      cookieStorageDir: context.cookieStorageDir,
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
         if (context.shouldCancel?.()) return;
@@ -141,6 +143,8 @@ export const manifest: ExtractorManifest = {
     return {
       success: true,
       jobs: result.jobs,
+      sourceErrors: result.sourceErrors,
+      challengeRequired: result.challengeRequired,
     };
   },
 };

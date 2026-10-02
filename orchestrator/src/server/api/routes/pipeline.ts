@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import {
   AppError,
   badRequest,
@@ -11,7 +10,6 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
-import { getDataDir } from "@server/config/dataDir";
 import { isDemoMode } from "@server/config/demo";
 import {
   type ExtractorRegistry,
@@ -43,6 +41,7 @@ import {
   resolveCountryAtPoint,
   resolveNearbyPlaceNames,
 } from "@server/services/proximity-search";
+import { getPrivateCloudflareCookieStorageDir } from "@server/tenancy/private-scope";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
   createLocationIntent,
@@ -825,7 +824,7 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
 
     // Cookies are runtime state, so keep them with the database/PDFs under
     // DATA_DIR rather than under extractor source directories.
-    const storageDir = join(getDataDir(), "cloudflare-cookies");
+    const storageDir = getPrivateCloudflareCookieStorageDir();
 
     // Dynamic import: browser-utils pulls in playwright which is heavy.
     // A top-level import would slow down every server startup even though

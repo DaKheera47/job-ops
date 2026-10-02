@@ -295,6 +295,8 @@ export interface PipelinePendingChallenge {
   extractorName: string;
   url: string;
   sources: ExtractorSourceId[];
+  /** Keep pausing for this source until its challenged detail page is retried. */
+  pauseOnRepeat?: boolean;
 }
 
 export interface PipelineFanoutRoleProgress {

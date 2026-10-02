@@ -91,9 +91,9 @@ describe("extractor deployment config", () => {
 
     expect(dockerfile).toContain("node ./scripts/camoufox-fetch.mjs");
     expect(fetchScript).toContain(
-      'import { downloadMMDB } from "camoufox-js/dist/locale.js";',
+      'import { downloadMmdb } from "@camoufox/camoufox/dist/geolocation.js";',
     );
-    expect(fetchScript).toContain("await downloadMMDB();");
+    expect(fetchScript).toContain("await downloadMmdb();");
   });
 
   it("syncs the Naukri extractor in compose development mode", async () => {

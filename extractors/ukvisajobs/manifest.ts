@@ -80,6 +80,7 @@ export const manifest: ExtractorManifest = {
       : 50;
 
     const result = await runUkVisaJobs({
+      cookieStorageDir: context.cookieStorageDir,
       maxJobs,
       searchTerms: context.searchTerms,
       onProgress: (event) => {

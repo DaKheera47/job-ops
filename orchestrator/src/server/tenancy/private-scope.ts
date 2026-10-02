@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { unauthorized } from "@infra/errors";
 import {
   getRequestContext,
@@ -5,6 +7,7 @@ import {
   requireTenantId,
 } from "@infra/request-context";
 import { getJobOpsAppConfig } from "@server/config/app-mode";
+import { getDataDir } from "@server/config/dataDir";
 import { and, eq, type SQL } from "drizzle-orm";
 import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { getActiveTenantId } from "./context";
@@ -41,6 +44,13 @@ export function getPrivateDataScope(): PrivateDataScope {
     scopeKey:
       enforceUserIsolation && userId ? `${tenantId}:${userId}` : tenantId,
   };
+}
+
+export function getPrivateCloudflareCookieStorageDir(): string {
+  const scopeHash = createHash("sha256")
+    .update(getPrivateDataScope().scopeKey)
+    .digest("hex");
+  return join(getDataDir(), "cloudflare-cookies", scopeHash);
 }
 
 export function requirePrivateTenantId(): string {

@@ -43,6 +43,7 @@ interface UkVisaJobsAuthSession {
 }
 
 export interface RunUkVisaJobsOptions {
+  cookieStorageDir?: string;
   maxJobs?: number;
   searchKeyword?: string;
   searchTerms?: string[];
@@ -305,6 +306,12 @@ export async function runUkVisaJobs(
             stdio: ["ignore", "pipe", "pipe"],
             env: {
               ...process.env,
+              ...(options.cookieStorageDir
+                ? {
+                    JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR:
+                      options.cookieStorageDir,
+                  }
+                : {}),
               JOBOPS_EMIT_PROGRESS: "1",
               UKVISAJOBS_MAX_JOBS: String(options.maxJobs ?? 50),
               UKVISAJOBS_SEARCH_KEYWORD: term,

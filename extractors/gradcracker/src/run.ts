@@ -67,6 +67,7 @@ export interface CrawlerResult {
 }
 
 export interface RunCrawlerOptions {
+  cookieStorageDir?: string;
   existingJobUrls?: string[];
   onProgress?: (update: JobExtractorProgress) => void;
   shouldCancel?: () => boolean;
@@ -496,10 +497,10 @@ export function parseGradcrackerDetailPage(
   };
 }
 
-async function createImpitFetch(): Promise<FetchLike> {
+async function createImpitFetch(cookieStorageDir?: string): Promise<FetchLike> {
   const persistedCookies = await createPersistedFetchCookieJar(
     EXTRACTOR_ID,
-    getCloudflareCookieStorageDir(),
+    getCloudflareCookieStorageDir(cookieStorageDir),
   );
   const headers = persistedCookies.userAgent
     ? { "user-agent": persistedCookies.userAgent }
@@ -625,7 +626,8 @@ async function mapWithConcurrency<T, R>(
 export async function runHttpCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
-  const rawFetchImpl = options.fetchImpl ?? (await createImpitFetch());
+  const rawFetchImpl =
+    options.fetchImpl ?? (await createImpitFetch(options.cookieStorageDir));
   const requestDelayMs = toNonNegativeIntOrFallback(
     options.requestDelayMs ??
       process.env.GRADCRACKER_HTTP_REQUEST_DELAY_MS ??
@@ -795,6 +797,11 @@ async function runBrowserCrawler(
         stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
+          ...(options.cookieStorageDir
+            ? {
+                JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR: options.cookieStorageDir,
+              }
+            : {}),
           JOBOPS_SKIP_APPLY_FOR_EXISTING: "1",
           JOBOPS_EMIT_PROGRESS: "1",
           GRADCRACKER_SEARCH_TERMS: options.searchTerms

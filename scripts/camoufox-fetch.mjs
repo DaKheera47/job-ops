@@ -1,5 +1,5 @@
-import { downloadMMDB } from "camoufox-js/dist/locale.js";
-import { CamoufoxFetcher } from "camoufox-js/dist/pkgman.js";
+import { CamoufoxFetcher } from "@camoufox/camoufox";
+import { downloadMmdb } from "@camoufox/camoufox/dist/geolocation.js";
 
 const githubToken = process.env.GITHUB_TOKEN?.trim() || "";
 const originalFetch = globalThis.fetch;
@@ -50,5 +50,5 @@ if (githubToken) {
   };
 }
 
-await new CamoufoxFetcher().install();
-await downloadMMDB();
+await (await new CamoufoxFetcher().init()).install();
+await downloadMmdb();
