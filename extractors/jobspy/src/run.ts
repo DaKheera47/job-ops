@@ -4,7 +4,14 @@ import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { resolveSearchCities } from "@shared/search-cities.js";
+import {
+  getCountryIso2Code,
+  normalizeCountryKey,
+} from "@shared/location-support.js";
+import {
+  matchesRequestedCountry,
+  resolveSearchCities,
+} from "@shared/search-cities.js";
 import type {
   CreateJobInput,
   JobLocationEvidence,
@@ -113,10 +120,22 @@ function toJsonStringOrNull(value: unknown): string | null {
 
 function buildLocationEvidence(
   location: string | null,
+  nativeCountry: string | null,
 ): JobLocationEvidence | undefined {
   if (!location) return undefined;
+  const parts = location.split(",").map((part) => part.trim());
+  const lastPart = parts.at(-1) ?? "";
+  // City/state pairs such as "San Francisco, CA" are not country evidence.
+  const explicitCountry =
+    parts.length !== 2 ||
+    lastPart.length > 2 ||
+    normalizeCountryKey(lastPart) !== lastPart.toLowerCase()
+      ? getCountryIso2Code(lastPart)
+      : null;
+  const country = explicitCountry ?? getCountryIso2Code(nativeCountry);
   return {
     location,
+    ...(country ? { country } : {}),
     source: "jobspy",
   };
 }
@@ -221,7 +240,13 @@ export function resolveJobSpySiteLocations(args: {
   // - Indeed and Glassdoor honor `country_indeed` directly, so we only pass a
   //   location when the user explicitly asked for a city/region.
   return {
-    linkedinLocation: location ?? countryIndeed,
+    linkedinLocation:
+      location &&
+      countryIndeed &&
+      getCountryIso2Code(countryIndeed) &&
+      !matchesRequestedCountry(location, countryIndeed)
+        ? `${location}, ${countryIndeed}`
+        : (location ?? countryIndeed),
     indeedLocation: location,
     glassdoorLocation: location,
   };
@@ -373,7 +398,7 @@ export async function runJobSpy(
 
         const raw = await readFile(outputJson, "utf-8");
         const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
-        const filtered = mapJobSpyRows(parsed);
+        const filtered = mapJobSpyRows(parsed, countryIndeed);
 
         for (const job of filtered) {
           if (seenJobUrls.has(job.jobUrl)) continue;
@@ -455,8 +480,9 @@ function slugForFilename(input: string): string {
   return slug || "term";
 }
 
-function mapJobSpyRows(
+export function mapJobSpyRows(
   parsed: Array<Record<string, unknown>>,
+  countryIndeed: string | null = null,
 ): CreateJobInput[] {
   const jobs: CreateJobInput[] = [];
 
@@ -488,6 +514,9 @@ function mapJobSpyRows(
       location: toStringOrNull(row.location) ?? undefined,
       locationEvidence: buildLocationEvidence(
         toStringOrNull(row.location) ?? null,
+        // LinkedIn's native query includes this country, but its result labels
+        // often omit it. Explicit returned country evidence takes precedence.
+        source === "linkedin" ? countryIndeed : null,
       ),
       jobDescription: toStringOrNull(row.description) ?? undefined,
       salary: salary ?? undefined,

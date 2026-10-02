@@ -113,6 +113,20 @@ describe("search-cities", () => {
     expect(matchesRequestedCountry("İstanbul, Türkiye", "turkey")).toBe(true);
   });
 
+  it.each([
+    "US",
+    "USA",
+    "us",
+    "usa",
+  ])("matches the %s country suffix without treating it as a subdivision", (suffix) => {
+    expect(
+      matchesRequestedCountry(`New York, NY, ${suffix}`, "united states"),
+    ).toBe(true);
+    expect(matchesRequestedCountry(`New York, NY, ${suffix}`, "canada")).toBe(
+      false,
+    );
+  });
+
   it("does not confuse country codes with subdivision abbreviations", () => {
     expect(matchesRequestedCountry("San Francisco, CA", "canada")).toBe(false);
     expect(matchesRequestedCountry("San Francisco, CA, US", "canada")).toBe(
