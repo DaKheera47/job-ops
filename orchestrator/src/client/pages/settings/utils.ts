@@ -22,6 +22,7 @@ export const formatSecretHint = (hint: string | null) =>
 
 export const LLM_PROVIDERS = [
   "atlascloud",
+  "litellm",
   "openrouter",
   "orcarouter",
   "requesty",
@@ -40,6 +41,7 @@ export const LLM_PROVIDERS = [
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "atlascloud",
+  "litellm",
   "openai",
   "anthropic",
   "glm",
@@ -53,6 +55,7 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   atlascloud: "Atlas Cloud",
+  litellm: "LiteLLM",
   openrouter: "OpenRouter",
   orcarouter: "OrcaRouter",
   requesty: "Requesty",
@@ -80,9 +83,13 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "gemini",
 ]);
 
-const PROVIDERS_WITH_OPTIONAL_API_KEY = new Set<LlmProviderId>(["ollama"]);
+const PROVIDERS_WITH_OPTIONAL_API_KEY = new Set<LlmProviderId>([
+  "litellm",
+  "ollama",
+]);
 
 const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
+  "litellm",
   "lmstudio",
   "ollama",
   "openai_compatible",
@@ -92,6 +99,8 @@ const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   atlascloud:
     "Atlas Cloud provides OpenAI-compatible access to hosted text models with one API key.",
+  litellm:
+    "LiteLLM is a self-hosted AI gateway: one endpoint for 100+ providers (OpenAI, Anthropic, Gemini, Bedrock, Azure, Vertex AI, Ollama) with virtual keys, budgets and fallbacks.",
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
   orcarouter:
@@ -123,6 +132,10 @@ const PROVIDER_KEY_HELPERS: Record<
   atlascloud: {
     text: "Create a key at atlascloud.ai",
     href: "https://www.atlascloud.ai/console/api-keys",
+  },
+  litellm: {
+    text: "Optional virtual key issued by your LiteLLM proxy",
+    href: "https://docs.litellm.ai/docs/proxy/virtual_keys",
   },
   openrouter: {
     text: "Create a key at openrouter.ai",
@@ -169,6 +182,7 @@ const PROVIDER_KEY_HELPERS: Record<
 };
 
 const BASE_URL_PROVIDERS = [
+  "litellm",
   "lmstudio",
   "ollama",
   "openai_compatible",
@@ -177,6 +191,7 @@ const BASE_URL_PROVIDERS = [
 type BaseUrlProviderId = (typeof BASE_URL_PROVIDERS)[number];
 
 const PROVIDER_BASE_URLS: Record<BaseUrlProviderId, string> = {
+  litellm: "http://localhost:4000",
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
   openai_compatible: "https://api.example.com/v1/chat/completions",
@@ -218,9 +233,11 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
   const baseUrlHelper = showBaseUrl
     ? normalizedProvider === "openai_compatible"
       ? "Enter a base URL or a full /v1/chat/completions endpoint."
-      : normalizedProvider === "ollama"
-        ? "Default: http://localhost:11434. From Docker Desktop, use http://host.docker.internal:11434. On Linux Docker, use a container-reachable host gateway such as http://172.17.0.1:11434."
-        : `Default: ${baseUrlPlaceholder}`
+      : normalizedProvider === "litellm"
+        ? "Default: http://localhost:4000. From Docker Desktop, use http://host.docker.internal:4000, or the proxy service name when both run in one Compose project."
+        : normalizedProvider === "ollama"
+          ? "Default: http://localhost:11434. From Docker Desktop, use http://host.docker.internal:11434. On Linux Docker, use a container-reachable host gateway such as http://172.17.0.1:11434."
+          : `Default: ${baseUrlPlaceholder}`
     : "";
   const providerHint = PROVIDER_HINTS[normalizedProvider];
   const keyHelper = PROVIDER_KEY_HELPERS[normalizedProvider];

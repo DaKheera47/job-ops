@@ -130,7 +130,9 @@ export function getDefaultModelForProvider(
     return DEFAULT_CODEX_MODEL;
   }
 
-  if (normalizedProvider === "ollama") {
+  // Both serve whatever the operator has installed or configured, so there
+  // is no model name that is right everywhere.
+  if (normalizedProvider === "ollama" || normalizedProvider === "litellm") {
     return "";
   }
   return DEFAULT_GEMINI_MODEL;

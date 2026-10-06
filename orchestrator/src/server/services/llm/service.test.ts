@@ -89,6 +89,20 @@ describe("LlmService provider normalization", () => {
     expect(llm.getBaseUrl()).toBe("https://api.atlascloud.ai");
   });
 
+  it("uses the configured LiteLLM proxy URL and an optional virtual key", () => {
+    const withKey = new LlmService({
+      provider: "litellm",
+      baseUrl: "http://litellm.internal:4000",
+      apiKey: "sk-virtual",
+    });
+    expect(withKey.getProvider()).toBe("litellm");
+    expect(withKey.getBaseUrl()).toBe("http://litellm.internal:4000");
+
+    const keyless = new LlmService({ provider: "litellm_proxy" });
+    expect(keyless.getProvider()).toBe("litellm");
+    expect(keyless.getBaseUrl()).toBe("http://localhost:4000");
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     const llm = new LlmService({
       provider: "openai-compatible",
@@ -353,6 +367,87 @@ describe("LlmService provider normalization", () => {
     const [requestedUrl] = fetchSpy.mock.calls[0] ?? [];
     expect(String(requestedUrl)).toBe(
       "https://api.atlascloud.ai/api/v1/models",
+    );
+  });
+
+  it("lists LiteLLM chat deployments from /model/info", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { model_name: "claude-sonnet", model_info: { mode: "chat" } },
+            { model_name: "claude-sonnet", model_info: { mode: "chat" } },
+            { model_name: "gpt-4.1-mini", model_info: { mode: null } },
+            {
+              model_name: "text-embedding-3-small",
+              model_info: { mode: "embedding" },
+            },
+            {
+              model_name: "gemini-2.5-flash-image",
+              model_info: { mode: "image_generation" },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const llm = new LlmService({
+      provider: "litellm",
+      baseUrl: "http://localhost:4000/v1/",
+      apiKey: "sk-virtual",
+    });
+    const models = await llm.listModels();
+
+    expect(models).toEqual(["claude-sonnet", "gpt-4.1-mini"]);
+    const [requestedUrl, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(requestedUrl)).toBe("http://localhost:4000/model/info");
+    expect((init?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer sk-virtual",
+    );
+  });
+
+  it("falls back to /v1/models when a LiteLLM key cannot read /model/info", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "forbidden" } }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: [{ id: "claude-sonnet" }, { id: "" }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    const llm = new LlmService({ provider: "litellm" });
+    const models = await llm.listModels();
+
+    expect(models).toEqual(["claude-sonnet"]);
+    const [requestedUrl, init] = fetchSpy.mock.calls[1] ?? [];
+    expect(String(requestedUrl)).toBe("http://localhost:4000/v1/models");
+    expect(
+      (init?.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
+  });
+
+  it("reports the LiteLLM proxy error when no model list is readable", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ error: { message: "Invalid proxy server token" } }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    const llm = new LlmService({ provider: "litellm", apiKey: "sk-bad" });
+
+    await expect(llm.listModels()).rejects.toThrow(
+      "Invalid proxy server token",
     );
   });
 

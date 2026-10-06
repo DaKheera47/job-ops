@@ -195,6 +195,7 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
           "claude",
           "claude_cli",
           "ollama",
+          "litellm",
           "codex",
         ],
       },

@@ -6,6 +6,7 @@ import { codexStrategy } from "./codex";
 import { geminiStrategy } from "./gemini";
 import { geminiCliStrategy } from "./gemini_cli";
 import { glmStrategy } from "./glm";
+import { liteLlmStrategy } from "./litellm";
 import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
@@ -16,6 +17,7 @@ import { requestyStrategy } from "./requesty";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
   atlascloud: atlasCloudStrategy,
+  litellm: liteLlmStrategy,
   openrouter: openRouterStrategy,
   orcarouter: orcaRouterStrategy,
   requesty: requestyStrategy,

@@ -8,6 +8,7 @@ describe("resolveLlmApiKey", () => {
     process.env = { ...originalEnv };
     delete process.env.LLM_API_KEY;
     delete process.env.ATLASCLOUD_API_KEY;
+    delete process.env.LITELLM_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
   });
@@ -65,6 +66,14 @@ describe("resolveLlmApiKey", () => {
         provider: "atlascloud",
       }),
     ).toBe("atlas-test");
+  });
+
+  it("falls back to LITELLM_API_KEY for the LiteLLM proxy", async () => {
+    process.env.LITELLM_API_KEY = "sk-virtual";
+    const { resolveLlmApiKey } = await loadResolver();
+
+    expect(resolveLlmApiKey({ provider: "litellm" })).toBe("sk-virtual");
+    expect(resolveLlmApiKey({ provider: "atlascloud" })).toBeNull();
   });
 
   it("falls back to ORCAROUTER_API_KEY for orcarouter providers", async () => {

@@ -43,6 +43,7 @@ type SupportedRuntimeProvider =
   | "openai"
   | "openrouter"
   | "orcarouter"
+  | "litellm"
   | "glm"
   | "gemini"
   | "gemini_cli"
@@ -347,6 +348,9 @@ function normalizeRuntimeProvider(
   if (normalized === "orcarouter" || normalized === "orca_router") {
     return "orcarouter";
   }
+  if (normalized === "litellm" || normalized === "litellm_proxy") {
+    return "litellm";
+  }
   const mapped = mapGlmProviderAlias(normalized ?? "");
   if (mapped === "glm") return "glm";
   if (mapped === "gemini") return "gemini";
@@ -475,7 +479,13 @@ function appendVersionedPath(baseUrl: string, path: string): string {
 
 function resolveChatCompletionsUrl(
   baseUrlOrEndpoint: string,
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter",
+  provider:
+    | "openai_compatible"
+    | "glm"
+    | "ollama"
+    | "lmstudio"
+    | "orcarouter"
+    | "litellm",
 ): string {
   const normalized = normalizeBaseUrlOrEndpoint(baseUrlOrEndpoint);
   if (
@@ -1166,6 +1176,7 @@ function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
     provider === "ollama" ||
     provider === "lmstudio" ||
     provider === "orcarouter" ||
+    provider === "litellm" ||
     provider === "codex"
   );
 }
@@ -1500,17 +1511,30 @@ async function extractWithGemini(args: {
 }
 
 function getDefaultChatCompletionsBaseUrl(
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter",
+  provider:
+    | "openai_compatible"
+    | "glm"
+    | "ollama"
+    | "lmstudio"
+    | "orcarouter"
+    | "litellm",
 ): string {
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "glm") return "https://api.z.ai/api/paas/v4";
   if (provider === "orcarouter") return "https://api.orcarouter.ai/v1";
+  if (provider === "litellm") return "http://localhost:4000";
   return "https://api.openai.com";
 }
 
 async function extractWithTextChatCompletions(args: {
-  provider: "openai_compatible" | "glm" | "ollama" | "lmstudio" | "orcarouter";
+  provider:
+    | "openai_compatible"
+    | "glm"
+    | "ollama"
+    | "lmstudio"
+    | "orcarouter"
+    | "litellm";
   apiKey: string | null;
   baseUrl: string | null;
   model: string;
@@ -1804,7 +1828,8 @@ async function extractResumeFromProvider(args: {
     args.provider === "glm" ||
     args.provider === "ollama" ||
     args.provider === "lmstudio" ||
-    args.provider === "orcarouter"
+    args.provider === "orcarouter" ||
+    args.provider === "litellm"
   ) {
     const text = args.documentText?.trim();
     if (!text) {

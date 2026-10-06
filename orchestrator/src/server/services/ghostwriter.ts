@@ -339,6 +339,7 @@ async function imageInputCapabilityReason(
 
   if (
     provider === "atlascloud" ||
+    provider === "litellm" ||
     provider === "openrouter" ||
     provider === "orcarouter" ||
     provider === "openai_compatible" ||
