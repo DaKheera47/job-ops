@@ -34,6 +34,10 @@ export interface ExtractorRuntimeContext {
   settings: Record<string, string | undefined>;
   searchTerms: string[];
   selectedCountry: string;
+  /** Tenant-scoped directory for browser challenge cookies. */
+  cookieStorageDir?: string;
+  /** Challenged URL from this run's earlier paused discovery attempt. */
+  retryChallengeUrl?: string;
   locationIntent?: LocationIntent;
   sourceLocationPlan?: SourceLocationPlan;
   getExistingJobUrls?: () => Promise<string[]>;
@@ -46,9 +50,8 @@ export interface ExtractorRunResult {
   jobs: CreateJobInput[];
   error?: string;
   sourceErrors?: string[];
-  /** When set, the extractor failed because a Cloudflare challenge couldn't be
-   *  solved headless. The value is the URL that needs a human to solve it in a
-   *  headed browser. The pipeline should pause and prompt the user. */
+  /** URL that needs a human solve. A successful result may include partial jobs
+   *  while the pipeline pauses and retries the challenged source. */
   challengeRequired?: string;
 }
 

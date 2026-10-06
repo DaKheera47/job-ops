@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createPersistedFetchCookieJar,
   getCloudflareCookieStorageDir,
@@ -52,12 +52,22 @@ function writeCookieJar(
 
 describe("cookies", () => {
   const originalDataDir = process.env.DATA_DIR;
+  const originalCookieDir = process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR;
+
+  beforeEach(() => {
+    delete process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR;
+  });
 
   afterEach(() => {
     if (originalDataDir === undefined) {
       delete process.env.DATA_DIR;
     } else {
       process.env.DATA_DIR = originalDataDir;
+    }
+    if (originalCookieDir === undefined) {
+      delete process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR;
+    } else {
+      process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR = originalCookieDir;
     }
   });
 
@@ -73,6 +83,15 @@ describe("cookies", () => {
       process.env.DATA_DIR = "/tmp/job-ops-data";
       expect(getCloudflareCookieStorageDir("/tmp/custom-cookies")).toBe(
         "/tmp/custom-cookies",
+      );
+    });
+
+    it("uses the scoped directory passed to extractor child processes", () => {
+      process.env.DATA_DIR = "/tmp/job-ops-data";
+      process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR = "/tmp/tenant-cookies";
+      expect(getCloudflareCookieStorageDir()).toBe("/tmp/tenant-cookies");
+      expect(getCloudflareCookieStorageDir("/tmp/explicit-cookies")).toBe(
+        "/tmp/explicit-cookies",
       );
     });
   });

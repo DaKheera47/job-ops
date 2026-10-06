@@ -50,6 +50,11 @@ export interface PersistedFetchCookieJarInfo extends CookieJarInfo {
 export function getCloudflareCookieStorageDir(storageDir?: string): string {
   if (storageDir) return storageDir;
 
+  const fromEnv = (
+    process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR || ""
+  ).trim();
+  if (fromEnv) return fromEnv;
+
   const dataDir = (process.env.DATA_DIR || "").trim();
   if (dataDir) return join(dataDir, DATA_DIR_COOKIE_STORAGE_DIRNAME);
 

@@ -6,6 +6,7 @@ import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import { resolveNearbyPlaceNames } from "@server/services/proximity-search";
+import { getPrivateCloudflareCookieStorageDir } from "@server/tenancy/private-scope";
 import { asyncPool } from "@server/utils/async-pool";
 import { listHydratedWatchlistSelectedSources } from "@server/watchlist/results";
 import type { ExtractorSourceId } from "@shared/extractors";
@@ -153,6 +154,7 @@ export async function discoverJobsStep(args: {
   includeWatchlist?: boolean;
   preserveFanout?: boolean;
   fanoutSeedJobs?: CreateJobInput[];
+  retryChallengeUrls?: Record<string, string>;
   watchlistSelectedSourceIds?: string[] | null;
   shouldCancel?: () => boolean;
 }): Promise<{
@@ -326,6 +328,8 @@ export async function discoverJobsStep(args: {
           settings: filteredSettings,
           searchTerms,
           selectedCountry: getLegacyLocationSelection(locationIntent),
+          cookieStorageDir: getPrivateCloudflareCookieStorageDir(),
+          retryChallengeUrl: args.retryChallengeUrls?.[manifest.id],
           locationIntent,
           sourceLocationPlan: getSourceLocationPlan(
             grouped.sources[0] as CrawlSource,
@@ -398,6 +402,15 @@ export async function discoverJobsStep(args: {
         return {
           discoveredJobs: result.jobs,
           sourceErrors: result.sourceErrors ?? [],
+          challenge: result.challengeRequired
+            ? {
+                extractorId: manifest.id,
+                extractorName: manifest.displayName || manifest.id,
+                url: result.challengeRequired,
+                sources: grouped.sources as ExtractorSourceId[],
+                pauseOnRepeat: true,
+              }
+            : undefined,
         };
       },
     });

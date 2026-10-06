@@ -5,7 +5,7 @@ export interface BrowserLaunchOptions {
   headless?: boolean;
   /** Enable Camoufox humanization — random mouse movements, typing delays (default true) */
   humanize?: boolean;
-  /** Spoof geolocation based on IP (default true) */
+  /** Spoof geolocation based on IP (default false) */
   geoip?: boolean;
   /** Block WebRTC to prevent IP leaks (default true) */
   block_webrtc?: boolean;
@@ -16,7 +16,9 @@ export interface BrowserLaunchOptions {
 const DEFAULTS: Required<Omit<BrowserLaunchOptions, "args">> = {
   headless: true,
   humanize: true,
-  geoip: true,
+  // The current Camoufox GeoIP reader fails with its bundled maxmind API.
+  // Let the browser use its real network location until upstream fixes it.
+  geoip: false,
   block_webrtc: true,
   // block_images intentionally NOT set — camoufox docs warn it triggers WAF
   // detection because CF checks whether images are loaded by the browser
@@ -41,7 +43,7 @@ export async function createLaunchOptions(
 ): Promise<{ launchOptions: LaunchOptions; usedCamoufox: true }> {
   const merged = { ...DEFAULTS, ...options };
 
-  const { launchOptions } = await import("camoufox-js");
+  const { launchOptions } = await import("@camoufox/camoufox");
 
   const opts = await launchOptions({
     headless: merged.headless,

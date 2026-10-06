@@ -1,7 +1,7 @@
 ---
 id: hiring-cafe
 title: Hiring Cafe Extractor
-description: Browser-backed Hiring Cafe extraction integrated into the pipeline source selector.
+description: Hiring Cafe search extraction integrated into the pipeline source selector.
 sidebar_position: 7
 ---
 
@@ -11,12 +11,13 @@ Original website: [hiring.cafe](https://hiring.cafe)
 
 Special thanks: Initial implementation inspiration came from [umur957/hiring-cafe-job-scraper](https://github.com/umur957/hiring-cafe-job-scraper).
 
-Hiring Cafe is a browser-backed extractor that queries Hiring Cafe search APIs and maps results into the orchestrator `CreateJobInput` shape.
+Hiring Cafe reads search and job detail pages and maps results into pipeline jobs.
 
 Implementation split:
 
-1. `extractors/hiringcafe/src/main.ts` builds search state, calls Hiring Cafe APIs, fetches job detail pages when search hits omit full descriptions, and writes dataset JSON.
-2. `orchestrator/src/server/services/hiring-cafe.ts` runs the extractor, streams progress events, and maps rows for pipeline import.
+1. The extractor builds search state and reads search pages.
+2. When a search hit lacks a full description, it requests the job detail page.
+3. The pipeline imports the mapped jobs and shows source warnings.
 
 ## Why it exists
 
@@ -42,6 +43,8 @@ Defaults and constraints:
 - `worldwide` and `usa/ca` run in broad mode without a strict country location filter.
 - Hiring Cafe is enabled by default in source selection.
 - Full job descriptions are loaded from Hiring Cafe detail pages when the search result payload only includes summary fields.
+- If a job detail page is challenged, the extractor keeps all search results and pauses the pipeline for a human solve. After the solve, it retries the challenged detail URL and reruns Hiring Cafe before importing jobs. A source warning includes the upstream HTTP status when available. If another detail request is challenged, the pipeline pauses again and keeps the collected jobs until that challenge is resolved.
+- A challenge on a search page still requires the solver because search results cannot be collected from that page.
 - The normalized job payload now preserves structured location evidence from the formatted workplace and city/state/country fields.
 - `HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS` controls recency window when running extractor directly (default `7`).
 - In the default Map radius mode, Hiring Cafe receives the selected coordinates and radius directly (default `50` miles).
@@ -62,8 +65,8 @@ npm --workspace hiringcafe-extractor run start
 
 ### Hiring Cafe returns 429 / Vercel security checkpoint
 
-- The extractor first attempts Camoufox-backed Firefox and falls back to vanilla Firefox startup if Camoufox is unstable locally.
-- If upstream blocks continue, retry later or reduce run concurrency at the pipeline level by selecting fewer sources.
+- If a detail request is challenged, solve the challenge in the offered browser. The pipeline keeps the listing results while paused, retries the detail URL afterward, and imports the richer description when the retry succeeds. Check the source warning for the HTTP status; a `429` usually means rate limiting. If a detail request remains challenged, the pipeline pauses again instead of importing partial descriptions.
+- If a search page is challenged, use the offered browser solver. The solve only succeeds when a reusable clearance cookie is saved. If no clearance cookie is issued, retry later.
 
 ### Hiring Cafe does not appear in sources
 

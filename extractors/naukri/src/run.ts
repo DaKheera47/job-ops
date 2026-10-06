@@ -68,6 +68,7 @@ export type NaukriProgressEvent =
     };
 
 export interface RunNaukriOptions {
+  cookieStorageDir?: string;
   searchTerms?: string[];
   locations?: string[];
   existingJobUrls?: string[];
@@ -370,11 +371,11 @@ function resolveRunLocations(
   return normalized;
 }
 
-async function launchBrowser(): Promise<{
+async function launchBrowser(cookieStorageDir?: string): Promise<{
   browser: Browser;
   userAgent?: string;
 }> {
-  const storageDir = getCloudflareCookieStorageDir();
+  const storageDir = getCloudflareCookieStorageDir(cookieStorageDir);
   const cookieJar = await readCookieJar(EXTRACTOR_ID, storageDir);
   const { launchOptions } = await createLaunchOptions({ headless: true });
   const browser = await firefox.launch(launchOptions);
@@ -390,13 +391,14 @@ async function collectForTerm(params: {
   freshness: NaukriFreshness;
   onPage: (pageNo: number, jobs: CreateJobInput[]) => void;
   shouldCancel?: () => boolean;
+  cookieStorageDir?: string;
 }): Promise<{ jobs: CreateJobInput[]; challengeRequired?: string }> {
   const searchPageUrl = makeSearchPageUrl({
     keyword: params.searchTerm,
     age: params.freshness,
     location: params.location,
   });
-  const storageDir = getCloudflareCookieStorageDir();
+  const storageDir = getCloudflareCookieStorageDir(params.cookieStorageDir);
   const context = await params.browser.newContext({
     viewport: { width: 1440, height: 900 },
     ...(params.userAgent ? { userAgent: params.userAgent } : {}),
@@ -482,7 +484,7 @@ export async function runNaukri(
   let userAgent: string | undefined;
 
   try {
-    const launched = await launchBrowser();
+    const launched = await launchBrowser(options.cookieStorageDir);
     browser = launched.browser;
     userAgent = launched.userAgent;
 
@@ -508,6 +510,7 @@ export async function runNaukri(
         const result = await collectForTerm({
           browser,
           userAgent,
+          cookieStorageDir: options.cookieStorageDir,
           searchTerm,
           location,
           maxJobsPerTerm,

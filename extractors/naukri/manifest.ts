@@ -75,6 +75,7 @@ export const manifest: ExtractorManifest = {
     const existingJobUrls = await context.getExistingJobUrls?.();
 
     const result = await runNaukri({
+      cookieStorageDir: context.cookieStorageDir,
       searchTerms: context.searchTerms,
       locations: resolveSearchCities({
         list: context.sourceLocationPlan?.requestedCities,
