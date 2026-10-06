@@ -131,11 +131,10 @@ function matchesRequestedCountryCode(
     .split(",")
     .map((part) => normalizeLocationToken(part))
     .filter(Boolean);
-  const normalizedCode = countryCode.toLowerCase();
 
   // A two-part location is ambiguous: city/country and city/subdivision use
   // the same shape (Berlin, DE vs Wilmington, DE).
-  return parts.length !== 2 && parts.at(-1) === normalizedCode;
+  return parts.length !== 2 && getCountryIso2Code(parts.at(-1)) === countryCode;
 }
 
 export function matchesRequestedCountry(

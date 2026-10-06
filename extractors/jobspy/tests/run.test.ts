@@ -1,6 +1,8 @@
+import { matchJobLocationIntent } from "@shared/job-matching.js";
 import { describe, expect, it } from "vitest";
 import {
   deriveIsRemoteFlag,
+  mapJobSpyRows,
   parseJobSpyProgressLine,
   resolveJobSpyCountryIndeed,
   resolveJobSpyLocations,
@@ -98,9 +100,115 @@ describe("parseJobSpyProgressLine", () => {
         countryIndeed: "croatia",
       }),
     ).toEqual({
-      linkedinLocation: "Zagreb",
+      linkedinLocation: "Zagreb, croatia",
       indeedLocation: "Zagreb",
       glassdoorLocation: "Zagreb",
     });
+  });
+});
+
+describe("LinkedIn country-qualified queries", () => {
+  it("does not append a duplicate or worldwide country", () => {
+    expect(
+      resolveJobSpySiteLocations({
+        location: "New York, NY, US",
+        countryIndeed: "united states",
+      }).linkedinLocation,
+    ).toBe("New York, NY, US");
+    expect(
+      resolveJobSpySiteLocations({
+        location: "New York",
+        countryIndeed: "worldwide",
+      }).linkedinLocation,
+    ).toBe("New York");
+    expect(
+      resolveJobSpySiteLocations({ location: "New York", countryIndeed: null })
+        .linkedinLocation,
+    ).toBe("New York");
+  });
+});
+
+describe("JobSpy location evidence", () => {
+  const row = {
+    site: "linkedin",
+    job_url: "https://example.com/job",
+    title: "Engineer",
+    company: "Example",
+    location: "New York, NY",
+  };
+  const intent = {
+    selectedCountry: "united states",
+    country: "united states",
+    cityLocations: ["New York City"],
+    workplaceTypes: ["onsite" as const],
+    geoScope: "selected_only" as const,
+    searchScope: "selected_only" as const,
+    matchStrictness: "flexible" as const,
+  };
+
+  it("keeps country-less LinkedIn results from country-qualified searches", () => {
+    const [job] = mapJobSpyRows([row], "united states");
+    expect(job.locationEvidence).toMatchObject({
+      location: "New York, NY",
+      country: "US",
+    });
+    expect(matchJobLocationIntent(job, intent).matched).toBe(true);
+  });
+
+  it.each(["US", "USA"])("keeps Indeed locations ending in %s", (suffix) => {
+    const [job] = mapJobSpyRows(
+      [{ ...row, site: "indeed", location: `New York, NY, ${suffix}` }],
+      "united states",
+    );
+    expect(matchJobLocationIntent(job, intent).matched).toBe(true);
+  });
+
+  it("preserves explicit foreign countries over the LinkedIn search country", () => {
+    for (const location of [
+      "Toronto, Canada",
+      "Toronto, ON, CA",
+      "Berlin, Germany",
+      "Berlin, BE, DE",
+      "London, UK",
+    ]) {
+      const [job] = mapJobSpyRows([{ ...row, location }], "united states");
+      expect(matchJobLocationIntent(job, intent).matched).toBe(false);
+    }
+  });
+
+  it("does not interpret a US state abbreviation as country evidence", () => {
+    const [job] = mapJobSpyRows(
+      [{ ...row, location: "San Francisco, CA" }],
+      "united states",
+    );
+    expect(job.locationEvidence?.country).toBe("US");
+  });
+
+  it("does not manufacture country evidence for unknown or unscoped locations", () => {
+    expect(mapJobSpyRows([row])[0].locationEvidence?.country).toBeUndefined();
+    expect(
+      mapJobSpyRows([row], "worldwide")[0].locationEvidence?.country,
+    ).toBeUndefined();
+    expect(
+      mapJobSpyRows([{ ...row, location: null }], "united states")[0]
+        .locationEvidence,
+    ).toBeUndefined();
+    expect(
+      mapJobSpyRows([{ ...row, site: "indeed" }], "united states")[0]
+        .locationEvidence?.country,
+    ).toBeUndefined();
+  });
+
+  it("keeps country evidence isolated between workspace search contexts", () => {
+    const [usJob] = mapJobSpyRows([row], "united states");
+    const [caJob] = mapJobSpyRows(
+      [{ ...row, location: "Toronto, ON" }],
+      "canada",
+    );
+    const [unscopedJob] = mapJobSpyRows([row]);
+    expect(usJob.locationEvidence?.country).toBe("US");
+    expect(caJob.locationEvidence?.country).toBe("CA");
+    expect(unscopedJob.locationEvidence?.country).toBeUndefined();
+    expect(usJob.locationEvidence?.country).toBe("US");
   });
 });
