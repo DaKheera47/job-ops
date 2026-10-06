@@ -44,6 +44,7 @@ vi.mock("./pdf-fingerprint", () => ({
     designResumeUpdatedAt: null,
     pdfRenderer: "latex",
     typstTheme: "classic",
+    pdfPaperSize: "auto",
     rxresumeBaseResumeId: null,
     resumeProjects: {
       maxProjects: 3,
@@ -89,6 +90,7 @@ describe("auto PDF regeneration", () => {
       designResumeUpdatedAt: null,
       pdfRenderer: "latex",
       typstTheme: "classic",
+      pdfPaperSize: "auto",
       rxresumeBaseResumeId: null,
       resumeProjects: {
         maxProjects: 3,
@@ -246,6 +248,30 @@ describe("auto PDF regeneration", () => {
     );
   });
 
+  it("enqueues paper size changes regardless of the active renderer", async () => {
+    mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([
+      createJob({
+        id: "job-1",
+        status: "ready",
+        pdfPath: "data/pdfs/job-1.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
+    ]);
+
+    const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
+      updatedSettingKeys: ["pdfPaperSize"],
+      requestedBy: "user",
+    });
+
+    expect(enqueued).toBe(1);
+    expect(mocks.enqueue).toHaveBeenCalledWith(
+      "auto_pdf_regeneration",
+      expect.objectContaining({ jobId: "job-1", reason: "settings_changed" }),
+      expect.anything(),
+    );
+  });
+
   it("skips Typst theme-only setting changes when Typst is not active", async () => {
     const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
       updatedSettingKeys: ["typstTheme"],
@@ -265,6 +291,7 @@ describe("auto PDF regeneration", () => {
       designResumeUpdatedAt: null,
       pdfRenderer: "typst",
       typstTheme: "compact",
+      pdfPaperSize: "auto",
       rxresumeBaseResumeId: null,
       resumeProjects: {
         maxProjects: 3,

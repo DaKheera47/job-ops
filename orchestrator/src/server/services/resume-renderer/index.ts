@@ -1,4 +1,4 @@
-import type { PdfRenderer, TypstTheme } from "@shared/types";
+import type { PdfPaperSize, PdfRenderer, TypstTheme } from "@shared/types";
 import { buildResumeRenderDocument } from "./document";
 import { renderLatexPdf } from "./latex";
 import type { NormalizeResumeJsonOptions } from "./types";
@@ -26,6 +26,7 @@ export async function renderResumePdf(args: {
   language?: NormalizeResumeJsonOptions["language"];
   renderer?: LocalPdfRenderer;
   typstTheme?: TypstTheme;
+  paperSize?: PdfPaperSize;
 }): Promise<void> {
   const document = buildResumeRenderDocument(args.resumeJson, {
     language: args.language,
@@ -36,6 +37,7 @@ export async function renderResumePdf(args: {
       outputPath: args.outputPath,
       jobId: args.jobId,
       typstTheme: args.typstTheme,
+      paperSize: args.paperSize,
     });
     return;
   }
@@ -44,5 +46,6 @@ export async function renderResumePdf(args: {
     document,
     outputPath: args.outputPath,
     jobId: args.jobId,
+    paperSize: args.paperSize,
   });
 }

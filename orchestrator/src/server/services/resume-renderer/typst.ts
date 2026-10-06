@@ -6,7 +6,11 @@ import { join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
-import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
+import {
+  type PdfPaperSize,
+  TYPST_THEME_VALUES,
+  type TypstTheme,
+} from "@shared/types";
 import { getLatexResumeSectionTitles } from "./document";
 import { materializeResumePicture } from "./picture";
 import type {
@@ -24,6 +28,11 @@ const TYPST_TIMEOUT_MS = 120_000;
 const OUTPUT_FILENAME = "resume.pdf";
 const RESUME_DATA_FILENAME = "resume-data.json";
 const THEME_MANIFEST_FILENAME = "theme.json";
+const TYPST_PAPER_NAMES: Record<PdfPaperSize, string> = {
+  auto: "a4",
+  a4: "a4",
+  letter: "us-letter",
+};
 
 const REQUIRED_NATIVE_TOKEN_KEYS = [
   "pageMargin",
@@ -543,21 +552,27 @@ async function loadTemplate(theme: TypstTheme): Promise<{
   return { manifest, template, tokens };
 }
 
-function replaceSharedTypstPlaceholders(template: string): string {
-  return template.replaceAll(
-    "__RESUME_DATA_PATH__",
-    JSON.stringify(RESUME_DATA_FILENAME),
-  );
+function replaceSharedTypstPlaceholders(
+  template: string,
+  paperSize: PdfPaperSize,
+): string {
+  return template
+    .replaceAll("__RESUME_DATA_PATH__", JSON.stringify(RESUME_DATA_FILENAME))
+    .replaceAll("__PAGE_PAPER__", JSON.stringify(TYPST_PAPER_NAMES[paperSize]));
 }
 
-function buildAdaptedTypstDocument(template: string): string {
-  return replaceSharedTypstPlaceholders(template);
+function buildAdaptedTypstDocument(
+  template: string,
+  paperSize: PdfPaperSize,
+): string {
+  return replaceSharedTypstPlaceholders(template, paperSize);
 }
 
 export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
   tokens: TypstThemeTokens,
+  paperSize: PdfPaperSize = "auto",
 ): string {
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const pictureBlock = renderPictureBlock(document);
@@ -577,7 +592,7 @@ export function buildTypstDocument(
     .filter(Boolean)
     .join("\n\n");
 
-  return replaceSharedTypstPlaceholders(template)
+  return replaceSharedTypstPlaceholders(template, paperSize)
     .replace("__PAGE_MARGIN__", tokens.pageMargin)
     .replace("__BODY_SIZE__", tokens.bodySize)
     .replace("__PAR_LEADING__", tokens.parLeading)
@@ -702,7 +717,13 @@ export function convertDocFieldsToTypst(
 }
 
 export const typstResumeRenderer: ResumeRenderer = {
-  async render({ document, outputPath, jobId, typstTheme = "classic" }) {
+  async render({
+    document,
+    outputPath,
+    jobId,
+    typstTheme = "classic",
+    paperSize = "auto",
+  }) {
     const tempDir = await mkdtemp(join(tmpdir(), "job-ops-resume-render-"));
     const typPath = join(tempDir, "resume.typ");
     const resumeDataPath = join(tempDir, RESUME_DATA_FILENAME);
@@ -723,10 +744,15 @@ export const typstResumeRenderer: ResumeRenderer = {
             `Typst theme ${typstTheme} is missing native tokens.`,
           );
         }
-        typst = buildTypstDocument(renderableDocument, template, tokens);
+        typst = buildTypstDocument(
+          renderableDocument,
+          template,
+          tokens,
+          paperSize,
+        );
         resumeDataDoc = renderableDocument;
       } else {
-        typst = buildAdaptedTypstDocument(template);
+        typst = buildAdaptedTypstDocument(template, paperSize);
         resumeDataDoc = convertDocFieldsToTypst(renderableDocument);
       }
 
@@ -788,6 +814,7 @@ export async function renderTypstPdf(args: {
   outputPath: string;
   jobId: string;
   typstTheme?: TypstTheme;
+  paperSize?: PdfPaperSize;
 }): Promise<void> {
   await typstResumeRenderer.render(args);
 }

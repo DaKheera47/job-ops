@@ -5,6 +5,7 @@ import * as projectSelection from "./projectSelection";
 // Define mock data in hoisted block
 const {
   currentLanguageSettings,
+  currentPdfPaperSize,
   currentPdfRenderer,
   mocks,
   mockProfile,
@@ -212,6 +213,7 @@ const {
       mode: "manual" as "manual" | "match-resume" | "match-job-description",
       manual: "english" as "english" | "german" | "french" | "spanish",
     },
+    currentPdfPaperSize: { value: null as "auto" | "a4" | "letter" | null },
     currentPdfRenderer: { value: "latex" as "latex" | "rxresume" | "typst" },
     mockProfile: profile,
     mocks: {
@@ -280,6 +282,9 @@ vi.mock("node:fs", () => ({
 vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockImplementation((key: string) => {
     if (key === "pdfRenderer") return Promise.resolve(currentPdfRenderer.value);
+    if (key === "pdfPaperSize") {
+      return Promise.resolve(currentPdfPaperSize.value);
+    }
     if (key === "chatStyleLanguageMode") {
       return Promise.resolve(currentLanguageSettings.mode);
     }
@@ -431,6 +436,7 @@ describe("PDF Service Tailoring Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentPdfRenderer.value = "latex";
+    currentPdfPaperSize.value = null;
     currentLanguageSettings.mode = "manual";
     currentLanguageSettings.manual = "english";
     mockProfile.summary.content = "Original Summary";
@@ -643,6 +649,116 @@ describe("PDF Service Tailoring Logic", () => {
         typstTheme: "classic",
       }),
     );
+  });
+
+  it("leaves the paper size to the local renderer when none is configured", async () => {
+    await generatePdf("job-default-paper", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-default-paper",
+        paperSize: "auto",
+      }),
+    );
+  });
+
+  it.each([
+    "latex",
+    "typst",
+  ] as const)("passes the configured paper size to the local %s renderer", async (renderer) => {
+    currentPdfRenderer.value = renderer;
+    currentPdfPaperSize.value = "letter";
+
+    await generatePdf("job-letter-paper", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-letter-paper",
+        renderer,
+        paperSize: "letter",
+      }),
+    );
+  });
+
+  it("passes the configured paper size when rendering the Design Resume preview", async () => {
+    currentPdfPaperSize.value = "a4";
+
+    const designResume = await import("./design-resume");
+    vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
+      id: "design-resume-1",
+      title: "Jane Doe",
+      sourceResumeId: null,
+      sourceMode: "v5",
+      importedAt: "2026-05-02T00:00:00.000Z",
+      updatedAt: "2026-05-02T00:00:00.000Z",
+      revision: 1,
+      resumeJson: mockProfile,
+    } as any);
+
+    await generateDesignResumePdf();
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({ paperSize: "a4" }),
+    );
+  });
+
+  it("sends the configured paper size to Reactive Resume as the page format", async () => {
+    currentPdfRenderer.value = "rxresume";
+    currentPdfPaperSize.value = "letter";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => new TextEncoder().encode("pdf-bytes").buffer,
+      }),
+    );
+
+    const rxresume = await import("./rxresume");
+
+    try {
+      await generatePdf("job-rxresume-letter", {}, "desc");
+
+      expect(rxresume.importResume).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              page: expect.objectContaining({ format: "letter" }),
+            }),
+          }),
+        }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the resume's own page format for Reactive Resume when no paper size is configured", async () => {
+    currentPdfRenderer.value = "rxresume";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => new TextEncoder().encode("pdf-bytes").buffer,
+      }),
+    );
+
+    const rxresume = await import("./rxresume");
+
+    try {
+      await generatePdf("job-rxresume-default", {}, "desc");
+
+      expect(rxresume.importResume).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              page: expect.objectContaining({ format: "a4" }),
+            }),
+          }),
+        }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("uses the RxResume export flow when the renderer setting is rxresume", async () => {

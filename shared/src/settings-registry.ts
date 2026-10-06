@@ -15,7 +15,9 @@ import {
   type LlmProviderId,
   type LlmPurposeApiKeys,
   type LlmPurposeOverrides,
+  PDF_PAPER_SIZE_VALUES,
   PDF_RENDERER_VALUES,
+  type PdfPaperSize,
   type PdfRenderer,
   type ResumeProjectsSettings,
   TYPST_THEME_VALUES,
@@ -202,6 +204,7 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
 );
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
 const parseTypstThemeOrNull = createEnumParser(TYPST_THEME_VALUES);
+const parsePdfPaperSizeOrNull = createEnumParser(PDF_PAPER_SIZE_VALUES);
 
 const llmPurposeOverrideSchema = z.object({
   provider: z.preprocess(
@@ -443,6 +446,14 @@ export const settingsRegistry = {
     default: (): TypstTheme => "classic",
     parse: parseTypstThemeOrNull,
     serialize: (value: TypstTheme | null | undefined): string | null =>
+      value ?? null,
+  },
+  pdfPaperSize: {
+    kind: "typed" as const,
+    schema: z.enum(PDF_PAPER_SIZE_VALUES),
+    default: (): PdfPaperSize => "auto",
+    parse: parsePdfPaperSizeOrNull,
+    serialize: (value: PdfPaperSize | null | undefined): string | null =>
       value ?? null,
   },
   ukvisajobsMaxJobs: {

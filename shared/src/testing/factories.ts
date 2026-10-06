@@ -169,6 +169,11 @@ export const createAppSettings = (
     default: "classic",
     override: null,
   },
+  pdfPaperSize: {
+    value: "auto",
+    default: "auto",
+    override: null,
+  },
   rxresumeBaseResumeId: null,
   ukvisajobsMaxJobs: { value: 50, default: 50, override: null },
   adzunaMaxJobsPerTerm: { value: 50, default: 50, override: null },

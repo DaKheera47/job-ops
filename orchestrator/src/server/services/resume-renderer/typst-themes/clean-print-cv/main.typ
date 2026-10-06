@@ -225,6 +225,8 @@
 )
 
 #show: cv-page-setup
+// The package pins A4 inside cv-page-setup; a later set rule overrides only the paper.
+#set page(paper: __PAGE_PAPER__)
 
 #if picture-path != "" and picture-hidden == false {
   align(center)[#image(picture-path, width: picture-size * 1pt)]

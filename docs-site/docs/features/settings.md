@@ -182,10 +182,15 @@ Defaults and constraints:
 - When Typst is selected, choose a Typst theme:
   - Classic
   - Compact
+- Choose the paper size for generated PDFs:
+  - Renderer default: RxResume export keeps the page format saved on the resume, LaTeX renders US Letter, and Typst renders A4
+  - A4
+  - US Letter
+  - With RxResume export, a resume saved as free-form in Reactive Resume stays a single continuous page regardless of this setting
 - JobOps uses the selected RxResume resume as the source of truth for import and project data
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
-- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `rxresumeBaseResumeId`, RxResume URL/key, or resume project policy) auto-queues regeneration for ready jobs that currently use system-generated PDFs
+- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `pdfPaperSize`, `rxresumeBaseResumeId`, RxResume URL/key, or resume project policy) auto-queues regeneration for ready jobs that currently use system-generated PDFs
 - Select a template/base resume
 - Configure project selection behavior:
   - Target project count
