@@ -190,6 +190,22 @@ When hosted mode is active, first-run setup is disabled. Hosted users must be cr
 
 The Tracking Inbox is available only in local/self-hosted mode. Hosted mode hides it from navigation and redirects direct `/tracking-inbox` links to **Overview**.
 
+## Single sign-on
+
+JobOps can accept sign-ins from Google, GitHub, or a generic OpenID Connect provider alongside its own username/password accounts. Providers are enabled with environment variables, and each user connects one from **Settings → Environment & Workspaces → Security → Connected accounts**.
+
+Behind a TLS-terminating reverse proxy, set the public URL explicitly so the registered redirect URI matches:
+
+```bash
+SSO_REDIRECT_BASE_URL=https://your-domain.com
+SSO_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+SSO_GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+For provider-by-provider setup, redirect URIs, and just-in-time account creation, see:
+
+- [Single Sign-On Setup](/docs/next/getting-started/sso-setup)
+
 ## Codex sign-in
 
 For full Codex auth troubleshooting (including device-code authorization errors), see:

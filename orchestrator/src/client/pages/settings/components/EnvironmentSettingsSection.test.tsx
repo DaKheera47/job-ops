@@ -8,11 +8,16 @@ import { Accordion } from "@/components/ui/accordion";
 import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 
 vi.mock("@client/api", () => ({
+  changeOwnPassword: vi.fn(),
   createWorkspaceUser: vi.fn(),
   getCurrentAuthUser: vi.fn(),
+  getSsoProviders: vi.fn(),
+  listSsoIdentities: vi.fn(),
   listWorkspaceUsers: vi.fn(),
   resetWorkspaceUserPassword: vi.fn(),
   setWorkspaceUserDisabled: vi.fn(),
+  startSsoLink: vi.fn(),
+  unlinkSsoIdentity: vi.fn(),
 }));
 
 const EnvironmentSettingsHarness = () => {
@@ -65,6 +70,7 @@ describe("EnvironmentSettingsSection", () => {
       displayName: "Admin User",
       isSystemAdmin: true,
       isDisabled: false,
+      hasPassword: true,
       workspaceId: "tenant-admin",
       workspaceName: "Admin Workspace",
       createdAt: "2026-05-13T00:00:00.000Z",
@@ -77,12 +83,15 @@ describe("EnvironmentSettingsSection", () => {
         displayName: "Member User",
         isSystemAdmin: false,
         isDisabled: false,
+        hasPassword: true,
         workspaceId: "tenant-member",
         workspaceName: "Member Workspace",
         createdAt: "2026-05-13T00:00:00.000Z",
         updatedAt: "2026-05-13T00:00:00.000Z",
       },
     ]);
+    vi.mocked(api.getSsoProviders).mockResolvedValue([]);
+    vi.mocked(api.listSsoIdentities).mockResolvedValue([]);
   });
 
   it("renders values grouped logically and masks private secrets with hints", () => {

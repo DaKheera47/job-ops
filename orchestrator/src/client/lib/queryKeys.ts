@@ -5,6 +5,12 @@ export const queryKeys = {
     all: ["app"] as const,
     status: () => [...queryKeys.app.all, "status"] as const,
   },
+  auth: {
+    all: ["auth"] as const,
+    currentUser: () => [...queryKeys.auth.all, "me"] as const,
+    ssoProviders: () => [...queryKeys.auth.all, "sso-providers"] as const,
+    ssoIdentities: () => [...queryKeys.auth.all, "sso-identities"] as const,
+  },
   billing: {
     all: ["billing"] as const,
     status: () => [...queryKeys.billing.all, "status"] as const,

@@ -1,6 +1,13 @@
-import { badRequest, conflict, forbidden, notFound } from "@infra/errors";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  notFound,
+  unauthorized,
+} from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { getUserId, isSystemAdmin } from "@infra/request-context";
+import { verifyPassword } from "@server/auth/password";
 import { getJobOpsAppConfig } from "@server/config/app-mode";
 import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import * as usersRepo from "@server/repositories/users";
@@ -26,6 +33,7 @@ const disableUserSchema = z.object({
 
 const changeOwnPasswordSchema = z.object({
   password: z.string().min(8).max(500),
+  currentPassword: z.string().min(1).max(500).optional(),
 });
 
 function requireSystemAdmin(res: Response): boolean {
@@ -184,6 +192,31 @@ workspacesRouter.post(
     if (!parsed.success) {
       fail(res, badRequest("Invalid request body", parsed.error.flatten()));
       return;
+    }
+
+    const user = await usersRepo.getUserById(userId);
+    if (!user) {
+      fail(res, notFound("User not found"));
+      return;
+    }
+
+    // Accounts that only sign in through an identity provider have nothing to
+    // prove yet, so they set their first password without one.
+    if (user.hasPassword) {
+      if (!parsed.data.currentPassword) {
+        fail(res, badRequest("Current password is required"));
+        return;
+      }
+      const credentials = await usersRepo.getUserForLogin(user.username);
+      const currentPasswordValid = await verifyPassword({
+        password: parsed.data.currentPassword,
+        passwordHash: credentials?.passwordHash ?? null,
+        passwordSalt: credentials?.passwordSalt ?? null,
+      });
+      if (!currentPasswordValid) {
+        fail(res, unauthorized("Current password is incorrect"));
+        return;
+      }
     }
 
     await usersRepo.updateUserPassword({

@@ -30,6 +30,7 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SignInPage } from "./pages/SignInPage";
+import { SsoCallbackPage } from "./pages/SsoCallbackPage";
 import { TracerLinksPage } from "./pages/TracerLinksPage";
 import { TrackingInboxPage } from "./pages/TrackingInboxPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
@@ -60,9 +61,11 @@ export const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const nodeRef = useRef<HTMLDivElement>(null);
-  const isSignInPage = location.pathname === "/sign-in";
-  const demoInfo = useDemoInfo({ enabled: !isSignInPage });
-  const showDemoBanners = !isSignInPage && demoInfo?.demoMode;
+  const isAuthRoute =
+    location.pathname === "/sign-in" ||
+    location.pathname.startsWith("/sso/callback/");
+  const demoInfo = useDemoInfo({ enabled: !isAuthRoute });
+  const showDemoBanners = !isAuthRoute && demoInfo?.demoMode;
   const [demoWaitlistBannerDismissed, setDemoWaitlistBannerDismissed] =
     useState(() => {
       try {
@@ -193,6 +196,10 @@ export const App: React.FC = () => {
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/offline" element={<OfflinePage />} />
                 <Route path="/sign-in" element={<SignInPage />} />
+                <Route
+                  path="/sso/callback/:provider"
+                  element={<SsoCallbackPage />}
+                />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/tracer-links" element={<TracerLinksPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />

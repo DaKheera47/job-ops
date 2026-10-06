@@ -89,6 +89,28 @@ describe("OnboardingGate", () => {
     expect(useOnboardingStatus).not.toHaveBeenCalled();
   });
 
+  it("does not check onboarding while an SSO callback is being completed", () => {
+    render(
+      <MemoryRouter initialEntries={["/sso/callback/google"]}>
+        <OnboardingGate />
+        <Routes>
+          <Route
+            path="/sso/callback/:provider"
+            element={<div>sso-callback</div>}
+          />
+          <Route path="/sign-in" element={<div>sign-in</div>} />
+          <Route path="/onboarding" element={<div>onboarding</div>} />
+        </Routes>
+      </MemoryRouter>,
+      { wrapper: createWrapper() },
+    );
+
+    expect(screen.getByText("sso-callback")).toBeInTheDocument();
+    expect(screen.queryByText("sign-in")).not.toBeInTheDocument();
+    expect(screen.queryByText("onboarding")).not.toBeInTheDocument();
+    expect(useOnboardingStatus).not.toHaveBeenCalled();
+  });
+
   it("does not redirect once onboarding is complete", async () => {
     vi.mocked(useOnboardingStatus).mockReturnValue({
       checking: false,

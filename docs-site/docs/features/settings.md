@@ -221,6 +221,10 @@ Readiness requires:
 - Each created user gets a separate private workspace. Jobs, settings, resume data, integrations, PDFs, pipeline runs, chat, analytics, and post-application data are scoped to that user's workspace.
 - `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are only used as legacy bootstrap credentials during migration. New sign-ins use database users.
 
+**Connected accounts** lists the identity providers linked to your own account, with the email the provider reported and the date it was connected. **Connect** starts the provider's consent flow and adds the identity to your account; **Unlink** removes it after a confirmation. The block is hidden when no provider is configured and nothing is linked. Every user manages their own connections, and admins cannot unlink another user's identity. See [Single Sign-On Setup](/docs/next/getting-started/sso-setup) for the server-side configuration.
+
+**Account password** sets or changes the password of the account you are signed in as. Accounts that already have a password must supply the current one; accounts created through single sign-on have none and can set one directly. Keeping a password is what lets you sign in when an identity provider is unavailable, so JobOps refuses to unlink the last connected account of a password-less user.
+
 ### Backup
 
 ![Backup settings section](/img/features/settings-backup-section.png)
@@ -361,3 +365,4 @@ curl -X POST "http://localhost:3001/api/backups"
 - [Orchestrator](/docs/next/features/orchestrator)
 - [Ghostwriter](/docs/next/features/ghostwriter)
 - [Self-Hosting](/docs/next/getting-started/self-hosting)
+- [Single Sign-On Setup](/docs/next/getting-started/sso-setup)

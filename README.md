@@ -53,6 +53,8 @@ docker compose up -d
 
 Open `http://localhost:3005` and follow the onboarding wizard. You'll be searching in under 10 minutes.
 
+Sign-in uses JobOps accounts by default, and can also use Google, GitHub, or any OpenID Connect provider — see the [SSO Setup Guide](https://jobops.dakheera47.com/docs/next/getting-started/sso-setup).
+
 ---
 
 ## How It Works

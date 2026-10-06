@@ -33,6 +33,7 @@ export type AuthUser = {
   displayName: string | null;
   isSystemAdmin: boolean;
   isDisabled: boolean;
+  hasPassword: boolean;
   workspaceId: string;
   workspaceName: string;
   createdAt: string;
@@ -207,9 +208,12 @@ export async function resetWorkspaceUserPassword(
   );
 }
 
-export async function changeOwnPassword(password: string): Promise<void> {
+export async function changeOwnPassword(input: {
+  password: string;
+  currentPassword?: string;
+}): Promise<void> {
   await fetchApi<{ userId: string }>("/workspaces/me/password", {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify(input),
   });
 }
