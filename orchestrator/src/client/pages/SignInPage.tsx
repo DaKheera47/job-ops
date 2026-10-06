@@ -6,6 +6,12 @@ import {
   signInWithCredentials,
   signupWithCredentials,
 } from "@client/api";
+import {
+  isPasskeySupported,
+  PasskeyCancelledError,
+  signInWithPasskey,
+} from "@client/lib/passkeys";
+import { Fingerprint } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -47,6 +53,7 @@ export function SignInPage() {
   const [rememberedUsers, setRememberedUsers] = useState(() =>
     loadRememberedAuthUsers(),
   );
+  const [passkeysAvailable] = useState(() => isPasskeySupported());
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -148,6 +155,31 @@ export function SignInPage() {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to sign in",
       );
+      setIsBusy(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    setIsBusy(true);
+    setErrorMessage(null);
+
+    try {
+      const user = await signInWithPasskey();
+      setRememberedUsers(
+        rememberAuthUser({
+          username: user.username,
+          displayName: user.displayName,
+        }),
+      );
+      navigate(nextPath, { replace: true });
+    } catch (error) {
+      if (!(error instanceof PasskeyCancelledError)) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to sign in with a passkey",
+        );
+      }
       setIsBusy(false);
     }
   };
@@ -292,6 +324,18 @@ export function SignInPage() {
                     : "Sign in"}
               </Button>
             </form>
+            {authMode === "sign-in" && passkeysAvailable ? (
+              <Button
+                className="mt-3 w-full"
+                type="button"
+                variant="outline"
+                disabled={isBusy}
+                onClick={() => void handlePasskeySignIn()}
+              >
+                <Fingerprint className="h-4 w-4" />
+                Sign in with a passkey
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>

@@ -161,6 +161,22 @@ Settings and user accounts are saved to the local database. If you are upgrading
 
 System admins can create more users from **Settings → Environment & Workspaces**. Each created user receives a separate private workspace with isolated jobs, settings, resumes, integrations, PDFs, pipeline runs, chat, analytics, and post-application data.
 
+## Passkeys
+
+Every user can register a passkey from **Settings → Environment & Workspaces → Security** and then sign in with a device PIN, fingerprint, or face instead of a password.
+
+Browsers expose passkeys only on HTTPS origins (`localhost` excepted), and JobOps never infers its public URL from a request. Every container deployment must state the origin browsers use, including the default one:
+
+```bash
+# Default Compose setup, reached at http://localhost:3005
+WEBAUTHN_ORIGINS=http://localhost:3005
+
+# Behind a reverse proxy
+WEBAUTHN_ORIGINS=https://jobops.example.com
+```
+
+If `WEBAUTHN_ORIGINS` is unset, JobOps falls back to `JOBOPS_PUBLIC_BASE_URL`. With neither set, passkey requests fail with `Passkeys are not configured`; the localhost exception applies only to `npm run dev`, not to the container. See [Passkeys](/docs/next/features/passkeys) for the remaining options and troubleshooting.
+
 ## Hosted single-tenant mode
 
 JobOps defaults to local/self-hosted mode when hosted flags are unset. Hosted mode is an env-gated deployment mode for running one configured tenant with multiple users in that tenant.

@@ -375,4 +375,52 @@ describe.sequential("database migrations", () => {
       },
     );
   });
+
+  it("creates passkey credentials with owner foreign keys and lookup index", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+
+      const fks = migratedDb.prepare("PRAGMA foreign_key_list(passkey_credentials)").all();
+      const hasTenantCascade = fks.some((fk) => fk.from === "tenant_id" && fk.table === "tenants" && String(fk.on_delete).toUpperCase() === "CASCADE");
+      const hasUserCascade = fks.some((fk) => fk.from === "user_id" && fk.table === "users" && String(fk.on_delete).toUpperCase() === "CASCADE");
+      if (!hasTenantCascade || !hasUserCascade) {
+        throw new Error("passkey_credentials is missing owner foreign keys");
+      }
+
+      const columns = migratedDb.prepare("PRAGMA table_info(passkey_credentials)").all();
+      const requiredColumns = ["id", "tenant_id", "user_id", "name", "public_key", "counter", "transports", "device_type", "backed_up", "aaguid", "created_at", "updated_at", "last_used_at"];
+      for (const columnName of requiredColumns) {
+        if (!columns.some((column) => column.name === columnName)) {
+          throw new Error(\`passkey_credentials is missing the \${columnName} column\`);
+        }
+      }
+
+      const indexes = migratedDb.prepare("PRAGMA index_list(passkey_credentials)").all();
+      if (!indexes.some((index) => index.name === "idx_passkey_credentials_user_id")) {
+        throw new Error("passkey_credentials user_id index missing after migration");
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
 });

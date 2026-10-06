@@ -9,10 +9,15 @@ import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 
 vi.mock("@client/api", () => ({
   createWorkspaceUser: vi.fn(),
+  deletePasskey: vi.fn(),
   getCurrentAuthUser: vi.fn(),
+  getPasskeyRegistrationOptions: vi.fn(),
+  listPasskeys: vi.fn(),
   listWorkspaceUsers: vi.fn(),
+  renamePasskey: vi.fn(),
   resetWorkspaceUserPassword: vi.fn(),
   setWorkspaceUserDisabled: vi.fn(),
+  verifyPasskeyRegistration: vi.fn(),
 }));
 
 const EnvironmentSettingsHarness = () => {
@@ -59,6 +64,7 @@ const EnvironmentSettingsHarness = () => {
 
 describe("EnvironmentSettingsSection", () => {
   beforeEach(() => {
+    vi.mocked(api.listPasskeys).mockResolvedValue([]);
     vi.mocked(api.getCurrentAuthUser).mockResolvedValue({
       id: "admin-user",
       username: "admin",

@@ -99,6 +99,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Review company routes and sponsor ratings
   - Trigger manual data refresh
 
+- **[Passkeys](/docs/next/features/passkeys)**
+  - Register passkeys from Settings and sign in without a password
+  - Relying-party configuration required by every container deployment (`WEBAUTHN_ORIGINS`)
+  - Rename, remove, and troubleshoot registered passkeys
+
 ## Extractors
 
 - **[Extractors Overview](/docs/next/extractors/overview)**

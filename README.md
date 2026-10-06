@@ -100,6 +100,14 @@ No manual updates. No spreadsheets. See the [tracking docs](https://jobops.dakhe
 
 ---
 
+## Passkeys
+
+Register a passkey from **Settings → Environment & Workspaces → Security** and sign in with your device PIN, fingerprint, or face instead of a password.
+
+Passkeys need HTTPS (or `localhost`) and an explicit origin. Set `WEBAUTHN_ORIGINS` to the URL browsers use — `http://localhost:3005` with the default Compose file, or your public URL behind a reverse proxy. Only `npm run dev` works without it. See the [passkey docs](https://jobops.dakheera47.com/docs/features/passkeys).
+
+---
+
 ## AI Providers
 
 JobOps works with the model provider you already use:

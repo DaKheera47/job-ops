@@ -1,6 +1,7 @@
 export * from "./admin";
 export * from "./app-status";
 export * from "./auth";
+export * from "./auth-passkeys";
 export * from "./auth-session";
 export * from "./billing";
 export * from "./ghostwriter";
