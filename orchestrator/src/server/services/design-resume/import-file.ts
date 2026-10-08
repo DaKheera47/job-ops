@@ -41,6 +41,7 @@ type SupportedImportMediaType =
 
 type SupportedRuntimeProvider =
   | "openai"
+  | "anthropic"
   | "openrouter"
   | "orcarouter"
   | "glm"
@@ -281,6 +282,9 @@ const OPENAI_DEFAULT_TIMEOUT_MS = () =>
   getPositiveIntEnv("LLM_IMPORT_OPENAI_TIMEOUT_MS", 60_000);
 const OPENROUTER_DEFAULT_TIMEOUT_MS = () =>
   getPositiveIntEnv("LLM_IMPORT_OPENROUTER_TIMEOUT_MS", 90_000);
+const ANTHROPIC_DEFAULT_TIMEOUT_MS = () =>
+  getPositiveIntEnv("LLM_IMPORT_ANTHROPIC_TIMEOUT_MS", 90_000);
+const ANTHROPIC_IMPORT_MAX_TOKENS = 16_000;
 const GEMINI_DEFAULT_TIMEOUT_MS = () =>
   getPositiveIntEnv("LLM_IMPORT_GEMINI_TIMEOUT_MS", 90_000);
 const LOCAL_CHAT_COMPLETIONS_TIMEOUT_MS = () =>
@@ -349,6 +353,7 @@ function normalizeRuntimeProvider(
   }
   const mapped = mapGlmProviderAlias(normalized ?? "");
   if (mapped === "glm") return "glm";
+  if (mapped === "anthropic" || mapped === "claude") return "anthropic";
   if (mapped === "gemini") return "gemini";
   if (mapped === "gemini_cli") return "gemini_cli";
   if (mapped === "claude_cli") return "claude_cli";
@@ -911,6 +916,17 @@ function extractChatCompletionText(response: unknown): string | null {
   return trimText(message?.content) || null;
 }
 
+function extractAnthropicText(response: unknown): string | null {
+  const content = asArray(asRecord(response)?.content);
+  const text = content
+    .map((part) => {
+      const record = asRecord(part);
+      return record?.type === "text" ? toText(record.text) : "";
+    })
+    .join("");
+  return text || null;
+}
+
 function extractGeminiText(response: unknown): string | null {
   const payload = asRecord(response);
   const candidates = asArray(payload?.candidates);
@@ -1108,7 +1124,7 @@ function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, OrcaRouter, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, Anthropic, OpenRouter, OrcaRouter, Gemini, Gemini (CLI), Codex, OpenAI-compatible, Ollama, or LM Studio to import resumes. PDF and DOCX files can be converted to plain text locally before extraction when native file upload is unavailable.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -1173,6 +1189,7 @@ function isTextOnlyImportProvider(provider: SupportedRuntimeProvider): boolean {
 function providerRequiresApiKey(provider: SupportedRuntimeProvider): boolean {
   return (
     provider === "openai" ||
+    provider === "anthropic" ||
     provider === "openrouter" ||
     provider === "orcarouter" ||
     provider === "gemini" ||
@@ -1420,6 +1437,87 @@ async function extractWithOpenRouter(args: {
     lastError ??
     upstreamError("OpenRouter returned an empty response for resume import.")
   );
+}
+
+async function extractWithAnthropic(args: {
+  apiKey: string;
+  baseUrl: string | null;
+  model: string;
+  mediaType: SupportedImportMediaType;
+  dataBase64: string;
+  documentText?: string | null;
+  fileName: string;
+  requestId: string | undefined;
+}): Promise<string> {
+  const url = joinUrl(
+    args.baseUrl || "https://api.anthropic.com",
+    "/v1/messages",
+  );
+  const response = await fetch(url, {
+    method: "POST",
+    headers: buildHeaders({
+      apiKey: args.apiKey,
+      provider: "anthropic",
+    }),
+    body: JSON.stringify({
+      model: args.model,
+      max_tokens: ANTHROPIC_IMPORT_MAX_TOKENS,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: args.documentText
+            ? [
+                {
+                  type: "text",
+                  text: buildDocumentTextPrompt(
+                    args.documentText,
+                    args.fileName,
+                    args.mediaType,
+                  ),
+                },
+              ]
+            : [
+                {
+                  type: "document",
+                  source: {
+                    type: "base64",
+                    media_type: args.mediaType,
+                    data: args.dataBase64,
+                  },
+                },
+                {
+                  type: "text",
+                  text: buildUserPrompt(),
+                },
+              ],
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(ANTHROPIC_DEFAULT_TIMEOUT_MS()),
+  });
+
+  if (!response.ok) {
+    const detail = parseErrorMessage(await getResponseDetail(response));
+    throw new AppError({
+      status: response.status >= 500 ? 502 : 503,
+      message: detail || `Anthropic returned ${response.status}.`,
+      details: {
+        provider: "anthropic",
+        model: args.model,
+        requestId: args.requestId ?? null,
+      },
+    });
+  }
+
+  const payload = await response.json();
+  const text = extractAnthropicText(payload);
+  if (!text) {
+    throw upstreamError(
+      "Anthropic returned an empty response for resume import.",
+    );
+  }
+  return text;
 }
 
 async function extractWithGemini(args: {
@@ -1798,6 +1896,9 @@ async function extractResumeFromProvider(args: {
   }
   if (args.provider === "openrouter") {
     return extractWithOpenRouter(args);
+  }
+  if (args.provider === "anthropic") {
+    return extractWithAnthropic(args);
   }
   if (
     args.provider === "openai_compatible" ||
