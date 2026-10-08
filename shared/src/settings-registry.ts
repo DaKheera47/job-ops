@@ -84,6 +84,7 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_ATLAS_CLOUD_MODEL = "deepseek-ai/deepseek-v3.2";
+export const DEFAULT_API_ROUTE_MODEL = "gpt-6.1-sol";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
 export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 export const DEFAULT_GLM_MODEL = "glm-5.1";
@@ -100,6 +101,10 @@ export function getDefaultModelForProvider(
   }
 
   const normalizedProvider = normalizeLlmProviderOrNull(provider ?? undefined);
+
+  if (normalizedProvider === "api_route") {
+    return DEFAULT_API_ROUTE_MODEL;
+  }
 
   if (
     normalizedProvider === "atlascloud" ||

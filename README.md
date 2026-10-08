@@ -112,6 +112,7 @@ JobOps works with the model provider you already use:
 - Google Gemini
 - OpenRouter
 - Requesty
+- [API Route](https://www.api-route.com/)
 - Any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
 
 ---

@@ -10,6 +10,7 @@ describe("resolveLlmApiKey", () => {
     delete process.env.ATLASCLOUD_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
+    delete process.env.API_ROUTE_API_KEY;
   });
 
   afterEach(() => {
@@ -88,6 +89,34 @@ describe("resolveLlmApiKey", () => {
         provider: "openai",
       }),
     ).toBe("sk-env");
+  });
+
+  it("uses the API Route key only when environment credentials are allowed", async () => {
+    process.env.API_ROUTE_API_KEY = "route-platform-test";
+    const { resolveLlmApiKey } = await loadResolver();
+    expect(resolveLlmApiKey({ provider: "api-route" })).toBe(
+      "route-platform-test",
+    );
+    expect(
+      resolveLlmApiKey({
+        provider: "api_route",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "api_route",
+        storedApiKey: "tenant-one-test",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("tenant-one-test");
+    expect(
+      resolveLlmApiKey({
+        provider: "api_route",
+        storedApiKey: "tenant-two-test",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("tenant-two-test");
   });
 
   it("does not fall through to any environment key when disabled", async () => {

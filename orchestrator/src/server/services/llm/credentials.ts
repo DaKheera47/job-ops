@@ -57,6 +57,10 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("REQUESTY_API_KEY"));
   }
 
+  if (provider === "api_route") {
+    return toStringOrNull(getOriginalEnvValue("API_ROUTE_API_KEY"));
+  }
+
   if (
     provider === "orcarouter" &&
     toStringOrNull(getOriginalEnvValue("ORCAROUTER_API_KEY"))
