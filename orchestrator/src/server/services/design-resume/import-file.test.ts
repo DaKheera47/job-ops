@@ -457,6 +457,108 @@ describe("importDesignResumeFromFile", () => {
     expect(contents[0]?.parts?.[0]?.text).toContain("Senior Engineer");
   });
 
+  it("sends PDFs to Anthropic as native document blocks", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      baseUrl: null,
+      apiKey: "sk-ant-test",
+    });
+
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          content: [
+            { type: "text", text: '{"basics":{"name":"Taylor Quinn"}}' },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/messages",
+      expect.any(Object),
+    );
+
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    const init = fetchCall?.[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers["x-api-key"]).toBe("sk-ant-test");
+    expect(headers["anthropic-version"]).toBe("2023-06-01");
+
+    const parsedBody = JSON.parse(String(init.body)) as {
+      model: string;
+      system: string;
+      messages: Array<{ content: Array<Record<string, unknown>> }>;
+    };
+    expect(parsedBody.model).toBe("claude-sonnet-4-6");
+    expect(parsedBody.system).toBeTruthy();
+    expect(parsedBody.messages[0]?.content).toContainEqual({
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: "application/pdf",
+        data: Buffer.from("pdf-data").toString("base64"),
+      },
+    });
+    expect(pdfParse).not.toHaveBeenCalled();
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
+          basics: expect.objectContaining({ name: "Taylor Quinn" }),
+        }),
+      }),
+    );
+  });
+
+  it("extracts DOCX text locally before sending it to Anthropic", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      baseUrl: null,
+      apiKey: "sk-ant-test",
+    });
+
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          content: [
+            { type: "text", text: '{"basics":{"name":"Taylor Quinn"}}' },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.docx",
+      mediaType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      dataBase64: await makeDocxBase64("Taylor Quinn\nSenior Engineer"),
+    });
+
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    const body = String(init.body);
+    expect(body).not.toContain('"type":"document"');
+    expect(body).toContain("The resume file was uploaded as DOCX");
+    expect(body).toContain("Senior Engineer");
+  });
+
   it("repairs Gemini JSON with unescaped quotes inside description fields", async () => {
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
       provider: "gemini",
