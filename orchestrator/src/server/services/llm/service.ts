@@ -272,6 +272,7 @@ export class LlmService {
       this.provider !== "gemini" &&
       this.provider !== "ollama" &&
       this.provider !== "requesty" &&
+      this.provider !== "api_route" &&
       this.provider !== "orcarouter"
     ) {
       return [];
@@ -295,6 +296,15 @@ export class LlmService {
       }
       if (this.provider === "requesty") {
         return this.listRequestyModels();
+      }
+      if (this.provider === "api_route") {
+        const models = await this.listRequestyModels();
+        return models.filter(
+          (model) =>
+            !/image|seedance|embedding|rerank|whisper|(?:^|[-/])(?:tts|asr)(?:[-/]|$)/i.test(
+              model,
+            ),
+        );
       }
       if (this.provider === "orcarouter") {
         return this.listRequestyModels();
@@ -699,7 +709,9 @@ export class LlmService {
 
     if (!response.ok) {
       const detail = await getResponseDetail(response);
-      throw new Error(detail || `Requesty returned ${response.status}.`);
+      const providerName =
+        this.provider === "api_route" ? "API Route" : "Requesty";
+      throw new Error(detail || `${providerName} returned ${response.status}.`);
     }
 
     const payload = (await response.json()) as {
@@ -762,6 +774,7 @@ function normalizeProvider(
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
   if (normalized === "requesty") return "requesty";
+  if (normalized === "api_route") return "api_route";
   if (normalized === "orcarouter") return "orcarouter";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
@@ -814,6 +827,7 @@ function normalizeGeminiModelName(value: string): string {
 }
 
 function getPreferredModel(provider: LlmProvider): string | null {
+  if (provider === "api_route") return "gpt-6.1-sol";
   if (provider === "atlascloud") return "deepseek-ai/deepseek-v3.2";
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "anthropic") return "claude-sonnet-4-6";

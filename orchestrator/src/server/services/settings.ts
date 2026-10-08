@@ -64,6 +64,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "requesty") {
     return "https://router.requesty.ai/v1";
   }
+  if (normalized === "api_route") {
+    return "https://global.api-route.com/v1";
+  }
   if (normalized === "orcarouter") {
     return "https://api.orcarouter.ai/v1";
   }

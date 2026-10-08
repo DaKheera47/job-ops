@@ -325,6 +325,40 @@ describe("LlmService provider normalization", () => {
     expect(String(requestedUrl)).toBe("https://router.requesty.ai/v1/models");
   });
 
+  it("discovers API Route chat models with the supplied tenant key", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "claude-haiku-4-5" },
+            { id: "gpt-6.1-sol" },
+            { id: "gpt-image-2" },
+            { id: "bytedance/seedance-2" },
+            { id: "deepseek-v4-flash-vision-exp" },
+            { id: "gpt-6.1-sol" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const llm = new LlmService({
+      provider: "api-route",
+      apiKey: "tenant-route-test",
+      allowEnvironmentCredentials: false,
+    });
+    expect(llm.getProvider()).toBe("api_route");
+    expect(await llm.listModels()).toEqual([
+      "gpt-6.1-sol",
+      "claude-haiku-4-5",
+      "deepseek-v4-flash-vision-exp",
+    ]);
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(url)).toBe("https://global.api-route.com/v1/models");
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
+      "Bearer tenant-route-test",
+    );
+  });
+
   it("lists console-visible Atlas Cloud text models", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

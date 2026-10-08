@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { anthropicStrategy } from "./anthropic";
+import { apiRouteStrategy } from "./api-route";
 import { atlasCloudStrategy } from "./atlascloud";
 import { geminiStrategy } from "./gemini";
 import { glmStrategy } from "./glm";
@@ -26,6 +27,18 @@ const messages = [{ role: "user" as const, content: "hello" }];
 describe("provider adapters", () => {
   it("builds requests for each provider/mode path", () => {
     const cases = [
+      {
+        name: "api-route-json_schema",
+        strategy: apiRouteStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://global.api-route.com/v1",
+          apiKey: "route-test",
+          model: "gpt-6.1-sol",
+        },
+        expectedUrl: "https://global.api-route.com/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
       {
         name: "atlascloud-json_schema",
         strategy: atlasCloudStrategy,

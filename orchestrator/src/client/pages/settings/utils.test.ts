@@ -6,6 +6,15 @@ import {
 } from "./utils";
 
 describe("settings utils", () => {
+  it("offers API Route with authenticated model discovery", () => {
+    const config = getLlmProviderConfig("api_route");
+    expect(config.label).toBe("API Route");
+    expect(config.showApiKey).toBe(true);
+    expect(config.showBaseUrl).toBe(false);
+    expect(config.keyHelperHref).toBe("https://www.api-route.com/api-keys");
+    expect(supportsLlmModelSuggestions("api_route")).toBe(true);
+    expect(normalizeLlmProvider("api-route")).toBe("api_route");
+  });
   it("treats openai-compatible as a dedicated configurable provider", () => {
     const config = getLlmProviderConfig("openai_compatible");
 

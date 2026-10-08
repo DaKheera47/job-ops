@@ -50,7 +50,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`atlascloud`, `openrouter`, `orcarouter`, `requesty`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`atlascloud`, `openrouter`, `orcarouter`, `requesty`, `api_route`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -60,6 +60,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 - Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
   - `atlascloud` defaults to `deepseek-ai/deepseek-v3.2`
+  - `api_route` defaults to `gpt-6.1-sol`; select a different model if your key cannot access it
   - `openai` defaults to `gpt-5.4-mini`
   - `codex` defaults to `gpt-5.4-mini`
   - `glm` defaults to `glm-5.1`
@@ -74,8 +75,10 @@ Each meter includes completed usage and work currently in progress. Limits reset
   - `claude_cli`: a curated list of Claude model ids (install [Claude Code](https://www.npmjs.com/package/@anthropic-ai/claude-code), run `claude setup-token` to mint a long-lived token from a Claude Pro/Max/Team/Enterprise subscription and set it as `CLAUDE_CODE_OAUTH_TOKEN`, or set `ANTHROPIC_API_KEY` instead; JobOps spawns headless `claude -p ...` with `--permission-mode plan` and no JobOps API key field). **Resume import** uses the CLI with extracted text, same as `gemini_cli`: DOCX is parsed locally; PDF uses local text extraction then JSON extraction via the CLI.
   - `ollama`: locally installed Ollama models
   - `orcarouter`: available models from the OrcaRouter gateway
+  - `api_route`: model IDs available to your key from `https://global.api-route.com/v1/models`, excluding known image, video, embedding, and audio model families
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
 - For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
+- For [API Route](https://www.api-route.com/), create a key in [API Keys](https://www.api-route.com/api-keys), select API Route, and choose a chat model visible to that key. The endpoint is preset. Use exact IDs without adding an upstream-provider prefix. For environment setup, set `LLM_PROVIDER=api_route`, `API_ROUTE_API_KEY` (or `LLM_API_KEY`), and `MODEL` to the chosen ID. See the [API documentation](https://github.com/DennyHo0917/api-route/blob/main/API.md). JobOps sends the same task prompts and necessary profile/job fields as for its other hosted providers; keys remain in the existing secret storage. Screenshot attachments are not enabled by this integration.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save
 

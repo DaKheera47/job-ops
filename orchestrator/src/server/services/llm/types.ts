@@ -3,6 +3,7 @@ export type LlmProvider =
   | "openrouter"
   | "orcarouter"
   | "requesty"
+  | "api_route"
   | "lmstudio"
   | "ollama"
   | "openai"
