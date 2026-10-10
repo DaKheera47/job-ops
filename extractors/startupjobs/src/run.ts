@@ -78,13 +78,54 @@ function inferJobType(disciplines: string | undefined): string | undefined {
   return segments.length > 1 ? segments[segments.length - 1] : undefined;
 }
 
+const GENERIC_EMPLOYER_LABELS = new Set([
+  "company profile",
+  "unknown employer",
+  "view company profile",
+  "view profile",
+]);
+
+function isUsableEmployer(value: string | undefined): value is string {
+  const employer = value?.trim();
+  return Boolean(
+    employer && !GENERIC_EMPLOYER_LABELS.has(employer.toLowerCase()),
+  );
+}
+
+function employerNameFromUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const hostname = new URL(value).hostname
+      .replace(/^www\./i, "")
+      .split(".")[0]
+      ?.trim();
+    if (!hostname || GENERIC_EMPLOYER_LABELS.has(hostname.toLowerCase())) {
+      return undefined;
+    }
+
+    return hostname
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+      .join(" ");
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveEmployer(row: StartupJobRecord): string {
+  if (isUsableEmployer(row.employer)) return row.employer.trim();
+  return employerNameFromUrl(row.employerUrl) ?? "Unknown Employer";
+}
+
 function mapStartupJob(row: StartupJobRecord): CreateJobInput | null {
   if (!row.jobUrl) return null;
 
   return {
     source: "startupjobs",
     title: row.title || "Unknown Title",
-    employer: row.employer || "Unknown Employer",
+    employer: resolveEmployer(row),
     employerUrl: row.employerUrl || undefined,
     jobUrl: row.jobUrl,
     applicationLink: row.applicationLink || row.jobUrl,

@@ -137,4 +137,42 @@ describe("runStartupJobs", () => {
 
     expect(result.jobs[0]?.datePosted).toBe("2026-05-22T08:41:29Z");
   });
+
+  it("does not persist a generic company-profile link as the employer", async () => {
+    const { scrapeStartupJobsViaAlgolia } = await import(
+      "startup-jobs-scraper"
+    );
+    vi.mocked(scrapeStartupJobsViaAlgolia).mockResolvedValueOnce([
+      {
+        title: "Machine Learning Intern",
+        employer: "View company profile",
+        employerUrl: "https://www.syntiant.com",
+        jobUrl: "https://startup.jobs/machine-learning-intern-syntiant-1",
+      },
+    ]);
+
+    const { runStartupJobs } = await import("../src/run");
+    const result = await runStartupJobs({ searchTerms: ["machine learning"] });
+
+    expect(result.jobs[0]?.employer).toBe("Syntiant");
+  });
+
+  it("preserves a real employer name even when an employer URL is present", async () => {
+    const { scrapeStartupJobsViaAlgolia } = await import(
+      "startup-jobs-scraper"
+    );
+    vi.mocked(scrapeStartupJobsViaAlgolia).mockResolvedValueOnce([
+      {
+        title: "Software Engineer",
+        employer: "Example Startup",
+        employerUrl: "https://example.com",
+        jobUrl: "https://startup.jobs/software-engineer-example-2",
+      },
+    ]);
+
+    const { runStartupJobs } = await import("../src/run");
+    const result = await runStartupJobs({ searchTerms: ["software engineer"] });
+
+    expect(result.jobs[0]?.employer).toBe("Example Startup");
+  });
 });
