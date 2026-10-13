@@ -18,6 +18,11 @@ Manual import accepts:
 - plain text job descriptions
 - raw HTML job descriptions
 - job links/URLs
+- a list of public job URLs, one per line, in **URL list** mode (up to 25 URLs)
+
+For a URL list, JobOps fetches and analyzes each page one at a time, then shows
+the successful results and any failed URLs for review before importing. The
+existing single-job flow is unchanged.
 
 When a URL is provided, backend fetch attempts depend on whether the page can be resolved with `curl`. Some job sites block or heavily script content, so certain links will not resolve cleanly.
 

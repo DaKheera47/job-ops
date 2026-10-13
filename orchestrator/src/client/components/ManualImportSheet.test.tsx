@@ -108,6 +108,62 @@ describe("ManualImportSheet", () => {
     );
   });
 
+  it("analyzes and imports a pasted list of job URLs", async () => {
+    const onOpenChange = vi.fn();
+    const onImported = vi.fn().mockResolvedValue(undefined);
+    const urls = [
+      "https://example.com/jobs/backend-engineer",
+      "https://example.com/jobs/data-scientist",
+    ];
+
+    vi.mocked(api.fetchJobFromUrl).mockImplementation(async ({ url }) => ({
+      url,
+      content: `Description for ${url}`,
+    }));
+    vi.mocked(api.inferManualJob).mockImplementation(
+      async ({ jobDescription }) => ({
+        job: {
+          title: jobDescription.includes("backend")
+            ? "Backend Engineer"
+            : "Data Scientist",
+          employer: "Acme Labs",
+        },
+      }),
+    );
+    vi.mocked(api.importManualJob)
+      .mockResolvedValueOnce({ id: "job-1" } as any)
+      .mockResolvedValueOnce({ id: "job-2" } as any);
+
+    render(
+      <ManualImportSheet
+        open
+        onOpenChange={onOpenChange}
+        onImported={onImported}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /url list/i }));
+    fireEvent.change(screen.getByPlaceholderText(/backend-engineer/), {
+      target: { value: urls.join("\n") },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /analyze url list/i }));
+
+    expect(await screen.findByText("Backend Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Data Scientist")).toBeInTheDocument();
+    expect(api.fetchJobFromUrl).toHaveBeenCalledTimes(2);
+    expect(api.inferManualJob).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /import ready jobs/i }));
+
+    await waitFor(() => expect(api.importManualJob).toHaveBeenCalledTimes(2));
+    expect(onImported).toHaveBeenCalledWith({
+      jobId: "job-2",
+      source: "fetched_url",
+      sourceHost: "example.com",
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("shows warnings and requires required fields before import", async () => {
     const rawDescription = "Manual QA Engineer role.";
 

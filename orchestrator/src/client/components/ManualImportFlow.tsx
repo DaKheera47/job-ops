@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Link,
   Link2,
+  List,
   ListChecks,
   Loader2,
   MapPin,
@@ -31,8 +32,23 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
-type ManualImportStep = "paste" | "loading" | "review";
+type ManualImportStep =
+  | "paste"
+  | "loading"
+  | "review"
+  | "bulk-loading"
+  | "bulk-review";
 type ManualImportProgressStep = "paste" | "review";
+type ManualImportMode = "single" | "url-list";
+
+type BulkImportItem = {
+  id: string;
+  url: string;
+  status: "ready" | "failed" | "imported";
+  draft?: ManualJobDraftState;
+  warning?: string | null;
+  error?: string;
+};
 
 export type ManualImportTrackingSource =
   | "pasted_description"
@@ -306,6 +322,36 @@ function getBlockedAutofetchLabel(value: string): string | null {
   return blocked?.label ?? null;
 }
 
+const MAX_BULK_URLS = 25;
+
+function parseBulkUrls(value: string): {
+  urls: string[];
+  invalidLines: number[];
+} {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const invalidLines: number[] = [];
+
+  value.split(/\r?\n/).forEach((line, index) => {
+    const url = line.trim();
+    if (!url) return;
+
+    try {
+      const parsed = new URL(url);
+      if (!/^https?:$/.test(parsed.protocol))
+        throw new Error("Unsupported URL");
+      if (!seen.has(url)) {
+        seen.add(url);
+        urls.push(url);
+      }
+    } catch {
+      invalidLines.push(index + 1);
+    }
+  });
+
+  return { urls, invalidLines };
+}
+
 export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   active,
   onImported,
@@ -316,7 +362,10 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   initialSourceHost = null,
 }) => {
   const [step, setStep] = useState<ManualImportStep>("paste");
+  const [importMode, setImportMode] = useState<ManualImportMode>("single");
   const [rawDescription, setRawDescription] = useState("");
+  const [bulkUrlText, setBulkUrlText] = useState("");
+  const [bulkItems, setBulkItems] = useState<BulkImportItem[]>([]);
   const [fetchUrl, setFetchUrl] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [draft, setDraft] = useState<ManualJobDraftState>(emptyDraft);
@@ -324,6 +373,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [fetchNotice, setFetchNotice] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [importSource, setImportSource] =
     useState<ManualImportTrackingSource>("pasted_description");
   const [importSourceHost, setImportSourceHost] = useState<string | null>(null);
@@ -338,6 +388,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       if (!initialDraft) return;
       const normalized = normalizeDraft(initialDraft);
       setStep("review");
+      setImportMode("single");
       setRawDescription(normalized.jobDescription);
       setFetchUrl(normalized.jobUrl);
       setIsFetching(false);
@@ -361,7 +412,10 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       return;
     }
     setStep("paste");
+    setImportMode("single");
     setRawDescription("");
+    setBulkUrlText("");
+    setBulkItems([]);
     setFetchUrl("");
     setIsFetching(false);
     setDraft(emptyDraft);
@@ -369,6 +423,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setError(null);
     setFetchNotice(null);
     setIsImporting(false);
+    setIsBulkImporting(false);
     setImportSource("pasted_description");
     setImportSourceHost(null);
     setFetchedSourceUrl(null);
@@ -382,14 +437,26 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   ]);
 
   const progressStep: ManualImportProgressStep =
-    step === "review" ? "review" : "paste";
+    step === "review" || step === "bulk-review" ? "review" : "paste";
   const stepIndex = STEP_INDEX_BY_ID[progressStep];
-  const stepLabel = STEP_LABEL_BY_ID[progressStep];
+  const stepLabel =
+    importMode === "url-list" && progressStep === "paste"
+      ? "Add URLs"
+      : STEP_LABEL_BY_ID[progressStep];
 
   const canAnalyze =
     rawDescription.trim().length > 0 && step !== "loading" && !isFetching;
   const canFetch =
     fetchUrl.trim().length > 0 && !isFetching && step === "paste";
+  const parsedBulkUrls = useMemo(
+    () => parseBulkUrls(bulkUrlText),
+    [bulkUrlText],
+  );
+  const canAnalyzeBulk =
+    parsedBulkUrls.urls.length > 0 &&
+    parsedBulkUrls.invalidLines.length === 0 &&
+    parsedBulkUrls.urls.length <= MAX_BULK_URLS &&
+    step === "paste";
   const canImport = useMemo(() => {
     if (step !== "review") return false;
     return (
@@ -476,6 +543,64 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     }
   };
 
+  const handleAnalyzeBulk = async () => {
+    const { urls, invalidLines } = parseBulkUrls(bulkUrlText);
+    if (invalidLines.length > 0) {
+      setError(
+        `Line${invalidLines.length === 1 ? "" : "s"} ${invalidLines.join(", ")} ${invalidLines.length === 1 ? "is" : "are"} not valid http(s) URL${invalidLines.length === 1 ? "" : "s"}.`,
+      );
+      return;
+    }
+    if (urls.length === 0) {
+      setError("Paste at least one job URL to continue.");
+      return;
+    }
+    if (urls.length > MAX_BULK_URLS) {
+      setError(`Paste no more than ${MAX_BULK_URLS} URLs at a time.`);
+      return;
+    }
+
+    setError(null);
+    setBulkItems([]);
+    setStep("bulk-loading");
+    const results: BulkImportItem[] = [];
+
+    for (const [index, url] of urls.entries()) {
+      try {
+        const blockedLabel = getBlockedAutofetchLabel(url);
+        if (blockedLabel) {
+          throw new Error(
+            `Auto-fetch is not supported for ${blockedLabel} links.`,
+          );
+        }
+        const fetched = await api.fetchJobFromUrl({ url });
+        const response = await api.inferManualJob({
+          jobDescription: fetched.content,
+        });
+        const normalized = normalizeDraft(response.job, fetched.content.trim());
+        normalized.jobUrl = fetched.url || url;
+        results.push({
+          id: `${index}-${url}`,
+          url,
+          status: "ready",
+          draft: normalized,
+          warning: response.warning ?? null,
+        });
+      } catch (err) {
+        results.push({
+          id: `${index}-${url}`,
+          url,
+          status: "failed",
+          error:
+            err instanceof Error ? err.message : "Could not analyze this URL.",
+        });
+      }
+      setBulkItems([...results]);
+    }
+
+    setStep("bulk-review");
+  };
+
   const handleImport = async () => {
     if (!canImport) return;
 
@@ -508,6 +633,76 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     }
   };
 
+  const handleBulkImport = async () => {
+    const readyItems = bulkItems.filter(
+      (item): item is BulkImportItem & { draft: ManualJobDraftState } =>
+        item.status === "ready" && Boolean(item.draft),
+    );
+    if (readyItems.length === 0) return;
+
+    setIsBulkImporting(true);
+    const imported: Array<{ jobId: string; url: string }> = [];
+    let failedCount = 0;
+
+    for (const item of readyItems) {
+      try {
+        const created = await api.importManualJob({
+          job: toPayload(item.draft),
+          skipTailoring: !tailorAfterImport,
+        });
+        imported.push({ jobId: created.id, url: item.url });
+        setBulkItems((current) =>
+          current.map((candidate) =>
+            candidate.id === item.id
+              ? { ...candidate, status: "imported" }
+              : candidate,
+          ),
+        );
+      } catch (err) {
+        failedCount += 1;
+        setBulkItems((current) =>
+          current.map((candidate) =>
+            candidate.id === item.id
+              ? {
+                  ...candidate,
+                  status: "failed",
+                  error: err instanceof Error ? err.message : "Import failed.",
+                }
+              : candidate,
+          ),
+        );
+      }
+    }
+
+    setIsBulkImporting(false);
+    if (failedCount > 0) {
+      toast.error(
+        `${failedCount} URL${failedCount === 1 ? "" : "s"} could not be imported`,
+      );
+    }
+    if (imported.length > 0) {
+      toast.success(
+        `Imported ${imported.length} job${imported.length === 1 ? "" : "s"}`,
+      );
+      const last = imported.at(-1);
+      if (last) {
+        await onImported({
+          jobId: last.jobId,
+          source: "fetched_url",
+          sourceHost: getSourceHost(last.url),
+        });
+      }
+      if (failedCount === 0) onClose();
+    }
+  };
+
+  const setMode = (mode: ManualImportMode) => {
+    setImportMode(mode);
+    setError(null);
+    setWarning(null);
+    setFetchNotice(null);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="space-y-4">
@@ -529,105 +724,181 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       <div className="mt-4 flex-1 overflow-y-auto pr-1">
         {step === "paste" && (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <label
-                  htmlFor="fetch-url"
-                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  Job URL
-                </label>
-                <span className="text-[11px] text-muted-foreground">
-                  Optional helper
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  id="fetch-url"
-                  value={fetchUrl}
-                  onChange={(event) => setFetchUrl(event.target.value)}
-                  placeholder="https://example.com/job-posting"
-                  className="flex-1"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && canFetch) {
-                      event.preventDefault();
-                      void handleFetch();
-                    }
-                  }}
-                />
-                <Button
+            <div className="grid grid-cols-2 gap-1 rounded-lg border border-border/70 bg-muted/30 p-1">
+              {(
+                [
+                  ["single", "Single job", FileText],
+                  ["url-list", "URL list", List],
+                ] as const
+              ).map(([mode, label, Icon]) => (
+                <button
+                  key={mode}
                   type="button"
-                  variant="secondary"
-                  disabled={!canFetch}
-                  className="gap-2 shrink-0"
-                  onClick={() => void handleFetch()}
+                  aria-pressed={importMode === mode}
+                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                    importMode === mode
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setMode(mode)}
                 >
-                  {isFetching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Link className="h-4 w-4" />
-                  )}
-                  {isFetching ? "Fetching..." : "Fetch"}
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {importMode === "url-list" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label
+                      htmlFor="bulk-job-urls"
+                      className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      Job URLs
+                    </label>
+                    <span className="text-[11px] text-muted-foreground">
+                      Up to {MAX_BULK_URLS}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="bulk-job-urls"
+                    value={bulkUrlText}
+                    onChange={(event) => {
+                      setBulkUrlText(event.target.value);
+                      setError(null);
+                    }}
+                    placeholder={
+                      "https://example.com/jobs/backend-engineer\nhttps://example.com/jobs/data-scientist"
+                    }
+                    className="min-h-[220px] font-mono text-sm leading-relaxed"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste one public job URL per line. Each page is fetched and
+                    analyzed before you review the results.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {error}
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => void handleAnalyzeBulk()}
+                  disabled={!canAnalyzeBulk}
+                  className="h-10 w-full gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Analyze URL list
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Fetch tries to copy the job text into the description field. If
-                the site blocks simple fetching, paste the description manually.
-              </p>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label
+                      htmlFor="fetch-url"
+                      className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      Job URL
+                    </label>
+                    <span className="text-[11px] text-muted-foreground">
+                      Optional helper
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="fetch-url"
+                      value={fetchUrl}
+                      onChange={(event) => setFetchUrl(event.target.value)}
+                      placeholder="https://example.com/job-posting"
+                      className="flex-1"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && canFetch) {
+                          event.preventDefault();
+                          void handleFetch();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={!canFetch}
+                      className="gap-2 shrink-0"
+                      onClick={() => void handleFetch()}
+                    >
+                      {isFetching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Link className="h-4 w-4" />
+                      )}
+                      {isFetching ? "Fetching..." : "Fetch"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Fetch tries to copy the job text into the description field.
+                    If the site blocks simple fetching, paste the description
+                    manually.
+                  </p>
+                </div>
 
-            <div className="flex items-center justify-center text-muted-foreground">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide">
-                <span className="h-px w-10 bg-border" />
-                <ArrowDown className="h-3.5 w-3.5" />
-                <span className="h-px w-10 bg-border" />
-              </div>
-            </div>
+                <div className="flex items-center justify-center text-muted-foreground">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide">
+                    <span className="h-px w-10 bg-border" />
+                    <ArrowDown className="h-3.5 w-3.5" />
+                    <span className="h-px w-10 bg-border" />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="raw-description"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Job description
-              </label>
-              <Textarea
-                id="raw-description"
-                value={rawDescription}
-                onChange={(event) => {
-                  setRawDescription(event.target.value);
-                  setFetchNotice(null);
-                  if (!event.target.value.trim()) {
-                    setFetchedSourceUrl(null);
-                    setImportSource("pasted_description");
-                    setImportSourceHost(null);
-                  }
-                }}
-                placeholder="Paste the full job description here, or fetch it from a URL above..."
-                className="min-h-[200px] font-mono text-sm leading-relaxed"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="raw-description"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    Job description
+                  </label>
+                  <Textarea
+                    id="raw-description"
+                    value={rawDescription}
+                    onChange={(event) => {
+                      setRawDescription(event.target.value);
+                      setFetchNotice(null);
+                      if (!event.target.value.trim()) {
+                        setFetchedSourceUrl(null);
+                        setImportSource("pasted_description");
+                        setImportSourceHost(null);
+                      }
+                    }}
+                    placeholder="Paste the full job description here, or fetch it from a URL above..."
+                    className="min-h-[200px] font-mono text-sm leading-relaxed"
+                  />
+                </div>
 
-            {fetchNotice && (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-                {fetchNotice}
-              </div>
+                {fetchNotice && (
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                    {fetchNotice}
+                  </div>
+                )}
+
+                {error && (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {error}
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => void handleAnalyze()}
+                  disabled={!canAnalyze}
+                  className="w-full h-10 gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Analyze JD
+                </Button>
+              </>
             )}
-
-            {error && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {error}
-              </div>
-            )}
-
-            <Button
-              onClick={() => void handleAnalyze()}
-              disabled={!canAnalyze}
-              className="w-full h-10 gap-2"
-            >
-              <Sparkles className="h-4 w-4" />
-              Analyze JD
-            </Button>
           </div>
         )}
 
@@ -640,6 +911,22 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
             <p className="text-xs text-muted-foreground max-w-xs">
               Extracting title, company, location, and other details.
             </p>
+          </div>
+        )}
+
+        {step === "bulk-loading" && (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="text-sm font-semibold">Analyzing URL list</div>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Fetching and analyzing each job one at a time. This may take a
+              moment.
+            </p>
+            {bulkItems.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {bulkItems.length} of {parsedBulkUrls.urls.length} processed
+              </p>
+            )}
           </div>
         )}
 
@@ -752,6 +1039,110 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                   : tailorAfterImport
                     ? "Import & tailor"
                     : "Import without tailoring"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === "bulk-review" && (
+          <div className="space-y-5 pb-4">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-semibold tracking-tight">
+                Review URL list
+              </h3>
+              <p className="max-w-lg text-sm leading-6 text-muted-foreground">
+                Review the fields AI found before importing the successful rows.
+                Failed URLs stay listed so you can retry them separately.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {bulkItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-border/70 bg-card/40 px-3 py-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">
+                        {item.draft?.title || item.url}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {item.draft?.employer || item.url}
+                      </div>
+                      {item.warning && (
+                        <div className="mt-2 text-xs text-amber-200">
+                          {item.warning}
+                        </div>
+                      )}
+                      {item.error && (
+                        <div className="mt-2 text-xs text-destructive">
+                          {item.error}
+                        </div>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                      {item.status === "ready"
+                        ? "Ready"
+                        : item.status === "imported"
+                          ? "Imported"
+                          : "Failed"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card/40 px-3 py-3">
+              <Checkbox
+                id="bulk-tailor-after-import"
+                checked={tailorAfterImport}
+                onCheckedChange={(checked) =>
+                  setTailorAfterImport(checked === true)
+                }
+                disabled={isBulkImporting}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="bulk-tailor-after-import"
+                  className="cursor-pointer text-sm font-medium leading-none"
+                >
+                  Tailor automatically after import
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Turn this off to save LLM tokens and leave jobs in Discovered.
+                </p>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 -mx-1 flex gap-3 border-t border-border/70 bg-background/95 px-1 py-4 backdrop-blur">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("paste")}
+                className="h-11 flex-1 gap-2"
+                disabled={isBulkImporting}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Edit URLs
+              </Button>
+              <Button
+                onClick={() => void handleBulkImport()}
+                disabled={
+                  isBulkImporting ||
+                  !bulkItems.some(
+                    (item) => item.status === "ready" && item.draft,
+                  )
+                }
+                className="h-11 flex-1 gap-2"
+              >
+                {isBulkImporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {isBulkImporting ? "Importing..." : "Import ready jobs"}
               </Button>
             </div>
           </div>
