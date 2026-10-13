@@ -13,7 +13,10 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
-import { normalizeCountryKey } from "@shared/location-support.js";
+import {
+  getCountryIso2Code,
+  normalizeCountryKey,
+} from "@shared/location-support.js";
 import type { CreateJobInput } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
 import type { Request, RequestHandler, Response } from "express";
@@ -22,6 +25,13 @@ import { fetchFreeHirePage } from "../../../extractors/freehire/src/run.js";
 
 const OJCP_VERSION = "0.1";
 const OJCP_ERROR_CODE = -32000;
+const OJCP_RATE_LIMITED_CODE = -32029;
+const CONSENT_SCOPES = [
+  "search_personalization",
+  "fit_scoring",
+  "application_prefill",
+  "full_profile",
+] as const;
 const OJCP_ID_PREFIX = "jobops:freehire:";
 const DETAIL_CACHE_TTL_MS = 10 * 60 * 1000;
 const DETAIL_CACHE_MAX_ENTRIES = 1_000;
@@ -58,24 +68,33 @@ const detailCache = new Map<string, CachedDetail>();
 const searchCache = new Map<string, CachedSearch>();
 const inFlightSearches = new Map<string, Promise<Record<string, unknown>>>();
 
+// OJCP 0.1 CandidateContext: `consent_scope` is a single scope string. The
+// earlier array form is still accepted so existing callers keep working.
 const candidateContextSchema = z
   .object({
-    consent_scope: z.array(z.string().trim().min(1)).min(1),
+    ojcp_candidate_context_version: z.string().trim().min(1).optional(),
+    consent_scope: z.union([
+      z.enum(CONSENT_SCOPES),
+      z.array(z.string().trim().min(1)).min(1),
+    ]),
   })
   .passthrough();
 
 const candidateContextInputSchema = {
   type: "object" as const,
   description:
-    "Optional candidate context. Omit unless explicit consent scopes are available.",
+    "Optional OJCP candidate context. Omit unless explicit consent is available.",
   properties: {
+    ojcp_candidate_context_version: {
+      type: "string" as const,
+      enum: ["0.1"],
+    },
     consent_scope: {
-      type: "array" as const,
-      items: { type: "string" as const, minLength: 1 },
-      minItems: 1,
+      type: "string" as const,
+      enum: [...CONSENT_SCOPES],
     },
   },
-  required: ["consent_scope"],
+  required: ["ojcp_candidate_context_version", "consent_scope"],
   additionalProperties: true,
 };
 
@@ -243,6 +262,35 @@ function isRemoteJob(job: OjcpJob): boolean {
   );
 }
 
+function mapRemotePolicy(job: OjcpJob): string | undefined {
+  const workMode = normalizeEnum(job.workFromHomeType);
+  if (workMode === "remote") return "remote";
+  if (workMode === "hybrid") return "hybrid";
+  if (workMode === "onsite" || workMode === "on_site") return "on_site";
+  return isRemoteJob(job) ? "remote" : undefined;
+}
+
+// OJCP requires a schema.org Place. Structured evidence becomes an address;
+// a location known only as display text is kept as the Place name, and a bare
+// "remote" marker is left to remote_policy.
+function mapJobLocation(job: OjcpJob): Record<string, unknown> | undefined {
+  const evidence = job.locationEvidence;
+  const country = getCountryIso2Code(evidence?.countryKey ?? evidence?.country);
+  const city = evidence?.city?.trim();
+  if (country || city) {
+    return {
+      "@type": "Place",
+      address: {
+        ...(city ? { addressLocality: city } : {}),
+        ...(country ? { addressCountry: country } : {}),
+      },
+    };
+  }
+  const text = job.location?.trim();
+  if (!text || /^(remote|anywhere|worldwide)$/i.test(text)) return undefined;
+  return { "@type": "Place", name: text };
+}
+
 function mapSalary(job: OjcpJob): Record<string, unknown> | undefined {
   if (job.salaryMinAmount == null && job.salaryMaxAmount == null)
     return undefined;
@@ -302,8 +350,8 @@ export function mapJobPosting(
     ...(normalizeEnum(job.jobLevel)
       ? { experienceLevel: normalizeEnum(job.jobLevel) }
       : {}),
-    ...(job.location ? { jobLocation: job.location } : {}),
-    ...(isRemoteJob(job) ? { remote_policy: "remote" } : {}),
+    ...(mapJobLocation(job) ? { jobLocation: mapJobLocation(job) } : {}),
+    ...(mapRemotePolicy(job) ? { remote_policy: mapRemotePolicy(job) } : {}),
     ...(mapSalary(job) ? { baseSalary: mapSalary(job) } : {}),
     ...(job.salary ? { salary_text: job.salary } : {}),
     ...(skills ? { skills_required: skills } : {}),
@@ -484,20 +532,29 @@ function getUnsupportedFilter(error: unknown): string | undefined {
     : undefined;
 }
 
+// Analytics reasons keep their original labels so existing dashboards still
+// line up after the move to standard OJCP error codes.
+function searchRejectionReason(
+  errorCode: string | undefined,
+  filter: string | undefined,
+): string | undefined {
+  if (filter) return "unsupported_filter";
+  if (errorCode === "rate_limited") return "provider_busy";
+  if (errorCode === "invalid_request") return "invalid_request";
+  return undefined;
+}
+
 function trackSearchFailure(
   req: Request,
   error: unknown,
   latencyMs: number,
 ): void {
   const errorCode = getOjcpErrorCode(error);
-  if (
-    errorCode === "invalid_request" ||
-    errorCode === "unsupported_filter" ||
-    errorCode === "provider_busy"
-  ) {
-    const filter = getUnsupportedFilter(error);
+  const filter = getUnsupportedFilter(error);
+  const reason = searchRejectionReason(errorCode, filter);
+  if (reason) {
     trackOjcpEvent(req, "ojcp_search_rejected", {
-      reason: errorCode,
+      reason,
       latency_bucket: bucketLatency(latencyMs),
       ...(filter ? { filter } : {}),
     });
@@ -708,8 +765,8 @@ async function searchJobsWithMetadata(
   const unsupported = unsupportedFilters(input);
   if (unsupported.length > 0) {
     throw ojcpError(
-      "unsupported_filter",
-      `FreeHire does not support: ${unsupported.join(", ")}.`,
+      "invalid_field_value",
+      `JobOps cannot apply these filters to live FreeHire results: ${unsupported.join(", ")}. Retry without them.`,
       { unsupported_filters: unsupported },
     );
   }
@@ -725,9 +782,10 @@ async function searchJobsWithMetadata(
   if (existing) return { result: await existing, cacheHit: false };
   if (inFlightSearches.size >= SEARCH_CONCURRENCY) {
     throw ojcpError(
-      "provider_busy",
+      "rate_limited",
       "Too many live searches are running. Try again shortly.",
-      { retry_after_seconds: 1 },
+      undefined,
+      { retryAfterSeconds: 1 },
     );
   }
 
@@ -771,7 +829,12 @@ export async function getJobDetail(input: GetJobDetailInput) {
               ? { description: job.companyDescription }
               : {}),
             ...(job.companyIndustry
-              ? { industries: [job.companyIndustry] }
+              ? {
+                  industries: job.companyIndustry
+                    .split(",")
+                    .map((industry) => industry.trim())
+                    .filter(Boolean),
+                }
               : {}),
             ...((job.companyUrlDirect ?? job.employerUrl)
               ? { url: job.companyUrlDirect ?? job.employerUrl }
@@ -806,14 +869,21 @@ function ojcpError(
   errorCode: string,
   message: string,
   details?: unknown,
+  options: { retryAfterSeconds?: number } = {},
 ): McpError {
   const envelope = {
     ojcp_version: OJCP_VERSION,
     error_code: errorCode,
     message,
+    ...(options.retryAfterSeconds === undefined
+      ? {}
+      : { retry_after_seconds: options.retryAfterSeconds }),
     ...(details === undefined ? {} : { details: sanitizeUnknown(details) }),
   };
-  return new McpError(OJCP_ERROR_CODE, message, envelope);
+  // OJCP: MCP providers signal rate limiting with JSON-RPC code -32029.
+  const code =
+    errorCode === "rate_limited" ? OJCP_RATE_LIMITED_CODE : OJCP_ERROR_CODE;
+  return new McpError(code, message, envelope);
 }
 
 function parseInput<Schema extends z.ZodTypeAny>(

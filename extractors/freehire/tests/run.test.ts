@@ -86,6 +86,53 @@ describe("FreeHire extractor", () => {
     );
   });
 
+  it("keeps only location evidence the display location supports", () => {
+    const row = {
+      url: "https://example.com/jobs/1",
+      title: "Counter Representative",
+      company: "Acme",
+    };
+    const evidence = (extra: Record<string, unknown>) =>
+      mapFreeHireJob({ ...row, ...extra })?.locationEvidence;
+
+    // A US state abbreviation tagged as a country is resolved by the location.
+    expect(
+      evidence({
+        location: "CHESTERFIELD, MO, US",
+        countries: ["mo", "us"],
+        cities: ["Chesterfield"],
+      }),
+    ).toEqual({
+      location: "CHESTERFIELD, MO, US",
+      country: "United States",
+      city: "Chesterfield",
+      source: "freehire",
+    });
+    // Of several named cities, the one the location names first wins.
+    expect(
+      evidence({
+        location: "London, Islington",
+        countries: ["gb"],
+        cities: ["Islington", "London"],
+      }),
+    ).toEqual(
+      expect.objectContaining({ country: "United Kingdom", city: "London" }),
+    );
+    // A geocoded city the location never names is dropped.
+    expect(
+      evidence({ location: "Belen, NM", countries: ["us"], cities: ["Belém"] }),
+    ).toEqual({
+      location: "Belen, NM",
+      country: "United States",
+      source: "freehire",
+    });
+    // Several countries the location can't decide between stay unknown.
+    expect(
+      evidence({ location: "Remote — EU", countries: ["de", "fr"] }),
+    ).toEqual({ location: "Remote — EU", source: "freehire" });
+    expect(evidence({})).toBeUndefined();
+  });
+
   it("fetches once per term and de-duplicates upstream URLs", async () => {
     const row = {
       public_slug: "job-1",

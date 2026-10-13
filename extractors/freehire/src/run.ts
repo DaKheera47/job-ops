@@ -1,5 +1,6 @@
 import { getCountryIso2Code } from "@shared/location-support.js";
 import type { CreateJobInput } from "@shared/types/jobs";
+import { buildFreeHireLocationEvidence } from "./location.js";
 
 const FREEHIRE_SEARCH_URL = "https://freehire.me/api/v1/agent/jobs/search";
 
@@ -123,6 +124,11 @@ export function mapFreeHireJob(value: unknown): CreateJobInput | null {
     jobUrlDirect: jobUrl,
     applicationLink: jobUrl,
     location: asString(row.location),
+    locationEvidence: buildFreeHireLocationEvidence({
+      location: asString(row.location),
+      countries: asStringList(row.countries),
+      cities: asStringList(row.cities),
+    }),
     jobDescription: asString(row.description) ?? asString(enrichment?.summary),
     datePosted: asString(row.posted_at),
     salary: formatSalary(enrichment),

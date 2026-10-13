@@ -8,6 +8,7 @@ import {
   vi,
 } from "vitest";
 import { startServer, stopServer } from "./api/routes/test-utils";
+import { mapJobPosting } from "./ojcp";
 import * as visaSponsors from "./services/visa-sponsors/index";
 
 const mocks = vi.hoisted(() => ({
@@ -75,6 +76,12 @@ describe.sequential("OJCP MCP", () => {
           applicationLink: "https://example.com/jobs/123/apply",
           datePosted: "2026-08-22T10:00:00Z",
           location: "London, United Kingdom",
+          locationEvidence: {
+            location: "London, United Kingdom",
+            country: "United Kingdom",
+            city: "London",
+            source: "freehire",
+          },
           jobDescription: "Build reliable Go services.",
           jobType: "full_time",
           salaryMinAmount: 90_000,
@@ -82,6 +89,7 @@ describe.sequential("OJCP MCP", () => {
           salaryCurrency: "GBP",
           skills: "Go, PostgreSQL",
           workFromHomeType: "hybrid",
+          companyIndustry: "fintech, payments",
         },
       ],
       limit: 1,
@@ -158,9 +166,10 @@ describe.sequential("OJCP MCP", () => {
         candidate_context: {
           type: "object",
           properties: {
-            consent_scope: { type: "array", minItems: 1 },
+            ojcp_candidate_context_version: { type: "string", enum: ["0.1"] },
+            consent_scope: { type: "string" },
           },
-          required: ["consent_scope"],
+          required: ["ojcp_candidate_context_version", "consent_scope"],
         },
       },
     });
@@ -187,6 +196,11 @@ describe.sequential("OJCP MCP", () => {
         {
           ojcp_id: "jobops:freehire:senior-go-engineer-acme",
           title: "Senior Go Engineer",
+          jobLocation: {
+            "@type": "Place",
+            address: { addressLocality: "London", addressCountry: "GB" },
+          },
+          remote_policy: "hybrid",
           visa_sponsor_match: {
             exact_name_match: true,
             provider_id: "uk",
@@ -226,7 +240,10 @@ describe.sequential("OJCP MCP", () => {
         title: "Senior Go Engineer",
         description: "Build reliable Go services.",
       },
-      employer_context: { name: "Acme Limited" },
+      employer_context: {
+        name: "Acme Limited",
+        industries: ["fintech", "payments"],
+      },
     });
 
     const missing = await callMcp(running.baseUrl, 6, "tools/call", {
@@ -296,7 +313,7 @@ describe.sequential("OJCP MCP", () => {
       code: -32000,
       data: {
         ojcp_version: "0.1",
-        error_code: "unsupported_filter",
+        error_code: "invalid_field_value",
         details: { unsupported_filters: ["filters.salary_min"] },
       },
     });
@@ -336,5 +353,137 @@ describe.sequential("OJCP MCP", () => {
       },
       expect.objectContaining({ urlPath: "/ojcp/mcp" }),
     );
+  });
+
+  it("accepts an OJCP candidate context with a single consent scope", async () => {
+    if (!running) throw new Error("Test server did not start");
+    const response = await callMcp(running.baseUrl, 9, "tools/call", {
+      name: "search_jobs",
+      arguments: {
+        query: "backend engineer",
+        candidate_context: {
+          ojcp_candidate_context_version: "0.1",
+          consent_scope: "fit_scoring",
+          skills: ["go"],
+        },
+      },
+    });
+
+    expect(response.error).toBeUndefined();
+    expect(response.result?.structuredContent).toMatchObject({
+      warnings: expect.arrayContaining([
+        expect.objectContaining({ code: "candidate_context_not_applied" }),
+      ]),
+    });
+  });
+
+  it("rejects an unknown consent scope", async () => {
+    if (!running) throw new Error("Test server did not start");
+    const response = await callMcp(running.baseUrl, 10, "tools/call", {
+      name: "search_jobs",
+      arguments: {
+        query: "backend engineer",
+        candidate_context: { consent_scope: "sell_my_data" },
+      },
+    });
+
+    expect(response.error).toMatchObject({
+      code: -32000,
+      data: { error_code: "invalid_request" },
+    });
+    expect(mocks.fetchFreeHirePage).not.toHaveBeenCalled();
+  });
+
+  it("signals saturation as an OJCP rate limit", async () => {
+    if (!running) throw new Error("Test server did not start");
+    const baseUrl = running.baseUrl;
+    // The tsconfig targets ES2022, so Promise.withResolvers isn't typed here.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mocks.fetchFreeHirePage.mockImplementation(async () => {
+      await gate;
+      return { jobs: [], limit: 10, offset: 0, total: 0 };
+    });
+
+    const pending = Array.from({ length: 10 }, (_, index) =>
+      callMcp(baseUrl, 100 + index, "tools/call", {
+        name: "search_jobs",
+        arguments: { query: `engineer ${index}` },
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(mocks.fetchFreeHirePage).toHaveBeenCalledTimes(10),
+    );
+
+    const limited = await callMcp(baseUrl, 110, "tools/call", {
+      name: "search_jobs",
+      arguments: { query: "engineer overflow" },
+    });
+    release();
+    await Promise.all(pending);
+
+    expect(limited.error).toMatchObject({
+      code: -32029,
+      data: {
+        ojcp_version: "0.1",
+        error_code: "rate_limited",
+        retry_after_seconds: 1,
+      },
+    });
+    expect(mocks.trackServerProductEvent).toHaveBeenCalledWith(
+      "ojcp_search_rejected",
+      { reason: "provider_busy", latency_bucket: expect.any(String) },
+      expect.objectContaining({ urlPath: "/ojcp/mcp" }),
+    );
+  });
+});
+
+describe("mapJobPosting locations", () => {
+  const baseJob = {
+    id: "jobops:freehire:example",
+    discoveredAt: "2026-10-13T00:00:00Z",
+    source: "freehire",
+    title: "Analyst",
+    employer: "Acme",
+    jobUrl: "https://example.com/jobs/1",
+  } as Parameters<typeof mapJobPosting>[0];
+
+  it("keeps text-only locations as the Place name", () => {
+    const posting = mapJobPosting(
+      { ...baseJob, location: "Viman Nagar – Pune, Maharashtra" },
+      { includeDescription: false },
+    );
+    expect(posting.jobLocation).toEqual({
+      "@type": "Place",
+      name: "Viman Nagar – Pune, Maharashtra",
+    });
+  });
+
+  it("leaves a bare remote marker to remote_policy", () => {
+    const posting = mapJobPosting(
+      { ...baseJob, location: "Remote" },
+      { includeDescription: false },
+    );
+    expect(posting.jobLocation).toBeUndefined();
+    expect(posting.remote_policy).toBe("remote");
+  });
+
+  it("prefers FreeHire's work mode over location text", () => {
+    const posting = mapJobPosting(
+      {
+        ...baseJob,
+        location: "Remote or Berlin",
+        workFromHomeType: "onsite",
+        locationEvidence: { country: "Germany", city: "Berlin" },
+      },
+      { includeDescription: false },
+    );
+    expect(posting.remote_policy).toBe("on_site");
+    expect(posting.jobLocation).toEqual({
+      "@type": "Place",
+      address: { addressLocality: "Berlin", addressCountry: "DE" },
+    });
   });
 });
