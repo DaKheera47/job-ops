@@ -248,6 +248,8 @@ export type Resolved<T> = { value: T; default: T; override: T | null };
 export type ModelResolved = { value: string; override: string | null };
 
 export interface AppSettings {
+  /** Keys this signed-in account may change, derived from the server registry. */
+  editableKeys?: string[];
   // Typed settings (Resolved):
   model: Resolved<string>;
   llmProvider: Resolved<string>;

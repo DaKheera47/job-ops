@@ -39,6 +39,10 @@ import {
   validateCredentials as validateRxResumeCredentials,
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
+import {
+  canEditSettings,
+  LLM_SETTING_KEYS,
+} from "@server/services/settings-policy";
 import { applySettingsUpdates } from "@server/services/settings-update";
 import {
   mapGlmProviderAlias,
@@ -57,64 +61,10 @@ const RXRESUME_SAVE_VALIDATION_KEYS: Array<keyof UpdateSettingsInput> = [
   "rxresumeUrl",
   "rxresumeApiKey",
 ];
-const LLM_SETTING_KEYS: Array<keyof UpdateSettingsInput> = [
-  "model",
-  "modelScorer",
-  "modelTailoring",
-  "modelProjectSelection",
-  "llmProvider",
-  "llmBaseUrl",
-  "llmApiKey",
-  "llmPurposeOverrides",
-  "llmPurposeApiKeys",
-];
 const CLI_PROVIDERS = new Set(["codex", "gemini_cli", "claude_cli"]);
-
-// These settings describe an individual search run. They are persisted in the
-// settings repository for extractor compatibility, but are not server-level
-// maintenance settings and must remain editable by authenticated non-admins.
-const NON_ADMIN_SEARCH_SETTING_KEYS = new Set<keyof UpdateSettingsInput>([
-  "searchTerms",
-  "workplaceTypes",
-  "locationSearchScope",
-  "locationMatchStrictness",
-  "locationSearchMode",
-  "locationLatitude",
-  "locationLongitude",
-  "locationRadiusMiles",
-  "jobspyResultsWanted",
-  "gradcrackerMaxJobsPerTerm",
-  "ukvisajobsMaxJobs",
-  "adzunaMaxJobsPerTerm",
-  "startupjobsMaxJobsPerTerm",
-  "jobindexMaxJobsPerTerm",
-  "seekMaxJobsPerTerm",
-  "naukriMaxJobsPerTerm",
-  "jobspyCountryIndeed",
-  "searchCities",
-  "jobspyLocation",
-]);
 
 function requireSystemAdmin(res: Response): boolean {
   if (getJobOpsAppConfig().appMode === "hosted" || isSystemAdmin()) return true;
-  fail(res, forbidden("System admin access is required"));
-  return false;
-}
-
-function requireSystemAdminOrSearchSettings(
-  res: Response,
-  input: UpdateSettingsInput,
-): boolean {
-  if (
-    getJobOpsAppConfig().appMode === "hosted" ||
-    isSystemAdmin() ||
-    Object.keys(input).every((key) =>
-      NON_ADMIN_SEARCH_SETTING_KEYS.has(key as keyof UpdateSettingsInput),
-    )
-  ) {
-    return true;
-  }
-
   fail(res, forbidden("System admin access is required"));
   return false;
 }
@@ -436,7 +386,10 @@ settingsRouter.patch(
     }
 
     const input = updateSettingsSchema.parse(req.body);
-    if (!requireSystemAdminOrSearchSettings(res, input)) return;
+    if (!(await canEditSettings(input))) {
+      fail(res, forbidden("You cannot edit one or more of these settings"));
+      return;
+    }
     if (LLM_SETTING_KEYS.some((key) => hasInputKey(input, key))) {
       await assertLlmSettingsEditable();
       assertHostedLlmInputAllowed(input);

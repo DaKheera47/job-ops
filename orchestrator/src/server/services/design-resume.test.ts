@@ -34,6 +34,7 @@ vi.mock("@paralleldrive/cuid2", () => ({
 }));
 vi.mock("@server/services/envSettings", () => ({
   getOriginalEnvValue: vi.fn(),
+  getPersonalEnvValue: vi.fn(),
 }));
 vi.mock("@server/services/rxresume/baseResumeId", () => ({
   getConfiguredRxResumeBaseResumeId: vi.fn(),

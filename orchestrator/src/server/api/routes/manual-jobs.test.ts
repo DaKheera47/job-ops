@@ -270,10 +270,20 @@ describe.sequential("Manual jobs API routes", () => {
   });
 
   it("falls back to autoTailorOnManualImport setting when skipTailoring is omitted", async () => {
+    const { runWithRequestContext } = await import(
+      "@server/infra/request-context"
+    );
     const { processJob } = await import("@server/pipeline/index");
     const { setSetting } = await import("@server/repositories/settings");
     vi.mocked(processJob).mockClear();
-    await setSetting("autoTailorOnManualImport", "0");
+    await runWithRequestContext(
+      {
+        requestId: "manual-import-setting",
+        tenantId: "tenant_default",
+        userId: "test-user",
+      },
+      () => setSetting("autoTailorOnManualImport", "0"),
+    );
 
     const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
       method: "POST",
@@ -294,6 +304,9 @@ describe.sequential("Manual jobs API routes", () => {
   });
 
   it("still tailors when skipTailoring is explicitly false even if setting is off", async () => {
+    const { runWithRequestContext } = await import(
+      "@server/infra/request-context"
+    );
     const { processJob } = await import("@server/pipeline/index");
     const { setSetting } = await import("@server/repositories/settings");
     const { scoreJobSuitability } = await import("@server/services/scorer");
@@ -303,7 +316,14 @@ describe.sequential("Manual jobs API routes", () => {
       reason: "Fit",
       jobBrief: null,
     });
-    await setSetting("autoTailorOnManualImport", "0");
+    await runWithRequestContext(
+      {
+        requestId: "manual-import-explicit",
+        tenantId: "tenant_default",
+        userId: "test-user",
+      },
+      () => setSetting("autoTailorOnManualImport", "0"),
+    );
 
     const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
       method: "POST",

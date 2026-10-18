@@ -40,6 +40,7 @@ vi.mock("@server/services/design-resume", () => ({
 
 vi.mock("@server/services/envSettings", () => ({
   getOriginalEnvValue: vi.fn(() => null),
+  getPersonalEnvValue: vi.fn(() => null),
 }));
 
 vi.mock("@server/services/llm/credentials", () => ({

@@ -32,6 +32,7 @@ import {
   RxResumeAuthConfigError,
 } from "./rxresume";
 import { resolveRxResumeBaseResumeId } from "./rxresume/baseResumeId";
+import { getEditableSettingKeys } from "./settings-policy";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
@@ -168,12 +169,29 @@ const MODEL_KEY_BY_PURPOSE: Record<
 export async function getEffectiveSettings(): Promise<AppSettings> {
   const getAllSettings =
     "getAllSettings" in settingsRepo ? settingsRepo.getAllSettings : null;
-  const overrides =
-    (typeof getAllSettings === "function" ? await getAllSettings() : null) ??
-    {};
+  const overrides = {
+    ...((typeof getAllSettings === "function"
+      ? await getAllSettings()
+      : null) ?? {}),
+  };
   const hostedMode = getJobOpsAppConfig().appMode === "hosted";
   const allowPlatformLlm =
     !hostedMode || (await getCurrentAccountEntitlements()).platformAiIncluded;
+  if (hostedMode && allowPlatformLlm) {
+    for (const key of [
+      "llmProvider",
+      "llmBaseUrl",
+      "llmApiKey",
+      "llmPurposeOverrides",
+      "llmPurposeApiKeys",
+      "model",
+      "modelScorer",
+      "modelTailoring",
+      "modelProjectSelection",
+    ] as const) {
+      delete overrides[key];
+    }
+  }
   const providerOverride = settingsRegistry.llmProvider.parse(
     overrides.llmProvider,
   );
@@ -242,6 +260,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   const result: Partial<AppSettings> = {
     ...envSettings,
+    editableKeys: await getEditableSettingKeys(),
     llmPurposeApiKeyHints: readPurposeApiKeyHints(overrides),
   };
   if (hostedMode && allowPlatformLlm) {

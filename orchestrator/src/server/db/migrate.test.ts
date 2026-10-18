@@ -375,4 +375,93 @@ describe.sequential("database migrations", () => {
       },
     );
   });
+
+  it("upgrades old settings into personal and platform storage without merging users", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-settings-upgrade-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const migrationUrl = pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href;
+      await import(\`\${migrationUrl}?run=old\`);
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const oldDb = new Database(dbPath);
+      oldDb.exec(\`
+        INSERT INTO tenants(id, name, slug) VALUES ('tenant-alt', 'Alt', 'alt');
+        INSERT INTO users(id, username, password_hash, password_salt) VALUES
+          ('user-a', 'a', 'hash', 'salt'),
+          ('user-b', 'b', 'hash', 'salt'),
+          ('user-c', 'c', 'hash', 'salt');
+        INSERT INTO tenant_memberships(id, user_id, tenant_id, role) VALUES
+          ('membership-a', 'user-a', 'tenant_default', 'owner'),
+          ('membership-b', 'user-b', 'tenant_default', 'member'),
+          ('membership-c', 'user-c', 'tenant-alt', 'owner');
+        INSERT INTO settings(tenant_id, user_id, key, value) VALUES
+          ('tenant_default', 'user-a', 'model', 'model-a'),
+          ('tenant_default', 'user-b', 'model', 'model-b'),
+          ('tenant-alt', 'user-c', 'model', 'model-c'),
+          ('tenant_default', 'user-a', 'llmApiKey', 'key-a'),
+          ('tenant_default', 'user-b', 'llmApiKey', 'key-b'),
+          ('tenant_default', 'user-a', 'backupHour', '7'),
+          ('tenant-alt', 'user-c', 'backupHour', '9');
+        INSERT INTO settings(tenant_id, user_id, key, value)
+          VALUES ('tenant_default', NULL, 'model', 'legacy-owner-model'),
+            ('tenant-alt', NULL, 'model', 'legacy-alt-model');
+        DELETE FROM app_data_migrations WHERE id = 'settings-ownership-v1';
+      \`);
+      oldDb.close();
+
+      await import(\`\${migrationUrl}?run=upgrade\`);
+      await import(\`\${migrationUrl}?run=repeat\`);
+      const upgraded = new Database(dbPath, { readonly: true });
+      const personal = upgraded.prepare(
+        "SELECT user_id, value FROM settings WHERE key = 'model' ORDER BY user_id",
+      ).all();
+      if (JSON.stringify(personal) !== JSON.stringify([
+        { user_id: 'user-a', value: 'model-a' },
+        { user_id: 'user-b', value: 'model-b' },
+        { user_id: 'user-c', value: 'model-c' },
+      ])) throw new Error("Personal model values were merged or lost");
+      const key = upgraded.prepare(
+        "SELECT value FROM settings WHERE user_id = 'user-b' AND key = 'llmApiKey'",
+      ).get();
+      if (key?.value !== 'key-b') throw new Error("Personal API key was lost");
+      const platform = upgraded.prepare(
+        "SELECT value FROM settings WHERE key = 'backupHour' AND tenant_id IS NULL AND user_id IS NULL",
+      ).all();
+      if (platform.length !== 1 || platform[0].value !== '7') {
+        throw new Error("Platform backup setting is not authoritative");
+      }
+      const conflict = upgraded.prepare(
+        "SELECT candidate_count FROM settings_migration_conflicts WHERE key = 'backupHour'",
+      ).get();
+      if (conflict?.candidate_count !== 2) {
+        throw new Error("Conflicting platform values were not recorded");
+      }
+      const ownerConflicts = upgraded.prepare(
+        "SELECT candidate_count, candidates_json FROM settings_migration_conflicts WHERE key = 'model'",
+      ).all();
+      if (ownerConflicts.length !== 2 ||
+        ownerConflicts.some((entry) => entry.candidate_count !== 2) ||
+        !ownerConflicts.some((entry) =>
+          JSON.parse(entry.candidates_json).some((candidate) =>
+            candidate.value === 'legacy-owner-model'))) {
+        throw new Error("Conflicting personal values were not recorded");
+      }
+      const backupAudit = upgraded.prepare(
+        "SELECT candidates_json FROM settings_migration_conflicts WHERE key = 'backupHour'",
+      ).get();
+      if (JSON.parse(backupAudit.candidates_json).length !== 2) {
+        throw new Error("Losing platform values were not retained in the audit");
+      }
+      upgraded.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      { env: { ...process.env, DATA_DIR: tempDir }, stdio: "pipe" },
+    );
+  });
 });

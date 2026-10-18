@@ -13,7 +13,8 @@ import {
 } from "@server/services/demo-pdf";
 import { resolvePdfFingerprintContext } from "@server/services/pdf-fingerprint";
 import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
-import { eq } from "drizzle-orm";
+import { settingsRegistry } from "@shared/settings-registry";
+import { eq, isNull } from "drizzle-orm";
 
 type BuiltDemoBaseline = {
   resetAt: string;
@@ -114,9 +115,20 @@ export async function applyDemoBaseline(
       .where(eq(pipelineRuns.tenantId, DEFAULT_TENANT_ID))
       .run();
     tx.delete(settings).where(eq(settings.tenantId, DEFAULT_TENANT_ID)).run();
+    tx.delete(settings).where(isNull(settings.tenantId)).run();
 
     const settingRows = Object.entries(baseline.settings).map(
       ([key, value]) => ({
+        tenantId:
+          settingsRegistry[key as keyof typeof settingsRegistry]?.scope ===
+          "platform"
+            ? null
+            : DEFAULT_TENANT_ID,
+        userId:
+          settingsRegistry[key as keyof typeof settingsRegistry]?.scope ===
+          "platform"
+            ? null
+            : "__local_unowned__",
         key,
         value,
         createdAt: baseline.resetAt,

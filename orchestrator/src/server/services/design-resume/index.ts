@@ -9,7 +9,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { getDataDir } from "@server/config/dataDir";
 import * as designResumeRepo from "@server/repositories/design-resume";
 import { getSetting } from "@server/repositories/settings";
-import { getOriginalEnvValue } from "@server/services/envSettings";
+import { getPersonalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { getResumeSchemaValidationMessage } from "@server/services/rxresume/schema";
@@ -179,7 +179,7 @@ function absolutizeUrl(value: string, baseUrl: string): string {
 async function resolveReactiveResumePublicBaseUrl(): Promise<string> {
   return (
     (await getSetting("rxresumeUrl"))?.trim() ||
-    getOriginalEnvValue("RXRESUME_URL")?.trim() ||
+    getPersonalEnvValue("RXRESUME_URL")?.trim() ||
     "https://rxresu.me"
   );
 }

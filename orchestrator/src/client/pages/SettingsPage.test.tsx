@@ -300,6 +300,25 @@ describe("SettingsPage", () => {
     expect(toast.success).toHaveBeenCalledWith("Settings saved");
   });
 
+  it("submits only server-editable settings for a regular user", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({
+      ...baseSettings,
+      editableKeys: ["model"],
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
+    renderPage();
+    await openModelSection();
+
+    const modelInput = screen.getByLabelText(/default model/i);
+    await waitFor(() => expect(modelInput).toBeEnabled());
+    fireEvent.change(modelInput, { target: { value: "gpt-4" } });
+    fireEvent.click(getSaveButton());
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith({ model: "gpt-4" });
+    expect(screen.queryByText("Backup")).not.toBeInTheDocument();
+  });
+
   it("starts codex sign-in from model settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(
       createAppSettings({
@@ -391,7 +410,7 @@ describe("SettingsPage", () => {
     // Should see error message
     expect(
       await screen.findByText(
-        /String must contain at most 200 character\(s\)/i,
+        /Too big: expected string to have <=200 characters/i,
       ),
     ).toBeInTheDocument();
 

@@ -525,7 +525,7 @@ describe.sequential("Settings API routes", () => {
     expect(getBody.data.missingSalaryPenalty.value).toBe(20);
   });
 
-  it("allows non-admin users to update search settings without widening access", async () => {
+  it("lets non-admin users edit personal settings while protecting platform settings", async () => {
     await stopServer({ server, closeDb, tempDir });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: AUTH_ENV,
@@ -568,7 +568,7 @@ describe.sequential("Settings API routes", () => {
     ]);
     expect(searchSettingsBody.data.searchCities.value).toBe("London");
 
-    const protectedSettingsRes = await fetch(`${baseUrl}/api/settings`, {
+    const personalSettingsRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${regularToken}`,
@@ -576,8 +576,24 @@ describe.sequential("Settings API routes", () => {
       },
       body: JSON.stringify({
         searchTerms: ["backend engineer"],
-        llmApiKey: "attacker-controlled-value",
+        llmProvider: "openai",
+        model: "gpt-4o-mini",
+        llmApiKey: "sk-regular-test",
       }),
+    });
+    const personalSettingsBody = await personalSettingsRes.json();
+
+    expect(personalSettingsRes.status).toBe(200);
+    expect(personalSettingsBody.data.model.value).toBe("gpt-4o-mini");
+    expect(personalSettingsBody.data.llmApiKeyHint).toBe("sk-r");
+
+    const protectedSettingsRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${regularToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ backupHour: 9 }),
     });
     const protectedSettingsBody = await protectedSettingsRes.json();
 
@@ -660,6 +676,7 @@ describe.sequential("Settings API routes", () => {
         JOBOPS_HOSTED_PLATFORM_LLM_ENABLED: "true",
         LLM_PROVIDER: "openai",
         LLM_API_KEY: "sk-platform-secret",
+        RXRESUME_API_KEY: "private-deployment-key",
         STRIPE_PRO_PRICE_ID: "price_pro",
       },
     }));
@@ -668,6 +685,8 @@ describe.sequential("Settings API routes", () => {
     const settingsBody = await settingsRes.json();
     expect(settingsBody.ok).toBe(true);
     expect(settingsBody.data.llmApiKeyHint).toBeNull();
+    expect(settingsBody.data.rxresumeApiKeyHint).toBeNull();
+    expect(settingsBody.data.editableKeys).not.toContain("model");
 
     const updateRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
@@ -688,6 +707,8 @@ describe.sequential("Settings API routes", () => {
         JOBOPS_APP_MODE: "hosted",
         JOBOPS_HOSTED_TENANT_ID: "tenant_default",
         JOBOPS_HOSTED_PLATFORM_LLM_ENABLED: "true",
+        LLM_PROVIDER: "openai",
+        MODEL: "gpt-5.4-mini",
         STRIPE_PRO_PRICE_ID: "price_pro",
       },
     }));
@@ -714,6 +735,25 @@ describe.sequential("Settings API routes", () => {
       stripePriceId: "price_pro",
       stripeStatus: "active",
     });
+    await db.insert(schema.settings).values([
+      {
+        tenantId: "tenant_default",
+        userId: "test-user",
+        key: "llmProvider",
+        value: "gemini",
+      },
+      {
+        tenantId: "tenant_default",
+        userId: "test-user",
+        key: "model",
+        value: "google/gemini-3-flash-preview",
+      },
+    ]);
+    const settingsResponse = await fetch(`${baseUrl}/api/settings`);
+    const effectiveSettings = await settingsResponse.json();
+    expect(effectiveSettings.data.llmProvider.value).toBe("openai");
+    expect(effectiveSettings.data.model.value).toBe("gpt-5.4-mini");
+    expect(effectiveSettings.data.editableKeys).not.toContain("model");
 
     const response = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",

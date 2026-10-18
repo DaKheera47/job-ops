@@ -21,6 +21,7 @@ import {
 } from "@shared/types";
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   real,
@@ -562,21 +563,22 @@ export const jobChatRuns = sqliteTable(
 export const settings = sqliteTable(
   "settings",
   {
-    tenantId: text("tenant_id")
-      .notNull()
-      .default("tenant_default")
-      .references(() => tenants.id, { onDelete: "cascade" }),
-    userId: text("user_id").references(() => users.id, {
+    tenantId: text("tenant_id").references(() => tenants.id, {
       onDelete: "cascade",
     }),
+    userId: text("user_id"),
     key: text("key").notNull(),
     value: text("value").notNull(),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => ({
-    tenantUserKeyUnique: uniqueIndex("idx_settings_tenant_user_key_unique").on(
-      table.tenantId,
+    ownerShape: check(
+      "settings_owner_shape",
+      sql`${table.userId} IS NULL OR ${table.tenantId} IS NOT NULL`,
+    ),
+    ownerKeyUnique: uniqueIndex("idx_settings_owner_key_unique").on(
+      sql`coalesce(${table.tenantId}, '')`,
       sql`coalesce(${table.userId}, '')`,
       table.key,
     ),

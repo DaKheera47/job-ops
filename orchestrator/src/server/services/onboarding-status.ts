@@ -7,7 +7,10 @@ import { getSetting } from "@server/repositories/settings";
 import { getCurrentAccountEntitlements } from "@server/services/account-entitlements";
 import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { getDesignResumeStatus } from "@server/services/design-resume";
-import { getOriginalEnvValue } from "@server/services/envSettings";
+import {
+  getOriginalEnvValue,
+  getPersonalEnvValue,
+} from "@server/services/envSettings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { isHostedLocalProvider } from "@server/services/llm/hosted-policy";
 import { LlmService } from "@server/services/llm/service";
@@ -227,10 +230,10 @@ export async function validateRxresume(options?: {
   const resolvedBaseUrl =
     options?.baseUrl !== undefined && options?.baseUrl !== null
       ? options.baseUrl.trim() ||
-        getOriginalEnvValue("RXRESUME_URL")?.trim() ||
+        getPersonalEnvValue("RXRESUME_URL")?.trim() ||
         "https://rxresu.me"
       : storedBaseUrl?.trim() ||
-        getOriginalEnvValue("RXRESUME_URL")?.trim() ||
+        getPersonalEnvValue("RXRESUME_URL")?.trim() ||
         "https://rxresu.me";
 
   if (hasExplicitV5Input && !requestApiKey) {
