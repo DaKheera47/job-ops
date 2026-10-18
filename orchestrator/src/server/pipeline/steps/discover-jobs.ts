@@ -4,9 +4,16 @@ import { getExtractorRegistry } from "@server/extractors/registry";
 import { getUserId } from "@server/infra/request-context";
 import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
+import {
+  closeHiringCafeBrowser,
+  readHiringCafeBrowserPage,
+} from "@server/services/hiring-cafe-browser";
 import { withHostedUsageReservation } from "@server/services/hosted-usage";
 import { resolveNearbyPlaceNames } from "@server/services/proximity-search";
-import { getPrivateCloudflareCookieStorageDir } from "@server/tenancy/private-scope";
+import {
+  getPrivateCloudflareCookieStorageDir,
+  getPrivateDataScope,
+} from "@server/tenancy/private-scope";
 import { asyncPool } from "@server/utils/async-pool";
 import { listHydratedWatchlistSelectedSources } from "@server/watchlist/results";
 import type { ExtractorSourceId } from "@shared/extractors";
@@ -155,6 +162,8 @@ export async function discoverJobsStep(args: {
   preserveFanout?: boolean;
   fanoutSeedJobs?: CreateJobInput[];
   retryChallengeUrls?: Record<string, string>;
+  resumeStates?: Record<string, unknown>;
+  skippedChallengeSearchStates?: string[];
   watchlistSelectedSourceIds?: string[] | null;
   shouldCancel?: () => boolean;
 }): Promise<{
@@ -322,6 +331,11 @@ export async function discoverJobsStep(args: {
 
         let timedOut = false;
         const shouldCancel = () => timedOut || args.shouldCancel?.() === true;
+        const browserScopeKey =
+          manifest.id === "hiringcafe" ? getPrivateDataScope().scopeKey : null;
+        const browserCookieDir = browserScopeKey
+          ? getPrivateCloudflareCookieStorageDir()
+          : null;
         const run = manifest.run({
           source: grouped.sources[0],
           selectedSources: grouped.sources,
@@ -329,7 +343,18 @@ export async function discoverJobsStep(args: {
           searchTerms,
           selectedCountry: getLegacyLocationSelection(locationIntent),
           cookieStorageDir: getPrivateCloudflareCookieStorageDir(),
+          browserPageReader:
+            browserScopeKey && browserCookieDir
+              ? (url) =>
+                  readHiringCafeBrowserPage(
+                    browserScopeKey,
+                    browserCookieDir,
+                    url,
+                  )
+              : undefined,
           retryChallengeUrl: args.retryChallengeUrls?.[manifest.id],
+          resumeState: args.resumeStates?.[manifest.id],
+          skippedChallengeSearchStates: args.skippedChallengeSearchStates,
           locationIntent,
           sourceLocationPlan: getSourceLocationPlan(
             grouped.sources[0] as CrawlSource,
@@ -377,9 +402,18 @@ export async function discoverJobsStep(args: {
             }
           },
         });
-        const result = await withDiscoverySourceTimeout(run, () => {
-          timedOut = true;
-        });
+        let result: Awaited<typeof run>;
+        try {
+          result = await withDiscoverySourceTimeout(run, () => {
+            timedOut = true;
+          });
+        } catch (error) {
+          if (browserScopeKey) await closeHiringCafeBrowser(browserScopeKey);
+          throw error;
+        }
+        if (browserScopeKey && !result.challengeRequired) {
+          await closeHiringCafeBrowser(browserScopeKey);
+        }
 
         if (!result.success) {
           return {
@@ -393,6 +427,7 @@ export async function discoverJobsStep(args: {
                   extractorId: manifest.id,
                   extractorName: manifest.displayName || manifest.id,
                   url: result.challengeRequired,
+                  resumeState: result.resumeState,
                   sources: grouped.sources as ExtractorSourceId[],
                 }
               : undefined,
@@ -407,8 +442,8 @@ export async function discoverJobsStep(args: {
                 extractorId: manifest.id,
                 extractorName: manifest.displayName || manifest.id,
                 url: result.challengeRequired,
+                resumeState: result.resumeState,
                 sources: grouped.sources as ExtractorSourceId[],
-                pauseOnRepeat: true,
               }
             : undefined,
         };

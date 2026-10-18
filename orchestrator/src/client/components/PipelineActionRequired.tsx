@@ -9,6 +9,10 @@ interface PipelineActionRequiredProps {
   pendingLabel: string;
   pending?: boolean;
   onAction: () => void;
+  secondaryActionLabel?: string;
+  secondaryPendingLabel?: string;
+  secondaryPending?: boolean;
+  onSecondaryAction?: () => void;
 }
 
 export const PipelineActionRequired = ({
@@ -18,6 +22,10 @@ export const PipelineActionRequired = ({
   pendingLabel,
   pending = false,
   onAction,
+  secondaryActionLabel,
+  secondaryPendingLabel,
+  secondaryPending = false,
+  onSecondaryAction,
 }: PipelineActionRequiredProps) => (
   <Alert variant="warning">
     <ShieldAlert />
@@ -28,16 +36,30 @@ export const PipelineActionRequired = ({
           <AlertDescription>{description}</AlertDescription>
         ) : null}
       </div>
-      <Button
-        className="shrink-0 self-start sm:self-auto"
-        size="sm"
-        variant="outline"
-        disabled={pending}
-        onClick={onAction}
-      >
-        {pending ? <Loader2 data-icon="inline-start" /> : null}
-        {pending ? pendingLabel : actionLabel}
-      </Button>
+      <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending || secondaryPending}
+          onClick={onAction}
+        >
+          {pending ? <Loader2 data-icon="inline-start" /> : null}
+          {pending ? pendingLabel : actionLabel}
+        </Button>
+        {secondaryActionLabel && onSecondaryAction ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending || secondaryPending}
+            onClick={onSecondaryAction}
+          >
+            {secondaryPending ? <Loader2 data-icon="inline-start" /> : null}
+            {secondaryPending
+              ? (secondaryPendingLabel ?? secondaryActionLabel)
+              : secondaryActionLabel}
+          </Button>
+        ) : null}
+      </div>
     </div>
   </Alert>
 );

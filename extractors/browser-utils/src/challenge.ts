@@ -25,6 +25,25 @@ const CF_CHALLENGE_MARKERS = [
   "vercel-protection",
 ] as const;
 
+/** A challenge solve can navigate between checking and reading page content. */
+export async function readPageContentIfReady(
+  page: Page,
+): Promise<string | null> {
+  try {
+    return await page.content();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /because the page is navigating and changing the content/i.test(
+        error.message,
+      )
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 /**
  * Checks whether a page is currently showing a Cloudflare challenge.
  * Works by inspecting page content — no network interception needed.
@@ -71,8 +90,11 @@ export async function waitForChallengeResolution(
 
   while (Date.now() - start < timeoutMs) {
     // Check if we've navigated away from the challenge page
-    const stillChallenge = await isChallengePage(page);
-    if (!stillChallenge) {
+    const html = await readPageContentIfReady(page);
+    if (
+      html !== null &&
+      !CF_CHALLENGE_MARKERS.some((marker) => html.includes(marker))
+    ) {
       return { status: "passed" };
     }
 

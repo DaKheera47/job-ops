@@ -14,6 +14,7 @@ export {
   isChallengePage,
   isChallengeResponse,
   navigateWithChallenge,
+  readPageContentIfReady,
   waitForChallengeResolution,
 } from "./challenge.js";
 export {

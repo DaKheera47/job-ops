@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSearchTerms } from "job-ops-shared/utils/search-terms";
+import { HiringCafeBrowserPages } from "./browser-pages.js";
 import { runHiringCafe } from "./run.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -48,49 +49,60 @@ async function run(): Promise<void> {
     process.env.HIRING_CAFE_OUTPUT_JSON ||
     join(__dirname, "../storage/datasets/default/jobs.json");
 
-  const result = await runHiringCafe({
-    searchTerms: parseSearchTerms(
-      process.env.HIRING_CAFE_SEARCH_TERMS,
-      DEFAULT_SEARCH_TERM,
-    ),
-    country: process.env.HIRING_CAFE_COUNTRY,
-    countryKey: process.env.HIRING_CAFE_COUNTRY,
-    locations: parseStringArray(process.env.HIRING_CAFE_LOCATION_QUERY),
-    workplaceTypes: parseWorkplaceTypes(
-      process.env.HIRING_CAFE_WORKPLACE_TYPES,
-    ),
-    locationRadiusMiles: parsePositiveInt(
-      process.env.HIRING_CAFE_LOCATION_RADIUS_MILES,
-      50,
-    ),
-    maxJobsPerTerm: parsePositiveInt(
-      process.env.HIRING_CAFE_MAX_JOBS_PER_TERM,
-      DEFAULT_MAX_JOBS_PER_TERM,
-    ),
-    onProgress: (event) => {
-      emitProgress({
-        event: event.type,
-        termIndex: event.termIndex,
-        termTotal: event.termTotal,
-        searchTerm: event.searchTerm,
-        pageNo: "pageNo" in event ? event.pageNo : undefined,
-        resultsOnPage:
-          "resultsOnPage" in event ? event.resultsOnPage : undefined,
-        totalCollected:
-          "totalCollected" in event ? event.totalCollected : undefined,
-        jobsFoundTerm:
-          "jobsFoundTerm" in event ? event.jobsFoundTerm : undefined,
-      });
-    },
+  const pages = new HiringCafeBrowserPages({
+    cookieStorageDir:
+      process.env.JOBOPS_CLOUDFLARE_COOKIE_STORAGE_DIR || "./storage",
+    initialHeadless: process.env.HIRING_CAFE_HEADLESS !== "false",
+    promoteToHeaded: async () => ({ release: () => undefined }),
   });
+  try {
+    const result = await runHiringCafe({
+      searchTerms: parseSearchTerms(
+        process.env.HIRING_CAFE_SEARCH_TERMS,
+        DEFAULT_SEARCH_TERM,
+      ),
+      country: process.env.HIRING_CAFE_COUNTRY,
+      countryKey: process.env.HIRING_CAFE_COUNTRY,
+      locations: parseStringArray(process.env.HIRING_CAFE_LOCATION_QUERY),
+      workplaceTypes: parseWorkplaceTypes(
+        process.env.HIRING_CAFE_WORKPLACE_TYPES,
+      ),
+      locationRadiusMiles: parsePositiveInt(
+        process.env.HIRING_CAFE_LOCATION_RADIUS_MILES,
+        50,
+      ),
+      maxJobsPerTerm: parsePositiveInt(
+        process.env.HIRING_CAFE_MAX_JOBS_PER_TERM,
+        DEFAULT_MAX_JOBS_PER_TERM,
+      ),
+      pageReader: pages,
+      onProgress: (event) => {
+        emitProgress({
+          event: event.type,
+          termIndex: event.termIndex,
+          termTotal: event.termTotal,
+          searchTerm: event.searchTerm,
+          pageNo: "pageNo" in event ? event.pageNo : undefined,
+          resultsOnPage:
+            "resultsOnPage" in event ? event.resultsOnPage : undefined,
+          totalCollected:
+            "totalCollected" in event ? event.totalCollected : undefined,
+          jobsFoundTerm:
+            "jobsFoundTerm" in event ? event.jobsFoundTerm : undefined,
+        });
+      },
+    });
 
-  if (!result.success) {
-    throw new Error(result.error ?? "Hiring Cafe extractor failed");
+    if (!result.success) {
+      throw new Error(result.error ?? "Hiring Cafe extractor failed");
+    }
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(result.jobs, null, 2)}\n`);
+    console.log(`Hiring Cafe extractor wrote ${result.jobs.length} jobs`);
+  } finally {
+    await pages.close();
   }
-
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(result.jobs, null, 2)}\n`);
-  console.log(`Hiring Cafe extractor wrote ${result.jobs.length} jobs`);
 }
 
 run().catch((error: unknown) => {

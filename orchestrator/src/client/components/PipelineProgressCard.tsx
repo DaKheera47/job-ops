@@ -25,7 +25,9 @@ export interface PipelineProgressCardProps {
   elapsedSeconds?: number;
   currentCombination?: string;
   solvingExtractor?: string | null;
+  skippingExtractor?: string | null;
   onSolveChallenge?: (extractorId: string) => void;
+  onSkipChallengeSearch?: (extractorId: string) => void;
   resumingScoring?: boolean;
   onResumeScoring?: () => void;
 }
@@ -170,7 +172,9 @@ export const PipelineProgressCard = ({
   elapsedSeconds,
   currentCombination,
   solvingExtractor = null,
+  skippingExtractor = null,
   onSolveChallenge = () => {},
+  onSkipChallengeSearch = () => {},
   resumingScoring = false,
   onResumeScoring,
 }: PipelineProgressCardProps) => {
@@ -185,7 +189,9 @@ export const PipelineProgressCard = ({
         currentCombination={currentCombination}
         challenges={progress.pendingChallenges}
         solvingExtractor={solvingExtractor}
+        skippingExtractor={skippingExtractor}
         onSolveChallenge={onSolveChallenge}
+        onSkipChallengeSearch={onSkipChallengeSearch}
       />
     );
   }

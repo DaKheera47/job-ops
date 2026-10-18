@@ -164,6 +164,352 @@ describe("Hiring Cafe SSR parser", () => {
 });
 
 describe("runHiringCafe", () => {
+  it("keeps an earlier detail challenge pending when resuming a later search page", async () => {
+    let searchPageClear = false;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "https://hiringcafe.com/job/req-1") {
+        return createTextResponse("<html>challenges.cloudflare.com</html>", {
+          ok: false,
+          status: 403,
+        });
+      }
+      const page = Number(new URL(url).searchParams.get("page") ?? 0);
+      if (page === 1 && !searchPageClear) {
+        return createTextResponse("<html>challenges.cloudflare.com</html>", {
+          ok: false,
+          status: 403,
+        });
+      }
+      const hit =
+        page === 0
+          ? createRawJob({
+              requisition_id: "req-1",
+              job_information: { title: "Engineer 1" },
+            })
+          : createRawJob({
+              original_source_id: "job-2",
+              apply_url: "https://example.com/apply/job-2",
+            });
+      return createTextResponse(createSearchHtml([hit], page === 1));
+    });
+    const options = {
+      searchTerms: ["Backend Engineer"],
+      country: "worldwide",
+      maxJobsPerTerm: 2,
+      fetchImpl: fetchMock as typeof fetch,
+    };
+
+    const first = await runHiringCafe(options);
+    expect(first.challengeRequired).toContain("page=1");
+    expect(first.searchResume?.pendingDetailChallengeUrl).toBe(
+      "https://hiringcafe.com/job/req-1",
+    );
+
+    searchPageClear = true;
+    const resumed = await runHiringCafe({
+      ...options,
+      searchResume: first.searchResume,
+    });
+    expect(resumed.challengeRequired).toBe("https://hiringcafe.com/job/req-1");
+    expect(resumed.jobs.map((job) => job.sourceJobId)).toEqual(["job-2"]);
+  });
+
+  it("does not count a previously seen listing against the remaining term limit", async () => {
+    const fetchMock = vi.fn(async () =>
+      createTextResponse(
+        createSearchHtml([
+          createRawJob({ original_source_id: "job-1" }),
+          createRawJob({
+            original_source_id: "job-3",
+            apply_url: "https://example.com/apply/job-3",
+          }),
+        ]),
+      ),
+    );
+    const result = await runHiringCafe({
+      searchTerms: ["Backend Engineer"],
+      country: "worldwide",
+      maxJobsPerTerm: 3,
+      fetchImpl: fetchMock as typeof fetch,
+      searchResume: {
+        locationIndex: 0,
+        termIndex: 0,
+        location: null,
+        searchTerm: "Backend Engineer",
+        pageNo: 2,
+        termCollected: 2,
+        searchState: '{"searchQuery":"Backend Engineer"}',
+        seenKeys: ["job-1", "job-2"],
+      },
+    });
+
+    expect(result.jobs.map((job) => job.sourceJobId)).toEqual(["job-3"]);
+    expect(
+      new URL(
+        fetchMock.mock.calls[0]?.[0] ?? "https://hiringcafe.com/",
+      ).searchParams.get("page"),
+    ).toBe("2");
+  });
+
+  it("rejects a stale search checkpoint instead of silently completing an empty retry", async () => {
+    const pageReader = { read: vi.fn() };
+    const result = await runHiringCafe({
+      searchTerms: ["Backend Engineer"],
+      country: "worldwide",
+      pageReader,
+      searchResume: {
+        locationIndex: 0,
+        termIndex: 3,
+        location: null,
+        searchTerm: "Backend Engineer",
+        pageNo: 2,
+        termCollected: 40,
+        searchState: '{"searchQuery":"Backend Engineer"}',
+        seenKeys: [],
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("search checkpoint");
+    expect(pageReader.read).not.toHaveBeenCalled();
+  });
+
+  it("resumes a challenged city search at its page without replaying earlier terms or cities", async () => {
+    const requestedSearchPages: string[] = [];
+    let challengePageTwo = true;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("https://nominatim.openstreetmap.org/search")) {
+        const city = new URL(url).searchParams.get("q")?.split(",")[0];
+        return createJsonResponse([
+          {
+            lat: city === "Amsterdam" ? "52.3730796" : "51.9244",
+            lon: city === "Amsterdam" ? "4.8924534" : "4.4777",
+            display_name: `${city}, Netherlands`,
+            address: { state: "Noord-Holland" },
+          },
+        ]);
+      }
+      requestedSearchPages.push(url);
+      const parsed = new URL(url);
+      const state = JSON.parse(
+        parsed.searchParams.get("searchState") ?? "{}",
+      ) as {
+        searchQuery: string;
+        locations: Array<{ id: string }>;
+      };
+      const page = Number(parsed.searchParams.get("page") ?? 0);
+      if (
+        challengePageTwo &&
+        state.searchQuery === "Backend Engineer" &&
+        state.locations[0]?.id === "city_amsterdam" &&
+        page === 2
+      ) {
+        return createTextResponse("<html>challenges.cloudflare.com</html>", {
+          ok: false,
+          status: 403,
+        });
+      }
+      return createTextResponse(
+        createSearchHtml(
+          [
+            createRawJob({
+              original_source_id: `${state.locations[0]?.id}-${state.searchQuery}-${page}`,
+              apply_url: `https://example.com/${state.locations[0]?.id}/${state.searchQuery}/${page}`,
+            }),
+          ],
+          page >= 3,
+        ),
+      );
+    });
+    const options = {
+      searchTerms: ["Frontend Engineer", "Backend Engineer", "Data Engineer"],
+      country: "Netherlands",
+      locations: ["Amsterdam", "Rotterdam"],
+      maxJobsPerTerm: 4,
+      fetchImpl: fetchMock as typeof fetch,
+    };
+
+    const first = await runHiringCafe(options);
+    expect(first.challengeRequired).toContain("page=2");
+    expect(first.searchResume).toMatchObject({
+      locationIndex: 0,
+      termIndex: 1,
+      pageNo: 2,
+      searchTerm: "Backend Engineer",
+      location: "Amsterdam",
+      termCollected: 2,
+    });
+
+    requestedSearchPages.length = 0;
+    const challengedAgain = await runHiringCafe({
+      ...options,
+      searchResume: first.searchResume,
+    });
+    expect(requestedSearchPages).toHaveLength(1);
+    expect(
+      new URL(
+        requestedSearchPages[0] ?? "https://hiringcafe.com/",
+      ).searchParams.get("page"),
+    ).toBe("2");
+    expect(challengedAgain.searchResume).toEqual(first.searchResume);
+
+    challengePageTwo = false;
+    requestedSearchPages.length = 0;
+    const resumed = await runHiringCafe({
+      ...options,
+      searchResume: challengedAgain.searchResume,
+    });
+
+    expect(resumed.challengeRequired).toBeUndefined();
+    const searches = requestedSearchPages.map((url) => {
+      const parsed = new URL(url);
+      const state = JSON.parse(
+        parsed.searchParams.get("searchState") ?? "{}",
+      ) as {
+        searchQuery: string;
+        locations: Array<{ id: string }>;
+      };
+      return `${state.locations[0]?.id}:${state.searchQuery}:${parsed.searchParams.get("page") ?? "0"}`;
+    });
+    expect(searches).toEqual([
+      "city_amsterdam:Backend Engineer:2",
+      "city_amsterdam:Backend Engineer:3",
+      "city_amsterdam:Data Engineer:0",
+      "city_amsterdam:Data Engineer:1",
+      "city_amsterdam:Data Engineer:2",
+      "city_amsterdam:Data Engineer:3",
+      "city_rotterdam:Frontend Engineer:0",
+      "city_rotterdam:Frontend Engineer:1",
+      "city_rotterdam:Frontend Engineer:2",
+      "city_rotterdam:Frontend Engineer:3",
+      "city_rotterdam:Backend Engineer:0",
+      "city_rotterdam:Backend Engineer:1",
+      "city_rotterdam:Backend Engineer:2",
+      "city_rotterdam:Backend Engineer:3",
+      "city_rotterdam:Data Engineer:0",
+      "city_rotterdam:Data Engineer:1",
+      "city_rotterdam:Data Engineer:2",
+      "city_rotterdam:Data Engineer:3",
+    ]);
+  });
+  it("uses browser page HTML for Hiring Cafe without an HTTP request", async () => {
+    const pageReader = {
+      read: vi.fn(async () => ({
+        status: 200,
+        html: createSearchHtml([createRawJob()]),
+        challenged: false,
+      })),
+    };
+    const fetchMock = vi.fn(async () => {
+      throw new Error("HTTP scraper must not read Hiring Cafe pages");
+    });
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      pageReader,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(result.jobs).toEqual([
+      expect.objectContaining({ sourceJobId: "job-1" }),
+    ]);
+    expect(pageReader.read).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps jobs from earlier search terms when a later search is challenged", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      const searchState = JSON.parse(
+        new URL(url).searchParams.get("searchState") ?? "{}",
+      ) as { searchQuery?: string };
+      return Promise.resolve(
+        searchState.searchQuery === "backend engineer"
+          ? createTextResponse("<html>challenges.cloudflare.com</html>", {
+              ok: false,
+              status: 429,
+            })
+          : createTextResponse(createSearchHtml([createRawJob()])),
+      );
+    });
+
+    const result = await runHiringCafe({
+      searchTerms: ["web developer", "backend engineer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.jobs).toEqual([
+      expect.objectContaining({ sourceJobId: "job-1" }),
+    ]);
+    expect(result.sourceErrors).toEqual([expect.stringContaining("HTTP 429")]);
+    expect(
+      new URL(
+        result.challengeRequired ?? "https://hiringcafe.com/",
+      ).searchParams.get("searchState"),
+    ).toContain("backend engineer");
+  });
+
+  it("skips only the challenged search and continues with later terms", async () => {
+    let challengeSecondTerm = true;
+    const fetchedTerms: string[] = [];
+    const fetchMock = vi.fn((url: string) => {
+      const searchState = JSON.parse(
+        new URL(url).searchParams.get("searchState") ?? "{}",
+      ) as { searchQuery?: string };
+      const term = searchState.searchQuery ?? "";
+      fetchedTerms.push(term);
+      if (term === "backend engineer" && challengeSecondTerm) {
+        return Promise.resolve(
+          createTextResponse("<html>challenges.cloudflare.com</html>", {
+            ok: false,
+            status: 429,
+          }),
+        );
+      }
+      const id = term === "web developer" ? "job-1" : "job-3";
+      return Promise.resolve(
+        createTextResponse(
+          createSearchHtml([
+            createRawJob({
+              original_source_id: id,
+              apply_url: `https://example.com/apply/${id}`,
+            }),
+          ]),
+        ),
+      );
+    });
+    const options = {
+      searchTerms: ["web developer", "backend engineer", "data engineer"],
+      country: "worldwide",
+      maxJobsPerTerm: 1,
+      fetchImpl: fetchMock as typeof fetch,
+    };
+    const first = await runHiringCafe(options);
+    expect(first.jobs.map((job) => job.sourceJobId)).toEqual(["job-1"]);
+    const challengedState = new URL(
+      first.challengeRequired ?? "https://hiringcafe.com/",
+    ).searchParams.get("searchState");
+    expect(challengedState).toBeTruthy();
+
+    challengeSecondTerm = false;
+    fetchedTerms.length = 0;
+    const resumed = await runHiringCafe({
+      ...options,
+      skippedChallengeSearchStates: [challengedState ?? ""],
+    });
+    expect(resumed.success).toBe(true);
+    expect(resumed.challengeRequired).toBeUndefined();
+    expect(fetchedTerms).toEqual(["web developer", "data engineer"]);
+    expect(resumed.jobs.map((job) => job.sourceJobId)).toEqual([
+      "job-1",
+      "job-3",
+    ]);
+  });
+
   it("fetches rendered search pages and maps jobs without a browser", async () => {
     const fetchMock = vi
       .fn()
@@ -367,6 +713,7 @@ describe("runHiringCafe", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "https://hiringcafe.com/job/req-old",
     );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       success: true,
       jobs: [
@@ -377,6 +724,40 @@ describe("runHiringCafe", () => {
       ],
     });
     expect(result.challengeRequired).toBeUndefined();
+  });
+
+  it("retries a browser-reported 429 before asking for a search challenge", async () => {
+    vi.useFakeTimers();
+    try {
+      let reads = 0;
+      const pageReader = {
+        read: vi.fn(async () => {
+          reads += 1;
+          return reads === 1
+            ? {
+                status: 429,
+                html: "<html>Just a moment...</html>",
+                challenged: true,
+              }
+            : { status: 200, html: createSearchHtml([]), challenged: false };
+        }),
+      };
+
+      const run = runHiringCafe({
+        searchTerms: ["web developer"],
+        country: "worldwide",
+        maxJobsPerTerm: 1,
+        pageReader,
+      });
+      await vi.runAllTimersAsync();
+      const result = await run;
+
+      expect(result.success).toBe(true);
+      expect(result.challengeRequired).toBeUndefined();
+      expect(pageReader.read).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("falls back to the search hit when enrichment finds an expired job", async () => {

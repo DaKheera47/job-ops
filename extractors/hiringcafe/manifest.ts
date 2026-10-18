@@ -3,7 +3,7 @@ import type {
   ExtractorManifest,
   ExtractorProgressEvent,
 } from "@shared/types/extractors";
-import { runHiringCafe } from "./src/run";
+import { type HiringCafeSearchResume, runHiringCafe } from "./src/run";
 
 type HiringCafeContext = Parameters<ExtractorManifest["run"]>[0];
 
@@ -122,7 +122,12 @@ export const manifest: ExtractorManifest = {
       workplaceTypes: resolveContextWorkplaceTypes(context),
       maxJobsPerTerm,
       retryChallengeUrl: context.retryChallengeUrl,
+      searchResume: context.resumeState as HiringCafeSearchResume | undefined,
+      skippedChallengeSearchStates: context.skippedChallengeSearchStates,
       cookieStorageDir: context.cookieStorageDir,
+      pageReader: context.browserPageReader
+        ? { read: context.browserPageReader }
+        : undefined,
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
         if (context.shouldCancel?.()) return;
@@ -137,6 +142,7 @@ export const manifest: ExtractorManifest = {
         jobs: [],
         error: result.error,
         challengeRequired: result.challengeRequired,
+        resumeState: result.searchResume,
       };
     }
 
@@ -145,6 +151,7 @@ export const manifest: ExtractorManifest = {
       jobs: result.jobs,
       sourceErrors: result.sourceErrors,
       challengeRequired: result.challengeRequired,
+      resumeState: result.searchResume,
     };
   },
 };

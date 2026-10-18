@@ -464,6 +464,17 @@ export function createApp() {
   app.use("/api", apiRouter);
   app.use(notFoundApiHandler());
 
+  app.get("/challenge-viewer/solved", (_req, res) => {
+    res
+      .status(200)
+      .type("html")
+      .send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Challenge solved · Job Ops</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0a0a0a;color:#4ade80;font-family:system-ui,sans-serif;text-align:center}h1{font-size:2rem;font-weight:600;margin-bottom:.5rem}p{color:#a1a1aa;font-size:1.1rem}</style></head>
+<body><main><h1>Challenge solved</h1><p>This tab will close shortly. You can return to Job Ops.</p></main></body></html>`);
+  });
+
   app.use("/challenge-viewer/session", (req, res) => {
     void proxyChallengeViewerRequest(req, res);
   });

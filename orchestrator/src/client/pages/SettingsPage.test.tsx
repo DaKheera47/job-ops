@@ -390,9 +390,7 @@ describe("SettingsPage", () => {
 
     // Should see error message
     expect(
-      await screen.findByText(
-        /String must contain at most 200 character\(s\)/i,
-      ),
+      await screen.findByText(/(?:at most 200|<=200)/i),
     ).toBeInTheDocument();
 
     // Save button should be disabled due to validation error (isValid will be false)

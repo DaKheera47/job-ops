@@ -80,6 +80,21 @@ export async function solvePipelineChallenge(extractorId: string): Promise<{
   });
 }
 
+export async function skipPipelineChallengeSearch(
+  extractorId: string,
+): Promise<{
+  status: "skipped";
+  remaining: number;
+}> {
+  return fetchApi<{ status: "skipped"; remaining: number }>(
+    "/pipeline/skip-challenge-search",
+    {
+      method: "POST",
+      body: JSON.stringify({ extractorId }),
+    },
+  );
+}
+
 export async function resumePipelineScoring(): Promise<{ resolved: boolean }> {
   return fetchApi<{ resolved: boolean }>("/pipeline/resume-scoring", {
     method: "POST",

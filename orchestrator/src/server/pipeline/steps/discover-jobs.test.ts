@@ -13,6 +13,21 @@ vi.mock("impit", () => ({
   },
 }));
 
+vi.mock("@server/services/hiring-cafe-browser", () => ({
+  readHiringCafeBrowserPage: vi.fn(
+    async (_scope: string, _dir: string, url: string) => {
+      const response = await hiringCafeFetch(url, {});
+      const html = await response.text();
+      return {
+        status: response.status,
+        html,
+        challenged: !response.ok && html.includes("challenges.cloudflare.com"),
+      };
+    },
+  ),
+  closeHiringCafeBrowser: vi.fn(async () => undefined),
+}));
+
 vi.mock("@server/repositories/settings", () => ({
   getAllSettings: vi.fn(),
 }));
@@ -54,6 +69,58 @@ describe("discoverJobsStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetProgress();
+  });
+
+  it("carries a Hiring Cafe search checkpoint into a retry", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const searchResume = {
+      locationIndex: 0,
+      termIndex: 0,
+      location: "Amsterdam",
+      searchTerm: "Backend Engineer",
+      pageNo: 2,
+      termCollected: 40,
+      searchState: '{"searchQuery":"Backend Engineer"}',
+      seenKeys: ["job-1"],
+    };
+    const manifest = {
+      id: "hiringcafe",
+      displayName: "Hiring Cafe",
+      providesSources: ["hiringcafe"],
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          success: true,
+          jobs: [],
+          challengeRequired: "https://hiringcafe.com/?page=2",
+          resumeState: searchResume,
+        })
+        .mockResolvedValueOnce({ success: true, jobs: [] }),
+    };
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["Backend Engineer"]),
+      jobspyCountryIndeed: "worldwide",
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["hiringcafe", manifest]]),
+      manifestBySource: new Map([["hiringcafe", manifest]]),
+      availableSources: ["hiringcafe"],
+    } as any);
+
+    const first = await discoverJobsStep({
+      mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+    });
+    expect(first.pendingChallenges[0]?.resumeState).toEqual(searchResume);
+
+    await discoverJobsStep({
+      mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+      includeWatchlist: false,
+      resumeStates: { hiringcafe: searchResume },
+    });
+    expect(manifest.run).toHaveBeenLastCalledWith(
+      expect.objectContaining({ resumeState: searchResume }),
+    );
   });
 
   it("retains Hiring Cafe listing jobs and pauses on a challenged detail page", async () => {
@@ -134,7 +201,6 @@ describe("discoverJobsStep", () => {
       expect.objectContaining({
         extractorId: "hiringcafe",
         url: "https://hiringcafe.com/job/req-2",
-        pauseOnRepeat: true,
       }),
     ]);
     expect(hiringCafeFetch).toHaveBeenCalledWith(
@@ -183,8 +249,9 @@ describe("discoverJobsStep", () => {
     expect(hiringCafeFetch.mock.calls[0]?.[0]).toBe(
       "https://hiringcafe.com/job/req-2",
     );
+    expect(hiringCafeFetch).toHaveBeenCalledTimes(1);
     expect(retryResult.pendingChallenges).toEqual([]);
-    expect(retryResult.discoveredJobs).toHaveLength(3);
+    expect(retryResult.discoveredJobs).toHaveLength(1);
     expect(retryResult.discoveredJobs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

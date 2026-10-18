@@ -328,7 +328,16 @@ export const progressHelpers = {
     const tracker = getFanoutTracker();
     const task = tracker?.tasks.get(taskId);
     if (!tracker || !task) return;
-    task.states.fill("running");
+    if (
+      !task.termProgressStarted &&
+      task.states.every((state) => state === "queued")
+    ) {
+      task.states = task.states.map(() => "running" as const);
+    } else {
+      task.states = task.states.map((state) =>
+        state === "check" ? "running" : state,
+      );
+    }
     emitFanout(tracker);
   },
 
@@ -387,7 +396,15 @@ export const progressHelpers = {
     const tracker = getFanoutTracker();
     const task = tracker?.tasks.get(taskId);
     if (!tracker || !task) return;
-    task.states.fill(state);
+    if (state === "complete") {
+      task.states.fill("complete");
+    } else {
+      task.states = task.states.map((unit) =>
+        unit === "running" || (!task.termProgressStarted && unit === "queued")
+          ? "check"
+          : unit,
+      );
+    }
     emitFanout(tracker);
   },
 

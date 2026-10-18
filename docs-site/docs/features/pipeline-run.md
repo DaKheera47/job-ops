@@ -156,6 +156,14 @@ through the active search term, location, and job board one value at a time.
   in-run title/employer deduplication.
 - A browser-check row pauses only the affected extractor. Use **Solve** to open
   the challenge viewer; other extractors continue running.
+- If another Cloudflare challenge appears after a solve, the run shows the new
+  browser check and stays paused. Solve each challenge as it appears, or cancel
+  the run. Collected jobs are held until all challenged sources finish and the
+  run can import complete results.
+- After a **Solve** attempt on a Hiring Cafe search-page challenge, **Skip this
+  search** keeps jobs found so far and moves to the next Hiring Cafe search term
+  or location. It does not skip the whole source. The option does not appear for
+  job detail challenges.
 - An extractor that does not finish within 10 minutes is marked as failed. The
   remaining extractors continue instead of leaving the run stuck indefinitely.
 

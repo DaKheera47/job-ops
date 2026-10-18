@@ -50,6 +50,8 @@ vi.mock("@server/pipeline/index", () => {
     })),
     isPipelineCancelRequested: vi.fn(() => false),
     getPendingChallenges: vi.fn(() => []),
+    beginPipelineChallengeSolve: vi.fn(() => null),
+    skipPipelineChallengeSearch: vi.fn(() => ({ status: "not_found" })),
     resolvePipelineChallenge: vi.fn(() => ({ resolved: false, remaining: 0 })),
     subscribeToProgress: vi.fn((listener: (data: unknown) => void) => {
       listener(progress);
@@ -91,10 +93,18 @@ vi.mock("@server/services/challenge-viewer", () => ({
     .fn()
     .mockResolvedValue({ available: false, reason: "not a container" }),
   createChallengeViewerSession: vi.fn(() => ({ token: "viewer-token" })),
+  revokeChallengeViewerSessions: vi.fn(),
   buildChallengeViewerUrl: vi.fn(
     () => "/challenge-viewer/session/viewer-token/vnc.html",
   ),
   proxyChallengeViewerRequest: vi.fn(),
+}));
+
+vi.mock("@server/services/hiring-cafe-browser", () => ({
+  closeHiringCafeBrowser: vi.fn(async () => undefined),
+  hasHiringCafeBrowserChallenge: vi.fn(() => false),
+  readHiringCafeBrowserPage: vi.fn(),
+  waitForHiringCafeBrowserChallenge: vi.fn(),
 }));
 
 vi.mock("@server/services/visa-sponsors/index", () => ({

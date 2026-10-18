@@ -5,6 +5,7 @@ import { connect, type Socket } from "node:net";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import type { Request, Response } from "express";
+import { ViewerLease } from "./viewer-lease";
 
 type ViewerStatus = { available: true } | { available: false; reason: string };
 
@@ -29,7 +30,12 @@ const HOP_BY_HOP_HEADERS = new Set([
 
 let viewerProcesses: ChildProcess[] = [];
 let startPromise: Promise<ViewerStatus> | null = null;
-const viewerTokens = new Map<string, number>();
+const viewerLease = new ViewerLease();
+const viewerTokens = new Map<
+  string,
+  { scopeKey: string; expiresAt: number; release: () => void }
+>();
+const viewerSockets = new Map<string, Set<Socket>>();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -77,16 +83,29 @@ function startProcess(command: string, args: string[], name: string) {
 }
 
 function pruneExpiredViewerTokens(now = Date.now()): void {
-  for (const [token, expiresAt] of viewerTokens) {
-    if (expiresAt <= now) viewerTokens.delete(token);
+  for (const [token, entry] of viewerTokens) {
+    if (entry.expiresAt <= now) {
+      revokeViewerToken(token);
+    }
   }
+}
+
+function revokeViewerToken(token: string): void {
+  const entry = viewerTokens.get(token);
+  if (!entry) return;
+  entry.release();
+  viewerTokens.delete(token);
+  for (const socket of viewerSockets.get(token) ?? []) socket.destroy();
+  viewerSockets.delete(token);
 }
 
 function validateViewerToken(token: string): boolean {
   const now = Date.now();
   pruneExpiredViewerTokens(now);
-  const expiresAt = viewerTokens.get(token);
-  return Boolean(expiresAt && expiresAt > now);
+  const entry = viewerTokens.get(token);
+  return Boolean(
+    entry && entry.expiresAt > now && viewerLease.owns(entry.scopeKey),
+  );
 }
 
 function getViewerProxyConfig() {
@@ -247,11 +266,45 @@ export async function ensureChallengeViewer(): Promise<ViewerStatus> {
   return startPromise;
 }
 
-export function createChallengeViewerSession(): { token: string } {
+export async function acquireChallengeViewer(
+  scopeKey: string,
+): Promise<{ display?: string; release: () => void } | null> {
+  const release = viewerLease.acquire(scopeKey);
+  if (!release) return null;
+  const status = await ensureChallengeViewer();
+  if (!status.available && process.platform === "linux") {
+    release();
+    throw new Error(status.reason);
+  }
+  return {
+    display: status.available
+      ? process.env.DISPLAY || DEFAULT_DISPLAY
+      : undefined,
+    release,
+  };
+}
+
+export function createChallengeViewerSession(
+  scopeKey: string,
+): { token: string } | null {
   pruneExpiredViewerTokens();
+  const release = viewerLease.acquire(scopeKey);
+  if (!release) return null;
   const token = randomBytes(32).toString("base64url");
-  viewerTokens.set(token, Date.now() + VIEWER_TOKEN_TTL_MS);
+  viewerTokens.set(token, {
+    scopeKey,
+    expiresAt: Date.now() + VIEWER_TOKEN_TTL_MS,
+    release,
+  });
+  setTimeout(() => pruneExpiredViewerTokens(), VIEWER_TOKEN_TTL_MS + 1).unref();
   return { token };
+}
+
+export function revokeChallengeViewerSessions(scopeKey: string): void {
+  for (const [token, entry] of viewerTokens) {
+    if (entry.scopeKey !== scopeKey) continue;
+    revokeViewerToken(token);
+  }
 }
 
 export function buildChallengeViewerUrl(args: { token: string }): string {
@@ -320,6 +373,10 @@ export function attachChallengeViewerUpgradeProxy(server: Server): void {
       return;
     }
 
+    const sockets = viewerSockets.get(target.token) ?? new Set<Socket>();
+    sockets.add(socket);
+    viewerSockets.set(target.token, sockets);
+
     const { novncHost, novncPort } = getViewerProxyConfig();
     const upstreamSocket = connect(Number(novncPort), novncHost);
 
@@ -359,6 +416,11 @@ export function attachChallengeViewerUpgradeProxy(server: Server): void {
 
     socket.on("error", () => {
       upstreamSocket.destroy();
+    });
+    socket.on("close", () => {
+      upstreamSocket.destroy();
+      sockets.delete(socket);
+      if (sockets.size === 0) viewerSockets.delete(target.token);
     });
   });
 }

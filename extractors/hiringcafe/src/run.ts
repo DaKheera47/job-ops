@@ -9,18 +9,13 @@ import {
   toNumberOrNull,
   toStringOrNull,
 } from "@shared/utils/type-conversion.js";
-import {
-  createPersistedFetchCookieJar,
-  getCloudflareCookieStorageDir,
-} from "browser-utils";
-import { Impit } from "impit";
+import type { HiringCafeBrowserPages } from "./browser-pages.js";
 import {
   type HiringCafeCountryLocation,
   resolveHiringCafeCountryLocation,
 } from "./country-map.js";
 import { createDefaultSearchState } from "./default-search-state.js";
 
-const EXTRACTOR_ID = "hiringcafe";
 // hiring.cafe now 308-redirects to hiringcafe.com; target it directly so
 // challenge cookies are solved and reused on the same domain.
 const BASE_URL = "https://hiringcafe.com/";
@@ -71,6 +66,18 @@ export interface HiringCafeSsrPage {
   isLastPage: boolean;
 }
 
+export interface HiringCafeSearchResume {
+  locationIndex: number;
+  termIndex: number;
+  location: string | null;
+  searchTerm: string;
+  pageNo: number;
+  termCollected: number;
+  searchState: string;
+  seenKeys: string[];
+  pendingDetailChallengeUrl?: string;
+}
+
 export type HiringCafeProgressEvent =
   | {
       type: "term_start";
@@ -105,7 +112,10 @@ export interface RunHiringCafeOptions {
   proximity?: LocationProximity;
   maxJobsPerTerm?: number;
   retryChallengeUrl?: string;
+  searchResume?: HiringCafeSearchResume;
+  skippedChallengeSearchStates?: string[];
   cookieStorageDir?: string;
+  pageReader?: Pick<HiringCafeBrowserPages, "read">;
   fetchImpl?: typeof fetch;
   shouldCancel?: () => boolean;
   onProgress?: (event: HiringCafeProgressEvent) => void;
@@ -118,6 +128,7 @@ export interface HiringCafeResult {
   sourceErrors?: string[];
   /** URL that needs a human to solve a Cloudflare challenge in a headed browser */
   challengeRequired?: string;
+  searchResume?: HiringCafeSearchResume;
 }
 
 class HiringCafeChallengeError extends Error {
@@ -132,38 +143,6 @@ class HiringCafeChallengeError extends Error {
   }
 }
 
-/**
- * Default HTTP client: impit impersonates a real Firefox TLS fingerprint and
- * shares the persisted cookie jar (and User-Agent) written by the headed
- * challenge solver, so a solved cf_clearance/_vcrcs cookie is actually reused.
- */
-async function createDefaultFetchImpl(
-  cookieStorageDir?: string,
-): Promise<typeof fetch> {
-  const persistedCookies = await createPersistedFetchCookieJar(
-    EXTRACTOR_ID,
-    getCloudflareCookieStorageDir(cookieStorageDir),
-  );
-  const impit = new Impit({
-    browser: "firefox",
-    timeout: 30_000,
-    cookieJar: persistedCookies.cookieJar,
-    ...(persistedCookies.userAgent
-      ? { headers: { "user-agent": persistedCookies.userAgent } }
-      : {}),
-  });
-
-  // Impit enforces its own timeout and does not accept AbortSignal.
-  // ImpitResponse covers everything this extractor reads (ok/status/text).
-  return ((input: RequestInfo | URL, init?: RequestInit) => {
-    const { signal: _signal, ...rest } = init ?? {};
-    return impit.fetch(
-      typeof input === "string" ? input : input.toString(),
-      rest as Parameters<Impit["fetch"]>[1],
-    );
-  }) as unknown as typeof fetch;
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -176,17 +155,30 @@ function sleep(ms: number): Promise<void> {
 function withThrottleAndRetry(fetchImpl: typeof fetch): typeof fetch {
   let lastRequestAt = 0;
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const wait = lastRequestAt + REQUEST_DELAY_MS - Date.now();
-    if (wait > 0) await sleep(wait);
-    let response = await fetchImpl(input, init);
-    lastRequestAt = Date.now();
-    for (const delay of RATE_LIMIT_RETRY_DELAYS_MS) {
-      if (response.status !== 429) break;
-      await sleep(delay);
-      response = await fetchImpl(input, init);
-      lastRequestAt = Date.now();
+    for (let attempt = 0; ; attempt += 1) {
+      const wait = lastRequestAt + REQUEST_DELAY_MS - Date.now();
+      if (wait > 0) await sleep(wait);
+      try {
+        const response = await fetchImpl(input, init);
+        lastRequestAt = Date.now();
+        if (
+          response.status !== 429 ||
+          attempt >= RATE_LIMIT_RETRY_DELAYS_MS.length
+        ) {
+          return response;
+        }
+      } catch (error) {
+        lastRequestAt = Date.now();
+        if (
+          !(error instanceof HiringCafeChallengeError) ||
+          error.status !== 429 ||
+          attempt >= RATE_LIMIT_RETRY_DELAYS_MS.length
+        ) {
+          throw error;
+        }
+      }
+      await sleep(RATE_LIMIT_RETRY_DELAYS_MS[attempt]);
     }
-    return response;
   }) as typeof fetch;
 }
 
@@ -794,10 +786,16 @@ export async function runHiringCafe(
   const termTotal = searchTerms.length * runLocations.length;
   const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
   const jobs: CreateJobInput[] = [];
-  const seen = new Set<string>();
+  const seen = new Set(options.searchResume?.seenKeys ?? []);
   const sourceErrors: string[] = [];
-  let skipDetailEnrichment = false;
-  let detailChallengeUrl: string | undefined;
+  const skippedSearchStates = new Set(
+    options.skippedChallengeSearchStates ?? [],
+  );
+  let skipDetailEnrichment = Boolean(
+    options.searchResume?.pendingDetailChallengeUrl,
+  );
+  let detailChallengeUrl = options.searchResume?.pendingDetailChallengeUrl;
+  let activeSearchResume: HiringCafeSearchResume | undefined;
 
   const successfulResult = (): HiringCafeResult => ({
     success: true,
@@ -807,11 +805,50 @@ export async function runHiringCafe(
   });
 
   try {
-    const fetchImpl =
-      options.fetchImpl ??
-      withThrottleAndRetry(
-        await createDefaultFetchImpl(options.cookieStorageDir),
+    const resume = options.searchResume;
+    if (
+      resume &&
+      (!Number.isInteger(resume.locationIndex) ||
+        resume.locationIndex < 0 ||
+        resume.locationIndex >= runLocations.length ||
+        !Number.isInteger(resume.termIndex) ||
+        resume.termIndex < 0 ||
+        resume.termIndex >= searchTerms.length ||
+        !Number.isInteger(resume.pageNo) ||
+        resume.pageNo < 0 ||
+        resume.pageNo >= PAGE_LIMIT ||
+        !Number.isInteger(resume.termCollected) ||
+        resume.termCollected < 0 ||
+        resume.termCollected >= maxJobsPerTerm ||
+        runLocations[resume.locationIndex] !== resume.location ||
+        searchTerms[resume.termIndex] !== resume.searchTerm)
+    ) {
+      throw new Error(
+        "Hiring Cafe search checkpoint no longer matches this run",
       );
+    }
+    const rawFetch = options.pageReader
+      ? ((async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof input === "string" ? input : input.toString();
+          if (new URL(url).origin !== new URL(BASE_URL).origin) {
+            return (options.fetchImpl ?? fetch)(input, init);
+          }
+          const page = await options.pageReader?.read(url);
+          if (!page)
+            throw new Error("Hiring Cafe browser page was unavailable");
+          if (page.challenged) {
+            throw new HiringCafeChallengeError(url, page.status);
+          }
+          return new Response(page.html, { status: page.status || 502 });
+        }) as typeof fetch)
+      : options.fetchImpl;
+    if (!rawFetch) {
+      throw new Error("Hiring Cafe requires a Firefox page reader");
+    }
+    const fetchImpl =
+      options.fetchImpl && !options.pageReader
+        ? rawFetch
+        : withThrottleAndRetry(rawFetch);
     const countryLocation = resolveHiringCafeCountryLocation(country);
     let retryRequisitionId: string | undefined;
     let retriedDetailJob: HiringCafeRawJob | null = null;
@@ -833,8 +870,25 @@ export async function runHiringCafe(
     }
     let retriedDetailApplied = false;
 
+    // A detail challenge is reported only after the search terms have finished.
+    // The pipeline already holds their jobs; this retry only needs the detail.
+    if (retryRequisitionId && !options.searchResume) {
+      const mapped = retriedDetailJob
+        ? mapHiringCafeJob(retriedDetailJob)
+        : null;
+      if (mapped) jobs.push(mapped);
+      return successfulResult();
+    }
+
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
       if (options.shouldCancel?.()) return successfulResult();
+
+      if (
+        options.searchResume &&
+        runIndex < options.searchResume.locationIndex
+      ) {
+        continue;
+      }
 
       const runLocation = runLocations[runIndex];
       const cityLocationContext = await resolveSearchStateLocation({
@@ -849,6 +903,14 @@ export async function runHiringCafe(
       for (let i = 0; i < searchTerms.length; i += 1) {
         if (options.shouldCancel?.()) return successfulResult();
 
+        if (
+          options.searchResume &&
+          runIndex === options.searchResume.locationIndex &&
+          i < options.searchResume.termIndex
+        ) {
+          continue;
+        }
+
         const searchTerm = searchTerms[i];
         const termIndex = runIndex * searchTerms.length + i + 1;
         options.onProgress?.({
@@ -858,23 +920,63 @@ export async function runHiringCafe(
           searchTerm,
         });
 
-        const searchState = await buildSearchState({
-          searchTerm,
-          countryLocation,
-          cityLocationContext,
-          workplaceTypes,
-        });
-        let pageNo = 0;
-        let termCollected = 0;
+        const resumingHere =
+          options.searchResume?.locationIndex === runIndex &&
+          options.searchResume.termIndex === i;
+        if (
+          resumingHere &&
+          (options.searchResume?.searchTerm !== searchTerm ||
+            options.searchResume.location !== runLocation)
+        ) {
+          throw new Error(
+            "Hiring Cafe search settings changed during a challenge",
+          );
+        }
+        const searchState = resumingHere
+          ? JSON.parse(options.searchResume?.searchState ?? "null")
+          : await buildSearchState({
+              searchTerm,
+              countryLocation,
+              cityLocationContext,
+              workplaceTypes,
+            });
+        if (skippedSearchStates.has(JSON.stringify(searchState))) {
+          options.onProgress?.({
+            type: "term_complete",
+            termIndex,
+            termTotal,
+            searchTerm,
+            jobsFoundTerm: 0,
+          });
+          continue;
+        }
+        let pageNo = resumingHere ? (options.searchResume?.pageNo ?? 0) : 0;
+        let termCollected = resumingHere
+          ? (options.searchResume?.termCollected ?? 0)
+          : 0;
 
         while (termCollected < maxJobsPerTerm && pageNo < PAGE_LIMIT) {
           if (options.shouldCancel?.()) return successfulResult();
 
+          activeSearchResume = {
+            locationIndex: runIndex,
+            termIndex: i,
+            location: runLocation,
+            searchTerm,
+            pageNo,
+            termCollected,
+            searchState: JSON.stringify(searchState),
+            seenKeys: Array.from(seen),
+            ...(detailChallengeUrl
+              ? { pendingDetailChallengeUrl: detailChallengeUrl }
+              : {}),
+          };
           const page = await fetchHiringCafeSearchPage({
             searchState,
             pageNo,
             fetchImpl,
           });
+          activeSearchResume = undefined;
           let mappedOnPage = 0;
 
           for (const rawJob of page.jobs) {
@@ -963,14 +1065,23 @@ export async function runHiringCafe(
     return successfulResult();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    if (error instanceof HiringCafeChallengeError) {
+      const status = error.status ? ` (HTTP ${error.status})` : "";
+      return {
+        success: true,
+        jobs,
+        sourceErrors: [
+          ...sourceErrors,
+          `Hiring Cafe search request was challenged${status}; waiting for a solve before continuing.`,
+        ],
+        challengeRequired: error.challengeUrl,
+        ...(activeSearchResume ? { searchResume: activeSearchResume } : {}),
+      };
+    }
     return {
       success: false,
       jobs: [],
       error: message,
-      challengeRequired:
-        error instanceof HiringCafeChallengeError
-          ? error.challengeUrl
-          : undefined,
     };
   }
 }

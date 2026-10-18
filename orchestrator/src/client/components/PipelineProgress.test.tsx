@@ -196,4 +196,49 @@ describe("PipelineProgress", () => {
     expect(screen.getByText("Gradcracker")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Solve" })).toBeInTheDocument();
   });
+
+  it("shows solve confirmation then closes the viewer tab", async () => {
+    const viewerWindow = {
+      opener: null,
+      location: { href: "" },
+      close: vi.fn(),
+    } as unknown as Window;
+    vi.spyOn(window, "open").mockReturnValue(viewerWindow);
+    apiMock.prepareChallengeViewer.mockResolvedValue({
+      available: true,
+      viewerUrl: "/challenge-viewer/session/token/vnc.html",
+      reason: null,
+    });
+    apiMock.solvePipelineChallenge.mockResolvedValue({
+      status: "solved",
+      extractorId: "hiringcafe",
+      challengesRemaining: 0,
+      cookiesSaved: 0,
+    });
+
+    render(<PipelineProgress isRunning />);
+    act(() =>
+      sseMock.handlers?.onMessage({
+        ...baseProgress,
+        step: "challenge_required",
+        pendingChallenges: [
+          {
+            extractorId: "hiringcafe",
+            extractorName: "Hiring Cafe",
+            url: "https://hiringcafe.com/job/req-1",
+            sources: ["hiringcafe"],
+          },
+        ],
+      }),
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Solve" }));
+    });
+
+    expect(viewerWindow.location.href).toBe("/challenge-viewer/solved");
+    expect(viewerWindow.close).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(viewerWindow.close).toHaveBeenCalledOnce();
+  });
 });

@@ -9,6 +9,41 @@ describe("hiringcafe manifest", () => {
     vi.clearAllMocks();
   });
 
+  it("passes a search checkpoint through the manifest", async () => {
+    const { manifest } = await import("../manifest");
+    const { runHiringCafe } = await import("../src/run");
+    const searchResume = {
+      locationIndex: 1,
+      termIndex: 0,
+      location: "Amsterdam",
+      searchTerm: "Backend Engineer",
+      pageNo: 2,
+      termCollected: 40,
+      searchState: '{"searchQuery":"Backend Engineer"}',
+      seenKeys: ["job-1"],
+    };
+    vi.mocked(runHiringCafe).mockResolvedValue({
+      success: true,
+      jobs: [],
+      challengeRequired: "https://hiringcafe.com/?page=2",
+      searchResume,
+    });
+
+    const result = await manifest.run({
+      source: "hiringcafe",
+      selectedSources: ["hiringcafe"],
+      settings: {},
+      searchTerms: ["Backend Engineer"],
+      selectedCountry: "Netherlands",
+      resumeState: searchResume,
+    });
+
+    expect(runHiringCafe).toHaveBeenCalledWith(
+      expect.objectContaining({ searchResume }),
+    );
+    expect(result.resumeState).toEqual(searchResume);
+  });
+
   it("passes detail challenge warnings and listing jobs to the pipeline", async () => {
     const { manifest } = await import("../manifest");
     const { runHiringCafe } = await import("../src/run");

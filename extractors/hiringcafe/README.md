@@ -1,6 +1,6 @@
 # Hiring Cafe Extractor
 
-Browser-backed extractor for Hiring Cafe search APIs.
+Firefox-backed extractor for Hiring Cafe search and detail pages.
 
 Special thanks: initial implementation inspiration came from [umur957/hiring-cafe-job-scraper](https://github.com/umur957/hiring-cafe-job-scraper).
 
@@ -19,5 +19,6 @@ Special thanks: initial implementation inspiration came from [umur957/hiring-caf
 ## Notes
 
 - The extractor uses `s = base64(url-encoded JSON search state)`.
+- Hiring Cafe HTML is read in Camoufox/Firefox. A headless challenge promotes the run to visible Firefox; if visible Firefox gets a normal page, extraction continues without a clearance cookie.
 - `worldwide` and `usa/ca` are treated as broad search modes without hard country location filters.
 - City geocoding uses [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap data).
