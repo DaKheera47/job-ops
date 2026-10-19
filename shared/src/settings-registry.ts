@@ -335,6 +335,8 @@ export const settingsRegistry = {
   // --- Typed Settings ---
   model: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(200),
     default: (): string =>
       typeof process !== "undefined"
@@ -349,6 +351,8 @@ export const settingsRegistry = {
   },
   llmProvider: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "LLM_PROVIDER",
     schema: z.preprocess(
       (v) => (typeof v === "string" ? normalizeLlmProviderOrNull(v) : v),
@@ -364,6 +368,8 @@ export const settingsRegistry = {
   },
   llmBaseUrl: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "LLM_BASE_URL",
     schema: z.preprocess(
       (v) => (v === "" ? null : v),
@@ -377,6 +383,8 @@ export const settingsRegistry = {
   },
   llmPurposeOverrides: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: llmPurposeOverridesSchema,
     default: (): LlmPurposeOverrides => ({}),
     parse: (raw: string | undefined): LlmPurposeOverrides | null =>
@@ -390,6 +398,8 @@ export const settingsRegistry = {
   },
   pipelineWebhookUrl: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(2000),
     default: (): string =>
       typeof process !== "undefined"
@@ -401,6 +411,8 @@ export const settingsRegistry = {
   },
   jobCompleteWebhookUrl: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(2000),
     default: (): string =>
       typeof process !== "undefined"
@@ -412,6 +424,8 @@ export const settingsRegistry = {
   },
   resumeProjects: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: resumeProjectsSchema,
     default: (): ResumeProjectsSettings => ({
       maxProjects: 20,
@@ -434,6 +448,8 @@ export const settingsRegistry = {
   },
   pdfRenderer: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(PDF_RENDERER_VALUES),
     default: (): PdfRenderer => "rxresume",
     parse: parsePdfRendererOrNull,
@@ -442,6 +458,8 @@ export const settingsRegistry = {
   },
   typstTheme: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(TYPST_THEME_VALUES),
     default: (): TypstTheme => "classic",
     parse: parseTypstThemeOrNull,
@@ -450,6 +468,8 @@ export const settingsRegistry = {
   },
   pdfPaperSize: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(PDF_PAPER_SIZE_VALUES),
     default: (): PdfPaperSize => "auto",
     parse: parsePdfPaperSizeOrNull,
@@ -458,6 +478,8 @@ export const settingsRegistry = {
   },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number => 50,
     parse: parseIntOrNull,
@@ -465,6 +487,8 @@ export const settingsRegistry = {
   },
   adzunaMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -478,6 +502,8 @@ export const settingsRegistry = {
   },
   gradcrackerMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number => 50,
     parse: parseIntOrNull,
@@ -485,6 +511,8 @@ export const settingsRegistry = {
   },
   startupjobsMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -498,6 +526,8 @@ export const settingsRegistry = {
   },
   seekMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -511,6 +541,8 @@ export const settingsRegistry = {
   },
   naukriMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -524,6 +556,8 @@ export const settingsRegistry = {
   },
   jobindexMaxJobsPerTerm: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -537,6 +571,8 @@ export const settingsRegistry = {
   },
   searchTerms: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(100),
     default: (): string[] =>
       (typeof process !== "undefined"
@@ -551,6 +587,8 @@ export const settingsRegistry = {
   },
   workplaceTypes: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.array(z.enum(WORKPLACE_TYPE_VALUES)).min(1).max(3),
     default: (): Array<(typeof WORKPLACE_TYPE_VALUES)[number]> => [
       "remote",
@@ -562,6 +600,8 @@ export const settingsRegistry = {
   },
   onboardingProfileCompleted: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => false,
     parse: parseBitBoolOrNull,
@@ -569,6 +609,8 @@ export const settingsRegistry = {
   },
   onboardingLlmCompleted: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => false,
     parse: parseBitBoolOrNull,
@@ -576,6 +618,8 @@ export const settingsRegistry = {
   },
   onboardingResumeConfirmedSource: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(300),
     default: (): string => "",
     parse: parseNonEmptyStringOrNull,
@@ -584,6 +628,8 @@ export const settingsRegistry = {
   },
   onboardingLegacyMigrationPending: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => false,
     parse: parseBitBoolOrNull,
@@ -591,6 +637,8 @@ export const settingsRegistry = {
   },
   blockedCompanyKeywords: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(200),
     default: (): string[] => [],
     parse: parseJsonArrayOrNull,
@@ -598,6 +646,8 @@ export const settingsRegistry = {
   },
   scoringInstructions: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(4000),
     default: (): string => "",
     parse: parseNonEmptyStringOrNull,
@@ -606,6 +656,8 @@ export const settingsRegistry = {
   },
   ghostwriterSystemPromptTemplate: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(12000),
     default: (): string =>
       getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
@@ -615,6 +667,8 @@ export const settingsRegistry = {
   },
   ghostwriterStopSlopEnabled: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => false,
     parse: parseBitBoolOrNull,
@@ -622,6 +676,8 @@ export const settingsRegistry = {
   },
   tailoringPromptTemplate: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(12000),
     default: (): string => getDefaultPromptTemplate("tailoringPromptTemplate"),
     parse: parseNonEmptyStringOrNull,
@@ -630,6 +686,8 @@ export const settingsRegistry = {
   },
   scoringPromptTemplate: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(12000),
     default: (): string => getDefaultPromptTemplate("scoringPromptTemplate"),
     parse: parseNonEmptyStringOrNull,
@@ -638,6 +696,8 @@ export const settingsRegistry = {
   },
   searchCities: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(3000),
     default: (): string =>
       typeof process !== "undefined"
@@ -649,6 +709,8 @@ export const settingsRegistry = {
   },
   locationSearchMode: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(LOCATION_INPUT_MODE_VALUES),
     default: () => "radius" as const,
     parse: parseNonEmptyStringOrNull,
@@ -657,6 +719,8 @@ export const settingsRegistry = {
   },
   locationLatitude: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().min(-90).max(90).nullable(),
     default: (): number | null => null,
     parse: parseNumberOrNull,
@@ -664,6 +728,8 @@ export const settingsRegistry = {
   },
   locationLongitude: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().min(-180).max(180).nullable(),
     default: (): number | null => null,
     parse: parseNumberOrNull,
@@ -671,6 +737,8 @@ export const settingsRegistry = {
   },
   locationRadiusMiles: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(200),
     default: (): number => 50,
     parse: parseIntOrNull,
@@ -678,6 +746,8 @@ export const settingsRegistry = {
   },
   locationSearchScope: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
     default: () => "selected_only" as const,
     parse: parseLocationSearchScopeOrNull,
@@ -686,6 +756,8 @@ export const settingsRegistry = {
   },
   locationMatchStrictness: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
     default: () => "exact_only" as const,
     parse: parseLocationMatchStrictnessOrNull,
@@ -694,6 +766,8 @@ export const settingsRegistry = {
   },
   jobspyResultsWanted: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(1000),
     default: (): number =>
       parseInt(
@@ -707,6 +781,8 @@ export const settingsRegistry = {
   },
   jobspyCountryIndeed: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
@@ -718,6 +794,8 @@ export const settingsRegistry = {
   },
   showSponsorInfo: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => true,
     parse: parseBitBoolOrNull,
@@ -725,6 +803,8 @@ export const settingsRegistry = {
   },
   renderMarkdownInJobDescriptions: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => true,
     parse: parseBitBoolOrNull,
@@ -732,6 +812,8 @@ export const settingsRegistry = {
   },
   autoTailorOnManualImport: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => true,
     parse: parseBitBoolOrNull,
@@ -739,6 +821,8 @@ export const settingsRegistry = {
   },
   chatStyleTone: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
@@ -750,6 +834,8 @@ export const settingsRegistry = {
   },
   chatStyleFormality: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
@@ -761,6 +847,8 @@ export const settingsRegistry = {
   },
   chatStyleConstraints: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(4000),
     default: (): string =>
       typeof process !== "undefined"
@@ -772,6 +860,8 @@ export const settingsRegistry = {
   },
   chatStyleDoNotUse: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(1000),
     default: (): string =>
       typeof process !== "undefined"
@@ -783,6 +873,8 @@ export const settingsRegistry = {
   },
   chatStyleSummaryMaxWords: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(500).nullable(),
     default: (): number | null => null,
     parse: parseIntOrNull,
@@ -790,6 +882,8 @@ export const settingsRegistry = {
   },
   chatStyleMaxKeywordsPerSkill: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(1).max(50).nullable(),
     default: (): number | null => null,
     parse: parseIntOrNull,
@@ -797,6 +891,8 @@ export const settingsRegistry = {
   },
   chatStyleLanguageMode: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(CHAT_STYLE_LANGUAGE_MODE_VALUES),
     default: (): ChatStyleLanguageMode =>
       parseChatStyleLanguageModeOrNull(
@@ -811,6 +907,8 @@ export const settingsRegistry = {
   },
   chatStyleManualLanguage: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.enum(CHAT_STYLE_MANUAL_LANGUAGE_VALUES),
     default: (): ChatStyleManualLanguage =>
       parseChatStyleManualLanguageOrNull(
@@ -825,6 +923,8 @@ export const settingsRegistry = {
   },
   backupEnabled: {
     kind: "typed" as const,
+    scope: "platform" as const,
+    editableBy: "systemAdmin" as const,
     schema: z.boolean(),
     default: (): boolean => false,
     parse: parseBitBoolOrNull,
@@ -832,6 +932,8 @@ export const settingsRegistry = {
   },
   backupHour: {
     kind: "typed" as const,
+    scope: "platform" as const,
+    editableBy: "systemAdmin" as const,
     schema: z.number().int().min(0).max(23),
     default: (): number => 2,
     parse: (raw: string | undefined): number | null => {
@@ -843,6 +945,8 @@ export const settingsRegistry = {
   },
   backupMaxCount: {
     kind: "typed" as const,
+    scope: "platform" as const,
+    editableBy: "systemAdmin" as const,
     schema: z.number().int().min(1).max(5),
     default: (): number => 5,
     parse: (raw: string | undefined): number | null => {
@@ -854,6 +958,8 @@ export const settingsRegistry = {
   },
   penalizeMissingSalary: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.boolean(),
     default: (): boolean => {
       if (typeof process === "undefined") return false;
@@ -865,6 +971,8 @@ export const settingsRegistry = {
   },
   missingSalaryPenalty: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(0).max(100),
     default: (): number => {
       if (typeof process === "undefined") return 10;
@@ -881,6 +989,8 @@ export const settingsRegistry = {
   },
   autoSkipScoreThreshold: {
     kind: "typed" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.number().int().min(0).max(100),
     default: (): number | null => null,
     parse: (raw: string | undefined): number | null => {
@@ -896,24 +1006,34 @@ export const settingsRegistry = {
   // --- Model Variants ---
   modelScorer: {
     kind: "model" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(200),
   },
   modelTailoring: {
     kind: "model" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(200),
   },
   modelProjectSelection: {
     kind: "model" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(200),
   },
 
   // --- Simple Strings ---
   rxresumeBaseResumeId: {
     kind: "string" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(200),
   },
   rxresumeUrl: {
     kind: "string" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "RXRESUME_URL",
     schema: z.preprocess(
       (value) => (value === "" ? null : value),
@@ -922,11 +1042,15 @@ export const settingsRegistry = {
   },
   ukvisajobsEmail: {
     kind: "string" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "UKVISAJOBS_EMAIL",
     schema: z.string().trim().max(200),
   },
   adzunaAppId: {
     kind: "string" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "ADZUNA_APP_ID",
     schema: z.string().trim().max(200),
   },
@@ -934,11 +1058,15 @@ export const settingsRegistry = {
   // --- Secrets ---
   llmApiKey: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "LLM_API_KEY",
     schema: z.string().trim().max(2000),
   },
   llmPurposeApiKeys: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: llmPurposeApiKeysSchema,
     parse: (raw: string | undefined): LlmPurposeApiKeys | null =>
       parseLlmPurposeApiKeys(raw),
@@ -949,26 +1077,36 @@ export const settingsRegistry = {
   },
   rxresumeApiKey: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "RXRESUME_API_KEY",
     schema: z.string().trim().max(2000),
   },
   ukvisajobsPassword: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "UKVISAJOBS_PASSWORD",
     schema: z.string().trim().max(2000),
   },
   adzunaAppKey: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "ADZUNA_APP_KEY",
     schema: z.string().trim().max(2000),
   },
   apifyToken: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "APIFY_TOKEN",
     schema: z.string().trim().max(2000),
   },
   webhookSecret: {
     kind: "secret" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     envKey: "WEBHOOK_SECRET",
     schema: z.string().trim().max(2000),
   },
@@ -976,6 +1114,8 @@ export const settingsRegistry = {
   // --- Aliases ---
   jobspyLocation: {
     kind: "alias" as const,
+    scope: "user" as const,
+    editableBy: "self" as const,
     schema: z.string().trim().max(100),
     target: "searchCities" as const,
   },
@@ -983,3 +1123,5 @@ export const settingsRegistry = {
 
 export type SettingsRegistry = typeof settingsRegistry;
 export type SettingsRegistryKey = keyof SettingsRegistry;
+export type SettingScope = "platform" | "tenant" | "user";
+export type SettingEditPolicy = "systemAdmin" | "tenantOwner" | "self";

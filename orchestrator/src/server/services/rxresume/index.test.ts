@@ -66,6 +66,21 @@ describe("RxResume Service (index.ts)", () => {
         "Reactive Resume API key is not configured",
       );
     });
+
+    it("does not use a deployment API key for a hosted user's missing key", async () => {
+      vi.stubEnv("JOBOPS_APP_MODE", "hosted");
+      vi.stubEnv("JOBOPS_HOSTED_TENANT_ID", "tenant-1");
+      vi.stubEnv("RXRESUME_API_KEY", "deployment-private-key");
+      vi.mocked(getSetting).mockResolvedValue(null);
+      try {
+        await expect(listResumes()).rejects.toThrow(
+          "Reactive Resume API key is not configured",
+        );
+        expect(v5.listResumes).not.toHaveBeenCalled();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
   });
 
   describe("getResume", () => {

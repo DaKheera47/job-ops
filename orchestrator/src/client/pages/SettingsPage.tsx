@@ -1360,7 +1360,14 @@ export const SettingsPage: React.FC = () => {
         }
       }
 
-      const updated = await updateSettingsMutation.mutateAsync(payload);
+      const editableKeys = new Set(
+        settings?.editableKeys ?? Object.keys(payload),
+      );
+      const authorizedPayload = Object.fromEntries(
+        Object.entries(payload).filter(([key]) => editableKeys.has(key)),
+      ) as UpdateSettingsInput;
+      const updated =
+        await updateSettingsMutation.mutateAsync(authorizedPayload);
       setSettings(updated);
       reset(mapSettingsToForm(updated));
       toast.success("Settings saved");
@@ -1453,8 +1460,14 @@ export const SettingsPage: React.FC = () => {
   const handleReset = async () => {
     try {
       setIsSaving(true);
+      const resetPayload = getResetSettingsPayload(canEditLlmSettings);
+      const editableKeys = new Set(
+        settings?.editableKeys ?? Object.keys(resetPayload),
+      );
       const updated = await updateSettingsMutation.mutateAsync(
-        getResetSettingsPayload(canEditLlmSettings),
+        Object.fromEntries(
+          Object.entries(resetPayload).filter(([key]) => editableKeys.has(key)),
+        ) as UpdateSettingsInput,
       );
       setSettings(updated);
       reset(mapSettingsToForm(updated));
@@ -1479,10 +1492,12 @@ export const SettingsPage: React.FC = () => {
         items: group.items.filter(
           (item) =>
             (item.id !== "billing" || isHostedMode) &&
-            (canEditLlmSettings || item.id !== "model"),
+            (canEditLlmSettings || item.id !== "model") &&
+            (item.id !== "backup" ||
+              settings?.editableKeys?.includes("backupEnabled") !== false),
         ),
       })).filter((group) => group.items.length > 0),
-    [canEditLlmSettings, isHostedMode],
+    [canEditLlmSettings, isHostedMode, settings?.editableKeys],
   );
 
   const filteredNavGroups = useMemo(

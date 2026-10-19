@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
 import * as settingsRepo from "@server/repositories/settings";
+import { getPersonalEnvValue } from "@server/services/envSettings";
 
 export async function notifyPipelineWebhookStep(
   event: "pipeline.completed" | "pipeline.failed",
@@ -10,8 +11,8 @@ export async function notifyPipelineWebhookStep(
     await settingsRepo.getSetting("pipelineWebhookUrl");
   const pipelineWebhookUrl = (
     overridePipelineWebhookUrl ||
-    process.env.PIPELINE_WEBHOOK_URL ||
-    process.env.WEBHOOK_URL ||
+    getPersonalEnvValue("PIPELINE_WEBHOOK_URL") ||
+    getPersonalEnvValue("WEBHOOK_URL") ||
     ""
   ).trim();
 
@@ -21,7 +22,9 @@ export async function notifyPipelineWebhookStep(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const secret = process.env.WEBHOOK_SECRET;
+    const secret =
+      (await settingsRepo.getSetting("webhookSecret")) ||
+      getPersonalEnvValue("WEBHOOK_SECRET");
     if (secret) headers.Authorization = `Bearer ${secret}`;
 
     const sanitizedPayload = sanitizeWebhookPayload({

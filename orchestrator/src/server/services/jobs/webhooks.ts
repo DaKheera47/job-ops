@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
 import * as settingsRepo from "@server/repositories/settings";
+import { getPersonalEnvValue } from "@server/services/envSettings";
 import type { Job } from "@shared/types";
 
 export async function notifyJobCompleteWebhook(job: Job) {
@@ -9,7 +10,7 @@ export async function notifyJobCompleteWebhook(job: Job) {
   );
   const webhookUrl = (
     overrideWebhookUrl ||
-    process.env.JOB_COMPLETE_WEBHOOK_URL ||
+    getPersonalEnvValue("JOB_COMPLETE_WEBHOOK_URL") ||
     ""
   ).trim();
   if (!webhookUrl) return;
@@ -18,7 +19,9 @@ export async function notifyJobCompleteWebhook(job: Job) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const secret = process.env.WEBHOOK_SECRET;
+    const secret =
+      (await settingsRepo.getSetting("webhookSecret")) ||
+      getPersonalEnvValue("WEBHOOK_SECRET");
     if (secret) headers.Authorization = `Bearer ${secret}`;
 
     const payload = sanitizeWebhookPayload({

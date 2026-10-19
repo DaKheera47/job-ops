@@ -7,7 +7,7 @@ sidebar_position: 2
 
 ## What it is
 
-The Settings page is the control center for app-wide behavior.
+The Settings page controls your personal workflow preferences and the platform's backup policy.
 
 ![Settings page sections](/img/features/settings.png)
 
@@ -26,9 +26,13 @@ It lets you configure:
 
 ## Why it exists
 
-Most teams want stable defaults for repeated workflows, without editing environment variables every time.
+Users want stable defaults for repeated workflows, without editing environment variables every time.
 
 Settings gives you runtime overrides for the key parts of discovery, scoring, tailoring, and post-application automation.
+
+Each user's model, API key, prompts, search preferences, and integration credentials belong to that user. Backup scheduling is a platform setting shared by everyone and editable only by a system admin. The setting definitions and their edit policies live in code. In hosted mode with platform-managed AI enabled, the shared AI credentials and model stay in deployment environment variables; personal LLM editing remains unavailable.
+
+Local installations can use environment variables as defaults for personal integrations. Hosted accounts must save their own Reactive Resume credentials and outbound webhook secrets; deployment-wide values are not used as personal fallbacks.
 
 ## How to use it
 
@@ -173,7 +177,7 @@ Defaults and constraints:
 
 ![Reactive Resume settings section](/img/features/settings-reactive-resume-section.png)
 
-- Configure a shared RxResume URL for cloud or self-hosted deployments
+- Configure your RxResume URL for cloud or self-hosted deployments
 - Configure a v5 API key
 - Choose the PDF renderer:
   - RxResume export
@@ -223,7 +227,7 @@ Readiness requires:
   - create a user with a private workspace
   - disable a user
   - reset a user's password
-- Each created user gets a separate private workspace. Jobs, settings, resume data, integrations, PDFs, pipeline runs, chat, analytics, and post-application data are scoped to that user's workspace.
+- Each created user gets a separate private workspace. Jobs, personal settings, resume data, integrations, PDFs, pipeline runs, chat, analytics, and post-application data are scoped to that user.
 - `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are only used as legacy bootstrap credentials during migration. New sign-ins use database users.
 
 ### Backup

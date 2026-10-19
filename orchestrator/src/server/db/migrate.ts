@@ -5,6 +5,7 @@
 import { randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { type SettingScope, settingsRegistry } from "@shared/settings-registry";
 import Database from "better-sqlite3";
 import { getDataDir } from "../config/dataDir";
 
@@ -1360,7 +1361,6 @@ function ensurePrivateUserColumns(): void {
   for (const tableName of [
     "jobs",
     "pipeline_runs",
-    "settings",
     "design_resume_documents",
     "post_application_integrations",
     "post_application_sync_runs",
@@ -1442,15 +1442,26 @@ function ensurePrivateUserColumns(): void {
 
 function rebuildSettingsTable(): void {
   if (!tableExists("settings")) return;
+  const columns = sqlite.prepare("PRAGMA table_info(settings)").all() as Array<{
+    name: string;
+    notnull: number;
+  }>;
+  if (
+    columns.some(
+      (column) => column.name === "tenant_id" && column.notnull === 0,
+    )
+  ) {
+    return;
+  }
 
   sqlite.exec(`CREATE TABLE IF NOT EXISTS settings_new (
-    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    tenant_id TEXT,
     user_id TEXT,
     key TEXT NOT NULL,
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(tenant_id, user_id, key),
+    CHECK(user_id IS NULL OR tenant_id IS NOT NULL),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`);
 
@@ -1474,6 +1485,149 @@ function rebuildSettingsTable(): void {
     FROM settings`);
   sqlite.exec("DROP TABLE IF EXISTS settings");
   sqlite.exec("ALTER TABLE settings_new RENAME TO settings");
+}
+
+function migrateSettingsOwnership(): void {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS settings_migration_conflicts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL,
+      candidate_count INTEGER NOT NULL,
+      selected_tenant_id TEXT,
+      selected_user_id TEXT,
+      reason TEXT NOT NULL,
+      candidates_json TEXT NOT NULL
+    );
+  `);
+  const marker = "settings-ownership-v1";
+  if (
+    sqlite.prepare("SELECT 1 FROM app_data_migrations WHERE id = ?").get(marker)
+  ) {
+    return;
+  }
+
+  const migrate = sqlite.transaction(() => {
+    sqlite.exec("DROP INDEX IF EXISTS idx_settings_owner_key_unique");
+    const personal = sqlite.prepare(`UPDATE settings SET user_id =
+      (SELECT membership.user_id FROM tenant_memberships membership
+       WHERE membership.tenant_id = settings.tenant_id
+       ORDER BY CASE membership.role WHEN 'owner' THEN 0 ELSE 1 END,
+         membership.created_at ASC, membership.user_id ASC LIMIT 1)
+      WHERE key = ? AND tenant_id IS NOT NULL AND user_id IS NULL
+        AND EXISTS (SELECT 1 FROM tenant_memberships membership
+          WHERE membership.tenant_id = settings.tenant_id)`);
+    const platformCandidates = sqlite.prepare(`SELECT tenant_id, user_id, value,
+      created_at, updated_at FROM settings WHERE key = ?
+      ORDER BY CASE WHEN tenant_id IS NULL THEN 0
+        WHEN tenant_id = 'tenant_default' THEN 1 ELSE 2 END,
+        updated_at DESC, tenant_id ASC, user_id ASC`);
+    const platform = sqlite.prepare(`INSERT INTO settings
+      (tenant_id, user_id, key, value, created_at, updated_at)
+      VALUES (NULL, NULL, ?, ?, ?, ?)`);
+    const conflict = sqlite.prepare(`INSERT INTO settings_migration_conflicts
+      (key, candidate_count, selected_tenant_id, selected_user_id, reason, candidates_json)
+      VALUES (?, ?, ?, ?, ?, ?)`);
+
+    for (const [key, definition] of Object.entries(settingsRegistry) as Array<
+      [string, { scope: SettingScope }]
+    >) {
+      if (definition.scope === "user") {
+        personal.run(key);
+        const unresolved = sqlite
+          .prepare(`SELECT tenant_id, user_id, value, created_at, updated_at
+            FROM settings WHERE key = ?
+            AND user_id IS NULL AND NOT EXISTS (
+              SELECT 1 FROM tenant_memberships WHERE tenant_id = settings.tenant_id
+            )`)
+          .all(key);
+        if (unresolved.length > 0) {
+          conflict.run(
+            key,
+            unresolved.length,
+            null,
+            null,
+            "missing-owner",
+            JSON.stringify(unresolved),
+          );
+        }
+      } else if (definition.scope === "tenant") {
+        // No settings currently have tenant scope. Existing rows remain in
+        // place until a tenant-scoped definition is introduced.
+      } else {
+        const candidates = platformCandidates.all(key) as Array<{
+          tenant_id: string | null;
+          user_id: string | null;
+          value: string;
+          created_at: string;
+          updated_at: string;
+        }>;
+        const selected = candidates[0];
+        if (!selected) continue;
+        sqlite.prepare("DELETE FROM settings WHERE key = ?").run(key);
+        platform.run(
+          key,
+          selected.value,
+          selected.created_at,
+          selected.updated_at,
+        );
+        if (candidates.length > 1) {
+          conflict.run(
+            key,
+            candidates.length,
+            selected.tenant_id,
+            selected.user_id,
+            new Set(candidates.map((candidate) => candidate.value)).size > 1
+              ? "different-platform-values"
+              : "duplicate-platform-values",
+            JSON.stringify(candidates),
+          );
+        }
+      }
+    }
+    const duplicates = sqlite
+      .prepare(`SELECT key, tenant_id, user_id,
+      count(*) AS count, count(DISTINCT value) AS distinct_values
+      FROM settings
+      GROUP BY coalesce(tenant_id, ''), coalesce(user_id, ''), key
+      HAVING count(*) > 1`)
+      .all() as Array<{
+      key: string;
+      tenant_id: string | null;
+      user_id: string | null;
+      count: number;
+      distinct_values: number;
+    }>;
+    for (const duplicate of duplicates) {
+      const candidates = sqlite
+        .prepare(`SELECT tenant_id, user_id, value, created_at, updated_at
+          FROM settings
+          WHERE key = ? AND tenant_id IS ? AND user_id IS ?
+          ORDER BY updated_at DESC, created_at DESC, rowid ASC`)
+        .all(duplicate.key, duplicate.tenant_id, duplicate.user_id);
+      conflict.run(
+        duplicate.key,
+        duplicate.count,
+        duplicate.tenant_id,
+        duplicate.user_id,
+        duplicate.distinct_values > 1
+          ? "different-owner-values"
+          : "duplicate-owner",
+        JSON.stringify(candidates),
+      );
+    }
+    sqlite.exec(`DELETE FROM settings WHERE rowid IN (
+      SELECT rowid FROM (
+        SELECT rowid, row_number() OVER (
+          PARTITION BY coalesce(tenant_id, ''), coalesce(user_id, ''), key
+          ORDER BY updated_at DESC, created_at DESC, rowid ASC
+        ) AS rank FROM settings
+      ) WHERE rank > 1
+    )`);
+    sqlite
+      .prepare("INSERT INTO app_data_migrations(id) VALUES (?)")
+      .run(marker);
+  });
+  migrate();
 }
 
 function ensureTracerLinksUniqueIndex(): void {
@@ -1781,11 +1935,12 @@ ensurePrivateUserColumns();
 rebuildPostApplicationPrivateTables();
 rebuildSettingsTable();
 seedLegacyOnboardingMigration();
+migrateSettingsOwnership();
 ensureTracerLinksUniqueIndex();
 sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_key_unique");
 sqlite.exec("DROP INDEX IF EXISTS idx_settings_tenant_user_key_unique");
 sqlite.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_user_key_unique ON settings(tenant_id, coalesce(user_id, ''), key)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_owner_key_unique ON settings(coalesce(tenant_id, ''), coalesce(user_id, ''), key)",
 );
 sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_job_url_unique");
 sqlite.exec("DROP INDEX IF EXISTS idx_jobs_tenant_user_job_url_unique");

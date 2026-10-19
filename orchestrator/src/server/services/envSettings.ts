@@ -1,3 +1,4 @@
+import { getJobOpsAppConfig } from "@server/config/app-mode";
 import type { SettingKey } from "@server/repositories/settings";
 import * as settingsRepo from "@server/repositories/settings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
@@ -12,6 +13,13 @@ export function getOriginalEnvValue(envKey: string): string | undefined {
   return envDefaults[envKey];
 }
 
+/** Deployment defaults for personal settings are usable only in local mode. */
+export function getPersonalEnvValue(envKey: string): string | undefined {
+  return getJobOpsAppConfig().appMode === "hosted"
+    ? undefined
+    : getOriginalEnvValue(envKey);
+}
+
 export function normalizeEnvInput(
   value: string | null | undefined,
 ): string | null {
@@ -20,8 +28,7 @@ export function normalizeEnvInput(
 }
 
 export async function applyStoredEnvOverrides(): Promise<void> {
-  // Settings are tenant-scoped. Applying stored overrides to process.env would
-  // leak one tenant's credentials into every other tenant in this Node process.
+  // Personal settings must never be copied into process-wide state.
 }
 
 export async function getEnvSettingsData(
@@ -36,7 +43,7 @@ export async function getEnvSettingsData(
     if (!("envKey" in def) || !def.envKey) continue;
 
     const override = activeOverrides[key as SettingKey] ?? null;
-    const rawValue = override ?? getOriginalEnvValue(def.envKey);
+    const rawValue = override ?? getPersonalEnvValue(def.envKey);
 
     if (def.kind === "secret") {
       const hintKey = `${key}Hint` as keyof AppSettings;
