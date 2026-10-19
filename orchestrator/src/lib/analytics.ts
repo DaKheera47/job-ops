@@ -398,6 +398,13 @@ type ProductEventMap = {
     duration_bucket: string;
     completed_steps: number;
   };
+  sso_login_completed: {
+    provider: string;
+    created: boolean;
+  };
+  sso_link_completed: {
+    provider: string;
+  };
 };
 
 type ProductEventName = keyof ProductEventMap;

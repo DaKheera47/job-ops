@@ -38,6 +38,7 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "atlascloud" || normalized === "atlas_cloud") {
     return "https://api.atlascloud.ai";
   }
+  if (normalized === "litellm") return "http://localhost:4000";
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") {

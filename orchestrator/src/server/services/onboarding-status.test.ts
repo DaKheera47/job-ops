@@ -299,6 +299,34 @@ describe("onboarding status engine", () => {
     });
   });
 
+  it("keeps LiteLLM onboarding on the model step until a model is selected", async () => {
+    mocks.getSetting.mockImplementation(async (key: string) => {
+      const values: Record<string, string | null> = {
+        llmApiKey: "sk-virtual",
+        llmProvider: "litellm",
+        llmBaseUrl: "http://localhost:4000",
+        model: null,
+        rxresumeUrl: null,
+        onboardingProfileCompleted: "1",
+        onboardingLlmCompleted: "1",
+        onboardingResumeConfirmedSource: "local:doc-1",
+      };
+      return values[key] ?? null;
+    });
+
+    const status = await getOnboardingStatus();
+
+    expect(status.complete).toBe(false);
+    expect(status.nextRequirementId).toBe("model");
+    expect(status.requirements[1]).toMatchObject({
+      id: "model",
+      status: "needs_action",
+      title: "Choose a LiteLLM model",
+      primaryAction: "connect_model",
+      details: { provider: "litellm", baseUrl: "http://localhost:4000" },
+    });
+  });
+
   it("is complete when all durable requirements are complete", async () => {
     const status = await getOnboardingStatus();
 
@@ -429,6 +457,23 @@ describe("onboarding status engine", () => {
     await expect(
       confirmOnboardingResumeAction({ source: "local:stale-document" }),
     ).rejects.toMatchObject({ status: 422 });
+  });
+
+  it("rejects a new LiteLLM model action without an explicit model", async () => {
+    await expect(
+      saveOnboardingModelAction({
+        provider: "litellm",
+        baseUrl: "http://localhost:4000",
+        model: null,
+      }),
+    ).rejects.toMatchObject({
+      details: {
+        provider: "litellm",
+        status: null,
+      },
+    });
+    expect(mocks.validateLlmCredentials).not.toHaveBeenCalled();
+    expect(mocks.applySettingsUpdates).not.toHaveBeenCalled();
   });
 
   it("rejects a new Ollama model action without an explicit model", async () => {

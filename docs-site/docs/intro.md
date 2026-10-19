@@ -16,6 +16,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Environment variables reference
   - Demo mode deployment
 
+- **[Single Sign-On Setup](/docs/next/getting-started/sso-setup)**
+  - Google, GitHub, and generic OpenID Connect providers
+  - Redirect URI and reverse-proxy requirements
+  - Account linking and just-in-time signup controls
+
 - **[Database Backups](/docs/next/getting-started/database-backups)**
   - Automatic backup scheduling and retention
   - Manual backup creation/deletion

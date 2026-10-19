@@ -324,6 +324,200 @@ describe.sequential("database migrations", () => {
     );
   });
 
+  it("relaxes legacy NOT NULL password columns while preserving accounts", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const sqlite = new Database(dbPath);
+      sqlite.exec(\`
+        CREATE TABLE users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          display_name TEXT,
+          password_hash TEXT NOT NULL,
+          password_salt TEXT NOT NULL,
+          is_system_admin INTEGER NOT NULL DEFAULT 0,
+          is_disabled INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE tenants (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE tenant_memberships (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          tenant_id TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'owner' CHECK(role IN ('owner', 'member')),
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+          UNIQUE(user_id, tenant_id)
+        );
+
+        INSERT INTO tenants(id, name, slug) VALUES ('tenant_default', 'JobOps', 'default');
+        INSERT INTO users(id, username, display_name, password_hash, password_salt, is_system_admin)
+        VALUES ('user-legacy', 'legacy', 'Legacy Owner', 'legacy-hash', 'legacy-salt', 1);
+        INSERT INTO tenant_memberships(id, user_id, tenant_id, role)
+        VALUES ('membership-legacy', 'user-legacy', 'tenant_default', 'owner');
+      \`);
+      sqlite.close();
+
+      const migrationUrl = pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href;
+      await import(\`\${migrationUrl}?run=initial\`);
+      await import(\`\${migrationUrl}?run=rerun\`);
+
+      const migratedDb = new Database(dbPath);
+      const columns = migratedDb.prepare("PRAGMA table_info(users)").all();
+      for (const columnName of ["password_hash", "password_salt"]) {
+        const column = columns.find((entry) => entry.name === columnName);
+        if (!column || column.notnull !== 0) {
+          throw new Error(\`\${columnName} is still NOT NULL after migration\`);
+        }
+      }
+
+      const user = migratedDb.prepare("SELECT username, password_hash, is_system_admin FROM users WHERE id = ?").get("user-legacy");
+      if (user?.password_hash !== "legacy-hash" || user.is_system_admin !== 1) {
+        throw new Error("Legacy user did not survive the rebuild");
+      }
+
+      const membership = migratedDb.prepare("SELECT tenant_id FROM tenant_memberships WHERE user_id = ?").get("user-legacy");
+      if (membership?.tenant_id !== "tenant_default") {
+        throw new Error("Legacy tenant membership did not survive the rebuild");
+      }
+
+      const userCount = migratedDb.prepare("SELECT count(*) AS count FROM users").get();
+      if (userCount.count !== 1) {
+        throw new Error(\`Expected a single user after the rebuild, got \${userCount.count}\`);
+      }
+
+      migratedDb.prepare("INSERT INTO users(id, username) VALUES (?, ?)").run("user-sso", "sso");
+
+      let duplicateMessage = null;
+      try {
+        migratedDb.prepare("INSERT INTO users(id, username) VALUES (?, ?)").run("user-duplicate", "legacy");
+      } catch (error) {
+        duplicateMessage = error.message;
+      }
+      if (!duplicateMessage?.includes("UNIQUE constraint failed: users.username")) {
+        throw new Error(\`Expected a username uniqueness failure, got \${duplicateMessage}\`);
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+          BASIC_AUTH_USER: "",
+          BASIC_AUTH_PASSWORD: "",
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
+  it("creates sso_identities with a unique provider subject", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath);
+
+      const fks = migratedDb.prepare("PRAGMA foreign_key_list(sso_identities)").all();
+      const hasTenantCascade = fks.some((fk) => fk.from === "tenant_id" && fk.table === "tenants" && String(fk.on_delete).toUpperCase() === "CASCADE");
+      const hasUserCascade = fks.some((fk) => fk.from === "user_id" && fk.table === "users" && String(fk.on_delete).toUpperCase() === "CASCADE");
+      if (!hasTenantCascade || !hasUserCascade) {
+        throw new Error("sso_identities is missing its foreign keys");
+      }
+
+      const indexes = migratedDb.prepare("PRAGMA index_list(sso_identities)").all();
+      if (!indexes.some((index) => index.name === "idx_sso_identities_user_id")) {
+        throw new Error("sso_identities user index missing");
+      }
+
+      migratedDb.prepare("INSERT INTO users(id, username) VALUES (?, ?)").run("user-1", "alice");
+      migratedDb.prepare("INSERT INTO sso_identities(id, user_id, provider, issuer, subject) VALUES (?, ?, ?, ?, ?)").run(
+        "identity-1",
+        "user-1",
+        "oidc",
+        "https://id.example.com",
+        "subject-1",
+      );
+
+      let duplicateFailed = false;
+      try {
+        migratedDb.prepare("INSERT INTO sso_identities(id, user_id, provider, issuer, subject) VALUES (?, ?, ?, ?, ?)").run(
+          "identity-2",
+          "user-1",
+          "oidc",
+          "https://id.example.com",
+          "subject-1",
+        );
+      } catch {
+        duplicateFailed = true;
+      }
+      if (!duplicateFailed) {
+        throw new Error("sso_identities allowed a duplicate provider subject");
+      }
+
+      let unknownProviderFailed = false;
+      try {
+        migratedDb.prepare("INSERT INTO sso_identities(id, user_id, provider, issuer, subject) VALUES (?, ?, ?, ?, ?)").run(
+          "identity-3",
+          "user-1",
+          "linkedin",
+          "https://id.example.com",
+          "subject-2",
+        );
+      } catch {
+        unknownProviderFailed = true;
+      }
+      if (!unknownProviderFailed) {
+        throw new Error("sso_identities accepted an unknown provider");
+      }
+
+      const stored = migratedDb.prepare("SELECT tenant_id FROM sso_identities WHERE id = ?").get("identity-1");
+      if (stored?.tenant_id !== "tenant_default") {
+        throw new Error(\`Expected the default tenant, got \${stored?.tenant_id}\`);
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
   it("enforces private unique indexes when user_id is null", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
     const script = `

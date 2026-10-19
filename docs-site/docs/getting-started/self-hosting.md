@@ -152,7 +152,7 @@ The onboarding flow saves three durable setup decisions:
 
 1. **Workspace account**: On brand-new installs, create the first username/password account directly in onboarding. This first account becomes the system admin and owns the initial private workspace.
 2. **Search preferences**: Select a required country, optionally enter preferred cities, and choose workplace styles. Remote, hybrid, and onsite are selected by default, and visa sponsorship is enabled by default. JobOps applies these values as defaults for future runs and sponsor-aware features.
-3. **LLM provider**: Choose OpenRouter by default, or connect another supported hosted or local provider such as Atlas Cloud. The step completes only after the server verifies and persists the connection.
+3. **LLM provider**: Choose OpenRouter by default, or connect another supported hosted or local provider such as Atlas Cloud or a LiteLLM proxy. The step completes only after the server verifies and persists the connection.
 4. **Resume review**: Upload a PDF/DOCX/Reactive Resume JSON, or connect Reactive Resume. JobOps shows the parsed resume and requires confirmation of the current document before setup completes.
 
 Search terms are not part of onboarding. Choose or edit them when starting your first run.
@@ -189,6 +189,22 @@ When `JOBOPS_HOSTED_PLATFORM_LLM_ENABLED=true`, every hosted account uses the de
 When hosted mode is active, first-run setup is disabled. Hosted users must be created through hosted signup when `JOBOPS_HOSTED_SIGNUPS_ENABLED=true`, or by a later tenant-owner/admin user-management flow. Hosted signup appears on `/sign-in` as a **Create account** tab only when hosted mode and hosted signups are both enabled.
 
 The Tracking Inbox is available only in local/self-hosted mode. Hosted mode hides it from navigation and redirects direct `/tracking-inbox` links to **Overview**.
+
+## Single sign-on
+
+JobOps can accept sign-ins from Google, GitHub, or a generic OpenID Connect provider alongside its own username/password accounts. Providers are enabled with environment variables, and each user connects one from **Settings → Environment & Workspaces → Security → Connected accounts**.
+
+Behind a TLS-terminating reverse proxy, set the public URL explicitly so the registered redirect URI matches:
+
+```bash
+SSO_REDIRECT_BASE_URL=https://your-domain.com
+SSO_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+SSO_GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+For provider-by-provider setup, redirect URIs, and just-in-time account creation, see:
+
+- [Single Sign-On Setup](/docs/next/getting-started/sso-setup)
 
 ## Codex sign-in
 

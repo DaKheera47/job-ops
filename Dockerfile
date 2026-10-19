@@ -63,9 +63,9 @@ FROM target-build-base AS python-deps
 
 ARG TARGETARCH
 
-# Install Python dependencies with pip cache.
-RUN --mount=type=cache,id=pip-${TARGETARCH},target=/root/.cache/pip \
-    pip3 install --break-system-packages playwright python-jobspy
+# Install Python dependencies. Railway rejects cache mounts whose IDs use
+# variables or lack its service prefix, so these installs rely on layer caching.
+RUN pip3 install --no-cache-dir --break-system-packages playwright python-jobspy
 
 # Install Firefox for Python Playwright.
 RUN python3 -m playwright install firefox
@@ -99,8 +99,7 @@ COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install build-time Node dependencies on the native builder platform. The
 # resulting client/docs assets are architecture-neutral static files.
-RUN --mount=type=cache,id=npm-build-${BUILDARCH},target=/root/.npm \
-    npm install --workspaces --include-workspace-root --include=dev \
+RUN npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
 
 FROM node-deps AS build-sources
@@ -177,9 +176,9 @@ COPY extractors/freehire/package*.json ./extractors/freehire/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only.
-RUN --mount=type=cache,id=npm-runtime-${TARGETARCH},target=/root/.npm \
-    npm install --workspaces --include-workspace-root --omit=dev \
-    --no-audit --no-fund --progress=false
+RUN npm install --workspaces --include-workspace-root --omit=dev \
+    --no-audit --no-fund --progress=false \
+    && npm cache clean --force
 
 
 FROM runtime-node-deps AS camoufox-cache
@@ -187,8 +186,7 @@ FROM runtime-node-deps AS camoufox-cache
 # Fetch target-platform Camoufox binaries after production dependencies are
 # installed so arm64 images do not inherit x64 browser assets from build stages.
 COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
-RUN --mount=type=secret,id=github_token,required=false \
-    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
+RUN node ./scripts/camoufox-fetch.mjs
 
 FROM runtime-base AS tectonic
 

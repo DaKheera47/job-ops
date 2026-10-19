@@ -238,6 +238,18 @@ export function createAuthGuard() {
     )
       return true;
     if (
+      normalizedMethod === "GET" &&
+      normalizedPath === "/api/auth/sso/providers"
+    )
+      return true;
+    if (
+      normalizedMethod === "POST" &&
+      /^\/api\/auth\/sso\/(google|github|oidc)\/(start|callback)$/.test(
+        normalizedPath,
+      )
+    )
+      return true;
+    if (
       ["GET", "HEAD"].includes(normalizedMethod) &&
       /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
     )
@@ -255,6 +267,10 @@ export function createAuthGuard() {
     const normalizedPath = path.split("?")[0] || path;
 
     if (normalizedPath === "/api/auth/me") return true;
+    // Linking and listing connected accounts act on a real user, so they stay
+    // behind auth in demo mode. requiresAuth consults isPublicReadOnlyRoute
+    // first, which keeps the sign-in routes reachable.
+    if (normalizedPath.startsWith("/api/auth/sso/")) return true;
     if (normalizedPath.startsWith("/api/workspaces")) return true;
     if (normalizedPath === "/api/settings/codex-auth") return true;
     if (normalizedPath === "/api/settings/rx-resumes") return true;

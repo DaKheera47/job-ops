@@ -18,6 +18,7 @@ import {
   POST_APPLICATION_PROVIDERS,
   POST_APPLICATION_RELEVANCE_DECISIONS,
   POST_APPLICATION_SYNC_RUN_STATUSES,
+  SSO_PROVIDERS,
 } from "@shared/types";
 import { sql } from "drizzle-orm";
 import {
@@ -26,6 +27,7 @@ import {
   real,
   sqliteTable,
   text,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
@@ -35,8 +37,8 @@ export const users = sqliteTable(
     id: text("id").primaryKey(),
     username: text("username").notNull(),
     displayName: text("display_name"),
-    passwordHash: text("password_hash").notNull(),
-    passwordSalt: text("password_salt").notNull(),
+    passwordHash: text("password_hash"),
+    passwordSalt: text("password_salt"),
     isSystemAdmin: integer("is_system_admin", { mode: "boolean" })
       .notNull()
       .default(false),
@@ -763,6 +765,35 @@ export const authSessions = sqliteTable(
   }),
 );
 
+export const ssoIdentities = sqliteTable(
+  "sso_identities",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: SSO_PROVIDERS }).notNull(),
+    issuer: text("issuer").notNull(),
+    subject: text("subject").notNull(),
+    email: text("email"),
+    displayName: text("display_name"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    providerIdentityUnique: unique().on(
+      table.provider,
+      table.issuer,
+      table.subject,
+    ),
+    userIndex: index("idx_sso_identities_user_id").on(table.userId),
+  }),
+);
+
 export const designResumeDocuments = sqliteTable("design_resume_documents", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id")
@@ -1077,6 +1108,8 @@ export const tracerClickEvents = sqliteTable(
 
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
+export type SsoIdentityRow = typeof ssoIdentities.$inferSelect;
+export type NewSsoIdentityRow = typeof ssoIdentities.$inferInsert;
 export type TenantRow = typeof tenants.$inferSelect;
 export type NewTenantRow = typeof tenants.$inferInsert;
 export type TenantMembershipRow = typeof tenantMemberships.$inferSelect;

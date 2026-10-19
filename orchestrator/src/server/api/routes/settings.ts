@@ -222,6 +222,7 @@ function normalizeLlmProviderValue(
 function getDefaultValidationBaseUrl(
   provider: string | undefined,
 ): string | undefined {
+  if (provider === "litellm") return "http://localhost:4000";
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "openai_compatible") return "https://api.openai.com";
@@ -315,6 +316,7 @@ async function resolveLlmConfig(input: {
       (hostedMode ? "openrouter" : undefined),
   );
   const usesBaseUrl =
+    provider === "litellm" ||
     provider === "lmstudio" ||
     provider === "ollama" ||
     provider === "glm" ||

@@ -30,6 +30,31 @@ describe.sequential("Auth routes", () => {
     return row?.count ?? 0;
   }
 
+  async function signIn(username: string, password: string): Promise<string> {
+    const res = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    return body.data.token as string;
+  }
+
+  async function changeOwnPassword(
+    token: string,
+    body: { password: string; currentPassword?: string },
+  ): Promise<Response> {
+    return fetch(`${baseUrl}/api/workspaces/me/password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   async function getTenantMembership(input: { userId: string }) {
     const { db, schema } = await import("@server/db");
     const [row] = await db
@@ -69,6 +94,22 @@ describe.sequential("Auth routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: "admin", password: "wrong" }),
+      });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 401 for a user without a password", async () => {
+      const usersRepo = await import("@server/repositories/users");
+      await usersRepo.createSsoProvisionedUser({
+        mode: "local",
+        username: "sso-only",
+      });
+
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "sso-only", password: "secret" }),
       });
 
       expect(res.status).toBe(401);
@@ -418,6 +459,65 @@ describe.sequential("Auth routes", () => {
       });
 
       expect(res.status).toBe(401);
+    });
+
+    it("reports whether the signed-in user has a password without leaking it", async () => {
+      const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret" }),
+      });
+      const { data } = await loginRes.json();
+
+      const meRes = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+
+      expect(meRes.status).toBe(200);
+      const meBody = await meRes.json();
+      expect(meBody.data.user.hasPassword).toBe(true);
+      expect(Object.keys(meBody.data.user)).not.toContain("passwordHash");
+      expect(Object.keys(meBody.data.user)).not.toContain("passwordSalt");
+    });
+
+    it("refuses a password change that cannot prove the current password", async () => {
+      const token = await signIn("admin", "secret");
+
+      const missingRes = await changeOwnPassword(token, {
+        password: "a-brand-new-password",
+      });
+      expect(missingRes.status).toBe(400);
+      const missingBody = await missingRes.json();
+      expect(missingBody.error.message).toBe("Current password is required");
+
+      const wrongRes = await changeOwnPassword(token, {
+        password: "a-brand-new-password",
+        currentPassword: "not-the-current-password",
+      });
+      expect(wrongRes.status).toBe(401);
+      const wrongBody = await wrongRes.json();
+      expect(wrongBody.error.message).toBe("Current password is incorrect");
+    });
+
+    it("changes the password once the current password is verified", async () => {
+      const token = await signIn("admin", "secret");
+
+      const res = await changeOwnPassword(token, {
+        password: "a-brand-new-password",
+        currentPassword: "secret",
+      });
+      expect(res.status).toBe(200);
+
+      const oldPasswordRes = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret" }),
+      });
+      expect(oldPasswordRes.status).toBe(401);
+
+      await expect(
+        signIn("admin", "a-brand-new-password"),
+      ).resolves.toBeTruthy();
     });
 
     it("returns a stable backend analytics distinct id from /api/auth/me", async () => {

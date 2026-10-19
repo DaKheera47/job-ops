@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { ConnectedAccountsSection } from "@client/pages/settings/components/ConnectedAccountsSection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { EnvSettingsValues } from "@client/pages/settings/types";
@@ -10,6 +11,7 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +25,6 @@ type EnvironmentSettingsSectionProps = {
 };
 
 const workspaceUsersQueryKey = ["workspaces", "users"] as const;
-const currentAuthUserQueryKey = ["auth", "me"] as const;
 
 function AccountManagementSection() {
   const queryClient = useQueryClient();
@@ -35,7 +36,7 @@ function AccountManagementSection() {
   >({});
 
   const meQuery = useQuery({
-    queryKey: currentAuthUserQueryKey,
+    queryKey: queryKeys.auth.currentUser(),
     queryFn: api.getCurrentAuthUser,
     retry: false,
   });
@@ -305,6 +306,8 @@ export const EnvironmentSettingsSection: React.FC<
             Security
           </div>
           <AccountManagementSection />
+          <Separator />
+          <ConnectedAccountsSection />
         </div>
       </div>
     </SettingsSectionFrame>

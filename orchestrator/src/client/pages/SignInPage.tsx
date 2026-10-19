@@ -1,11 +1,15 @@
 import {
   getAppStatus,
   getAuthBootstrapStatus,
+  getSsoProviders,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
   signInWithCredentials,
   signupWithCredentials,
+  startSsoLogin,
 } from "@client/api";
+import type { SsoProviderInfo } from "@shared/types";
+import { useQuery } from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -18,21 +22,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { resolveNextPath } from "../lib/auth-navigation";
+import { queryKeys } from "../lib/queryKeys";
 import {
   loadRememberedAuthUsers,
   rememberAuthUser,
 } from "../lib/remembered-auth-users";
+import { rememberPendingSsoFlow } from "../lib/sso-flow";
+import { SSO_PROVIDER_ICONS } from "../lib/sso-providers";
 
 type AuthMode = "sign-in" | "signup";
-
-function resolveNextPath(rawNext: string | null): string {
-  if (!rawNext || !rawNext.startsWith("/")) return "/jobs/ready";
-  if (rawNext === "/sign-in" || rawNext.startsWith("/sign-in?")) {
-    return "/jobs/ready";
-  }
-  return rawNext;
-}
 
 export function SignInPage() {
   const location = useLocation();
@@ -47,6 +48,12 @@ export function SignInPage() {
   const [rememberedUsers, setRememberedUsers] = useState(() =>
     loadRememberedAuthUsers(),
   );
+  const ssoProvidersQuery = useQuery({
+    queryKey: queryKeys.auth.ssoProviders(),
+    queryFn: getSsoProviders,
+    retry: false,
+  });
+  const ssoProviders = ssoProvidersQuery.data ?? [];
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -147,6 +154,30 @@ export function SignInPage() {
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to sign in",
+      );
+      setIsBusy(false);
+    }
+  };
+
+  const handleSsoSignIn = async (provider: SsoProviderInfo) => {
+    setIsBusy(true);
+    setErrorMessage(null);
+
+    try {
+      const start = await startSsoLogin(provider.id);
+      rememberPendingSsoFlow({
+        provider: start.provider,
+        state: start.state,
+        flowToken: start.flowToken,
+        mode: "login",
+        next: nextPath,
+      });
+      window.location.assign(start.authorizationUrl);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : `Unable to continue with ${provider.displayName}`,
       );
       setIsBusy(false);
     }
@@ -292,6 +323,33 @@ export function SignInPage() {
                     : "Sign in"}
               </Button>
             </form>
+            {ssoProviders.length > 0 ? (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Separator className="flex-1" />
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    or continue with
+                  </span>
+                  <Separator className="flex-1" />
+                </div>
+                {ssoProviders.map((provider) => {
+                  const ProviderIcon = SSO_PROVIDER_ICONS[provider.id];
+                  return (
+                    <Button
+                      key={provider.id}
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={isBusy}
+                      onClick={() => void handleSsoSignIn(provider)}
+                    >
+                      <ProviderIcon className="mr-2 h-4 w-4" />
+                      Continue with {provider.displayName}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
