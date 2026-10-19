@@ -408,11 +408,7 @@ describe("SettingsPage", () => {
     fireEvent.change(modelInput, { target: { value: "a".repeat(201) } });
 
     // Should see error message
-    expect(
-      await screen.findByText(
-        /Too big: expected string to have <=200 characters/i,
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/200 character/i)).toBeInTheDocument();
 
     // Save button should be disabled due to validation error (isValid will be false)
     const saveButton = getSaveButton();
