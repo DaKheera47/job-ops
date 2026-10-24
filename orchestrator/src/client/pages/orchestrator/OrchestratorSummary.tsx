@@ -15,9 +15,11 @@ export const OrchestratorSummary: React.FC<OrchestratorSummaryProps> = ({
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-medium tracking-tight">{welcomeText}</h1>
-      </div>
+      {welcomeText ? (
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-medium tracking-tight">{welcomeText}</h1>
+        </div>
+      ) : null}
 
       {isPipelineRunning && (
         <div>

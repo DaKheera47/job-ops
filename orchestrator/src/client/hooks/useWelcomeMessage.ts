@@ -12,10 +12,12 @@ function hashCode(str: string): number {
   return hash;
 }
 
-export function useWelcomeMessage(): string {
-  const { personName } = useProfile();
+export function useWelcomeMessage(): string | null {
+  const { personName, isLoading } = useProfile();
 
   return useMemo(() => {
+    if (isLoading) return null;
+
     const firstName = personName?.split(" ")[0] || "User";
     const today = new Date().toDateString();
 
@@ -53,5 +55,5 @@ export function useWelcomeMessage(): string {
       default:
         return line.text;
     }
-  }, [personName]);
+  }, [personName, isLoading]);
 }
