@@ -55,32 +55,36 @@ export const OrchestratorSearchComposer: React.FC<
   onUpdateSavedSearch,
   onDeleteSavedSearch,
   onApplySavedSearch,
-}) => (
-  <RunModeModal
-    open={true}
-    mode={mode}
-    showCloseButton={false}
-    showModeTabs
-    settings={settings}
-    enabledSources={enabledSources}
-    pipelineSources={pipelineSources}
-    onToggleSource={onToggleSource}
-    onSetPipelineSources={onSetPipelineSources}
-    watchlistSources={watchlistSources}
-    selectedWatchlistSourceIds={selectedWatchlistSourceIds}
-    onToggleWatchlistSource={onToggleWatchlistSource}
-    onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
-    isWatchlistSourcesLoading={isWatchlistSourcesLoading}
-    isPipelineRunning={isPipelineRunning}
-    onOpenChange={onOpenChange}
-    onModeChange={onModeChange}
-    onSaveAndRunAutomatic={onSaveAndRunAutomatic}
-    onManualImported={onManualImported}
-    savedSearches={savedSearches}
-    isSavedSearchesLoading={isSavedSearchesLoading}
-    onCreateSavedSearch={onCreateSavedSearch}
-    onUpdateSavedSearch={onUpdateSavedSearch}
-    onDeleteSavedSearch={onDeleteSavedSearch}
-    onApplySavedSearch={onApplySavedSearch}
-  />
-);
+}) => {
+  if (mode === "automatic" && !settings) return null;
+
+  return (
+    <RunModeModal
+      open={true}
+      mode={mode}
+      showCloseButton={false}
+      showModeTabs
+      settings={settings}
+      enabledSources={enabledSources}
+      pipelineSources={pipelineSources}
+      onToggleSource={onToggleSource}
+      onSetPipelineSources={onSetPipelineSources}
+      watchlistSources={watchlistSources}
+      selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+      onToggleWatchlistSource={onToggleWatchlistSource}
+      onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
+      isWatchlistSourcesLoading={isWatchlistSourcesLoading}
+      isPipelineRunning={isPipelineRunning}
+      onOpenChange={onOpenChange}
+      onModeChange={onModeChange}
+      onSaveAndRunAutomatic={onSaveAndRunAutomatic}
+      onManualImported={onManualImported}
+      savedSearches={savedSearches}
+      isSavedSearchesLoading={isSavedSearchesLoading}
+      onCreateSavedSearch={onCreateSavedSearch}
+      onUpdateSavedSearch={onUpdateSavedSearch}
+      onDeleteSavedSearch={onDeleteSavedSearch}
+      onApplySavedSearch={onApplySavedSearch}
+    />
+  );
+};
