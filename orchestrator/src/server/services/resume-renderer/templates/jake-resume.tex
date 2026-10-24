@@ -20,6 +20,7 @@
 \usepackage[english]{babel}
 \usepackage{iftex}
 \usepackage{tabularx}
+\usepackage[normalem]{ulem}
 \usepackage{fontawesome5}
 
 \ifPDFTeX
@@ -57,10 +58,11 @@
 
 \newcommand{\resumeSubheading}[4]{
   \vspace{-2pt}\item
-    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
-      \textbf{#1} & #2 \\
+    \begin{tabularx}{0.97\textwidth}[t]{>{\raggedright\arraybackslash}X@{\hspace{1em}}r}
+      % Keep linked titles underlined without preventing line breaks.
+      \textbf{\let\underline\uline #1} & #2 \\
       \textit{\small#3} & \textit{\small #4} \\
-    \end{tabular*}\vspace{-7pt}
+    \end{tabularx}\vspace{-7pt}
 }
 
 \newcommand{\resumeProjectHeading}[2]{
