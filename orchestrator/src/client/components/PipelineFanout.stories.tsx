@@ -177,23 +177,6 @@ const FanoutStory = ({
   fanout: PipelineFanoutProgress;
   challenges?: PipelinePendingChallenge[];
 }) => {
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(
-      () => setTick((current) => current + 1),
-      1400,
-    );
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const source = sources[Math.floor((tick + 2) / 3) % fanout.sourceCount];
-  const role = fanout.roles[Math.floor((tick + 1) / 3) % fanout.termCount]?.role
-    .replace(/ engineer$/i, "")
-    .toLowerCase();
-  const location =
-    locations[Math.floor(tick / 3) % fanout.locationCount]?.toLowerCase();
-
   return (
     <PipelineProgressCard
       progress={stageProgress(
@@ -201,10 +184,15 @@ const FanoutStory = ({
         challenges
           ? "One job board needs a quick browser check."
           : "Searching across every configured combination…",
-        { fanout, pendingChallenges: challenges },
+        {
+          fanout,
+          pendingChallenges: challenges,
+          detail: challenges
+            ? "Waiting for the browser check to finish."
+            : "JobSpy: term 2/3 (Backend Engineer)",
+        },
       )}
       elapsedSeconds={134}
-      currentCombination={`${source} · ${role} · ${location}`}
       solvingExtractor={null}
       onSolveChallenge={noop}
     />

@@ -4,9 +4,6 @@ import type {
   PipelineFanoutRoleProgress,
   PipelinePendingChallenge,
 } from "@shared/types";
-import { useReducedMotion } from "framer-motion";
-import "slot-text/style.css";
-import { SlotText } from "slot-text/react";
 import {
   Accordion,
   AccordionContent,
@@ -25,63 +22,6 @@ import { PipelineActionRequired } from "./PipelineActionRequired";
 
 const getRoleTotal = (role: PipelineFanoutRoleProgress) =>
   role.complete + role.running + role.check + role.queued;
-
-const combinationSlotOptions = {
-  direction: "up" as const,
-  stagger: 16,
-  duration: 220,
-  bounce: 0,
-  skipUnchanged: false,
-  interrupt: false,
-};
-
-const LiveSearchTitle = ({ text }: { text: string }) => {
-  const prefersReducedMotion = useReducedMotion();
-  const [source = "", role = "", location = ""] = text.split(" · ");
-  const label = `Searching ${source} for “${role}” in ${location}`;
-
-  return (
-    <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
-      <span className="sr-only">{label}</span>
-      <span aria-hidden="true" className="contents">
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span>Searching</span>
-          {prefersReducedMotion ? (
-            <span className="inline-block font-bold">{source}</span>
-          ) : (
-            <SlotText
-              className="inline-block font-bold"
-              text={source}
-              options={combinationSlotOptions}
-            />
-          )}
-        </span>
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span>for</span>
-          {prefersReducedMotion ? (
-            <span className="inline-block font-bold">“{role}”</span>
-          ) : (
-            <span className="inline-block font-bold">
-              “<SlotText text={role} options={combinationSlotOptions} />”
-            </span>
-          )}
-        </span>
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span>in</span>
-          {prefersReducedMotion ? (
-            <span className="inline-block font-bold">{location}</span>
-          ) : (
-            <SlotText
-              className="inline-block font-bold"
-              text={location}
-              options={combinationSlotOptions}
-            />
-          )}
-        </span>
-      </span>
-    </span>
-  );
-};
 
 const Segment = ({
   className,
@@ -161,7 +101,7 @@ const RoleRow = ({ role }: { role: PipelineFanoutRoleProgress }) => {
 export interface PipelineFanoutCardProps {
   fanout: PipelineFanoutProgress;
   elapsedSeconds: number;
-  currentCombination?: string;
+  activity?: string;
   challenges?: PipelinePendingChallenge[];
   solvingExtractor: string | null;
   skippingExtractor?: string | null;
@@ -175,7 +115,7 @@ const formatElapsed = (seconds: number) =>
 export const PipelineFanoutCard = ({
   fanout,
   elapsedSeconds,
-  currentCombination,
+  activity,
   challenges = [],
   solvingExtractor,
   skippingExtractor = null,
@@ -203,15 +143,11 @@ export const PipelineFanoutCard = ({
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2 @lg/fanout:flex-row @lg/fanout:items-start @lg/fanout:justify-between">
             <CardTitle className="min-w-0 text-2xl tracking-tight">
-              {challenges.length > 0 ? (
-                "Browser check needed"
-              ) : complete === fanout.total ? (
-                "Finishing discovery"
-              ) : currentCombination ? (
-                <LiveSearchTitle text={currentCombination} />
-              ) : (
-                "Searching jobs"
-              )}
+              {challenges.length > 0
+                ? "Browser check needed"
+                : complete === fanout.total
+                  ? "Finishing discovery"
+                  : "Searching jobs"}
             </CardTitle>
             <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
               {formatElapsed(elapsedSeconds)} elapsed
@@ -227,6 +163,11 @@ export const PipelineFanoutCard = ({
             <strong className="text-foreground">{fanout.total}</strong>{" "}
             combinations
           </CardDescription>
+          {activity ? (
+            <p className="break-words text-sm text-muted-foreground">
+              <span className="font-medium">Latest activity:</span> {activity}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-3">

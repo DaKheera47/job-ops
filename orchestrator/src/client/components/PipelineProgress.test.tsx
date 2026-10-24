@@ -44,6 +44,7 @@ const fanout = {
 const baseProgress = {
   step: "crawling" as const,
   message: "Fetching jobs from sources...",
+  detail: "JobSpy: term 1/2 (Backend)",
   startedAt: "2026-07-15T12:00:00.000Z",
   fanout,
   crawlingSource: "jobspy",
@@ -89,27 +90,54 @@ describe("PipelineProgress", () => {
     vi.useRealTimers();
   });
 
-  it("renders live fanout data from SSE", () => {
+  it("updates activity only from SSE events while the elapsed timer advances", () => {
     render(<PipelineProgress isRunning />);
+    act(() => sseMock.handlers?.onOpen?.());
     act(() => sseMock.handlers?.onMessage(baseProgress));
 
-    expect(
-      screen.getByText("Searching glassdoor for “backend” in leeds"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Searching jobs")).toBeInTheDocument();
+    const activity = screen.getByText("Latest activity:").parentElement;
+    expect(activity).toHaveTextContent(baseProgress.detail);
     expect(screen.getByText("Backend")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("02:14 elapsed")).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByText("02:24 elapsed")).toBeInTheDocument();
+    expect(activity).toHaveTextContent(baseProgress.detail);
+    expect(apiMock.getPipelineProgressSnapshot).not.toHaveBeenCalled();
+
+    act(() =>
+      sseMock.handlers?.onMessage({
+        ...baseProgress,
+        detail: "Hiring Cafe: term 2/2, page 3 (24 collected)",
+      }),
+    );
+    expect(activity).toHaveTextContent(
+      "Hiring Cafe: term 2/2, page 3 (24 collected)",
+    );
+    expect(activity).not.toHaveTextContent(baseProgress.detail);
   });
 
   it("falls back to snapshot polling when SSE does not open", async () => {
+    apiMock.getPipelineProgressSnapshot.mockResolvedValueOnce({
+      ...baseProgress,
+      detail: undefined,
+    });
     render(<PipelineProgress isRunning />);
 
     await act(async () => vi.advanceTimersByTimeAsync(1500));
 
     expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByText(/^Searching .+ for “.+” in .+$/),
-    ).toBeInTheDocument();
+    const activity = screen.getByText("Latest activity:").parentElement;
+    expect(activity).toHaveTextContent(baseProgress.message);
+
+    await act(async () => vi.advanceTimersByTimeAsync(2000));
+    expect(activity).toHaveTextContent(baseProgress.detail);
+
+    act(() => sseMock.handlers?.onOpen?.());
+    await act(async () => vi.advanceTimersByTimeAsync(2000));
+    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(2);
   });
 
   it("hides the fanout card after discovery", () => {
@@ -118,9 +146,7 @@ describe("PipelineProgress", () => {
       sseMock.handlers?.onMessage({ ...baseProgress, step: "importing" }),
     );
 
-    expect(
-      screen.queryByText("Searching glassdoor for “backend” in leeds"),
-    ).toBeNull();
+    expect(screen.queryByText("Searching jobs")).toBeNull();
   });
 
   it("renders the live scoring card after discovery", () => {
@@ -147,9 +173,7 @@ describe("PipelineProgress", () => {
       screen.getByTitle("Ranking Frontend Engineer against your profile"),
     ).toBeInTheDocument();
     expect(screen.getByText("Exceptional matches")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Searching glassdoor for “backend” in leeds"),
-    ).toBeNull();
+    expect(screen.queryByText("Searching jobs")).toBeNull();
   });
 
   it("keeps polling after LLM configuration is added", async () => {

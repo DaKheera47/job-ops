@@ -3,8 +3,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
 
-vi.mock("framer-motion", () => ({ useReducedMotion: () => false }));
-
 const fanout: PipelineFanoutProgress = {
   termCount: 5,
   locationCount: 2,
@@ -25,20 +23,21 @@ const fanout: PipelineFanoutProgress = {
 };
 
 describe("PipelineFanoutCard", () => {
-  it("rolls each part of the live combination independently", () => {
+  it("shows the latest reported activity beneath a stable heading", () => {
     render(
       <PipelineFanoutCard
         fanout={fanout}
         elapsedSeconds={134}
-        currentCombination="linkedin · frontend · edinburgh"
+        activity="JobSpy: term 1/2 (Frontend Engineer)"
         solvingExtractor={null}
         onSolveChallenge={vi.fn()}
       />,
     );
 
+    expect(screen.getByText("Searching jobs")).toBeInTheDocument();
     expect(
-      screen.getByText("Searching linkedin for “frontend” in edinburgh"),
-    ).toBeInTheDocument();
+      screen.getByText("Latest activity:").parentElement,
+    ).toHaveTextContent("JobSpy: term 1/2 (Frontend Engineer)");
     expect(screen.getByText("15")).toBeInTheDocument();
   });
 
@@ -104,7 +103,7 @@ describe("PipelineFanoutCard", () => {
           ],
         }}
         elapsedSeconds={0}
-        currentCombination="hiringcafe · backend · amsterdam"
+        activity="Hiring Cafe: browser check required"
         challenges={[
           {
             extractorId: "hiringcafe",
@@ -119,9 +118,7 @@ describe("PipelineFanoutCard", () => {
     );
 
     expect(screen.getByText("Browser check needed")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Searching hiringcafe for “backend” in amsterdam"),
-    ).toBeNull();
+    expect(screen.queryByText("Searching jobs")).toBeNull();
     const searchCount = screen.getByText("search complete").parentElement;
     expect(searchCount?.firstElementChild).toHaveTextContent("1");
   });

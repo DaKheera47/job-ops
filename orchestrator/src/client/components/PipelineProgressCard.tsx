@@ -23,7 +23,6 @@ const noop = () => {};
 export interface PipelineProgressCardProps {
   progress: PipelineProgressState;
   elapsedSeconds?: number;
-  currentCombination?: string;
   solvingExtractor?: string | null;
   skippingExtractor?: string | null;
   onSolveChallenge?: (extractorId: string) => void;
@@ -170,7 +169,6 @@ const RollingStageText = ({ text }: { text: string }) => {
 export const PipelineProgressCard = ({
   progress,
   elapsedSeconds,
-  currentCombination,
   solvingExtractor = null,
   skippingExtractor = null,
   onSolveChallenge = () => {},
@@ -186,7 +184,7 @@ export const PipelineProgressCard = ({
       <PipelineFanoutCard
         fanout={progress.fanout}
         elapsedSeconds={elapsedSeconds ?? 0}
-        currentCombination={currentCombination}
+        activity={progress.detail || progress.message}
         challenges={progress.pendingChallenges}
         solvingExtractor={solvingExtractor}
         skippingExtractor={skippingExtractor}
