@@ -37,7 +37,9 @@ const API_URL = "https://my.ukvisajobs.com/ukvisa-api/api/fetch-jobs-data";
 const SIGNIN_URL = "https://my.ukvisajobs.com/signin";
 const OPEN_JOBS_URL =
   "https://my.ukvisajobs.com/open-jobs/1?is_global=0&sortBy=desc&visaAcceptance=false&applicants_outside_uk=false&pageNo=1";
-const AUTH_CACHE_PATH = join(__dirname, "../storage/ukvisajobs-auth.json");
+const STORAGE_ROOT =
+  process.env.UKVISAJOBS_STORAGE_DIR || join(__dirname, "../storage");
+const AUTH_CACHE_PATH = join(STORAGE_ROOT, "ukvisajobs-auth.json");
 const JOBS_PER_PAGE = 15;
 const DEFAULT_MAX_JOBS = 50;
 const MAX_ALLOWED_JOBS = 200;
@@ -611,7 +613,7 @@ async function main(): Promise<void> {
     console.log(`âœ… Scraped ${allJobs.length} jobs`);
 
     // Write output to storage directory (similar to Crawlee dataset structure)
-    const storageDir = join(__dirname, "../storage/datasets/default");
+    const storageDir = join(STORAGE_ROOT, "datasets/default");
     await mkdir(storageDir, { recursive: true });
 
     // Write each job as a separate JSON file (Crawlee dataset format)

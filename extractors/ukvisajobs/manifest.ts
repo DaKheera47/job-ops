@@ -80,6 +80,8 @@ export const manifest: ExtractorManifest = {
       : 50;
 
     const result = await runUkVisaJobs({
+      email: context.settings.ukvisajobsEmail,
+      password: context.settings.ukvisajobsPassword,
       cookieStorageDir: context.cookieStorageDir,
       maxJobs,
       searchTerms: context.searchTerms,

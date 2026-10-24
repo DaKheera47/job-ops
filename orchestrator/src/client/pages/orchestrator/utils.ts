@@ -285,7 +285,11 @@ export const getSourcesWithJobs = (jobs: JobListItem[]): JobSource[] => {
 export const getEnabledSources = (
   settings: AppSettings | null,
 ): JobSource[] => {
-  if (!settings) return [...orderedSources];
+  if (!settings) {
+    return orderedSources.filter(
+      (source) => !EXTRACTOR_SOURCE_METADATA[source].requiresCredentials,
+    );
+  }
 
   const enabled: JobSource[] = [];
   const hasUkVisaJobsAuth = Boolean(
