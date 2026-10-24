@@ -46,9 +46,8 @@
     .map(item => markup-text(item))
 }
 
-#let joined-bullets(entry) = {
-  bullets-of(entry)
-    .join(" • ")
+#let bullet-list(entry) = {
+  list(..bullets-of(entry))
 }
 
 #let bullet-trailing(entry) = {
@@ -213,14 +212,14 @@
     } else {
       link(text-of-item(entry, "url"))[#text-of-item(entry, "url")]
     },
-    description: joined-bullets(entry),
+    description: bullet-list(entry),
   )),
   education: list-of(source.at("education", default: ())).map(entry => (
     degree: text-of-item(entry, "subtitle"),
     institution: linked-entry-label(entry, text-of-item(entry, "title")),
     location: text-of-item(entry, "secondarySubtitle"),
     period: text-of-item(entry, "date"),
-    details: joined-bullets(entry),
+    details: bullet-list(entry),
   )),
 )
 
