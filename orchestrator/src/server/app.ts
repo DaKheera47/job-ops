@@ -65,7 +65,7 @@ const ALLOWED_UMAMI_PROXY_METHODS = new Map<string, string[]>([
 ]);
 const ANALYTICS_DISABLED_TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
 const UMAMI_SCRIPT_PATTERN =
-  /\s*<script\s+defer\s+src="https:\/\/umami\.dakheera47\.com\/script\.js"\s+data-website-id="0dc42ed1-87c3-4ac0-9409-5a9b9588fe66"\s*><\/script>/;
+  /\s*<script\b[^>]*\ssrc\s*=\s*["']https:\/\/umami\.dakheera47\.com\/script\.js["'][^>]*>\s*<\/script>/gi;
 const OPENPANEL_SCRIPT_PATTERN =
   /\s*<script>\s*window\.op =[\s\S]*?window\.op\("init", \{[\s\S]*?\n\s*}\);\s*<\/script>\s*<script src="https:\/\/openpanel\.dev\/op1\.js" defer async><\/script>/;
 
@@ -615,12 +615,12 @@ export function createApp() {
     }
 
     const clientDir = join(__dirname, "../../dist/client");
-    app.use(express.static(clientDir));
-
-    // SPA fallback
     const indexPath = join(clientDir, "index.html");
     let cachedIndexHtml: string | null = null;
-    app.get("*", async (req, res) => {
+    const serveClientHtml = async (
+      req: express.Request,
+      res: express.Response,
+    ) => {
       if (!req.accepts("html")) {
         res.status(404).end();
         return;
@@ -630,7 +630,12 @@ export function createApp() {
       }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(renderHtmlWithAnalyticsConfig(cachedIndexHtml));
-    });
+    };
+
+    // Entry HTML must be rewritten before static middleware can serve it.
+    app.get(["/", "/index.html"], serveClientHtml);
+    app.use(express.static(clientDir, { index: false }));
+    app.get("*", serveClientHtml);
   }
 
   app.use(apiErrorHandler);
