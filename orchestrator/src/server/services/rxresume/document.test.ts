@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDefaultReactiveResumeDocument,
   mergeReactiveResumeV5Content,
+  normalizeReactiveResumeV5Document,
   prepareReactiveResumeV5DocumentForExternalUse,
 } from "./document";
 import type { SectionType, V5ResumeData } from "./schema/v5";
@@ -37,6 +38,59 @@ function mergeV5Documents(
 }
 
 describe("prepareReactiveResumeV5DocumentForExternalUse", () => {
+  it("preserves semantic styles through template merging and export", () => {
+    const template = buildV5Document();
+    const stylesheet: NonNullable<V5ResumeData["metadata"]["stylesheet"]> = {
+      mode: "semantic",
+      source: {
+        languageVersion: 1,
+        text: '@version 1; section[type="interests"] field { font-weight: 400; }',
+      },
+    };
+    const styleRules: NonNullable<V5ResumeData["metadata"]["styleRules"]> = [
+      {
+        id: "interest-weight",
+        label: "Interests",
+        enabled: true,
+        target: { scope: "sectionType", sectionType: "interests" },
+        slots: { text: { fontWeight: "400" } },
+      },
+    ];
+    template.metadata.stylesheet = stylesheet;
+    template.metadata.styleRules = styleRules;
+    template.metadata.page.locale = "fr-FR";
+    const content = buildV5Document();
+    content.metadata.stylesheet = {
+      ...stylesheet,
+      source: { languageVersion: 1, text: "" },
+    };
+    const exported = prepareReactiveResumeV5DocumentForExternalUse(
+      mergeV5Documents(
+        normalizeReactiveResumeV5Document(template) as V5ResumeData,
+        content,
+      ),
+    ) as V5ResumeData;
+    expect(exported.metadata.stylesheet).toEqual(stylesheet);
+    expect(exported.metadata.styleRules).toEqual(styleRules);
+    expect(exported.metadata.page.locale).toBe("fr-FR");
+  });
+
+  it("rejects unsupported semantic style fields instead of forwarding them", () => {
+    const document = buildV5Document();
+    (document.metadata as Record<string, unknown>).styleRules = [
+      {
+        id: "invalid",
+        label: "Invalid",
+        enabled: true,
+        target: { scope: "global" },
+        slots: { text: { unsupportedProperty: "value" } },
+      },
+    ];
+    expect(() =>
+      prepareReactiveResumeV5DocumentForExternalUse(document),
+    ).toThrow();
+  });
+
   it("preserves current inline links and migrates the legacy JobOps option", () => {
     const document = buildDefaultReactiveResumeDocument();
     document.sections = {

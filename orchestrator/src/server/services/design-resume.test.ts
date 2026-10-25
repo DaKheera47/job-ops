@@ -204,6 +204,41 @@ describe("design resume service", () => {
     );
   });
 
+  it("keeps semantic styles separate when importing for different users", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValue(null);
+    for (const userId of ["user-a", "user-b"]) {
+      vi.mocked(getPrivateDataScope).mockReturnValue({
+        tenantId: "tenant-test-2",
+        userId,
+        enforceUserIsolation: true,
+        scopeKey: `tenant-test-2:${userId}`,
+      });
+      const upstreamResume = makeValidResumeJson();
+      const stylesheet: NonNullable<
+        DesignResumeJson["metadata"]["stylesheet"]
+      > = {
+        mode: "semantic",
+        source: { languageVersion: 1, text: `@version 1; /* ${userId} */` },
+      };
+      upstreamResume.metadata.stylesheet = stylesheet;
+      vi.mocked(getResume).mockResolvedValueOnce({
+        id: `rx-${userId}`,
+        mode: "v5",
+        data: upstreamResume,
+      } as never);
+      const result = await importDesignResumeFromReactiveResume();
+      expect(result.resumeJson.metadata.stylesheet).toEqual(stylesheet);
+      expect(repo.upsertDesignResumeDocument).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          id: `primary_tenant-test-2_${userId}`,
+          resumeJson: expect.objectContaining({
+            metadata: expect.objectContaining({ stylesheet }),
+          }),
+        }),
+      );
+    }
+  });
+
   it("imports Reactive Resume v5.1 data when metadata.css is absent", async () => {
     const upstreamResume = makeValidResumeJson();
     delete (upstreamResume.metadata as Record<string, unknown>).css;

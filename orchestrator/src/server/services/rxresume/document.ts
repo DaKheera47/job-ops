@@ -1,6 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
 import { resolveTracerPublicBaseUrl } from "@server/services/tracer-links";
-import { defaultV5ResumeData, parseV5ResumeData } from "./schema/v5";
+import {
+  defaultV5ResumeData,
+  metadataSchema,
+  parseV5ResumeData,
+} from "./schema/v5";
 
 type RecordLike = Record<string, unknown>;
 
@@ -407,6 +411,9 @@ function buildMetadata(
   void publicBaseUrl;
 
   return {
+    ...metadataSchema
+      .pick({ stylesheet: true, styleRules: true })
+      .parse(metadata),
     template: pickTemplate(metadata.template),
     layout: {
       sidebarWidth: toNumber(layout?.sidebarWidth, 35),
