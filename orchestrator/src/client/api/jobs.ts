@@ -97,6 +97,12 @@ export async function updateJob(
   });
 }
 
+export async function deleteJob(id: string): Promise<void> {
+  await fetchApi<void>(`/jobs/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function getJobNotes(id: string): Promise<JobNote[]> {
   return fetchApi<JobNote[]>(withQuery(`/jobs/${id}/notes`, { t: Date.now() }));
 }

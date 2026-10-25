@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { celebrateOffer } from "@/client/lib/celebrate";
 import { editorHtmlToMarkdown } from "@/client/lib/jobNoteContent";
 import * as privatePdf from "@/client/lib/private-pdf";
+import { queryKeys } from "@/client/lib/queryKeys";
 import * as api from "../api";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { JobPage } from "./JobPage";
@@ -75,6 +76,7 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 
 vi.mock("../api", () => ({
   getJob: vi.fn(),
+  deleteJob: vi.fn(),
   getJobStageEvents: vi.fn(),
   getJobTasks: vi.fn(),
   getJobNotes: vi.fn(),
@@ -199,6 +201,7 @@ beforeEach(() => {
   notesStore = [];
 
   vi.mocked(api.getJob).mockResolvedValue(createJob() as Job);
+  vi.mocked(api.deleteJob).mockResolvedValue(undefined);
   vi.mocked(api.getProfile).mockResolvedValue({});
   vi.mocked(api.getSettings).mockResolvedValue(createAppSettings());
   vi.mocked(api.getResumeProjectsCatalog).mockResolvedValue([]);
@@ -287,6 +290,86 @@ const renderJobPage = (initialEntry: RouterInitialEntry = "/job/job-1/notes") =>
       </Routes>
     </MemoryRouter>,
   );
+
+describe("JobPage deletion", () => {
+  it("requires confirmation and does nothing when cancelled", async () => {
+    renderJobPage("/job/job-1/timeline");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete job" }));
+    expect(api.deleteJob).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "This cannot be undone",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.deleteJob).not.toHaveBeenCalled();
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/job/job-1/timeline",
+    );
+  });
+
+  it("clears deleted-job caches, refreshes lists, and returns to the entry page", async () => {
+    const { queryClient } = renderJobPage({
+      pathname: "/job/job-1",
+      state: { jobPageBackTo: "/jobs/ready?q=backend" },
+    });
+    await screen.findByRole("button", { name: "Delete job" });
+    queryClient.setQueryDefaults(queryKeys.jobs.all, { gcTime: Infinity });
+    const otherJob = createJob({ id: "other-job" });
+    queryClient.setQueryData(queryKeys.jobs.detail(otherJob.id), otherJob);
+    const listKey = queryKeys.jobs.list();
+    queryClient.setQueryData(listKey, { jobs: [createJob(), otherJob] });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete job" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/jobs/ready?q=backend",
+      ),
+    );
+    expect(api.deleteJob).toHaveBeenCalledExactlyOnceWith("job-1");
+    expect(
+      queryClient.getQueryData(queryKeys.jobs.detail("job-1")),
+    ).toBeUndefined();
+    expect(
+      queryClient.getQueryData(queryKeys.jobs.detail(otherJob.id)),
+    ).toEqual(otherJob);
+    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true);
+    expect(toast.success).toHaveBeenCalledWith("Job deleted");
+  });
+
+  it("keeps the job and shows the server error when deletion fails", async () => {
+    vi.mocked(api.deleteJob).mockRejectedValueOnce(
+      new Error("This job is being processed. Try again when it finishes."),
+    );
+    const { queryClient } = renderJobPage("/job/job-1");
+    fireEvent.click(await screen.findByRole("button", { name: "Delete job" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "This job is being processed. Try again when it finishes.",
+      ),
+    );
+    expect(
+      queryClient.getQueryData(queryKeys.jobs.detail("job-1")),
+    ).toBeDefined();
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/job/job-1",
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+});
 
 describe("JobPage notes", () => {
   it("renders notes at the public /notes URL", async () => {

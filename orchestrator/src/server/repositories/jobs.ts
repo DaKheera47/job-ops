@@ -31,6 +31,7 @@ import {
   isNull,
   lt,
   ne,
+  notExists,
   sql,
 } from "drizzle-orm";
 import { db, schema } from "../db/index";
@@ -818,6 +819,36 @@ export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
     .where(and(jobsScopeFilter(), eq(jobs.status, status)))
     .run();
   return result.changes;
+}
+
+export async function deleteJob(
+  id: string,
+): Promise<"deleted" | "not_found" | "busy"> {
+  const runningChat = db
+    .select({ id: schema.jobChatRuns.id })
+    .from(schema.jobChatRuns)
+    .where(
+      and(
+        privateDataScopeFilter(schema.jobChatRuns),
+        eq(schema.jobChatRuns.jobId, jobs.id),
+        eq(schema.jobChatRuns.status, "running"),
+      ),
+    );
+  const result = await db
+    .delete(jobs)
+    .where(
+      and(
+        jobsScopeFilter(),
+        eq(jobs.id, id),
+        ne(jobs.status, "processing"),
+        eq(jobs.pdfRegenerating, false),
+        notExists(runningChat),
+      ),
+    )
+    .run();
+
+  if (result.changes > 0) return "deleted";
+  return (await getJobById(id)) ? "busy" : "not_found";
 }
 
 /**

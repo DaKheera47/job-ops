@@ -18,6 +18,7 @@ import {
   MessageSquareText,
   PlusCircle,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import React from "react";
 import {
@@ -143,6 +144,7 @@ export const JobPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isDeleteJobModalOpen, setIsDeleteJobModalOpen] = React.useState(false);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = React.useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = React.useState(false);
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
@@ -163,22 +165,22 @@ export const JobPage: React.FC = () => {
   const jobQuery = useQuery<Job | null>({
     queryKey: ["jobs", "detail", id ?? null] as const,
     queryFn: () => (id ? api.getJob(id) : Promise.resolve(null)),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && activeAction !== "delete-job",
   });
   const eventsQuery = useQuery<StageEvent[]>({
     queryKey: ["jobs", "stage-events", id ?? null] as const,
     queryFn: () => (id ? api.getJobStageEvents(id) : Promise.resolve([])),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && activeAction !== "delete-job",
   });
   const notesQuery = useQuery<JobNote[]>({
     queryKey: queryKeys.jobs.notes(id ?? ""),
     queryFn: () => (id ? api.getJobNotes(id) : Promise.resolve([])),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && activeAction !== "delete-job",
   });
   const tasksQuery = useQuery<ApplicationTask[]>({
     queryKey: ["jobs", "tasks", id ?? null] as const,
     queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && activeAction !== "delete-job",
   });
 
   useQueryErrorToast(
@@ -392,6 +394,34 @@ export const JobPage: React.FC = () => {
     });
   };
 
+  const handleDeleteJob = async () => {
+    if (!job || activeAction !== null) return;
+    try {
+      setActiveAction("delete-job");
+      await api.deleteJob(job.id);
+      await queryClient.cancelQueries({ queryKey: queryKeys.jobs.all });
+      await Promise.all(
+        [
+          queryKeys.jobs.all,
+          queryKeys.tracer.all,
+          queryKeys.postApplication.all,
+        ].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey, refetchType: "none" }),
+        ),
+      );
+      queryClient.removeQueries({
+        predicate: ({ queryKey }) =>
+          (queryKey[0] === "jobs" || queryKey[0] === "tracer") &&
+          queryKey[2] === job.id,
+      });
+      navigate(jobPageBackTo ?? getFallbackBackTarget(job), { replace: true });
+      toast.success("Job deleted");
+    } catch (error) {
+      showErrorToast(error, "Failed to delete job");
+      setActiveAction(null);
+    }
+  };
+
   const handleRescore = async () => {
     await runAction("rescore", async () => {
       if (!job) return;
@@ -538,14 +568,30 @@ export const JobPage: React.FC = () => {
           Back
         </Button>
         {job && (
-          <Badge
-            variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-          >
-            {currentStage
-              ? STAGE_LABELS[currentStage as ApplicationStage] || currentStage
-              : job.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+            >
+              {currentStage
+                ? STAGE_LABELS[currentStage as ApplicationStage] || currentStage
+                : job.status}
+            </Badge>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteJobModalOpen(true)}
+              disabled={
+                isBusy ||
+                isUploadingPdf ||
+                isRegeneratingPdf ||
+                job.status === "processing"
+              }
+            >
+              <Trash2 data-icon="inline-start" />
+              {activeAction === "delete-job" ? "Deleting..." : "Delete job"}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -924,6 +970,14 @@ export const JobPage: React.FC = () => {
         }}
         onLog={handleLogEvent}
         editingEvent={editingEvent}
+      />
+
+      <ConfirmDelete
+        isOpen={isDeleteJobModalOpen}
+        onClose={() => setIsDeleteJobModalOpen(false)}
+        onConfirm={() => void handleDeleteJob()}
+        title="Delete job permanently?"
+        description={`Permanently delete “${job?.title}” at ${job?.employer}, including its notes, documents, timeline, and chat history? This cannot be undone. The job may be discovered again in future searches.`}
       />
 
       <ConfirmDelete

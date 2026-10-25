@@ -35,6 +35,7 @@ import {
   createJobPdfFingerprint,
   resolvePdfFingerprintContext,
 } from "../services/pdf-fingerprint";
+import { removeStoredJobPdf } from "../services/pdf-storage";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
@@ -958,13 +959,13 @@ export async function generateFinalPdf(
       await reservePdfUsage();
 
       // Ready jobs already have a usable PDF; keep them visible while regenerating.
-      if (job.status !== "ready") {
-        await jobsRepo.updateJob(job.id, {
-          status: "processing",
-          pdfRegenerating: true,
-        });
-      } else {
-        await jobsRepo.updateJob(job.id, { pdfRegenerating: true });
+      const claimedJob = await jobsRepo.updateJob(job.id, {
+        ...(job.status !== "ready" ? { status: "processing" } : {}),
+        pdfRegenerating: true,
+      });
+      if (!claimedJob) {
+        await settlePdfUsage(0);
+        return { success: false, error: "Job not found" };
       }
       pdfRegeneratingMarked = true;
 
@@ -1023,6 +1024,13 @@ export async function generateFinalPdf(
       });
       if (!updatedJob) {
         const latestJob = await jobsRepo.getJobById(job.id);
+        if (!latestJob) {
+          await removeStoredJobPdf(job.id).catch((error) => {
+            jobLogger.warn("Failed to remove PDF generated for a deleted job", {
+              error,
+            });
+          });
+        }
         if (
           latestJob?.pdfRegenerating &&
           (latestJob.status !== expectedStatusAtCommit ||

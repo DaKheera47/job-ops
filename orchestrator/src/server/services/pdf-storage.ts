@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
@@ -21,6 +22,10 @@ export function getLegacyPdfDir(): string {
 
 export function getTenantJobPdfPath(jobId: string): string {
   return join(getTenantPdfDir(), `resume_${jobId}.pdf`);
+}
+
+export async function removeStoredJobPdf(jobId: string): Promise<void> {
+  await rm(getTenantJobPdfPath(jobId), { force: true });
 }
 
 export function getLegacyJobPdfPath(jobId: string): string {

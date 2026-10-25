@@ -103,3 +103,10 @@ export async function removeStoredJobDocument(
 ): Promise<void> {
   await rm(storagePath, { force: true });
 }
+
+export async function removeStoredJobDocuments(jobId: string): Promise<void> {
+  await rm(getTenantJobDocumentsDir(jobId), {
+    recursive: true,
+    force: true,
+  });
+}

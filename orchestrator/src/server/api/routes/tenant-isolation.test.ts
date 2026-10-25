@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import type { Server } from "node:http";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -138,6 +140,28 @@ describe.sequential("Tenant isolation", () => {
       headers: { Authorization: `Bearer ${adamToken}` },
     });
     expect(adamPdf.status).toBe(404);
+
+    const adamDeletesAdminJob = await fetch(
+      `${baseUrl}/api/jobs/${adminJob.id}`,
+      {
+        method: "DELETE",
+        headers: authHeaders(adamToken),
+      },
+    );
+    expect(adamDeletesAdminJob.status).toBe(404);
+    expect((await adamDeletesAdminJob.json()).error.code).toBe("NOT_FOUND");
+    const deleteRes = await fetch(`${baseUrl}/api/jobs/${adminJob.id}`, {
+      method: "DELETE",
+      headers: authHeaders(adminToken),
+    });
+    expect(deleteRes.status).toBe(200);
+    expect(
+      (
+        await fetch(`${baseUrl}/api/jobs/${adamJob.id}`, {
+          headers: authHeaders(adamToken),
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it("returns 409 when creating a duplicate workspace username", async () => {
@@ -232,6 +256,108 @@ describe.sequential("Hosted current-user isolation", () => {
 
   afterEach(async () => {
     await stopServer({ server, closeDb, tempDir });
+  });
+
+  it("authorizes deletion for only the job owner within a shared hosted tenant", async () => {
+    const aliceToken = await signup(baseUrl, "alice", "alice-secret");
+    const bobToken = await signup(baseUrl, "bob", "bob-secret");
+    const aliceJob = await importManualJob(
+      baseUrl,
+      aliceToken,
+      "Alice delete role",
+    );
+    const bobJob = await importManualJob(baseUrl, bobToken, "Bob keep role");
+
+    const { db, schema } = await import("@server/db");
+    const pdfBytes = Buffer.from("%PDF-1.4\n%EOF\n");
+    const storedFiles: Array<{ pdfPath: string; documentPath: string }> = [];
+    for (const [token, job] of [
+      [aliceToken, aliceJob],
+      [bobToken, bobJob],
+    ] as const) {
+      const pdfRes = await fetch(`${baseUrl}/api/jobs/${job.id}/pdf`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          fileName: "resume.pdf",
+          mediaType: "application/pdf",
+          dataBase64: pdfBytes.toString("base64"),
+        }),
+      });
+      expect(pdfRes.status).toBe(201);
+      const documentRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/documents`,
+        {
+          method: "POST",
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            fileName: "note.txt",
+            mediaType: "text/plain",
+            dataBase64: Buffer.from("Private attachment").toString("base64"),
+          }),
+        },
+      );
+      expect(documentRes.status).toBe(201);
+      storedFiles.push({
+        pdfPath:
+          db.select().from(schema.jobs).where(eq(schema.jobs.id, job.id)).get()
+            ?.pdfPath ?? "",
+        documentPath:
+          db
+            .select()
+            .from(schema.jobDocuments)
+            .where(eq(schema.jobDocuments.jobId, job.id))
+            .get()?.storagePath ?? "",
+      });
+    }
+    const tamperPathRes = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+      method: "PATCH",
+      headers: authHeaders(aliceToken),
+      body: JSON.stringify({ pdfPath: storedFiles[1].pdfPath }),
+    });
+    expect(tamperPathRes.status).toBe(200);
+
+    const anonymousDelete = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+      method: "DELETE",
+    });
+    expect(anonymousDelete.status).toBe(401);
+    const crossUserDelete = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+      method: "DELETE",
+      headers: authHeaders(bobToken),
+    });
+    expect(crossUserDelete.status).toBe(404);
+    expect((await crossUserDelete.json()).error.code).toBe("NOT_FOUND");
+    expect(await readFile(storedFiles[0].pdfPath)).toEqual(pdfBytes);
+
+    const deleteRes = await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+      method: "DELETE",
+      headers: authHeaders(aliceToken),
+    });
+    expect(deleteRes.status).toBe(200);
+    await expect(readFile(storedFiles[0].pdfPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(storedFiles[0].documentPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(await readFile(storedFiles[1].pdfPath)).toEqual(pdfBytes);
+    expect(await readFile(storedFiles[1].documentPath, "utf8")).toBe(
+      "Private attachment",
+    );
+    expect(
+      (
+        await fetch(`${baseUrl}/api/jobs/${aliceJob.id}`, {
+          headers: authHeaders(aliceToken),
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await fetch(`${baseUrl}/api/jobs/${bobJob.id}`, {
+          headers: authHeaders(bobToken),
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it("isolates private data between two hosted users in the same tenant", async () => {

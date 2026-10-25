@@ -4,10 +4,15 @@ import { generateFinalPdf } from "./pipeline/orchestrator";
 import * as jobsRepo from "./repositories/jobs";
 import * as pdfService from "./services/pdf";
 import * as pdfFingerprint from "./services/pdf-fingerprint";
+import { removeStoredJobPdf } from "./services/pdf-storage";
 
 // Mock dependencies
 vi.mock("./repositories/jobs");
 vi.mock("./services/pdf");
+vi.mock("./services/pdf-storage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./services/pdf-storage")>()),
+  removeStoredJobPdf: vi.fn(),
+}));
 vi.mock("@infra/product-analytics", () => ({
   trackServerProductEvent: vi.fn().mockResolvedValue(true),
 }));
@@ -49,7 +54,45 @@ describe("Tailoring Flow", () => {
     vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(
       {} as any,
     );
+    vi.mocked(jobsRepo.updateJob).mockResolvedValue({} as any);
+    vi.mocked(removeStoredJobPdf).mockResolvedValue(undefined);
     vi.mocked(trackServerProductEvent).mockClear();
+  });
+
+  it("does not generate a PDF when the job is deleted before generation is claimed", async () => {
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue({
+      id: "deleted-before-pdf",
+      status: "ready",
+      jobDescription: "A role",
+    } as any);
+    vi.mocked(jobsRepo.updateJob).mockResolvedValue(null);
+
+    const result = await generateFinalPdf("deleted-before-pdf");
+
+    expect(result).toEqual({ success: false, error: "Job not found" });
+    expect(pdfService.generatePdf).not.toHaveBeenCalled();
+    expect(jobsRepo.finalizeGeneratedPdfIfCurrent).not.toHaveBeenCalled();
+  });
+
+  it("removes a finished PDF when the job was deleted during rendering", async () => {
+    vi.mocked(jobsRepo.getJobById)
+      .mockResolvedValueOnce({
+        id: "deleted-during-pdf",
+        status: "ready",
+        jobDescription: "A role",
+      } as any)
+      .mockResolvedValueOnce(null);
+    vi.mocked(pdfService.generatePdf).mockResolvedValue({
+      success: true,
+      pdfPath: "generated/path/resume.pdf",
+    });
+    vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(null);
+
+    const result = await generateFinalPdf("deleted-during-pdf");
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe("CONFLICT");
+    expect(removeStoredJobPdf).toHaveBeenCalledWith("deleted-during-pdf");
   });
 
   it("should use manual overrides (tailoring) when generating PDF", async () => {

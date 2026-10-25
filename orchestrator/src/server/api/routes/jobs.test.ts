@@ -42,6 +42,220 @@ describe.sequential("Jobs API routes", () => {
     expect(typeof filteredBody.data.revision).toBe("string");
   });
 
+  it("deletes a job, its dependent records, and owned files without trusting pdfPath", async () => {
+    const { db, schema } = await import("@server/db");
+    const { createJob, getJobById, updateJob, createJobNote } = await import(
+      "@server/repositories/jobs"
+    );
+    const { getTenantJobPdfPath } = await import(
+      "@server/services/pdf-storage"
+    );
+    const job = await createJob({
+      source: "manual",
+      title: "Delete this role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/delete",
+    });
+    const otherJob = await createJob({
+      source: "manual",
+      title: "Keep this role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/keep",
+    });
+    const pdfPath = getTenantJobPdfPath(job.id);
+    const unrelatedPath = join(tempDir, "unrelated.pdf");
+    await mkdir(dirname(pdfPath), { recursive: true });
+    await writeFile(pdfPath, "%PDF-owned");
+    await writeFile(unrelatedPath, "%PDF-unrelated");
+    await updateJob(job.id, { pdfPath: unrelatedPath });
+    await createJobNote({ jobId: job.id, title: "Note", content: "Private" });
+    db.insert(schema.stageEvents)
+      .values({
+        id: "delete-stage",
+        applicationId: job.id,
+        title: "Applied",
+        toStage: "applied",
+        occurredAt: Date.now(),
+      })
+      .run();
+    db.insert(schema.tasks)
+      .values({
+        id: "delete-task",
+        applicationId: job.id,
+        type: "follow_up",
+        title: "Follow up",
+      })
+      .run();
+    db.insert(schema.interviews)
+      .values({
+        id: "delete-interview",
+        applicationId: job.id,
+        type: "technical",
+        scheduledAt: Date.now(),
+      })
+      .run();
+    db.insert(schema.jobChatThreads)
+      .values({ id: "delete-thread", jobId: job.id })
+      .run();
+    db.insert(schema.jobChatMessages)
+      .values({
+        id: "delete-message",
+        threadId: "delete-thread",
+        jobId: job.id,
+        role: "user",
+        content: "Private chat",
+        status: "complete",
+      })
+      .run();
+    db.insert(schema.jobChatRuns)
+      .values({
+        id: "delete-run",
+        threadId: "delete-thread",
+        jobId: job.id,
+        status: "completed",
+        startedAt: Date.now(),
+      })
+      .run();
+    db.insert(schema.tracerLinks)
+      .values({
+        id: "delete-tracer",
+        token: "delete-tracer-token",
+        jobId: job.id,
+        sourcePath: "basics.url",
+        sourceLabel: "Portfolio",
+        destinationUrl: "https://example.com",
+        destinationUrlHash: "delete-hash",
+      })
+      .run();
+    db.insert(schema.tracerClickEvents)
+      .values({
+        id: "delete-click",
+        tracerLinkId: "delete-tracer",
+        clickedAt: Date.now(),
+      })
+      .run();
+    db.insert(schema.postApplicationMessages)
+      .values({
+        id: "keep-email",
+        provider: "gmail",
+        externalMessageId: "keep-external-email",
+        receivedAt: Date.now(),
+        matchedJobId: job.id,
+      })
+      .run();
+
+    const uploadRes = await fetch(`${baseUrl}/api/jobs/${job.id}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: "note.txt",
+        mediaType: "text/plain",
+        dataBase64: Buffer.from("Private attachment").toString("base64"),
+      }),
+    });
+    expect(uploadRes.status).toBe(201);
+    const { data: document } = await uploadRes.json();
+    const { getJobDocumentForJob } = await import(
+      "@server/repositories/job-documents"
+    );
+    const storedDocument = await getJobDocumentForJob(job.id, document.id);
+    expect(storedDocument).not.toBeNull();
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "DELETE",
+      headers: { "x-request-id": "delete-job-request" },
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body).toEqual({
+      ok: true,
+      data: null,
+      meta: { requestId: "delete-job-request" },
+    });
+    expect(res.headers.get("x-request-id")).toBe("delete-job-request");
+    expect(await getJobById(job.id)).toBeNull();
+    expect(await getJobById(otherJob.id)).not.toBeNull();
+    for (const table of [
+      schema.stageEvents,
+      schema.tasks,
+      schema.interviews,
+      schema.jobNotes,
+      schema.jobDocuments,
+      schema.jobChatThreads,
+      schema.jobChatMessages,
+      schema.jobChatRuns,
+      schema.tracerLinks,
+      schema.tracerClickEvents,
+    ]) {
+      expect(db.select({ id: table.id }).from(table).all()).toEqual([]);
+    }
+    expect(
+      db.select().from(schema.postApplicationMessages).get()?.matchedJobId,
+    ).toBeNull();
+    await expect(readFile(pdfPath)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(
+      readFile(storedDocument?.storagePath ?? ""),
+    ).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(await readFile(unrelatedPath, "utf8")).toBe("%PDF-unrelated");
+    expect(
+      (await fetch(`${baseUrl}/api/jobs/${job.id}`, { method: "DELETE" }))
+        .status,
+    ).toBe(404);
+  });
+
+  it("blocks deletion while processing, regenerating a PDF, or running Ghostwriter", async () => {
+    const { db, schema } = await import("@server/db");
+    const { createJob, updateJob, getJobById } = await import(
+      "@server/repositories/jobs"
+    );
+    const job = await createJob({
+      source: "manual",
+      title: "Busy role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/busy-delete",
+    });
+    for (const update of [
+      { status: "processing" as const },
+      { status: "ready" as const, pdfRegenerating: true },
+    ]) {
+      await updateJob(job.id, update);
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+        method: "DELETE",
+      });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error.code).toBe("CONFLICT");
+      expect(await getJobById(job.id)).not.toBeNull();
+    }
+    await updateJob(job.id, { pdfRegenerating: false });
+    db.insert(schema.jobChatThreads)
+      .values({ id: "busy-thread", jobId: job.id })
+      .run();
+    db.insert(schema.jobChatRuns)
+      .values({
+        id: "busy-run",
+        threadId: "busy-thread",
+        jobId: job.id,
+        status: "running",
+        startedAt: Date.now(),
+      })
+      .run();
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "DELETE",
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("CONFLICT");
+    expect(await getJobById(job.id)).not.toBeNull();
+  });
+
+  it("returns not found when deleting an absent job", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/not-a-job`, {
+      method: "DELETE",
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("NOT_FOUND");
+  });
+
   it("supports lightweight and full jobs list views", async () => {
     const { createJob } = await import("@server/repositories/jobs");
     await createJob({
