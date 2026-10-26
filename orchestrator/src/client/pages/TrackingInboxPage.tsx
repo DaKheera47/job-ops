@@ -82,6 +82,14 @@ export const TrackingInboxPage: React.FC = () => {
   const [accountKey, setAccountKey] = useState("default");
   const [maxMessages, setMaxMessages] = useState("100");
   const [searchDays, setSearchDays] = useState("90");
+  const [imapForm, setImapForm] = useState({
+    host: "",
+    port: "993",
+    secure: true,
+    user: "",
+    pass: "",
+    mailbox: "INBOX",
+  });
   const isDefaultAccountKey = accountKey.trim() === "default";
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -294,14 +302,35 @@ export const TrackingInboxPage: React.FC = () => {
             provider,
             account_key_is_default: isDefaultAccountKey,
           });
-          if (provider !== "gmail") {
+          if (provider === "imap") {
+            if (
+              !imapForm.host.trim() ||
+              !imapForm.user.trim() ||
+              !imapForm.pass
+            ) {
+              toast.error("IMAP needs a host, username and password.");
+              return;
+            }
+            await api.postApplicationProviderConnect({
+              provider: "imap",
+              accountKey,
+              payload: {
+                host: imapForm.host.trim(),
+                port: Number.parseInt(imapForm.port, 10) || 993,
+                secure: imapForm.secure,
+                user: imapForm.user.trim(),
+                pass: imapForm.pass,
+                ...(imapForm.mailbox.trim()
+                  ? { mailbox: imapForm.mailbox.trim() }
+                  : {}),
+              },
+            });
             trackProductEvent("tracking_inbox_connect_completed", {
               provider,
-              result: "error",
+              result: "success",
             });
-            toast.error(
-              `${provider} connect is not implemented yet. Use Gmail for now.`,
-            );
+            toast.success("Provider connected");
+            await refresh();
             return;
           }
 
@@ -427,6 +456,7 @@ export const TrackingInboxPage: React.FC = () => {
     [
       accountKey,
       isDefaultAccountKey,
+      imapForm,
       maxMessages,
       provider,
       refresh,
@@ -695,9 +725,102 @@ export const TrackingInboxPage: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Gmail connect uses Google OAuth popup and stores credentials
-              server-side. No manual refresh token paste is needed.
+              {provider === "imap"
+                ? "IMAP connect stores host/username/password server-side and reads your mailbox over TLS. Use an app password if your provider requires one."
+                : "Gmail connect uses Google OAuth popup and stores credentials server-side. No manual refresh token paste is needed."}
             </p>
+
+            {provider === "imap" && !isConnected ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="imapHost">Host</Label>
+                  <Input
+                    id="imapHost"
+                    placeholder="mail.example.com"
+                    value={imapForm.host}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        host: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imapPort">Port</Label>
+                  <Input
+                    id="imapPort"
+                    inputMode="numeric"
+                    value={imapForm.port}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        port: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imapUser">Username</Label>
+                  <Input
+                    id="imapUser"
+                    autoComplete="off"
+                    value={imapForm.user}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        user: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imapPass">Password</Label>
+                  <Input
+                    id="imapPass"
+                    type="password"
+                    autoComplete="new-password"
+                    value={imapForm.pass}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        pass: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imapMailbox">Mailbox</Label>
+                  <Input
+                    id="imapMailbox"
+                    value={imapForm.mailbox}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        mailbox: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center gap-2 md:pt-8">
+                  <input
+                    id="imapSecure"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={imapForm.secure}
+                    onChange={(event) =>
+                      setImapForm((prev) => ({
+                        ...prev,
+                        secure: event.target.checked,
+                      }))
+                    }
+                  />
+                  <Label htmlFor="imapSecure">
+                    Use TLS (implicit, port 993)
+                  </Label>
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid gap-3 md:grid-cols-4">
               <div className="space-y-2">
