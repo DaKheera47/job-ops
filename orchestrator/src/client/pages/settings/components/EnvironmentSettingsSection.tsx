@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { ConnectedAccountsSection } from "@client/pages/settings/components/ConnectedAccountsSection";
+import { PasskeysSection } from "@client/pages/settings/components/PasskeysSection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { EnvSettingsValues } from "@client/pages/settings/types";
@@ -308,6 +309,8 @@ export const EnvironmentSettingsSection: React.FC<
           <AccountManagementSection />
           <Separator />
           <ConnectedAccountsSection />
+          <Separator />
+          <PasskeysSection />
         </div>
       </div>
     </SettingsSectionFrame>

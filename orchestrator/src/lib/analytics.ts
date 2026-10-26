@@ -405,6 +405,11 @@ type ProductEventMap = {
   sso_link_completed: {
     provider: string;
   };
+  passkey_register_completed: {
+    deviceType: string | null;
+    backedUp: boolean;
+  };
+  passkey_login_completed: Record<string, never>;
 };
 
 type ProductEventName = keyof ProductEventMap;

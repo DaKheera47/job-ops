@@ -10,6 +10,7 @@ export const queryKeys = {
     currentUser: () => [...queryKeys.auth.all, "me"] as const,
     ssoProviders: () => [...queryKeys.auth.all, "sso-providers"] as const,
     ssoIdentities: () => [...queryKeys.auth.all, "sso-identities"] as const,
+    passkeys: () => [...queryKeys.auth.all, "passkeys"] as const,
   },
   billing: {
     all: ["billing"] as const,
