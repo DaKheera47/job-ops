@@ -53,6 +53,8 @@ After import, JobOps uses the local Resume Studio document for:
 
 If you use the `rxresume` PDF renderer, JobOps can still send the tailored JSON through Reactive Resume at export time.
 
+Resume Studio preserves Reactive Resume semantic stylesheet source and structured style rules during import, JSON export, and tailoring. Applying these styles to a PDF requires the `rxresume` renderer; local renderers use their own themes. Re-import resumes imported before these fields were preserved to restore the source styles.
+
 ### Project catalog
 
 JobOps reads projects from `sections.projects.items` in the local Resume Studio document.

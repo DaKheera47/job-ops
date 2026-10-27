@@ -357,6 +357,95 @@ export const cssSchema = z.object({
   value: z.string(),
 });
 
+const stylesheetSchema = z.object({
+  mode: z.enum(["legacy", "semantic"]),
+  source: z
+    .object({
+      languageVersion: z.number().int().positive(),
+      text: z.string(),
+    })
+    .strict(),
+});
+
+const styleIntentSchema = z
+  .object({
+    color: z.string().optional(),
+    backgroundColor: z.string().optional(),
+    borderColor: z.string().optional(),
+    textDecorationColor: z.string().optional(),
+    opacity: z.number().min(0).max(1).optional(),
+    fontSize: z.number().min(6).max(48).optional(),
+    fontWeight: fontWeightSchema.optional(),
+    fontStyle: z.enum(["normal", "italic"]).optional(),
+    lineHeight: z.number().min(0.5).max(4).optional(),
+    letterSpacing: z.number().min(-16).max(16).optional(),
+    textDecoration: z.enum(["none", "underline", "line-through"]).optional(),
+    textDecorationStyle: z.enum(["solid", "dashed", "dotted"]).optional(),
+    textAlign: z.enum(["left", "center", "right", "justify"]).optional(),
+    textTransform: z
+      .enum(["none", "uppercase", "lowercase", "capitalize"])
+      .optional(),
+    padding: z.number().min(-72).max(72).optional(),
+    paddingTop: z.number().min(-72).max(72).optional(),
+    paddingRight: z.number().min(-72).max(72).optional(),
+    paddingBottom: z.number().min(-72).max(72).optional(),
+    paddingLeft: z.number().min(-72).max(72).optional(),
+    marginTop: z.number().min(-72).max(72).optional(),
+    marginRight: z.number().min(-72).max(72).optional(),
+    marginBottom: z.number().min(-72).max(72).optional(),
+    marginLeft: z.number().min(-72).max(72).optional(),
+    rowGap: z.number().min(-72).max(72).optional(),
+    columnGap: z.number().min(-72).max(72).optional(),
+    borderStyle: z.enum(["solid", "dashed", "dotted"]).optional(),
+    borderWidth: z.number().min(0).optional(),
+    borderRadius: z.number().min(0).optional(),
+  })
+  .strict();
+
+const styleSlotSchema = z.enum([
+  "section",
+  "heading",
+  "item",
+  "text",
+  "secondaryText",
+  "link",
+  "icon",
+  "level",
+  "richParagraph",
+  "richList",
+  "richListItemRow",
+  "richListItemContent",
+  "richLink",
+  "richBold",
+  "richMark",
+]);
+
+const styleRuleSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().catch(""),
+    enabled: z.boolean().catch(true),
+    target: z.discriminatedUnion("scope", [
+      z.object({ scope: z.literal("global") }).strict(),
+      z
+        .object({
+          scope: z.literal("sectionType"),
+          sectionType: sectionTypeSchema,
+        })
+        .strict(),
+      z
+        .object({ scope: z.literal("sectionId"), sectionId: z.string().min(1) })
+        .strict(),
+    ]),
+    slots: z
+      .record(styleSlotSchema, styleIntentSchema)
+      .refine(
+        (slots) => Object.values(slots).some(Boolean),
+        "At least one style slot must be configured.",
+      ),
+  })
+  .strict();
+
 const defaultCss = { enabled: false, value: "" };
 
 export const pageSchema = z.object({
@@ -402,6 +491,8 @@ export const metadataSchema = z.object({
   template: templateSchema.catch("onyx"),
   layout: layoutSchema,
   css: cssSchema.catch(defaultCss),
+  stylesheet: stylesheetSchema.optional(),
+  styleRules: z.array(styleRuleSchema).optional(),
   page: pageSchema,
   design: designSchema,
   typography: typographySchema,

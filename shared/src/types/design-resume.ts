@@ -300,10 +300,28 @@ export interface ReactiveResumeV5MetadataTypography
   heading: ReactiveResumeV5MetadataTypographyBlock;
 }
 
+export interface ReactiveResumeV5Stylesheet {
+  mode: "legacy" | "semantic";
+  source: { languageVersion: number; text: string };
+}
+
+export interface ReactiveResumeV5StyleRule {
+  id: string;
+  label: string;
+  enabled: boolean;
+  target:
+    | { scope: "global" }
+    | { scope: "sectionType"; sectionType: ReactiveResumeV5SectionType }
+    | { scope: "sectionId"; sectionId: string };
+  slots: Record<string, Record<string, string | number>>;
+}
+
 export interface ReactiveResumeV5Metadata extends ReactiveResumeV5LooseObject {
   template: string;
   layout: ReactiveResumeV5MetadataLayout;
   css: ReactiveResumeV5MetadataCss;
+  stylesheet?: ReactiveResumeV5Stylesheet;
+  styleRules?: ReactiveResumeV5StyleRule[];
   page: ReactiveResumeV5MetadataPage;
   design: ReactiveResumeV5MetadataDesign;
   typography: ReactiveResumeV5MetadataTypography;
