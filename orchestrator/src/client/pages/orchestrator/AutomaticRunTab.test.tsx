@@ -133,16 +133,8 @@ describe("AutomaticRunTab", () => {
     const trigger = screen.queryByRole("button", {
       name: "Enter search details instead",
     });
-    if (trigger) fireEvent.click(trigger);
-    for (const name of [
-      "Edit roles",
-      "Edit location & work arrangement",
-      "Edit ranking preferences",
-      "Run settings",
-      "Location matching",
-    ]) {
-      const edit = screen.getByRole("button", { name });
-      if (edit.getAttribute("aria-expanded") !== "true") fireEvent.click(edit);
+    if (trigger) {
+      fireEvent.click(trigger);
     }
   };
 
@@ -280,17 +272,17 @@ describe("AutomaticRunTab", () => {
       );
     });
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Review your search" }),
-      ).toBeInTheDocument();
+      expect(screen.getAllByText("Configure details").length).toBeGreaterThan(
+        0,
+      );
     });
 
     expect(onSaveAndRun).not.toHaveBeenCalled();
     expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(
-      screen.queryByLabelText("Ranking preferences"),
-    ).not.toBeInTheDocument();
+      screen.getByRole("heading", { name: "Configure your search" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("Assumed remote-friendly roles."),
     ).not.toBeInTheDocument();
@@ -313,7 +305,6 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.queryByText("Focused the search on platform roles."),
     ).not.toBeInTheDocument();
-    openConfigureDetails();
     expect(screen.getByLabelText("Ranking preferences")).toHaveValue(
       "Prioritize backend platform work and remote-friendly roles.",
     );
@@ -322,7 +313,7 @@ describe("AutomaticRunTab", () => {
     fireEvent.change(screen.getByLabelText("Ranking preferences"), {
       target: { value: "Prefer paid platform roles" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Edit description" }));
+    fireEvent.click(screen.getByRole("button", { name: "Describe search" }));
     expect(
       screen.getByLabelText("What kind of jobs are you looking for?"),
     ).toHaveValue("Find platform jobs in London");
@@ -360,16 +351,16 @@ describe("AutomaticRunTab", () => {
       { target: { value: "Platform roles" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Build my search" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "AI couldn’t build this search.",
-    );
+    expect(
+      await screen.findByText(/AI couldn’t build this search\./),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(
         "A long provider explanation that should not take over the review.",
       ),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Review your search" }),
+      screen.getByRole("heading", { name: "Configure your search" }),
     ).toBeInTheDocument();
   });
 
@@ -390,7 +381,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("radio", { name: /^City list$/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "Select country" }),
@@ -418,7 +409,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("radio", { name: /^City list$/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     fireEvent.click(screen.getByRole("button", { name: "Use suggestion" }));
 
     expect(
@@ -448,7 +439,7 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.queryByRole("button", { name: "Select country" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start search" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
   it("uses a map radius by default and keeps manual cities available", async () => {
@@ -477,7 +468,7 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.queryByRole("button", { name: "United Kingdom" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start search" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Use map centre" }),
@@ -487,9 +478,7 @@ describe("AutomaticRunTab", () => {
         latitude: 54.5,
         longitude: -3,
       });
-      expect(
-        screen.getByRole("button", { name: "Start search" }),
-      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Run search" })).toBeEnabled();
     });
     expect(screen.getByText("Detected country")).toBeInTheDocument();
     expect(screen.getByDisplayValue("United Kingdom")).toBeInTheDocument();
@@ -501,7 +490,7 @@ describe("AutomaticRunTab", () => {
       { timeout: 1500 },
     );
 
-    fireEvent.click(screen.getByRole("radio", { name: /^City list$/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
     expect(
       screen.getByRole("button", { name: "United Kingdom" }),
     ).toBeInTheDocument();
@@ -536,7 +525,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("radio", { name: /^City list$/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -570,7 +559,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    fireEvent.click(screen.getByRole("radio", { name: /^City list$/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /Manual cities/i }));
 
     expect(
       screen.getByRole("button", { name: "United States" }),
@@ -611,12 +600,8 @@ describe("AutomaticRunTab", () => {
 
     openSourcePicker();
 
-    expect(
-      screen.queryByRole("checkbox", { name: "Gradcracker" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: "UK Visa Jobs" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gradcracker" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "UK Visa Jobs" })).toBeDisabled();
   });
 
   it("disables and prunes Naukri outside India", async () => {
@@ -653,12 +638,10 @@ describe("AutomaticRunTab", () => {
 
     openSourcePicker();
 
-    expect(
-      screen.queryByRole("checkbox", { name: "Naukri" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Naukri" })).toBeDisabled();
   });
 
-  it("keeps source choices in a stable order when deselected", async () => {
+  it("moves a deselected source to the end of the ready list", async () => {
     const StatefulTab = () => {
       const [pipelineSources, setPipelineSources] = useState<JobSource[]>([
         "linkedin",
@@ -699,11 +682,11 @@ describe("AutomaticRunTab", () => {
     render(<StatefulTab />);
 
     openSourcePicker();
-    fireEvent.click(screen.getByRole("checkbox", { name: "LinkedIn" }));
+    fireEvent.click(screen.getByRole("button", { name: "LinkedIn" }));
 
     await waitFor(() => {
       expect(
-        screen.getAllByRole("checkbox", {
+        screen.getAllByRole("button", {
           name: /^(Indeed|Glassdoor|LinkedIn)$/,
         }),
       ).toHaveLength(3);
@@ -711,11 +694,11 @@ describe("AutomaticRunTab", () => {
 
     expect(
       screen
-        .getAllByRole("checkbox", {
+        .getAllByRole("button", {
           name: /^(Indeed|Glassdoor|LinkedIn)$/,
         })
         .map((button) => button.getAttribute("aria-label")),
-    ).toEqual(["LinkedIn", "Indeed", "Glassdoor"]);
+    ).toEqual(["Indeed", "Glassdoor", "LinkedIn"]);
   });
 
   it("shows disabled source guidance copy for UK-only source", async () => {
@@ -747,15 +730,7 @@ describe("AutomaticRunTab", () => {
     openSourcePicker();
 
     expect(
-      screen.queryByText(
-        "Gradcracker is available only when country is United Kingdom.",
-      ),
-    ).not.toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: /Unavailable sources/ }),
-    );
-    expect(
-      screen.getByText(
+      screen.getByTitle(
         "Gradcracker is available only when country is United Kingdom.",
       ),
     ).toBeInTheDocument();
@@ -795,15 +770,11 @@ describe("AutomaticRunTab", () => {
 
     openSourcePicker();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Unavailable sources/ }),
+    const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
+    expect(glassdoorButton).toBeDisabled();
+    expect(glassdoorButton.getAttribute("title")).toContain(
+      "Glassdoor is not available for the selected country.",
     );
-    expect(
-      screen.queryByRole("checkbox", { name: "Glassdoor" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText("Glassdoor is not available for the selected country."),
-    ).toBeInTheDocument();
   });
 
   it("disables glassdoor for supported countries until city is provided", async () => {
@@ -844,17 +815,11 @@ describe("AutomaticRunTab", () => {
 
     openSourcePicker();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Unavailable sources/ }),
+    const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
+    expect(glassdoorButton).toBeDisabled();
+    expect(glassdoorButton.getAttribute("title")).toContain(
+      "Add at least one city in Location preferences to enable Glassdoor.",
     );
-    expect(
-      screen.queryByRole("checkbox", { name: "Glassdoor" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Add at least one city in Location preferences to enable Glassdoor.",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("does not show legacy country-only city defaults as selected cities", () => {
@@ -981,7 +946,7 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByRole("button", { name: "Remove city Manchester" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Glassdoor" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Glassdoor" })).toBeEnabled();
   });
 
   it("loads saved workplace types from settings", () => {
@@ -1041,7 +1006,7 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    openConfigureDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
 
     expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(300);
   });
@@ -1079,7 +1044,7 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByText("Select at least one workplace type."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start search" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
   });
 
   it("keeps source-specific warnings out of the location section", () => {
@@ -1139,7 +1104,7 @@ describe("AutomaticRunTab", () => {
     openLocationPreferences();
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
-    fireEvent.click(screen.getByRole("button", { name: "Start search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
@@ -1178,13 +1143,13 @@ describe("AutomaticRunTab", () => {
     );
 
     openConfigureDetails();
-    openConfigureDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
     fireEvent.change(screen.getByLabelText("Max jobs discovered"), {
       target: { value: "10" },
     });
     fireEvent.blur(screen.getByLabelText("Max jobs discovered"));
     expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(300);
-    fireEvent.click(screen.getByRole("button", { name: "Start search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
@@ -1229,7 +1194,7 @@ describe("AutomaticRunTab", () => {
 
     openConfigureDetails();
     fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Start search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalled();
@@ -1280,7 +1245,7 @@ describe("AutomaticRunTab", () => {
       expect(screen.getByRole("radio", { name: /Balanced/i })).toBeChecked();
     });
 
-    openConfigureDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
 
     expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(
       AUTOMATIC_PRESETS.balanced.runBudget,
@@ -1322,7 +1287,7 @@ describe("AutomaticRunTab", () => {
     openConfigureDetails();
     fireEvent.click(screen.getByRole("radio", { name: /Balanced/i }));
     fireEvent.click(screen.getByRole("radio", { name: /Custom/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Start search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run search" }));
 
     await waitFor(() => {
       expect(onSaveAndRun).toHaveBeenCalled();
@@ -1368,7 +1333,7 @@ describe("AutomaticRunTab", () => {
       expect(screen.getByRole("radio", { name: /Custom/i })).toBeChecked();
     });
 
-    openConfigureDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
 
     expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(
       AUTOMATIC_PRESETS.balanced.runBudget,
@@ -1417,7 +1382,7 @@ describe("AutomaticRunTab", () => {
 
     openLocationPreferences();
     expect(screen.getByText("Work arrangement")).toBeInTheDocument();
-    openConfigureDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
     expect(screen.getByText("Location scope")).toBeInTheDocument();
     expect(screen.getByText("Match strictness")).toBeInTheDocument();
     expect(

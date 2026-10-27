@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
@@ -22,8 +29,6 @@ import {
   AutomaticMultiChoiceCardGroup,
 } from "./AutomaticChoiceCardGroup";
 import {
-  type AutomaticPresetId,
-  type AutomaticPresetSelection,
   type AutomaticRunValues,
   MATCH_STRICTNESS_OPTIONS,
   parseCityLocationsInput,
@@ -48,8 +53,6 @@ interface AutomaticRunSettingsCardProps {
   onCityLocationsChange: (value: string[]) => void;
   onLocationModeChange: (value: LocationInputMode) => void;
   onProximityChange: (value: LocationProximity) => void;
-  onSearchScopeChange: (value: LocationSearchScope) => void;
-  onMatchStrictnessChange: (value: LocationMatchStrictness) => void;
   onToggleWorkplaceType: (
     workplaceType: WorkplaceType,
     checked: boolean,
@@ -70,29 +73,42 @@ export function AutomaticRunSettingsCard({
   onCityLocationsChange,
   onLocationModeChange,
   onProximityChange,
-  onSearchScopeChange,
-  onMatchStrictnessChange,
   onToggleWorkplaceType,
 }: AutomaticRunSettingsCardProps) {
   return (
-    <LocationPreferences
-      values={values}
-      countryOptions={countryOptions}
-      countrySuggestion={countrySuggestion}
-      countrySelectionInvalid={countrySelectionInvalid}
-      cityLocationDraft={cityLocationDraft}
-      workplaceTypes={workplaceTypes}
-      workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
-      onCountryChange={onCountryChange}
-      onUseCountrySuggestion={onUseCountrySuggestion}
-      onCityLocationDraftChange={onCityLocationDraftChange}
-      onCityLocationsChange={onCityLocationsChange}
-      onLocationModeChange={onLocationModeChange}
-      onProximityChange={onProximityChange}
-      onSearchScopeChange={onSearchScopeChange}
-      onMatchStrictnessChange={onMatchStrictnessChange}
-      onToggleWorkplaceType={onToggleWorkplaceType}
-    />
+    <Card>
+      <CardHeader>
+        <div className="flex items-start gap-3">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold text-muted-foreground">
+            2
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <CardTitle>Where can you work?</CardTitle>
+            <CardDescription>
+              Choose a location model and the work arrangements you want.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <LocationPreferences
+          values={values}
+          countryOptions={countryOptions}
+          countrySuggestion={countrySuggestion}
+          countrySelectionInvalid={countrySelectionInvalid}
+          cityLocationDraft={cityLocationDraft}
+          workplaceTypes={workplaceTypes}
+          workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
+          onCountryChange={onCountryChange}
+          onUseCountrySuggestion={onUseCountrySuggestion}
+          onCityLocationDraftChange={onCityLocationDraftChange}
+          onCityLocationsChange={onCityLocationsChange}
+          onLocationModeChange={onLocationModeChange}
+          onProximityChange={onProximityChange}
+          onToggleWorkplaceType={onToggleWorkplaceType}
+        />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -110,8 +126,6 @@ interface LocationPreferencesProps {
   onCityLocationsChange: (value: string[]) => void;
   onLocationModeChange: (value: LocationInputMode) => void;
   onProximityChange: (value: LocationProximity) => void;
-  onSearchScopeChange: (value: LocationSearchScope) => void;
-  onMatchStrictnessChange: (value: LocationMatchStrictness) => void;
   onToggleWorkplaceType: (
     workplaceType: WorkplaceType,
     checked: boolean,
@@ -132,12 +146,10 @@ function LocationPreferences({
   onCityLocationsChange,
   onLocationModeChange,
   onProximityChange,
-  onSearchScopeChange,
-  onMatchStrictnessChange,
   onToggleWorkplaceType,
 }: LocationPreferencesProps) {
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    <div className="flex flex-col gap-4">
       {values.locationMode === "cities" && countrySuggestion ? (
         <Alert className="border-sky-500/20 bg-sky-500/5">
           <Info />
@@ -180,8 +192,8 @@ function LocationPreferences({
             },
             {
               value: "cities",
-              label: "City list",
-              description: "Choose a country and cities.",
+              label: "Manual cities",
+              description: "Enter the exact cities each source should search.",
             },
           ]}
           onValueChange={onLocationModeChange}
@@ -255,6 +267,7 @@ function LocationPreferences({
           options={WORKPLACE_TYPE_OPTIONS.map((workplaceType) => ({
             value: workplaceType,
             label: formatWorkplaceTypeLabel(workplaceType),
+            description: formatWorkplaceTypeDescription(workplaceType),
             ariaLabel:
               workplaceType === "onsite"
                 ? "Onsite"
@@ -268,36 +281,6 @@ function LocationPreferences({
           </p>
         ) : null}
       </div>
-      <Accordion type="single" collapsible>
-        <AccordionItem value="matching" className="border-b-0">
-          <AccordionTrigger
-            aria-label="Location matching"
-            className="py-2 text-sm hover:no-underline"
-          >
-            Remote scope & location matching
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <RadioOptionGroup
-                label="Location scope"
-                value={values.searchScope}
-                options={SEARCH_SCOPE_OPTIONS}
-                onChange={(value) =>
-                  onSearchScopeChange(value as LocationSearchScope)
-                }
-              />
-              <RadioOptionGroup
-                label="Match strictness"
-                value={values.matchStrictness}
-                options={MATCH_STRICTNESS_OPTIONS}
-                onChange={(value) =>
-                  onMatchStrictnessChange(value as LocationMatchStrictness)
-                }
-              />
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
     </div>
   );
 }
@@ -338,15 +321,16 @@ function RadioOptionGroup({
 }
 
 interface AutomaticRunAdvancedSettingsProps {
-  selectedPreset: AutomaticPresetSelection;
-  onApplyPreset: (presetId: AutomaticPresetId) => void;
-  onSelectCustomPreset: () => void;
+  searchScope: LocationSearchScope;
+  matchStrictness: LocationMatchStrictness;
   advancedOpen: boolean;
   topNInput: string;
   minScoreInput: string;
   runBudgetInput: string;
   minRunBudget: number;
   maxRunBudget: number;
+  onSearchScopeChange: (value: LocationSearchScope) => void;
+  onMatchStrictnessChange: (value: LocationMatchStrictness) => void;
   onAdvancedOpenChange: (open: boolean) => void;
   onTopNInputChange: (value: string) => void;
   onMinScoreInputChange: (value: string) => void;
@@ -355,15 +339,16 @@ interface AutomaticRunAdvancedSettingsProps {
 }
 
 export function AutomaticRunAdvancedSettings({
-  selectedPreset,
-  onApplyPreset,
-  onSelectCustomPreset,
+  searchScope,
+  matchStrictness,
   advancedOpen,
   topNInput,
   minScoreInput,
   runBudgetInput,
   minRunBudget,
   maxRunBudget,
+  onSearchScopeChange,
+  onMatchStrictnessChange,
   onAdvancedOpenChange,
   onTopNInputChange,
   onMinScoreInputChange,
@@ -371,104 +356,96 @@ export function AutomaticRunAdvancedSettings({
   onRunBudgetInputBlur,
 }: AutomaticRunAdvancedSettingsProps) {
   return (
-    <Accordion
-      type="single"
-      collapsible
-      value={advancedOpen ? "advanced" : ""}
-      onValueChange={(value) => onAdvancedOpenChange(value === "advanced")}
-    >
-      <AccordionItem value="advanced" className="border-b-0">
-        <AccordionTrigger
-          aria-label="Run settings"
-          className="py-4 text-sm font-medium hover:no-underline"
-        >
-          Advanced search settings
-        </AccordionTrigger>
-        <AccordionContent className="pb-6">
-          <div className="flex flex-col gap-6">
-            <div className="space-y-3">
-              <Label>Search depth</Label>
-              <AutomaticChoiceCardGroup
-                ariaLabel="Search depth"
-                value={selectedPreset}
-                columns={4}
-                options={[
-                  {
-                    value: "fast",
-                    label: "Fast",
-                    description: "A quick first pass.",
-                  },
-                  {
-                    value: "balanced",
-                    label: "Balanced",
-                    description: "Everyday coverage.",
-                  },
-                  {
-                    value: "detailed",
-                    label: "Detailed",
-                    description: "Broader discovery.",
-                  },
-                  {
-                    value: "custom",
-                    label: "Custom",
-                    description: "Your own settings.",
-                  },
-                ]}
-                onValueChange={(preset) => {
-                  if (preset === "custom") onSelectCustomPreset();
-                  else onApplyPreset(preset as AutomaticPresetId);
-                }}
-              />
-            </div>
+    <Card>
+      <Accordion
+        type="single"
+        collapsible
+        value={advancedOpen ? "advanced" : ""}
+        onValueChange={(value) => onAdvancedOpenChange(value === "advanced")}
+      >
+        <AccordionItem value="advanced" className="border-b-0">
+          <AccordionTrigger
+            aria-label="Run settings"
+            className="px-6 py-5 text-base font-semibold hover:no-underline"
+          >
+            Advanced search settings
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-6">
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <RadioOptionGroup
+                  label="Location scope"
+                  value={searchScope}
+                  options={SEARCH_SCOPE_OPTIONS}
+                  onChange={(value) =>
+                    onSearchScopeChange(value as LocationSearchScope)
+                  }
+                />
+                <RadioOptionGroup
+                  label="Match strictness"
+                  value={matchStrictness}
+                  options={MATCH_STRICTNESS_OPTIONS}
+                  onChange={(value) =>
+                    onMatchStrictnessChange(value as LocationMatchStrictness)
+                  }
+                />
+              </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="top-n">Resumes tailored</Label>
-                <Input
-                  id="top-n"
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={topNInput}
-                  onChange={(event) => onTopNInputChange(event.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="min-score">Min suitability score</Label>
-                <Input
-                  id="min-score"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={minScoreInput}
-                  onChange={(event) =>
-                    onMinScoreInputChange(event.target.value)
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="jobs-per-term">Max jobs discovered</Label>
-                <Input
-                  id="jobs-per-term"
-                  type="number"
-                  min={minRunBudget}
-                  max={maxRunBudget}
-                  value={runBudgetInput}
-                  onChange={(event) =>
-                    onRunBudgetInputChange(event.target.value)
-                  }
-                  onBlur={onRunBudgetInputBlur}
-                />
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="top-n">Resumes tailored</Label>
+                  <Input
+                    id="top-n"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={topNInput}
+                    onChange={(event) => onTopNInputChange(event.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="min-score">Min suitability score</Label>
+                  <Input
+                    id="min-score"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={minScoreInput}
+                    onChange={(event) =>
+                      onMinScoreInputChange(event.target.value)
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="jobs-per-term">Max jobs discovered</Label>
+                  <Input
+                    id="jobs-per-term"
+                    type="number"
+                    min={minRunBudget}
+                    max={maxRunBudget}
+                    value={runBudgetInput}
+                    onChange={(event) =>
+                      onRunBudgetInputChange(event.target.value)
+                    }
+                    onBlur={onRunBudgetInputBlur}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
   );
 }
 
 function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
   if (workplaceType === "onsite") return "On-site";
   return workplaceType.charAt(0).toUpperCase() + workplaceType.slice(1);
+}
+
+function formatWorkplaceTypeDescription(workplaceType: WorkplaceType): string {
+  if (workplaceType === "remote") return "Work away from an office.";
+  if (workplaceType === "hybrid") return "Split home and office time.";
+  return "Primarily based at the workplace.";
 }

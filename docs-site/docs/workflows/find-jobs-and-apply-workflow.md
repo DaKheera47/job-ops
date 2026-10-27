@@ -35,7 +35,7 @@ Important:
 
 Describe what you want and select **Build my search** for AI assistance, or select **Enter search details instead** to fill the same criteria yourself. AI does not start discovery.
 
-In **Review your search**, expand the relevant row to edit your criteria. **Advanced search settings** contains:
+In **Configure your search**, review or edit:
 
 - how many jobs to discover (approximate target)
 - ranking preferences for scoring this search

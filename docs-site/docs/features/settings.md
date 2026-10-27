@@ -255,7 +255,7 @@ Readiness requires:
 - Optional auto-skip threshold for low-score jobs
 - Block jobs from companies that match configured keyword tokens
 
-Per-search ranking preferences live in **Find jobs**. Add them to the search description, then expand **Ranking preferences** in **Review your search** to edit them before starting.
+Per-search ranking preferences live in **Find jobs**. Add them to the search description, then review or edit them in **Configure your search** before starting.
 
 ### Danger Zone
 

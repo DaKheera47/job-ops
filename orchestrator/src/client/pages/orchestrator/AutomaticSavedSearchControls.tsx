@@ -37,38 +37,36 @@ export function AutomaticSavedSearchControls({
   onDeleteSelectedSearch,
 }: AutomaticSavedSearchControlsProps) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-2">
       <Label className="sr-only">Saved searches</Label>
-      {savedSearches.length > 0 || isLoading ? (
-        <div className="min-w-48 flex-1">
-          <Select
-            value={selectedSavedSearchId ?? ""}
-            onValueChange={(id) => {
-              const preset = savedSearches.find((search) => search.id === id);
-              if (preset) onApplySavedSearch(preset);
-            }}
-            disabled={savedSearches.length === 0}
+      <div className="min-w-48 flex-1">
+        <Select
+          value={selectedSavedSearchId ?? ""}
+          onValueChange={(id) => {
+            const preset = savedSearches.find((search) => search.id === id);
+            if (preset) onApplySavedSearch(preset);
+          }}
+          disabled={savedSearches.length === 0}
+        >
+          <SelectTrigger
+            aria-label="Saved searches"
+            className="h-9 min-w-0 flex-1"
           >
-            <SelectTrigger
-              aria-label="Saved searches"
-              className="h-9 min-w-0 flex-1"
-            >
-              <SelectValue
-                placeholder={isLoading ? "Loading..." : "Select saved search"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {savedSearches.map((search) => (
-                  <SelectItem key={search.id} value={search.id}>
-                    {search.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
+            <SelectValue
+              placeholder={isLoading ? "Loading..." : "Select saved search"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {savedSearches.map((search) => (
+                <SelectItem key={search.id} value={search.id}>
+                  {search.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="flex shrink-0 flex-wrap gap-2">
         {canCreate ? (

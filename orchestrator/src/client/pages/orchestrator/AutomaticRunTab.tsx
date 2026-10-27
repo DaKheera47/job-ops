@@ -35,8 +35,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { getDetectedCountryKey } from "@/lib/user-location";
+import { cn } from "@/lib/utils";
 import { AutomaticRankingPreferencesCard } from "./AutomaticRankingPreferencesCard";
 import { AutomaticRunFooter } from "./AutomaticRunFooter";
 import {
@@ -169,7 +171,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [automaticTab, setAutomaticTab] = useState<"describe" | "details">(
     "describe",
   );
-  const [editingSections, setEditingSections] = useState<string[]>([]);
   const [planWarnings, setPlanWarnings] = useState<string[]>([]);
   const [planSource, setPlanSource] = useState<"ai" | "fallback" | null>(null);
   const wasOpenRef = useRef(open);
@@ -183,6 +184,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<
     string | null
   >(null);
+  const [sourceDisplayOrder, setSourceDisplayOrder] =
+    useState<JobSource[]>(enabledSources);
   const [browserCountrySuggestion, setBrowserCountrySuggestion] = useState<
     string | null
   >(null);
@@ -337,7 +340,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     });
     setSelectedPreset(memory?.presetId ?? "custom");
     setAdvancedOpen(false);
-    setEditingSections([]);
     setPlanWarnings([]);
     setPlanSource(null);
   }, [open, settings, reset]);
@@ -345,12 +347,28 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   useEffect(() => {
     if (open && !wasOpenRef.current) {
       setAutomaticTab("describe");
-      setEditingSections([]);
       setPlanWarnings([]);
       setPlanSource(null);
     }
     wasOpenRef.current = open;
   }, [open]);
+
+  useEffect(() => {
+    setSourceDisplayOrder((current) => {
+      const filtered = current.filter((source) =>
+        enabledSources.includes(source),
+      );
+      const additions = enabledSources.filter(
+        (source) => !filtered.includes(source),
+      );
+      const next = [...filtered, ...additions];
+
+      return next.length === current.length &&
+        next.every((source, index) => source === current[index])
+        ? current
+        : next;
+    });
+  }, [enabledSources]);
 
   const values = useMemo<AutomaticRunValues>(() => {
     const normalizedCountry = normalizeUiCountryKey(countryInput);
@@ -449,7 +467,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const countrySelectionInvalid = values.country.length === 0;
   const sourceRows = useMemo<AutomaticSourcePickerRow[]>(
     () =>
-      enabledSources.flatMap((source) => {
+      sourceDisplayOrder.flatMap((source) => {
         const plan = sourcePlanBySource.get(source);
         if (!plan) return [];
 
@@ -467,12 +485,16 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     [
       countrySelectionInvalid,
       pipelineSources,
-      enabledSources,
+      sourceDisplayOrder,
       sourcePlanBySource,
     ],
   );
   const selectedSourceRows = useMemo(
     () => sourceRows.filter((row) => row.selected && row.status.available),
+    [sourceRows],
+  );
+  const readySourceRows = useMemo(
+    () => sourceRows.filter((row) => !row.selected && row.status.available),
     [sourceRows],
   );
   const unavailableSourceRows = useMemo(
@@ -553,19 +575,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     (values.locationMode === "radius" && !values.proximity) ||
     workplaceTypeSelectionInvalid;
 
-  const validationMessage = isPipelineRunning
-    ? "A search is already running."
-    : values.searchTerms.length === 0
-      ? "Add at least one role."
-      : countrySelectionInvalid ||
-          (values.locationMode === "radius" && !values.proximity)
-        ? "Choose a search area before starting."
-        : workplaceTypeSelectionInvalid
-          ? "Choose at least one work arrangement."
-          : compatiblePipelineSources.length === 0
-            ? "Choose at least one available source."
-            : null;
-
   const toggleWorkplaceType = (
     workplaceType: WorkplaceType,
     checked: boolean,
@@ -576,6 +585,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     setValue("workplaceTypes", next, { shouldDirty: true });
   };
+
+  const handleSourceToggle = useCallback(
+    (source: JobSource, checked: boolean) => {
+      setSourceDisplayOrder((current) => [
+        ...current.filter((value) => value !== source),
+        source,
+      ]);
+      onToggleSource(source, checked);
+    },
+    [onToggleSource],
+  );
 
   const applyPreset = (presetId: AutomaticPresetId) => {
     const preset = AUTOMATIC_PRESETS[presetId];
@@ -678,7 +698,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       });
       applySearchConfig(result.config);
       setSelectedSavedSearchId(null);
-      setEditingSections([]);
       setPlanWarnings(result.warnings);
       setPlanSource(result.source);
       trackProductEvent("jobs_search_composer_details_opened", {
@@ -765,282 +784,258 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         onSave={() => void handleSaveSearch()}
       />
 
-      {automaticTab === "describe" ? (
-        <AutomaticSearchPrompt
-          searchPrompt={searchPrompt}
-          isPlanningSearch={isPlanningSearch}
-          onSearchPromptChange={setSearchPrompt}
-          onGenerateSearchPlan={() => void handleGenerateSearchPlan()}
-          onConfigureManually={() => {
-            trackProductEvent("jobs_search_composer_details_opened", {
-              source: "manual",
-            });
-            setEditingSections(["roles"]);
-            setAutomaticTab("details");
-          }}
-        />
-      ) : (
-        <div className="flex flex-col gap-6">
-          <header className="space-y-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-3 w-fit text-muted-foreground"
-              onClick={() => setAutomaticTab("describe")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Edit description
-            </Button>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Review your search
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Edit any detail, then start your search.
-            </p>
-          </header>
-          {planSource === "fallback" ? (
-            <p
-              role="alert"
-              className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-            >
-              AI couldn’t build this search. Review the existing details or try
-              again.
-            </p>
-          ) : null}
-          {savedSearchSupportEnabled ? (
-            <AutomaticSavedSearchControls
-              savedSearches={savedSearches}
-              selectedSavedSearch={selectedSavedSearch}
-              selectedSavedSearchId={selectedSavedSearchId}
-              isLoading={isSavedSearchesLoading}
-              canCreate={Boolean(onCreateSavedSearch)}
-              canUpdate={Boolean(onUpdateSavedSearch)}
-              canDelete={Boolean(onDeleteSavedSearch)}
-              onApplySavedSearch={(preset) => void applySavedSearch(preset)}
-              onOpenSaveDialog={openSaveDialog}
-              onDeleteSelectedSearch={() => void handleDeleteSelectedSearch()}
-            />
-          ) : null}
-          <Accordion
-            type="multiple"
-            value={editingSections}
-            onValueChange={setEditingSections}
-            className="rounded-lg border px-4 sm:px-5"
+      <Tabs
+        value={automaticTab}
+        onValueChange={(value) =>
+          setAutomaticTab(value === "details" ? "details" : "describe")
+        }
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <TabsList className="sr-only">
+          <TabsTrigger value="describe">Describe search</TabsTrigger>
+          <TabsTrigger value="details">Configure details</TabsTrigger>
+        </TabsList>
+
+        <div
+          className={cn(
+            "min-h-0 flex-1",
+            automaticTab === "details"
+              ? "overflow-visible pr-1"
+              : "overflow-y-auto",
+          )}
+        >
+          <TabsContent
+            value="describe"
+            className="mx-auto mt-0 w-full max-w-3xl py-2"
           >
-            <SearchReviewSection
-              value="roles"
-              label="Roles"
-              summary={
-                searchTerms.length ? searchTerms.join(", ") : "Add a role"
-              }
-            >
-              <AutomaticSearchTermsCard
-                searchTerms={searchTerms}
-                searchTermDraft={searchTermDraft}
-                onSearchTermDraftChange={(value) =>
-                  setValue("searchTermDraft", value)
-                }
-                onSearchTermsChange={(value) =>
-                  setValue("searchTerms", value, { shouldDirty: true })
-                }
-              />
-            </SearchReviewSection>
-            <SearchReviewSection
-              value="location"
-              label="Location & work arrangement"
-              detail={values.workplaceTypes
-                .map((type) =>
-                  type === "onsite"
-                    ? "On-site"
-                    : type.charAt(0).toUpperCase() + type.slice(1),
-                )
-                .join(" · ")}
-              summary={
-                countrySelectionInvalid ||
-                (values.locationMode === "radius" && !values.proximity)
-                  ? "Choose a search area"
-                  : locationSummary
-              }
-            >
-              <AutomaticRunSettingsCard
-                values={values}
-                countryOptions={countryOptions}
-                countrySuggestion={countrySuggestion}
-                countrySelectionInvalid={countrySelectionInvalid}
-                cityLocationDraft={cityLocationDraft}
-                workplaceTypes={workplaceTypes}
-                workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
-                onCountryChange={(country) => {
-                  setValue("country", country, { shouldDirty: true });
-                  if (
-                    values.locationMode === "cities" &&
-                    normalizeUiCountryKey(country) !== values.country
-                  ) {
-                    setValue("proximity", null, { shouldDirty: true });
+            <AutomaticSearchPrompt
+              searchPrompt={searchPrompt}
+              isPlanningSearch={isPlanningSearch}
+              onSearchPromptChange={setSearchPrompt}
+              onGenerateSearchPlan={() => void handleGenerateSearchPlan()}
+              onConfigureManually={() => {
+                trackProductEvent("jobs_search_composer_details_opened", {
+                  source: "manual",
+                });
+                setAutomaticTab("details");
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent
+            value="details"
+            className="mt-0 flex flex-col gap-6 pb-8"
+          >
+            <header>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => setAutomaticTab("describe")}
+                >
+                  <ArrowLeft data-icon="inline-start" />
+                  Describe search
+                </Button>
+                <h1 className="text-3xl font-semibold tracking-tight">
+                  Configure your search
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Tell Job Ops what matters, review the plan, then search your
+                  selected sources.
+                </p>
+              </div>
+            </header>
+
+            {planSource === "fallback" ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+              >
+                AI couldn’t build this search. Review the existing details or
+                try again.
+              </p>
+            ) : null}
+            {planWarnings.length > 0 ? (
+              <Accordion type="single" collapsible>
+                <AccordionItem value="notes" className="border-b-0">
+                  <AccordionTrigger className="py-2 text-sm text-muted-foreground hover:no-underline">
+                    Search notes ({planWarnings.length})
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                      {planWarnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ) : null}
+
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="flex min-w-0 flex-col gap-4">
+                <AutomaticSearchTermsCard
+                  selectedPreset={selectedPreset}
+                  searchTerms={searchTerms}
+                  searchTermDraft={searchTermDraft}
+                  onApplyPreset={applyPreset}
+                  onSelectCustomPreset={() => setSelectedPreset("custom")}
+                  onSearchTermDraftChange={(value) =>
+                    setValue("searchTermDraft", value)
                   }
-                }}
-                onUseCountrySuggestion={() => {
-                  if (!countrySuggestion) return;
-                  setValue("country", countrySuggestion, {
-                    shouldDirty: true,
-                  });
-                  setValue("proximity", null, { shouldDirty: true });
-                }}
-                onCityLocationDraftChange={(value) =>
-                  setValue("cityLocationDraft", value)
-                }
-                onCityLocationsChange={(value) =>
-                  setValue("cityLocations", value, { shouldDirty: true })
-                }
-                onLocationModeChange={(value) =>
-                  setValue("locationMode", value, { shouldDirty: true })
-                }
-                onProximityChange={(value) =>
-                  setValue("proximity", value, { shouldDirty: true })
-                }
-                onSearchScopeChange={(value) =>
-                  setValue("searchScope", value, { shouldDirty: true })
-                }
-                onMatchStrictnessChange={(value) =>
-                  setValue("matchStrictness", value, { shouldDirty: true })
-                }
-                onToggleWorkplaceType={toggleWorkplaceType}
-              />
-            </SearchReviewSection>
-            <SearchReviewSection
-              value="preferences"
-              label="Ranking preferences"
-              detail="Preferences affect ranking, not strict filtering."
-              summary={scoringInstructions || "No extra preferences"}
-            >
-              <AutomaticRankingPreferencesCard
-                scoringInstructions={scoringInstructions}
-                onScoringInstructionsChange={(value) =>
-                  setValue("scoringInstructions", value, {
-                    shouldDirty: true,
-                  })
-                }
-              />
-            </SearchReviewSection>
-          </Accordion>
-          <AutomaticSourcePickerCard
-            sourceRows={sourceRows}
-            selectedSourceRows={selectedSourceRows}
-            unavailableSourceRows={unavailableSourceRows}
-            watchlistSources={watchlistSources}
-            selectedWatchlistSourceIds={selectedWatchlistSourceIds}
-            isWatchlistSourcesLoading={isWatchlistSourcesLoading}
-            onSourceToggle={onToggleSource}
-            onWatchlistSourceToggle={onToggleWatchlistSource}
-          />
+                  onSearchTermsChange={(value) =>
+                    setValue("searchTerms", value, { shouldDirty: true })
+                  }
+                />
 
-          <AutomaticRunAdvancedSettings
-            selectedPreset={selectedPreset}
-            onApplyPreset={applyPreset}
-            onSelectCustomPreset={() => setSelectedPreset("custom")}
-            advancedOpen={advancedOpen}
-            topNInput={topNInput}
-            minScoreInput={minScoreInput}
-            runBudgetInput={runBudgetInput}
-            minRunBudget={MIN_PIPELINE_RUN_BUDGET}
-            maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
-            onAdvancedOpenChange={setAdvancedOpen}
-            onTopNInputChange={(value) => {
-              setSelectedPreset("custom");
-              setValue("topN", value);
-            }}
-            onMinScoreInputChange={(value) => {
-              setSelectedPreset("custom");
-              setValue("minSuitabilityScore", value);
-            }}
-            onRunBudgetInputChange={(value) => {
-              setSelectedPreset("custom");
-              setValue("runBudget", value);
-            }}
-            onRunBudgetInputBlur={() =>
-              setValue(
-                "runBudget",
-                String(
-                  normalizeRunBudget(
-                    Number.parseInt(runBudgetInput, 10) ||
-                      DEFAULT_VALUES.runBudget,
-                  ),
-                ),
-              )
-            }
-          />
+                <AutomaticRunSettingsCard
+                  values={values}
+                  countryOptions={countryOptions}
+                  countrySuggestion={countrySuggestion}
+                  countrySelectionInvalid={countrySelectionInvalid}
+                  cityLocationDraft={cityLocationDraft}
+                  workplaceTypes={workplaceTypes}
+                  workplaceTypeSelectionInvalid={workplaceTypeSelectionInvalid}
+                  onCountryChange={(country) => {
+                    setValue("country", country, { shouldDirty: true });
+                    if (
+                      values.locationMode === "cities" &&
+                      normalizeUiCountryKey(country) !== values.country
+                    ) {
+                      setValue("proximity", null, { shouldDirty: true });
+                    }
+                  }}
+                  onUseCountrySuggestion={() => {
+                    if (!countrySuggestion) return;
+                    setValue("country", countrySuggestion, {
+                      shouldDirty: true,
+                    });
+                    setValue("proximity", null, { shouldDirty: true });
+                  }}
+                  onCityLocationDraftChange={(value) =>
+                    setValue("cityLocationDraft", value)
+                  }
+                  onCityLocationsChange={(value) =>
+                    setValue("cityLocations", value, { shouldDirty: true })
+                  }
+                  onLocationModeChange={(value) =>
+                    setValue("locationMode", value, { shouldDirty: true })
+                  }
+                  onProximityChange={(value) =>
+                    setValue("proximity", value, { shouldDirty: true })
+                  }
+                  onToggleWorkplaceType={toggleWorkplaceType}
+                />
 
-          {planWarnings.length > 0 ? (
-            <Accordion type="single" collapsible>
-              <AccordionItem value="notes" className="border-b-0">
-                <AccordionTrigger className="py-2 text-sm text-muted-foreground hover:no-underline">
-                  Search notes ({planWarnings.length})
-                </AccordionTrigger>
-                <AccordionContent>
-                  <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                    {planWarnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          ) : null}
-          <AutomaticRunFooter
-            searchTerms={values.searchTerms}
-            locationCount={
-              values.locationMode === "radius"
-                ? nearbyPlaceCount
-                : values.cityLocations.length
-            }
-            jobBoardCount={
-              selectedSourceRows.length + selectedWatchlistSourceIds.length
-            }
-            isSaving={isSaving}
-            disabled={runDisabled}
-            validationMessage={validationMessage}
-            onRunSearch={() => void handleSaveAndRun()}
-          />
+                <AutomaticRankingPreferencesCard
+                  scoringInstructions={scoringInstructions}
+                  onScoringInstructionsChange={(value) =>
+                    setValue("scoringInstructions", value, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+
+                <AutomaticSourcePickerCard
+                  sourceRows={sourceRows}
+                  selectedSourceRows={selectedSourceRows}
+                  readySourceRows={readySourceRows}
+                  unavailableSourceRows={unavailableSourceRows}
+                  watchlistSources={watchlistSources}
+                  selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+                  isWatchlistSourcesLoading={isWatchlistSourcesLoading}
+                  onSourceToggle={handleSourceToggle}
+                  onWatchlistSourceToggle={onToggleWatchlistSource}
+                />
+
+                <AutomaticRunAdvancedSettings
+                  searchScope={searchScope}
+                  matchStrictness={matchStrictness}
+                  advancedOpen={advancedOpen}
+                  topNInput={topNInput}
+                  minScoreInput={minScoreInput}
+                  runBudgetInput={runBudgetInput}
+                  minRunBudget={MIN_PIPELINE_RUN_BUDGET}
+                  maxRunBudget={MAX_PIPELINE_RUN_BUDGET}
+                  onSearchScopeChange={(value) =>
+                    setValue("searchScope", value, { shouldDirty: true })
+                  }
+                  onMatchStrictnessChange={(value) =>
+                    setValue("matchStrictness", value, { shouldDirty: true })
+                  }
+                  onAdvancedOpenChange={setAdvancedOpen}
+                  onTopNInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("topN", value);
+                  }}
+                  onMinScoreInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("minSuitabilityScore", value);
+                  }}
+                  onRunBudgetInputChange={(value) => {
+                    setSelectedPreset("custom");
+                    setValue("runBudget", value);
+                  }}
+                  onRunBudgetInputBlur={() =>
+                    setValue(
+                      "runBudget",
+                      String(
+                        normalizeRunBudget(
+                          Number.parseInt(runBudgetInput, 10) ||
+                            DEFAULT_VALUES.runBudget,
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </div>
+
+              <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
+                {savedSearchSupportEnabled ? (
+                  <AutomaticSavedSearchControls
+                    savedSearches={savedSearches}
+                    selectedSavedSearch={selectedSavedSearch}
+                    selectedSavedSearchId={selectedSavedSearchId}
+                    isLoading={isSavedSearchesLoading}
+                    canCreate={Boolean(onCreateSavedSearch)}
+                    canUpdate={Boolean(onUpdateSavedSearch)}
+                    canDelete={Boolean(onDeleteSavedSearch)}
+                    onApplySavedSearch={(preset) =>
+                      void applySavedSearch(preset)
+                    }
+                    onOpenSaveDialog={openSaveDialog}
+                    onDeleteSelectedSearch={() =>
+                      void handleDeleteSelectedSearch()
+                    }
+                  />
+                ) : null}
+
+                <AutomaticRunFooter
+                  searchTerms={values.searchTerms}
+                  locationCount={
+                    values.locationMode === "radius"
+                      ? nearbyPlaceCount
+                      : values.cityLocations.length
+                  }
+                  locationSummary={locationSummary}
+                  workplaceTypes={values.workplaceTypes}
+                  scoringInstructions={values.scoringInstructions}
+                  selectedPreset={selectedPreset}
+                  jobBoardCount={
+                    selectedSourceRows.length +
+                    selectedWatchlistSourceIds.length
+                  }
+                  isSaving={isSaving}
+                  disabled={runDisabled}
+                  onRunSearch={() => void handleSaveAndRun()}
+                />
+              </aside>
+            </div>
+          </TabsContent>
         </div>
-      )}
+      </Tabs>
     </div>
   );
 };
-
-function SearchReviewSection({
-  value,
-  label,
-  summary,
-  detail,
-  children,
-}: {
-  value: string;
-  label: string;
-  summary: string;
-  detail?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <AccordionItem value={value} className="last:border-b-0">
-      <AccordionTrigger
-        aria-label={`Edit ${label.toLowerCase()}`}
-        className="gap-4 py-4 hover:no-underline"
-      >
-        <span className="flex min-w-0 flex-1 flex-col gap-1 text-left">
-          <span className="text-sm font-medium">{label}</span>
-          <span className="line-clamp-2 break-words text-sm font-normal leading-6 text-muted-foreground">
-            {summary}
-          </span>
-          {detail ? (
-            <span className="text-xs font-normal text-muted-foreground">
-              {detail}
-            </span>
-          ) : null}
-        </span>
-        <span className="text-xs font-normal text-muted-foreground">Edit</span>
-      </AccordionTrigger>
-      <AccordionContent>{children}</AccordionContent>
-    </AccordionItem>
-  );
-}

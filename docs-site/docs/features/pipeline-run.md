@@ -16,7 +16,7 @@ For manual import internals, read [Manual Import Extractor](/docs/next/extractor
 
 ## Why it exists
 
-The search review keeps your criteria visible before any discovery starts. Expand only the details you want to change.
+The configuration screen keeps your criteria visible before any discovery starts.
 
 It helps you:
 
@@ -31,12 +31,12 @@ It helps you:
 1. Open **Jobs > Find jobs**.
 2. Describe your search, for example: `Graduate software engineering jobs in Manchester. Prefer backend work and hybrid or remote roles.`
 3. Select **Build my search**. To skip AI setup, select **Enter search details instead**.
-4. In **Review your search**, expand **Roles**, **Location & work arrangement**, **Ranking preferences**, or **Sources** to edit them.
-5. Select **Start search** when the criteria are ready.
+4. In **Configure your search**, review the existing role, location, ranking, source, and run settings.
+5. Select **Run search** when the criteria are ready.
 
-AI fills the same fields you can edit yourself; it never starts discovery. **Edit description** returns to your brief while keeping the criteria you have edited. Rebuilding uses those current criteria as context.
+AI fills the same fields you can edit yourself; it never starts discovery. **Describe search** returns to your brief while keeping the criteria you have edited. Rebuilding uses those current criteria as context.
 
-The review shows compact summaries. **Search notes** contains any AI assumptions or limitations, and **Unavailable sources** explains why particular boards cannot run. Both are collapsed by default. Ranking preferences influence scores rather than strictly excluding listings, including salary preferences.
+The configuration form keeps its existing layout and controls. **Search notes** contains any AI assumptions or limitations and is collapsed by default. Ranking preferences influence scores rather than strictly excluding listings, including salary preferences.
 
 If AI setup is unavailable, the review clearly says that the existing criteria were kept. Edit them yourself or return to the description and try again.
 
@@ -44,7 +44,7 @@ If AI setup is unavailable, the review clearly says that the existing criteria w
 
 #### Presets
 
-Expand **Advanced search settings** to choose a search-depth preset. Three presets set defaults for run aggressiveness:
+Choose a search-depth preset in the roles card. Three presets set defaults for run aggressiveness:
 
 - **Fast**: lower processing volume, higher score threshold
 - **Balanced**: middle-ground defaults
@@ -72,7 +72,7 @@ The default radius is `50` miles. The supported range is `1` to `200` miles. In 
 
 After you select or adjust an area, JobOps previews the named cities and towns inside the circle. The location count in **Your search** updates after this lookup and the same result is reused when the search starts.
 
-Select **City list** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in City list mode until you explicitly choose another mode.
+Select **Manual cities** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
 
 Map-radius support is applied consistently even when an extractor has no native radius option:
 
@@ -87,7 +87,7 @@ When you place or move the centre, JobOps sends it to OpenStreetMap Nominatim to
 
 #### Country and source compatibility
 
-- The detected map country—or the country selected in City list mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
+- The detected map country—or the country selected in Manual cities mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
 - Each extractor declares its own supported countries. A country can be selectable even when JobSpy-backed sources do not support it, as long as another selected source can run or locally filter for that country.
 - UK-only sources are disabled for non-UK countries.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
@@ -101,12 +101,12 @@ Incompatible sources are disabled with explanatory tooltips.
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
 - `Max jobs discovered` accepts values from `50` to `1000` in the UI.
-- **Search area** (`Map radius` by default, with `City list` as the fallback)
+- **Search area** (`Map radius` by default, with `Manual cities` as the fallback)
 - **Workplace type** (`Remote`, `Hybrid`, `Onsite`)
 
 Workplace type applies globally to the run across all search terms and locations.
 
-City list only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
+Manual cities only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
 
 Source behavior differs:
 
@@ -123,9 +123,9 @@ Source behavior differs:
 
 #### Estimate and run gating
 
-The footer shows role, location, and source counts. If a required field is missing, it explains what to add.
+The **Your search** panel shows the criteria and role, location, and source counts.
 
-**Start search** is disabled when:
+**Run search** is disabled when:
 
 - a run is already in progress
 - required save/run work is still in progress
@@ -187,12 +187,12 @@ For formats and limits, see [Manual Import Extractor](/docs/next/extractors/manu
 
 - Try the run again; the OpenStreetMap Overpass service can be temporarily busy.
 - Reduce a very large radius.
-- Switch to **City list** if you need to run without the nearby-place service.
+- Switch to **Manual cities** if you need to run without the nearby-place service.
 
 ### Glassdoor cannot be enabled
 
 - Verify selected country supports Glassdoor.
-- Place a map centre or switch to City list and add at least one city.
+- Place a map centre or switch to Manual cities and add at least one city.
 
 ### Adzuna is not selectable
 

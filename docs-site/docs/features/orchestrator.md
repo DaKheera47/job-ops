@@ -46,7 +46,7 @@ It exists to ensure:
 
 ### Find opportunities or add an existing job
 
-- Select **Find jobs** to describe a search or enter its criteria, review the same editable plan, then select **Start search**.
+- Select **Find jobs** to describe a search or enter its criteria, review the existing configuration form, then select **Run search**.
 - Select **Add a job** to import a link, description, or PDF you already have.
 
 See [Find jobs](/docs/next/features/pipeline-run) for the search review flow.
