@@ -256,6 +256,36 @@ export const useOrchestratorFilters = () => {
     [setSearchParams],
   );
 
+  const includeKeywords = searchParams.get("include") ?? "";
+  const setIncludeKeywords = useCallback(
+    (value: string) => {
+      setSearchParams(
+        (prev) => {
+          if (!value.trim()) prev.delete("include");
+          else prev.set("include", value);
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const excludeKeywords = searchParams.get("exclude") ?? "";
+  const setExcludeKeywords = useCallback(
+    (value: string) => {
+      setSearchParams(
+        (prev) => {
+          if (!value.trim()) prev.delete("exclude");
+          else prev.set("exclude", value);
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const location = searchParams.get("location") ?? "";
   const setLocation = useCallback(
     (value: string) => {
@@ -373,6 +403,8 @@ export const useOrchestratorFilters = () => {
         prev.delete("postedWithin");
         prev.delete("employment");
         prev.delete("location");
+        prev.delete("include");
+        prev.delete("exclude");
         prev.delete("sort");
         prev.delete("date");
         prev.delete("appliedStart");
@@ -400,6 +432,10 @@ export const useOrchestratorFilters = () => {
     setEmploymentTypes,
     location,
     setLocation,
+    includeKeywords,
+    setIncludeKeywords,
+    excludeKeywords,
+    setExcludeKeywords,
     dateFilter,
     setDateFilter,
     sort,

@@ -237,6 +237,36 @@ export const matchesLocation = (job: JobListItem, query: string): boolean => {
   return normalizedQuery.split(" ").every((token) => haystack.includes(token));
 };
 
+const parseKeywordTerms = (value: string): string[] =>
+  value
+    .split(/[,\n]/)
+    .map((term) => normalizeText(term))
+    .filter(Boolean);
+
+/**
+ * Keyword include/exclude filter over the job's title, employer, location and
+ * job type/function. `include` and `exclude` are comma-separated lists: a job
+ * must contain at least one include term (when any are given) and none of the
+ * exclude terms. Matching is case- and accent-insensitive.
+ */
+export const matchesKeywords = (
+  job: JobListItem,
+  include: string,
+  exclude: string,
+): boolean => {
+  const includeTerms = parseKeywordTerms(include);
+  const excludeTerms = parseKeywordTerms(exclude);
+  if (includeTerms.length === 0 && excludeTerms.length === 0) return true;
+  const haystack = normalizeText(
+    [job.title, job.employer, job.location, job.jobType, job.jobFunction]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (excludeTerms.some((term) => haystack.includes(term))) return false;
+  if (includeTerms.length === 0) return true;
+  return includeTerms.some((term) => haystack.includes(term));
+};
+
 /**
  * True when the job was posted within the last `days` days. `datePosted` is
  * free text (ISO date or relative phrase like "3 days ago"), so it is coerced

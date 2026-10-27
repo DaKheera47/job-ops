@@ -65,6 +65,8 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
     postedWithinDays: filters.postedWithinDays,
     employmentTypes: filters.employmentTypes,
     location: filters.location,
+    includeKeywords: filters.includeKeywords,
+    excludeKeywords: filters.excludeKeywords,
     sort: filters.sort,
   });
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
@@ -243,6 +245,8 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
           postedWithinDays={filters.postedWithinDays}
           employmentTypes={filters.employmentTypes}
           locationFilter={filters.location}
+          includeKeywords={filters.includeKeywords}
+          excludeKeywords={filters.excludeKeywords}
           dateFilter={filters.dateFilter}
           sourcesWithJobs={sourcesWithJobs}
           sort={filters.sort}
@@ -263,6 +267,8 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
           onPostedWithinChange={filters.setPostedWithinDays}
           onEmploymentTypesChange={filters.setEmploymentTypes}
           onLocationFilterChange={filters.setLocation}
+          onIncludeKeywordsChange={filters.setIncludeKeywords}
+          onExcludeKeywordsChange={filters.setExcludeKeywords}
           onDateFilterChange={filters.setDateFilter}
           onSortChange={filters.setSort}
           onResetFilters={filters.resetFilters}

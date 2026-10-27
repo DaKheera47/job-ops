@@ -25,6 +25,8 @@ interface UseFilterBarDerivedStateArgs {
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   locationFilter: string;
+  includeKeywords: string;
+  excludeKeywords: string;
   salaryFilter: SalaryFilter;
   scoreFilter: ScoreFilter;
   sort: JobSort;
@@ -39,6 +41,8 @@ export const useFilterBarDerivedState = ({
   postedWithinDays,
   employmentTypes,
   locationFilter,
+  includeKeywords,
+  excludeKeywords,
   salaryFilter,
   scoreFilter,
   sort,
@@ -60,6 +64,8 @@ export const useFilterBarDerivedState = ({
       Number(postedWithinDays != null) +
       Number(employmentTypes.length > 0) +
       Number(locationFilter.trim() !== "") +
+      Number(includeKeywords.trim() !== "") +
+      Number(excludeKeywords.trim() !== "") +
       Number(salaryActive) +
       Number(scoreActive),
     [
@@ -69,6 +75,8 @@ export const useFilterBarDerivedState = ({
       postedWithinDays,
       employmentTypes.length,
       locationFilter,
+      includeKeywords,
+      excludeKeywords,
       salaryActive,
       scoreActive,
     ],

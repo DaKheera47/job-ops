@@ -29,6 +29,10 @@ export interface OrchestratorFiltersProps {
   onEmploymentTypesChange: (value: EmploymentType[]) => void;
   locationFilter: string;
   onLocationFilterChange: (value: string) => void;
+  includeKeywords: string;
+  onIncludeKeywordsChange: (value: string) => void;
+  excludeKeywords: string;
+  onExcludeKeywordsChange: (value: string) => void;
   dateFilter: JobDateFilter;
   onDateFilterChange: (value: JobDateFilter) => void;
   sourcesWithJobs: JobSource[];
@@ -39,6 +43,14 @@ export interface OrchestratorFiltersProps {
   isFiltersOpen?: boolean;
   onFiltersOpenChange?: (open: boolean) => void;
 }
+
+export type KeywordFilterInputsProps = Pick<
+  OrchestratorFiltersProps,
+  | "includeKeywords"
+  | "onIncludeKeywordsChange"
+  | "excludeKeywords"
+  | "onExcludeKeywordsChange"
+>;
 
 export type LocationFilterInputProps = Pick<
   OrchestratorFiltersProps,

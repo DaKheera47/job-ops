@@ -10,6 +10,7 @@ import {
   compareJobs,
   getJobDateValue,
   matchesEmploymentType,
+  matchesKeywords,
   matchesLocation,
   matchesPostedWithin,
   parseSalaryBounds,
@@ -33,6 +34,8 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
     postedWithinDays,
     employmentTypes,
     location,
+    includeKeywords,
+    excludeKeywords,
     sort,
   } = filters;
 
@@ -81,6 +84,12 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
 
     if (location.trim()) {
       filtered = filtered.filter((job) => matchesLocation(job, location));
+    }
+
+    if (includeKeywords.trim() || excludeKeywords.trim()) {
+      filtered = filtered.filter((job) =>
+        matchesKeywords(job, includeKeywords, excludeKeywords),
+      );
     }
 
     if (sponsorFilter !== "all") {
@@ -154,6 +163,8 @@ export const useFilteredJobs = (jobs: JobListItem[], filters: JobFilters) => {
     postedWithinDays,
     employmentTypes,
     location,
+    includeKeywords,
+    excludeKeywords,
     sort,
   ]);
 };
