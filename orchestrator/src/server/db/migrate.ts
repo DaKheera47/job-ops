@@ -172,11 +172,16 @@ function hashPasswordSync(password: string): {
   return { passwordHash, passwordSalt };
 }
 
-const pipelineRunsHasConfigSnapshot = tableHasColumn(
-  "pipeline_runs",
-  "config_snapshot",
-);
 const pipelineRunsHasTenantId = tableHasColumn("pipeline_runs", "tenant_id");
+// Columns carried over when pipeline_runs is rebuilt below. The rebuild runs on
+// every boot, so any column the old table already has must be copied, not reset.
+const pipelineRunsRebuildOptionalColumns = [
+  "config_snapshot",
+  "requested_config",
+  "effective_config",
+  "result_summary",
+  "user_id",
+].map((column) => (tableHasColumn("pipeline_runs", column) ? column : "NULL"));
 const jobsHasPdfRegenerating = tableHasColumn("jobs", "pdf_regenerating");
 const jobsHasJobBrief = tableHasColumn("jobs", "job_brief");
 const watchlistJobStatesHasUserId = tableHasColumn(
@@ -918,14 +923,11 @@ const migrations = [
     requested_config TEXT,
     effective_config TEXT,
     result_summary TEXT,
+    user_id TEXT,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
-  pipelineRunsHasConfigSnapshot
-    ? `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
-   SELECT id, ${pipelineRunsHasTenantId ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
-   FROM pipeline_runs`
-    : `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
-   SELECT id, ${sqlString(DEFAULT_TENANT_ID)}, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL, NULL
+  `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary, user_id)
+   SELECT id, ${pipelineRunsHasTenantId ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, ${pipelineRunsRebuildOptionalColumns.join(", ")}
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
