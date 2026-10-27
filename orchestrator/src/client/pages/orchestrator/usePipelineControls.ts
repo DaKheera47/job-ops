@@ -21,7 +21,6 @@ import {
   deriveExtractorLimits,
   serializeCityLocationsSetting,
 } from "./automatic-run";
-import { loadRunMode, type RunMode, saveRunMode } from "./run-mode";
 
 type UsePipelineControlsArgs = {
   isPipelineRunning: boolean;
@@ -40,10 +39,8 @@ type UsePipelineControlsArgs = {
 export type UsePipelineControlsResult = {
   isRunModeModalOpen: boolean;
   setIsRunModeModalOpen: (open: boolean) => void;
-  runMode: RunMode;
-  setRunMode: (mode: RunMode) => void;
   isCancelling: boolean;
-  openRunMode: (mode: RunMode) => void;
+  openSearch: () => void;
   handleCancelPipeline: () => Promise<void>;
   handleSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   handleManualImported: (result: ManualImportResult) => Promise<void>;
@@ -64,7 +61,6 @@ export function usePipelineControls(
   } = args;
 
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
-  const [runMode, setRunModeState] = useState<RunMode>(loadRunMode);
   const [isCancelling, setIsCancelling] = useState(false);
 
   const { refreshSettings } = useSettings();
@@ -99,18 +95,7 @@ export function usePipelineControls(
     toast.success("Search completed");
   }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
-  const setRunMode = useCallback((mode: RunMode) => {
-    setRunModeState(mode);
-    saveRunMode(mode);
-  }, []);
-
-  const openRunMode = useCallback(
-    (mode: RunMode) => {
-      setRunMode(mode);
-      setIsRunModeModalOpen(true);
-    },
-    [setRunMode],
-  );
+  const openSearch = useCallback(() => setIsRunModeModalOpen(true), []);
 
   const startPipelineRun = useCallback(
     async (config: {
@@ -280,10 +265,8 @@ export function usePipelineControls(
   return {
     isRunModeModalOpen,
     setIsRunModeModalOpen,
-    runMode,
-    setRunMode,
     isCancelling,
-    openRunMode,
+    openSearch,
     handleCancelPipeline,
     handleSaveAndRunAutomatic,
     handleManualImported,

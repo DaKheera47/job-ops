@@ -44,6 +44,13 @@ It exists to ensure:
 
 ## How to use it
 
+### Find opportunities or add an existing job
+
+- Select **Find jobs** to describe a search or enter its criteria, review the same editable plan, then select **Start search**.
+- Select **Add a job** to import a link, description, or PDF you already have.
+
+See [Find jobs](/docs/next/features/pipeline-run) for the search review flow.
+
 ### Intended ready flow
 
 1. Manual flow:

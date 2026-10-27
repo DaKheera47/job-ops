@@ -2,7 +2,6 @@ import { useSettings } from "@client/hooks/useSettings";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { trackProductEvent } from "@/lib/analytics";
-import { RUN_MODE_STORAGE_KEY } from "./run-mode";
 import { usePipelineControls } from "./usePipelineControls";
 
 vi.mock("@client/hooks/useSettings", () => ({
@@ -56,7 +55,7 @@ describe("usePipelineControls", () => {
     expect(navigateWithContext).toHaveBeenCalledWith("ready", "job-1");
   });
 
-  it("restores the last selected run mode", () => {
+  it("opens search independently of a legacy import preference", () => {
     const args = {
       isPipelineRunning: false,
       setIsPipelineRunning: vi.fn(),
@@ -66,12 +65,10 @@ describe("usePipelineControls", () => {
       navigateWithContext: vi.fn(),
     };
 
-    const first = renderHook(() => usePipelineControls(args));
-    act(() => first.result.current.setRunMode("manual"));
-    first.unmount();
-
-    const second = renderHook(() => usePipelineControls(args));
-    expect(second.result.current.runMode).toBe("manual");
-    expect(localStorage.getItem(RUN_MODE_STORAGE_KEY)).toBe("manual");
+    localStorage.setItem("jobops.pipeline.run-mode.v1", "manual");
+    const { result } = renderHook(() => usePipelineControls(args));
+    expect(result.current.isRunModeModalOpen).toBe(false);
+    act(() => result.current.openSearch());
+    expect(result.current.isRunModeModalOpen).toBe(true);
   });
 });

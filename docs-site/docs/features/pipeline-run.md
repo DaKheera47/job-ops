@@ -1,23 +1,22 @@
 ---
 id: pipeline-run
-title: Run Search
-description: How to use Run Search (Automatic vs Manual), natural-language setup, presets, source controls, and advanced run settings.
+title: Find jobs
+description: Describe a search or enter its criteria, review the same editable plan, then start searching.
 sidebar_position: 2
 ---
 
 ## What it is
 
-Run Search is the Jobs-page run modal for starting either:
+**Find jobs** discovers new opportunities. Describe what you want with AI assistance, or enter the search criteria yourself. Both lead to the same editable review screen.
 
-- an **Automatic** job search
-- a **Manual** one-job import
+**Add a job** is a separate action for a link, description, or PDF you already have. It does not run discovery.
 
 For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow).
 For manual import internals, read [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Why it exists
 
-The modal provides one place to describe a search, review the generated settings, and control run volume, source compatibility, and processing aggressiveness before consuming compute/time.
+The search review keeps your criteria visible before any discovery starts. Expand only the details you want to change.
 
 It helps you:
 
@@ -29,30 +28,23 @@ It helps you:
 
 ## How to use it
 
-1. Open the Jobs page and use the top-right **Run search** control.
-2. Choose either **Automatic** or **Manual** tab.
-3. For Automatic, describe the search you want or switch to **Configure details**.
-4. Review the settings, edit anything you want, then run the search.
+1. Open **Jobs > Find jobs**.
+2. Describe your search, for example: `Graduate software engineering jobs in Manchester. Prefer backend work and hybrid or remote roles.`
+3. Select **Build my search**. To skip AI setup, select **Enter search details instead**.
+4. In **Review your search**, expand **Roles**, **Location & work arrangement**, **Ranking preferences**, or **Sources** to edit them.
+5. Select **Start search** when the criteria are ready.
 
-### Automatic tab
+AI fills the same fields you can edit yourself; it never starts discovery. **Edit description** returns to your brief while keeping the criteria you have edited. Rebuilding uses those current criteria as context.
 
-#### Describe search
+The review shows compact summaries. **Search notes** contains any AI assumptions or limitations, and **Unavailable sources** explains why particular boards cannot run. Both are collapsed by default. Ranking preferences influence scores rather than strictly excluding listings, including salary preferences.
 
-The Automatic tab opens on **Describe search** first.
+If AI setup is unavailable, the review clearly says that the existing criteria were kept. Edit them yourself or return to the description and try again.
 
-1. Enter a detailed search brief, such as `Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options.`
-2. Select **Generate search settings**.
-3. Review the generated settings in **Configure details**.
-
-AI fills the existing controls only. It does not start the search automatically.
-
-The generated plan can update search terms, ranking preferences, country, map radius or cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
-
-Add as much detail as possible. Mention what the AI should rank higher or lower, such as salary targets, role seniority, visa sponsorship, graduate programmes, domains, commute limits, or preferred responsibilities.
+### Search settings
 
 #### Presets
 
-Three presets set defaults for run aggressiveness:
+Expand **Advanced search settings** to choose a search-depth preset. Three presets set defaults for run aggressiveness:
 
 - **Fast**: lower processing volume, higher score threshold
 - **Balanced**: middle-ground defaults
@@ -60,13 +52,12 @@ Three presets set defaults for run aggressiveness:
 
 If values are edited manually, the UI shows **Custom**.
 
-The automatic modal remembers the last preset choice and `Max jobs discovered`
+Find jobs remembers the last preset choice and `Max jobs discovered`
 value in this browser. If you picked **Custom**, it reopens in Custom mode with
 the same values. The pipeline run itself still derives per-source caps from the
 saved budget when you start the run.
 
-Run Search also remembers whether you last used **Automatic** or **Manual** in
-this browser and reopens that mode next time.
+**Find jobs** always opens search setup. Adding a job does not change that entry point.
 
 #### Search area
 
@@ -81,7 +72,7 @@ The default radius is `50` miles. The supported range is `1` to `200` miles. In 
 
 After you select or adjust an area, JobOps previews the named cities and towns inside the circle. The location count in **Your search** updates after this lookup and the same result is reused when the search starts.
 
-Select **Manual cities** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in Manual cities mode until you explicitly choose another mode.
+Select **City list** when you prefer the previous country and multi-city inputs. Existing installations with saved cities continue to open in City list mode until you explicitly choose another mode.
 
 Map-radius support is applied consistently even when an extractor has no native radius option:
 
@@ -96,7 +87,7 @@ When you place or move the centre, JobOps sends it to OpenStreetMap Nominatim to
 
 #### Country and source compatibility
 
-- The detected map country—or the country selected in Manual cities mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
+- The detected map country—or the country selected in City list mode—affects which sources are available, but the country list is owned by JobOps rather than by any single extractor.
 - Each extractor declares its own supported countries. A country can be selectable even when JobSpy-backed sources do not support it, as long as another selected source can run or locally filter for that country.
 - UK-only sources are disabled for non-UK countries.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
@@ -110,12 +101,12 @@ Incompatible sources are disabled with explanatory tooltips.
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
 - `Max jobs discovered` accepts values from `50` to `1000` in the UI.
-- **Search area** (`Map radius` by default, with `Manual cities` as the fallback)
+- **Search area** (`Map radius` by default, with `City list` as the fallback)
 - **Workplace type** (`Remote`, `Hybrid`, `Onsite`)
 
 Workplace type applies globally to the run across all search terms and locations.
 
-Manual cities only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
+City list only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
 
 Source behavior differs:
 
@@ -132,9 +123,9 @@ Source behavior differs:
 
 #### Estimate and run gating
 
-The footer estimate shows expected discovered jobs and resume-processing range.
+The footer shows role, location, and source counts. If a required field is missing, it explains what to add.
 
-`Run search` is disabled when:
+**Start search** is disabled when:
 
 - a run is already in progress
 - required save/run work is still in progress
@@ -172,13 +163,11 @@ updates its counters live. **Exceptional matches** counts jobs with a
 suitability score above 90. Importing and processing continue in the background
 for now.
 
-### Manual tab
+### Add a job you already found
 
-Manual mode opens direct import flow in the same modal.
+Select **Add a job** in the Jobs header. Paste a link or job description, upload a text-based PDF, or choose **URL list** for multiple links. Review the extracted details before adding the job.
 
-Use it when you already have a specific job description or link and do not want full discovery.
-
-For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](/docs/next/extractors/manual).
+For formats and limits, see [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Common problems
 
@@ -191,19 +180,19 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 ### Search says system admin access is required
 
-- Search settings saved by the Run Search form are scoped to the signed-in user's workspace and do not require system admin access.
+- Search settings saved by the Find jobs form are scoped to the signed-in user's workspace and do not require system admin access.
 - If the request also changes a protected setting, remove that change or ask a system admin to update it in **Settings**.
 
 ### Radius search cannot resolve nearby places
 
 - Try the run again; the OpenStreetMap Overpass service can be temporarily busy.
 - Reduce a very large radius.
-- Switch to **Manual cities** if you need to run without the nearby-place service.
+- Switch to **City list** if you need to run without the nearby-place service.
 
 ### Glassdoor cannot be enabled
 
 - Verify selected country supports Glassdoor.
-- Place a map centre or switch to Manual cities and add at least one city.
+- Place a map centre or switch to City list and add at least one city.
 
 ### Adzuna is not selectable
 

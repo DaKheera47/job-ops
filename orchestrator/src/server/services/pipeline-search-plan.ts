@@ -350,6 +350,18 @@ export function normalizePipelineSearchPlanConfig(args: {
     currentConfig.sources,
     registry,
   );
+  const cityLocations = normalizeOptionalStrings(
+    candidate?.cityLocations,
+    currentConfig.cityLocations,
+    25,
+    100,
+  );
+  const locationMode =
+    candidate?.locationMode ??
+    (Array.isArray(candidate?.cityLocations) && cityLocations.length > 0
+      ? "cities"
+      : currentConfig.locationMode) ??
+    "cities";
   if (sourcesResult.removed.length > 0) {
     warnings.push(
       `Ignored unavailable sources: ${sourcesResult.removed.join(", ")}.`,
@@ -361,15 +373,12 @@ export function normalizePipelineSearchPlanConfig(args: {
       searchTerms.length > 0 ? searchTerms : currentConfig.searchTerms,
     sources: sourcesResult.sources,
     country: normalizeCountry(candidate?.country, currentConfig.country),
-    cityLocations: normalizeOptionalStrings(
-      candidate?.cityLocations,
-      currentConfig.cityLocations,
-      25,
-      100,
-    ),
-    locationMode:
-      candidate?.locationMode ?? currentConfig.locationMode ?? "cities",
-    proximity: candidate?.proximity ?? currentConfig.proximity ?? null,
+    cityLocations,
+    locationMode,
+    proximity:
+      locationMode === "cities"
+        ? null
+        : (candidate?.proximity ?? currentConfig.proximity ?? null),
     workplaceTypes,
     searchScope: normalizeLocationSearchScope(
       candidate?.searchScope ?? currentConfig.searchScope,
@@ -433,7 +442,7 @@ function buildPrompt(args: {
     "- Convert explicit ranking preferences into scoringInstructions. Examples: salary floor, lower-score graduate programs, prioritize sponsorship, prefer backend API work.",
     "- Do not invent scoring preferences. If the user did not specify ranking preferences, keep current scoringInstructions.",
     "- Write summary in neutral product voice, not first person. Use wording like 'The search was updated...' or 'Search settings were updated...', never 'I updated...' or 'I have updated...'.",
-    "- Add warnings for assumptions, ignored requests, or source/location caveats.",
+    "- Add warnings only for ignored requests or assumptions that change the results. Prefer at most 3 warnings, each one short sentence under 120 characters. Use plain language and name the relevant review section (Roles, Location, Ranking preferences, Sources, Advanced settings). Never mention internal field names such as topN or selected_only, unchanged defaults, or repeat the settings summary.",
     "",
     "Available sources:",
     JSON.stringify(sourceOptions),

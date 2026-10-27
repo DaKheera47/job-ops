@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export interface ChoiceCardOption<T extends string> {
   value: T;
   label: string;
-  description: string;
+  description?: string;
   ariaLabel?: string;
 }
 
@@ -117,20 +117,22 @@ function ChoiceCard({
 }: {
   id: string;
   label: string;
-  description: string;
+  description?: string;
   control: React.ReactNode;
 }) {
   return (
     <label
       htmlFor={id}
-      className="flex min-h-20 cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+      className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
     >
       {control}
       <span className="flex flex-col gap-1">
         <span className="text-sm font-medium">{label}</span>
-        <span className="text-xs leading-4 text-muted-foreground">
-          {description}
-        </span>
+        {description ? (
+          <span className="text-xs leading-4 text-muted-foreground">
+            {description}
+          </span>
+        ) : null}
       </span>
     </label>
   );
