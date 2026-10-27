@@ -925,6 +925,63 @@ describe("salary penalty", () => {
       );
     });
 
+    it("uses the lite schema and prompt when JOBOPS_SCORING_MODE=lite", async () => {
+      vi.stubEnv("JOBOPS_SCORING_MODE", "lite");
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: {
+          value: "Prioritize backend work.",
+          default: "",
+          override: "Prioritize backend work.",
+        },
+        scoringPromptTemplate: {
+          value:
+            "Custom scoring {{jobTitle}} {{scoringInstructionsText}} {{unknownToken}}",
+          default: "",
+          override:
+            "Custom scoring {{jobTitle}} {{scoringInstructionsText}} {{unknownToken}}",
+        },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      callJsonMock.mockResolvedValue({
+        success: true,
+        data: {
+          score: 80,
+          reason: "Good match",
+          jobBrief: {
+            role_summary: "Build backend services.",
+            they_want: ["TypeScript"],
+            specifics: ["Node.js"],
+            company_offers: [],
+            practical_details: ["Salary: Not stated"],
+            missing_or_unclear: ["Sponsorship"],
+            repeated_signals: ["Ownership"],
+          },
+        },
+      });
+
+      const result = await scoreJobSuitability(
+        createJob({
+          id: "test-job-custom-template",
+          title: "Backend Engineer",
+        }),
+        {},
+      );
+      expect(callJsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jsonSchema: expect.objectContaining({
+            schema: expect.objectContaining({ required: ["score", "reason"] }),
+          }),
+        }),
+      );
+      expect(getScoringPrompt()).not.toContain('"jobBrief"');
+      expect(result.score).toBe(80);
+      vi.unstubAllEnvs();
+    });
+
     it("should not apply penalty when disabled", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       getEffectiveSettingsMock.mockResolvedValue({

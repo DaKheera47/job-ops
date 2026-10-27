@@ -317,3 +317,12 @@ When using local renderers:
 - For non-Docker local runs with Typst, install `typst` yourself and optionally set `TYPST_BIN` if it is not on your `PATH`.
 
 RxResume remains the source of truth for base resume data, project visibility, and tailoring inputs when importing from Reactive Resume. Local renderers use the structured Design Resume data at render time.
+
+## Reducing AI usage (optional)
+
+Both options are off by default and only change behaviour when set.
+
+- `JOBOPS_SCORING_MODE=lite` makes scoring return only a rough score and a one-sentence reason. It skips the job brief and fact-review output, which is most of the output tokens and latency per job. Jobs scored this way have no Brief.
+- `CLAUDE_CLI_LEAN=1` (Claude CLI provider only) starts each call without tools, skills, MCP servers, or project settings, and with a minimal system prompt, cutting thousands of fixed prompt tokens per call.
+- `npm run score:unscored` (in `orchestrator/`) scores every discovered job that has no score yet, without running a search.
+- `JOBOPS_SCORING_CONCURRENCY` sets how many jobs are scored in parallel (default `4`). Higher values finish sooner but use your AI quota faster.

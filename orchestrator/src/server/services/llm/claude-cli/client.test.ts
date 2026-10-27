@@ -53,6 +53,39 @@ describe("ClaudeCliClient", () => {
     expect(args).toContain("plan");
   });
 
+  it.each([
+    ["unset", undefined, false],
+    ["1", "1", true],
+  ])("lean CLI flags when CLAUDE_CLI_LEAN is %s", async (_label, value, lean) => {
+    if (value === undefined) vi.stubEnv("CLAUDE_CLI_LEAN", "");
+    else vi.stubEnv("CLAUDE_CLI_LEAN", value);
+    const { child, stdout } = createMockChild();
+    const spawnFn = vi.fn().mockReturnValue(child);
+
+    const pending = new ClaudeCliClient({ spawnFn }).validateCredentials();
+    queueMicrotask(() => {
+      stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify({
+            type: "result",
+            subtype: "success",
+            is_error: false,
+            result: JSON.stringify({ ok: true }),
+            structured_output: { ok: true },
+          }),
+        ),
+      );
+      child.emit("close", 0);
+    });
+
+    await pending;
+    const args = spawnFn.mock.calls[0]?.[1] as string[];
+    expect(args.includes("--tools")).toBe(lean);
+    expect(args.includes("--system-prompt")).toBe(lean);
+    vi.unstubAllEnvs();
+  });
+
   it("validateCredentials fails when CLI reports is_error", async () => {
     const { child, stdout } = createMockChild();
     const spawnFn = vi.fn().mockReturnValue(child);
