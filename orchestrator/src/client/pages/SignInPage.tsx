@@ -8,6 +8,7 @@ import {
   signupWithCredentials,
   startSsoLogin,
 } from "@client/api";
+import { LanguageSelector, useUiTranslation } from "@client/lib/i18n/language";
 import type { SsoProviderInfo } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import type { FormEvent } from "react";
@@ -34,8 +35,8 @@ import { rememberPendingSsoFlow } from "../lib/sso-flow";
 import { SSO_PROVIDER_ICONS } from "../lib/sso-providers";
 
 type AuthMode = "sign-in" | "signup";
-
 export function SignInPage() {
+  const { t: uiT } = useUiTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
@@ -54,12 +55,10 @@ export function SignInPage() {
     retry: false,
   });
   const ssoProviders = ssoProvidersQuery.data ?? [];
-
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return resolveNextPath(params.get("next"));
   }, [location.search]);
-
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const rememberedUsername = params.get("user")?.trim();
@@ -68,10 +67,8 @@ export function SignInPage() {
       setPassword("");
     }
   }, [location.search]);
-
   useEffect(() => {
     let cancelled = false;
-
     void (async () => {
       try {
         const appStatus = await getAppStatus();
@@ -80,18 +77,20 @@ export function SignInPage() {
           appStatus.appMode === "hosted" &&
           appStatus.capabilities.hostedSignups;
         setHostedSignupEnabled(canSignup);
-
         const bootstrap = await getAuthBootstrapStatus();
         if (cancelled) return;
         if (bootstrap.setupRequired) {
-          navigate("/onboarding", { replace: true });
+          navigate("/onboarding", {
+            replace: true,
+          });
           return;
         }
-
         const restored = await restoreAuthSessionFromLegacyCredentials();
         if (cancelled) return;
         if (restored || hasAuthenticatedSession()) {
-          navigate(nextPath, { replace: true });
+          navigate(nextPath, {
+            replace: true,
+          });
           return;
         }
       } catch (error) {
@@ -108,12 +107,10 @@ export function SignInPage() {
         }
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [navigate, nextPath]);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedUsername = username.trim();
@@ -125,10 +122,8 @@ export function SignInPage() {
       setErrorMessage("Password must be at least 8 characters.");
       return;
     }
-
     setIsBusy(true);
     setErrorMessage(null);
-
     try {
       if (authMode === "signup") {
         const user = await signupWithCredentials({
@@ -150,7 +145,9 @@ export function SignInPage() {
           }),
         );
       }
-      navigate(nextPath, { replace: true });
+      navigate(nextPath, {
+        replace: true,
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to sign in",
@@ -158,11 +155,9 @@ export function SignInPage() {
       setIsBusy(false);
     }
   };
-
   const handleSsoSignIn = async (provider: SsoProviderInfo) => {
     setIsBusy(true);
     setErrorMessage(null);
-
     try {
       const start = await startSsoLogin(provider.id);
       rememberPendingSsoFlow({
@@ -182,26 +177,28 @@ export function SignInPage() {
       setIsBusy(false);
     }
   };
-
   const resetFormFeedback = (nextMode: AuthMode) => {
     setAuthMode(nextMode);
     setErrorMessage(null);
     setPassword("");
   };
-
   const title = authMode === "signup" ? "Create account" : "Sign in";
   const description =
     authMode === "signup"
       ? "Create your JobOps account for this hosted workspace."
       : "Enter your JobOps username and password.";
-
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(120,119,198,0.08),_transparent_45%),linear-gradient(180deg,_rgba(15,23,42,0.02),_transparent_30%)] px-4 py-16">
       <div className="mx-auto flex min-h-[70vh] max-w-md items-center">
         <Card className="w-full border-border/60 bg-background/95 shadow-xl">
           <CardHeader className="space-y-2">
-            <CardTitle className="text-2xl tracking-tight">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
+            <div className="flex justify-end">
+              <LanguageSelector />
+            </div>
+            <CardTitle className="text-2xl tracking-tight">
+              {uiT(title)}
+            </CardTitle>
+            <CardDescription>{uiT(description)}</CardDescription>
           </CardHeader>
           <CardContent>
             {hostedSignupEnabled ? (
@@ -215,13 +212,13 @@ export function SignInPage() {
                     value="sign-in"
                     onClick={() => resetFormFeedback("sign-in")}
                   >
-                    Sign in
+                    {uiT("Sign in")}
                   </TabsTrigger>
                   <TabsTrigger
                     value="signup"
                     onClick={() => resetFormFeedback("signup")}
                   >
-                    Create account
+                    {uiT("Create account")}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -229,7 +226,7 @@ export function SignInPage() {
             {authMode === "sign-in" && rememberedUsers.length > 0 ? (
               <div className="mb-5 space-y-2">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Remembered on this browser
+                  {uiT("Remembered on this browser")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {rememberedUsers.map((user) => (
@@ -265,7 +262,7 @@ export function SignInPage() {
                     className="text-sm font-medium"
                     htmlFor="auth-display-name"
                   >
-                    Name
+                    {uiT("Name")}
                   </label>
                   <Input
                     id="auth-display-name"
@@ -274,27 +271,27 @@ export function SignInPage() {
                     onChange={(event) =>
                       setDisplayName(event.currentTarget.value)
                     }
-                    placeholder="Your name"
+                    placeholder={uiT("Your name")}
                     disabled={isBusy}
                   />
                 </div>
               ) : null}
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="auth-username">
-                  Username
+                  {uiT("Username")}
                 </label>
                 <Input
                   id="auth-username"
                   autoComplete="username"
                   value={username}
                   onChange={(event) => setUsername(event.currentTarget.value)}
-                  placeholder="Enter username"
+                  placeholder={uiT("Enter username")}
                   disabled={isBusy}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="auth-password">
-                  Password
+                  {uiT("Password")}
                 </label>
                 <Input
                   id="auth-password"
@@ -304,7 +301,7 @@ export function SignInPage() {
                   }
                   value={password}
                   onChange={(event) => setPassword(event.currentTarget.value)}
-                  placeholder="Enter password"
+                  placeholder={uiT("Enter password")}
                   disabled={isBusy}
                 />
               </div>
@@ -316,11 +313,11 @@ export function SignInPage() {
               <Button className="w-full" type="submit" disabled={isBusy}>
                 {isBusy
                   ? authMode === "signup"
-                    ? "Creating account..."
-                    : "Signing in..."
+                    ? uiT("Creating account...")
+                    : uiT("Signing in...")
                   : authMode === "signup"
-                    ? "Create account"
-                    : "Sign in"}
+                    ? uiT("Create account")
+                    : uiT("Sign in")}
               </Button>
             </form>
             {ssoProviders.length > 0 ? (
@@ -328,7 +325,7 @@ export function SignInPage() {
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1" />
                   <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    or continue with
+                    {uiT("or continue with")}
                   </span>
                   <Separator className="flex-1" />
                 </div>

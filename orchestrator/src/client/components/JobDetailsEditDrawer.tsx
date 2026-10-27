@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { Job } from "@shared/types.js";
 import { Loader2, Save } from "lucide-react";
 import type React from "react";
@@ -24,7 +25,6 @@ interface JobDetailsEditDrawerProps {
   job: Job | null;
   onJobUpdated: () => void | Promise<void>;
 }
-
 type JobDetailsDraft = {
   title: string;
   employer: string;
@@ -36,7 +36,6 @@ type JobDetailsDraft = {
   jobDescription: string;
   tracerLinksEnabled: boolean;
 };
-
 const emptyDraft: JobDetailsDraft = {
   title: "",
   employer: "",
@@ -48,12 +47,10 @@ const emptyDraft: JobDetailsDraft = {
   jobDescription: "",
   tracerLinksEnabled: false,
 };
-
 const normalizeOptional = (value: string): string | null => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
-
 const normalizeFromJob = (job: Job | null): JobDetailsDraft => {
   if (!job) return emptyDraft;
   return {
@@ -68,7 +65,6 @@ const normalizeFromJob = (job: Job | null): JobDetailsDraft => {
     tracerLinksEnabled: Boolean(job.tracerLinksEnabled),
   };
 };
-
 function isValidUrl(value: string): boolean {
   try {
     new URL(value);
@@ -77,26 +73,24 @@ function isValidUrl(value: string): boolean {
     return false;
   }
 }
-
 export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
   open,
   onOpenChange,
   job,
   onJobUpdated,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [draft, setDraft] = useState<JobDetailsDraft>(emptyDraft);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
     useTracerReadiness();
-
   useEffect(() => {
     if (!open) return;
     setDraft(normalizeFromJob(job));
     setValidationError(null);
     setIsSaving(false);
   }, [job, open]);
-
   const hasJob = !!job;
   const tracerCanEnable = Boolean(tracerReadiness?.canEnable);
   const tracerEnableBlocked = !draft.tracerLinksEnabled && !tracerCanEnable;
@@ -105,7 +99,6 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
       ? (tracerReadiness.reason ??
         "Tracer links are unavailable right now. Verify Tracer Links in Settings.")
       : null;
-
   const isDirty = useMemo(() => {
     if (!job) return false;
     const current = normalizeFromJob(job);
@@ -121,15 +114,12 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
       draft.tracerLinksEnabled !== current.tracerLinksEnabled
     );
   }, [draft, job]);
-
   const handleSave = async () => {
     if (!job) return;
-
     const title = draft.title.trim();
     const employer = draft.employer.trim();
     const jobUrl = draft.jobUrl.trim();
     const applicationLink = draft.applicationLink.trim();
-
     if (!title) {
       setValidationError("Title is required.");
       return;
@@ -161,14 +151,11 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
       );
       return;
     }
-
     try {
       setValidationError(null);
       setIsSaving(true);
-
       const employerChanged =
         employer.toLowerCase() !== job.employer.trim().toLowerCase();
-
       await api.updateJob(job.id, {
         title,
         employer,
@@ -180,7 +167,6 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
         jobDescription: normalizeOptional(draft.jobDescription),
         tracerLinksEnabled: draft.tracerLinksEnabled,
       });
-
       if (employerChanged) {
         try {
           await api.checkSponsor(job.id);
@@ -188,9 +174,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
           showErrorToast(error, "Job updated, but sponsor check failed");
         }
       }
-
       await onJobUpdated();
-
       toast.success("Job details updated", {
         action: {
           label: "Rescore now",
@@ -207,7 +191,6 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
           },
         },
       });
-
       onOpenChange(false);
     } catch (error) {
       showErrorToast(error, "Failed to update job details");
@@ -215,7 +198,6 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
       setIsSaving(false);
     }
   };
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl">
@@ -240,7 +222,10 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                     label="Title *"
                     value={draft.title}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, title: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        title: value,
+                      }))
                     }
                     placeholder="e.g. Full Stack Engineer"
                   />
@@ -249,7 +234,10 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                     label="Employer *"
                     value={draft.employer}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, employer: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        employer: value,
+                      }))
                     }
                     placeholder="e.g. Acme Labs"
                   />
@@ -258,43 +246,58 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                     label="Job URL *"
                     value={draft.jobUrl}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, jobUrl: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        jobUrl: value,
+                      }))
                     }
                     placeholder="https://..."
                   />
                   <FieldInput
                     id="edit-application-url"
-                    label="Application URL"
+                    label={uiT("Application URL")}
                     value={draft.applicationLink}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, applicationLink: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        applicationLink: value,
+                      }))
                     }
                     placeholder="https://..."
                   />
                   <FieldInput
                     id="edit-location"
-                    label="Location"
+                    label={uiT("Location")}
                     value={draft.location}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, location: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        location: value,
+                      }))
                     }
                     placeholder="e.g. London, UK"
                   />
                   <FieldInput
                     id="edit-salary"
-                    label="Salary"
+                    label={uiT("Salary")}
                     value={draft.salary}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, salary: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        salary: value,
+                      }))
                     }
                     placeholder="e.g. GBP 90k-110k"
                   />
                   <FieldInput
                     id="edit-deadline"
-                    label="Deadline"
+                    label={uiT("Deadline")}
                     value={draft.deadline}
                     onChange={(value) =>
-                      setDraft((prev) => ({ ...prev, deadline: value }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        deadline: value,
+                      }))
                     }
                     placeholder="e.g. 31 Mar 2026"
                   />
@@ -341,7 +344,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                     htmlFor="edit-job-description"
                     className="text-xs font-medium text-muted-foreground"
                   >
-                    Job description
+                    {uiT("Job description")}
                   </label>
                   <Textarea
                     id="edit-job-description"
@@ -371,7 +374,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                   onClick={() => onOpenChange(false)}
                   disabled={isSaving}
                 >
-                  Cancel
+                  {uiT("Cancel")}
                 </Button>
                 <Button
                   type="button"
@@ -393,7 +396,6 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
     </Sheet>
   );
 };
-
 const FieldInput: React.FC<{
   id: string;
   label: string;

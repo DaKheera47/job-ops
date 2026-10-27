@@ -7,6 +7,7 @@ import {
   ResponseRateBySourceChart,
 } from "@client/components/charts";
 import { PageHeader, PageMain } from "@client/components/layout";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { JobSource, StageEvent } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChartColumn } from "lucide-react";
@@ -24,11 +25,10 @@ type JobWithEvents = {
   appliedAt: string | null;
   events: StageEvent[];
 };
-
 const DURATION_OPTIONS = [7, 14, 30, 90] as const;
 const DEFAULT_DURATION = 30;
-
 export const HomePage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -41,9 +41,7 @@ export const HomePage: React.FC = () => {
         : DEFAULT_DURATION
     ) as DurationValue;
   })();
-
   const [duration, setDuration] = useState<DurationValue>(initialDuration);
-
   const overviewQuery = useQuery({
     queryKey: queryKeys.jobs.list({
       statuses: ["applied", "in_progress"],
@@ -62,7 +60,6 @@ export const HomePage: React.FC = () => {
         discoveredAt: job.discoveredAt,
         appliedAt: job.appliedAt,
       }));
-
       const appliedJobs = jobSummaries.filter((job) => job.appliedAt);
       const results = await Promise.allSettled(
         appliedJobs.map((job) =>
@@ -74,7 +71,6 @@ export const HomePage: React.FC = () => {
         ),
       );
       const eventsMap = new Map<string, StageEvent[]>();
-
       results.forEach((result, index) => {
         const jobId = appliedJobs[index]?.id;
         if (!jobId) return;
@@ -84,18 +80,18 @@ export const HomePage: React.FC = () => {
         }
         eventsMap.set(jobId, result.value);
       });
-
       const jobsWithEvents: JobWithEvents[] = jobSummaries
         .filter((job) => job.appliedAt)
         .map((job) => ({
           ...job,
           events: eventsMap.get(job.id) ?? [],
         }));
-
-      return { jobsWithEvents, appliedDates };
+      return {
+        jobsWithEvents,
+        appliedDates,
+      };
     },
   });
-
   const jobsWithEvents = useMemo(
     () => overviewQuery.data?.jobsWithEvents ?? [],
     [overviewQuery.data],
@@ -110,7 +106,6 @@ export const HomePage: React.FC = () => {
       : "Failed to load applications"
     : null;
   const isLoading = overviewQuery.isLoading;
-
   const handleDurationChange = useCallback(
     (newDuration: DurationValue) => {
       setDuration(newDuration);
@@ -129,13 +124,12 @@ export const HomePage: React.FC = () => {
     },
     [setSearchParams],
   );
-
   return (
     <>
       <PageHeader
         icon={ChartColumn}
-        title="Overview"
-        subtitle="Analytics & Insights"
+        title={uiT("Overview")}
+        subtitle={uiT("Analytics & Insights")}
         actions={
           <DurationSelector value={duration} onChange={handleDurationChange} />
         }

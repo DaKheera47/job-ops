@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   BranchInfo,
   JobChatImageAttachment,
@@ -15,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { BranchNavigator } from "./BranchNavigator";
 import { ScreenshotAttachmentPreview } from "./ScreenshotAttachmentPreview";
 import { StreamingMessage } from "./StreamingMessage";
-
 export type AiAssistMessage = {
   id: string;
   role: "user" | "assistant";
@@ -23,7 +23,6 @@ export type AiAssistMessage = {
   status?: JobChatMessageStatus;
   attachments?: JobChatImageAttachment[];
 };
-
 type AiAssistMessageListProps<TMessage extends AiAssistMessage> = {
   messages: TMessage[];
   branches?: BranchInfo[];
@@ -41,7 +40,6 @@ type AiAssistMessageListProps<TMessage extends AiAssistMessage> = {
   onAssistantCopy?: (message: TMessage) => void;
   renderAssistantActions?: (message: TMessage) => React.ReactNode;
 };
-
 export function AiAssistMessageList<TMessage extends AiAssistMessage>({
   messages,
   branches = [],
@@ -55,26 +53,23 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
   onAssistantCopy,
   renderAssistantActions,
 }: AiAssistMessageListProps<TMessage>) {
+  const { t: uiT } = useUiTranslation();
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const copiedTimeoutRef = useRef<number | null>(null);
-
   const branchMap = new Map<string, BranchInfo>();
   for (const branch of branches) {
     branchMap.set(branch.messageId, branch);
   }
-
   const startEditing = (message: TMessage) => {
     setEditingMessageId(message.id);
     setEditContent(message.content);
   };
-
   const cancelEditing = () => {
     setEditingMessageId(null);
     setEditContent("");
   };
-
   const submitEdit = (messageId: string) => {
     const content = editContent.trim();
     if (!content || !onEdit) return;
@@ -83,7 +78,6 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
     setEditingMessageId(null);
     setEditContent("");
   };
-
   useEffect(() => {
     return () => {
       if (copiedTimeoutRef.current !== null) {
@@ -91,7 +85,6 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
       }
     };
   }, []);
-
   const copyMessage = async (message: TMessage) => {
     if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
       toast.error("Copy is not available in this browser context");
@@ -112,7 +105,6 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
       showErrorToast(error, "Failed to copy response");
     }
   };
-
   return (
     <div className="space-y-3">
       {messages.map((message) => {
@@ -128,15 +120,10 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
           !isStreaming &&
           !isActiveStreaming;
         const branch = branchMap.get(message.id);
-
         return (
           <div
             key={message.id}
-            className={`group rounded-lg border p-3 ${
-              isUser
-                ? "border-primary/30 bg-primary/5"
-                : "border-border/60 bg-background"
-            }`}
+            className={`group rounded-lg border p-3 ${isUser ? "border-primary/30 bg-primary/5" : "border-border/60 bg-background"}`}
           >
             <div className="mb-1 flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -211,7 +198,7 @@ export function AiAssistMessageList<TMessage extends AiAssistMessage>({
                 />
                 <div className="flex items-center justify-end gap-1">
                   <Button size="sm" variant="ghost" onClick={cancelEditing}>
-                    Cancel
+                    {uiT("Cancel")}
                   </Button>
                   <Button
                     size="sm"

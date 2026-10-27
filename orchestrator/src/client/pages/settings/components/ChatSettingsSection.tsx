@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import {
@@ -34,34 +35,30 @@ type ChatSettingsSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 const LANGUAGE_MODE_LABELS: Record<ChatStyleLanguageMode, string> = {
   manual: "Choose specific language",
   "match-resume": "Match current resume language",
   "match-job-description": "Match job description",
 };
-
 function parseTokenizedTerms(input: string): string[] {
   return input
     .split(/[\n,]/g)
     .map((value) => value.trim())
     .filter(Boolean);
 }
-
 function parseStoredTerms(value: string | null | undefined): string[] {
   return parseTokenizedTerms(value ?? "");
 }
-
 function normalizeBlank(value: string | null | undefined): string | undefined {
   return value == null || value === "" ? undefined : value;
 }
-
 export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   values,
   isLoading,
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     tone,
     formality,
@@ -73,7 +70,6 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
     summaryMaxWords,
     maxKeywordsPerSkill,
   } = values;
-
   const {
     control,
     register,
@@ -118,7 +114,6 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   const doNotUseTokens = parseStoredTerms(
     doNotUseDraftValue ?? doNotUse.default,
   );
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
@@ -139,12 +134,10 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             value={selectedPresetId}
             onValueChange={(value) => {
               if (value === "custom") return;
-
               const preset = WRITING_STYLE_PRESETS.find(
                 (item) => item.id === value,
               );
               if (!preset) return;
-
               setValue("chatStyleTone", preset.values.tone, {
                 shouldDirty: true,
               });
@@ -445,8 +438,10 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
           <div>
             <div className="text-xs text-muted-foreground">Stop Slop</div>
             <div className="break-words font-mono text-xs">
-              Effective: {stopSlopEnabled.effective ? "Enabled" : "Disabled"} |
-              Default: {stopSlopEnabled.default ? "Enabled" : "Disabled"}
+              Effective:{" "}
+              {stopSlopEnabled.effective ? uiT("Enabled") : uiT("Disabled")} |
+              Default:{" "}
+              {stopSlopEnabled.default ? uiT("Enabled") : uiT("Disabled")}
             </div>
           </div>
         </div>

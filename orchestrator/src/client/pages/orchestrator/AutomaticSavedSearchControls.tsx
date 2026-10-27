@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { PipelineSearchPreset } from "@shared/types";
 import { BookmarkPlus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ interface AutomaticSavedSearchControlsProps {
   onOpenSaveDialog: (mode: "create" | "update") => void;
   onDeleteSelectedSearch: () => void;
 }
-
 export function AutomaticSavedSearchControls({
   savedSearches,
   selectedSavedSearch,
@@ -36,6 +36,7 @@ export function AutomaticSavedSearchControls({
   onOpenSaveDialog,
   onDeleteSelectedSearch,
 }: AutomaticSavedSearchControlsProps) {
+  const { t: uiT } = useUiTranslation();
   return (
     <div className="flex flex-col gap-2">
       <Label className="sr-only">Saved searches</Label>
@@ -53,7 +54,9 @@ export function AutomaticSavedSearchControls({
             className="h-9 min-w-0 flex-1"
           >
             <SelectValue
-              placeholder={isLoading ? "Loading..." : "Select saved search"}
+              placeholder={
+                isLoading ? uiT("Loading...") : "Select saved search"
+              }
             />
           </SelectTrigger>
           <SelectContent>

@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
@@ -15,20 +16,19 @@ type ScoringSettingsSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 function parseTokenizedKeywordInput(input: string): string[] {
   return input
     .split(/[\n,]/g)
     .map((value) => value.trim())
     .filter(Boolean);
 }
-
 export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   values,
   isLoading,
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     penalizeMissingSalary,
     missingSalaryPenalty,
@@ -47,7 +47,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   const currentAutoSkipThreshold = watch("autoSkipScoreThreshold");
   const blockedCompanyKeywordValues =
     watch("blockedCompanyKeywords") ?? blockedCompanyKeywords.default;
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
@@ -158,7 +157,7 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                 }}
                 disabled={isLoading || isSaving}
                 helper="Jobs scoring below this threshold will be automatically skipped during scoring. Leave empty to disable auto-skip. (0-100)"
-                current={`Effective: ${currentAutoSkipThreshold === null || currentAutoSkipThreshold === undefined ? "Disabled" : currentAutoSkipThreshold} | Default: ${autoSkipScoreThreshold.default ?? "Disabled"}`}
+                current={`Effective: ${currentAutoSkipThreshold === null || currentAutoSkipThreshold === undefined ? uiT("Disabled") : currentAutoSkipThreshold} | Default: ${autoSkipScoreThreshold.default ?? uiT("Disabled")}`}
               />
             )}
           />
@@ -178,7 +177,9 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
             parseInput={parseTokenizedKeywordInput}
             onDraftChange={setBlockedCompanyKeywordDraft}
             onValuesChange={(value) =>
-              setValue("blockedCompanyKeywords", value, { shouldDirty: true })
+              setValue("blockedCompanyKeywords", value, {
+                shouldDirty: true,
+              })
             }
             placeholder='e.g. "recruitment", "staffing"'
             helperText="Jobs whose company name contains one of these keywords will be dropped during discovery."
@@ -220,8 +221,8 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
               Auto-skip Threshold
             </div>
             <div className="break-words font-mono text-xs">
-              Effective: {autoSkipScoreThreshold.effective ?? "Disabled"} |
-              Default: {autoSkipScoreThreshold.default ?? "Disabled"}
+              Effective: {autoSkipScoreThreshold.effective ?? uiT("Disabled")} |
+              Default: {autoSkipScoreThreshold.default ?? uiT("Disabled")}
             </div>
           </div>
         </div>

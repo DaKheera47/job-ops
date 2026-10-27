@@ -1,6 +1,7 @@
 import * as api from "@client/api";
 import { ListItem } from "@client/components/layout";
 import { PipelineProgress } from "@client/components/PipelineProgress";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { queryKeys } from "@client/lib/queryKeys";
 import { sourceLabel } from "@shared/extractors";
 import type { PipelineRun, PipelineRunInsights } from "@shared/types";
@@ -39,7 +40,6 @@ import {
 } from "./pipelineRuns";
 
 const RECENT_RUN_LIMIT = 8;
-
 const statusBadgeClasses: Record<PipelineRunDisplayStatus, string> = {
   running: "border-sky-500/30 bg-sky-500/10 text-sky-200",
   completed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
@@ -47,7 +47,6 @@ const statusBadgeClasses: Record<PipelineRunDisplayStatus, string> = {
   cancelled: "border-amber-500/30 bg-amber-500/10 text-amber-200",
   incomplete: "border-slate-500/30 bg-slate-500/10 text-slate-200",
 };
-
 function getDurationMs(run: PipelineRun): number | null {
   if (run.completedAt == null) return null;
   return Math.max(
@@ -55,7 +54,6 @@ function getDurationMs(run: PipelineRun): number | null {
     new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime(),
   );
 }
-
 function getRunReason(
   run: PipelineRun,
   displayStatus: PipelineRunDisplayStatus,
@@ -67,7 +65,6 @@ function getRunReason(
   }
   return null;
 }
-
 function MetricCard(props: {
   label: string;
   value: React.ReactNode;
@@ -85,7 +82,6 @@ function MetricCard(props: {
     </div>
   );
 }
-
 function RunStatusBadge(props: { status: PipelineRunDisplayStatus }) {
   return (
     <Badge variant="outline" className={statusBadgeClasses[props.status]}>
@@ -93,32 +89,29 @@ function RunStatusBadge(props: { status: PipelineRunDisplayStatus }) {
     </Badge>
   );
 }
-
 function formatSourceList(sources: string[]) {
   if (sources.length === 0) return "None";
   return sources.join(", ");
 }
-
 function formatToggleState(value: boolean) {
   return value ? "Enabled" : "Disabled";
 }
-
 function formatStageLabel(stage: string) {
   return stage.replace(/_/g, " ");
 }
-
 function RunsList(props: {
   runs: PipelineRun[];
   activeRunId: string | null;
   selectedRunId: string | null;
   onSelectRun: (runId: string) => void;
 }) {
+  const { t: uiT } = useUiTranslation();
   return (
     <div className="space-y-2">
       <div className="hidden grid-cols-[minmax(0,1.6fr)_auto_auto_auto] gap-3 px-3 text-xs text-muted-foreground md:grid">
         <div>Run</div>
-        <div>Status</div>
-        <div>Discovered</div>
+        <div>{uiT("Status")}</div>
+        <div>{uiT("Discovered")}</div>
         <div>Processed</div>
       </div>
 
@@ -129,17 +122,12 @@ function RunsList(props: {
           });
           const duration = formatPipelineDuration(getDurationMs(run));
           const isSelected = props.selectedRunId === run.id;
-
           return (
             <ListItem
               key={run.id}
               onClick={() => props.onSelectRun(run.id)}
               selected={isSelected}
-              className={`grid gap-3 rounded-lg border px-3 py-3 md:grid-cols-[minmax(0,1.6fr)_auto_auto_auto] ${
-                isSelected
-                  ? "border-primary/40 bg-primary/5"
-                  : "border-border/60 hover:bg-muted/30"
-              }`}
+              className={`grid gap-3 rounded-lg border px-3 py-3 md:grid-cols-[minmax(0,1.6fr)_auto_auto_auto] ${isSelected ? "border-primary/40 bg-primary/5" : "border-border/60 hover:bg-muted/30"}`}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -159,7 +147,7 @@ function RunsList(props: {
               </div>
               <div className="md:self-center md:text-right">
                 <div className="text-xs text-muted-foreground md:hidden">
-                  Discovered
+                  {uiT("Discovered")}
                 </div>
                 <div className="font-medium tabular-nums">
                   {run.jobsDiscovered.toLocaleString()}
@@ -180,11 +168,11 @@ function RunsList(props: {
     </div>
   );
 }
-
 function RunInsightsBody(props: {
   insights: PipelineRunInsights;
   isActiveRun: boolean;
 }) {
+  const { t: uiT } = useUiTranslation();
   const { run, exactMetrics, inferredMetrics } = props.insights;
   const savedDetails = props.insights.savedDetails;
   const displayStatus = getPipelineRunDisplayStatus(run, {
@@ -195,7 +183,6 @@ function RunInsightsBody(props: {
     inferredMetrics.jobsCreated.quality === "unavailable"
       ? "Unavailable for incomplete runs."
       : "Approximate counts inferred from job timestamps in the run window. Other job activity in the same period may be included.";
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -247,7 +234,7 @@ function RunInsightsBody(props: {
                   value={savedDetails.requestedConfig.minSuitabilityScore.toLocaleString()}
                 />
                 <MetricCard
-                  label="Sources"
+                  label={uiT("Sources")}
                   value={formatSourceList(
                     savedDetails.requestedConfig.sources.map(sourceLabel),
                   )}
@@ -259,7 +246,7 @@ function RunInsightsBody(props: {
                   )}
                 />
                 <MetricCard
-                  label="Scoring"
+                  label={uiT("Scoring")}
                   value={formatToggleState(
                     savedDetails.requestedConfig.enableScoring,
                   )}
@@ -307,11 +294,7 @@ function RunInsightsBody(props: {
                 />
                 <MetricCard
                   label="Location matching"
-                  value={`${formatStageLabel(
-                    savedDetails.effectiveConfig.locationSearchScope,
-                  )}; ${formatStageLabel(
-                    savedDetails.effectiveConfig.locationMatchStrictness,
-                  )}`}
+                  value={`${formatStageLabel(savedDetails.effectiveConfig.locationSearchScope)}; ${formatStageLabel(savedDetails.effectiveConfig.locationMatchStrictness)}`}
                 />
                 <MetricCard
                   label="Compatible sources"
@@ -369,7 +352,7 @@ function RunInsightsBody(props: {
                   hint={`${savedDetails.effectiveConfig.resumeProjects.lockedProjectCount} locked, ${savedDetails.effectiveConfig.resumeProjects.aiSelectableProjectCount} AI-selectable`}
                 />
                 <MetricCard
-                  label="Models"
+                  label={uiT("Models")}
                   value={savedDetails.effectiveConfig.models.scorer}
                   hint={`Tailoring ${savedDetails.effectiveConfig.models.tailoring}; project selection ${savedDetails.effectiveConfig.models.projectSelection}`}
                 />
@@ -454,10 +437,8 @@ function RunInsightsBody(props: {
     </div>
   );
 }
-
 export const OverviewPipelineRunsSection: React.FC = () => {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
-
   const pipelineStatusQuery = useQuery({
     queryKey: queryKeys.pipeline.status(),
     queryFn: api.getPipelineStatus,
@@ -475,7 +456,6 @@ export const OverviewPipelineRunsSection: React.FC = () => {
     queryFn: () => api.getPipelineRunInsights(selectedRunId as string),
     enabled: selectedRunId != null,
   });
-
   const recentRuns = useMemo(
     () => (pipelineRunsQuery.data ?? []).slice(0, RECENT_RUN_LIMIT),
     [pipelineRunsQuery.data],
@@ -501,7 +481,6 @@ export const OverviewPipelineRunsSection: React.FC = () => {
       (latestRun?.id === selectedRunId ? latestRun : null),
     [latestRun, pipelineRunsQuery.data, selectedRunId],
   );
-
   const isLoading =
     pipelineStatusQuery.isLoading ||
     pipelineRunsQuery.isLoading ||
@@ -512,7 +491,6 @@ export const OverviewPipelineRunsSection: React.FC = () => {
     runInsightsQuery.error;
   const statusError = pipelineStatusQuery.error;
   const runsError = pipelineRunsQuery.error;
-
   return (
     <>
       <Card className="border-border/60 bg-card shadow-none">
@@ -654,10 +632,7 @@ export const OverviewPipelineRunsSection: React.FC = () => {
             </SheetTitle>
             <SheetDescription>
               {selectedRun
-                ? `Inspect exact and inferred signals for run ${selectedRun.id.slice(
-                    0,
-                    8,
-                  )}.`
+                ? `Inspect exact and inferred signals for run ${selectedRun.id.slice(0, 8)}.`
                 : "Inspect exact and inferred signals for the selected run."}
             </SheetDescription>
           </SheetHeader>

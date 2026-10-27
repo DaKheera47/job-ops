@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import {
   type ApplicationStage,
@@ -101,16 +102,13 @@ const normalizeMemoryView = (view: string | undefined): JobMemoryView => {
   }
   return "overview";
 };
-
 type JobPageLocationState = {
   jobPageBackTo?: string;
 };
-
 const isValidJobPageBackTarget = (value: unknown): value is string =>
   typeof value === "string" &&
   value.startsWith("/") &&
   !value.startsWith("/job/");
-
 const getFallbackBackTarget = (job: Job | null): string => {
   if (job?.status === "ready" || job?.status === "discovered") {
     return `/jobs/${job.status}`;
@@ -123,21 +121,22 @@ const getFallbackBackTarget = (job: Job | null): string => {
   }
   return "/jobs/all";
 };
-
 const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
   [...notes].sort(
     (left, right) =>
       new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
-
 const parseSelectedProjectIds = (value: string | null | undefined) =>
   value
     ?.split(",")
     .map((id) => id.trim())
     .filter(Boolean) ?? [];
-
 export const JobPage: React.FC = () => {
-  const { id, view } = useParams<{ id: string; view?: string }>();
+  const { t: uiT } = useUiTranslation();
+  const { id, view } = useParams<{
+    id: string;
+    view?: string;
+  }>();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -157,11 +156,13 @@ export const JobPage: React.FC = () => {
   const uploadPdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const { settings } = useSettings();
   const { profile } = useProfile();
-  const filenameLanguage = resolveFilenameLanguage({ settings, profile });
+  const filenameLanguage = resolveFilenameLanguage({
+    settings,
+    profile,
+  });
   const openEditDetails = React.useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
-
   const jobQuery = useQuery<Job | null>({
     queryKey: ["jobs", "detail", id ?? null] as const,
     queryFn: () => (id ? api.getJob(id) : Promise.resolve(null)),
@@ -182,7 +183,6 @@ export const JobPage: React.FC = () => {
     queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
     enabled: Boolean(id) && activeAction !== "delete-job",
   });
-
   useQueryErrorToast(
     jobQuery.error,
     "Failed to load job details. Please try again.",
@@ -195,14 +195,12 @@ export const JobPage: React.FC = () => {
     tasksQuery.error,
     "Failed to load job tasks. Please try again.",
   );
-
   const markAsAppliedMutation = useMarkAsAppliedMutation();
   const updateJobMutation = useUpdateJobMutation();
   const skipJobMutation = useSkipJobMutation();
   const rescoreJobMutation = useRescoreJobMutation();
   const generatePdfMutation = useGenerateJobPdfMutation();
   const checkSponsorMutation = useCheckSponsorMutation();
-
   const job = jobQuery.data ?? null;
   const events = mergeEvents(eventsQuery.data ?? [], pendingEventRef.current);
   const notes = React.useMemo(
@@ -226,7 +224,6 @@ export const JobPage: React.FC = () => {
     if (!resumeProjects || catalog.length === 0) {
       return storedSelectedProjectIds;
     }
-
     return resolveResumeProjectSelection({
       catalog,
       resumeProjects,
@@ -252,10 +249,14 @@ export const JobPage: React.FC = () => {
       : null;
   }, [location.state]);
   const jobPageNavigationState = React.useMemo(
-    () => (jobPageBackTo ? { jobPageBackTo } : undefined),
+    () =>
+      jobPageBackTo
+        ? {
+            jobPageBackTo,
+          }
+        : undefined,
     [jobPageBackTo],
   );
-
   React.useEffect(() => {
     if (!id || view !== "note") return;
     const search = location.search;
@@ -264,10 +265,8 @@ export const JobPage: React.FC = () => {
       state: jobPageNavigationState,
     });
   }, [id, jobPageNavigationState, location.search, navigate, view]);
-
   React.useEffect(() => {
     let isCancelled = false;
-
     void api
       .getResumeProjectsCatalog()
       .then((nextCatalog) => {
@@ -280,27 +279,30 @@ export const JobPage: React.FC = () => {
           setCatalog([]);
         }
       });
-
     return () => {
       isCancelled = true;
     };
   }, []);
-
   const loadData = React.useCallback(async () => {
     if (!id) return;
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobs.detail(id),
+      }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.jobs.stageEvents(id),
       }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.tasks(id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.notes(id) }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobs.tasks(id),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobs.notes(id),
+      }),
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.jobs.all, "emails", id] as const,
       }),
     ]);
   }, [id, queryClient]);
-
   const handleLogEvent = async (
     values: LogEventFormValues,
     eventId?: string,
@@ -310,9 +312,7 @@ export const JobPage: React.FC = () => {
       toast.error("Move this job to In Progress to track stages.");
       return;
     }
-
     const currentStage = events.at(-1)?.toStage ?? "applied";
-
     try {
       const { effectiveStage, newEvent } = await logJobStageEvent({
         jobId: job.id,
@@ -320,16 +320,13 @@ export const JobPage: React.FC = () => {
         values,
         eventId,
       });
-
       if (newEvent) {
         pendingEventRef.current = newEvent;
       }
-
       await invalidateJobData(queryClient, job.id);
       pendingEventRef.current = null;
       setEditingEvent(null);
       toast.success(eventId ? "Event updated" : "Event logged");
-
       if (effectiveStage === "offer") {
         celebrateOffer();
       }
@@ -337,12 +334,10 @@ export const JobPage: React.FC = () => {
       showErrorToast(error, "Failed to log event");
     }
   };
-
   const confirmDeleteEvent = (eventId: string) => {
     setEventToDelete(eventId);
     setIsDeleteModalOpen(true);
   };
-
   const handleDeleteEvent = async () => {
     if (!job || !eventToDelete) return;
     try {
@@ -356,12 +351,10 @@ export const JobPage: React.FC = () => {
       setEventToDelete(null);
     }
   };
-
   const handleEditEvent = (event: StageEvent) => {
     setEditingEvent(event);
     setIsLogModalOpen(true);
   };
-
   const runAction = React.useCallback(
     async (actionKey: string, task: () => Promise<void>) => {
       if (!job) return;
@@ -377,7 +370,6 @@ export const JobPage: React.FC = () => {
     },
     [job, loadData],
   );
-
   const handleMarkApplied = async () => {
     await runAction("mark-applied", async () => {
       if (!job) return;
@@ -385,7 +377,6 @@ export const JobPage: React.FC = () => {
       toast.success("Marked as applied");
     });
   };
-
   const handleSkip = async () => {
     await runAction("skip", async () => {
       if (!job) return;
@@ -393,20 +384,24 @@ export const JobPage: React.FC = () => {
       toast.message("Job skipped");
     });
   };
-
   const handleDeleteJob = async () => {
     if (!job || activeAction !== null) return;
     try {
       setActiveAction("delete-job");
       await api.deleteJob(job.id);
-      await queryClient.cancelQueries({ queryKey: queryKeys.jobs.all });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.jobs.all,
+      });
       await Promise.all(
         [
           queryKeys.jobs.all,
           queryKeys.tracer.all,
           queryKeys.postApplication.all,
         ].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey, refetchType: "none" }),
+          queryClient.invalidateQueries({
+            queryKey,
+            refetchType: "none",
+          }),
         ),
       );
       queryClient.removeQueries({
@@ -414,14 +409,15 @@ export const JobPage: React.FC = () => {
           (queryKey[0] === "jobs" || queryKey[0] === "tracer") &&
           queryKey[2] === job.id,
       });
-      navigate(jobPageBackTo ?? getFallbackBackTarget(job), { replace: true });
+      navigate(jobPageBackTo ?? getFallbackBackTarget(job), {
+        replace: true,
+      });
       toast.success("Job deleted");
     } catch (error) {
       showErrorToast(error, "Failed to delete job");
       setActiveAction(null);
     }
   };
-
   const handleRescore = async () => {
     await runAction("rescore", async () => {
       if (!job) return;
@@ -429,7 +425,6 @@ export const JobPage: React.FC = () => {
       toast.success("Match recalculated");
     });
   };
-
   const handleRegeneratePdf = async () => {
     await runAction("regenerate-pdf", async () => {
       if (!job) return;
@@ -437,7 +432,6 @@ export const JobPage: React.FC = () => {
       toast.success("Resume PDF generated");
     });
   };
-
   const handleCheckSponsor = async () => {
     await runAction("check-sponsor", async () => {
       if (!job) return;
@@ -445,7 +439,6 @@ export const JobPage: React.FC = () => {
       toast.success("Sponsor check completed");
     });
   };
-
   const handleCopyJobInfo = async () => {
     if (!job) return;
     try {
@@ -457,22 +450,21 @@ export const JobPage: React.FC = () => {
       toast.error("Could not copy job info");
     }
   };
-
   const handleSaveJobDescription = React.useCallback(
     async (jobDescription: string) => {
       if (!job) return;
       await updateJobMutation.mutateAsync({
         id: job.id,
-        update: { jobDescription },
+        update: {
+          jobDescription,
+        },
       });
       await loadData();
     },
     [job, loadData, updateJobMutation],
   );
-
   const handleUploadPdf = async (file: File) => {
     if (!job) return;
-
     try {
       setIsUploadingPdf(true);
       await uploadJobPdfFromFile(job.id, file);
@@ -489,7 +481,6 @@ export const JobPage: React.FC = () => {
       }
     }
   };
-
   const handleDownloadPdf = async () => {
     if (!job || !job.pdfPath || pdfActionsDisabled) return;
     const filename = `${safeFilenamePart(job.employer, {
@@ -501,17 +492,18 @@ export const JobPage: React.FC = () => {
       showErrorToast(error, "Could not download PDF");
     });
   };
-
   const handleViewJobDescription = () => {
     if (!job) return;
-    navigate(`${baseJobPath}/documents`, { state: jobPageNavigationState });
+    navigate(`${baseJobPath}/documents`, {
+      state: jobPageNavigationState,
+    });
     window.setTimeout(() => {
-      document
-        .getElementById("job-description-panel")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("job-description-panel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 50);
   };
-
   const currentStage = job
     ? (events.at(-1)?.toStage ??
       (job.status === "applied" || job.status === "in_progress"
@@ -555,17 +547,15 @@ export const JobPage: React.FC = () => {
     activeMemoryView === "overview"
       ? "grid items-start gap-4 grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]"
       : "grid items-start gap-4 grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]";
-
   if (!id) {
     return null;
   }
-
   return (
     <main className="mx-auto max-w-[92rem] px-4 py-5">
       <div className="mb-4 flex items-center justify-between gap-4">
         <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {uiT("Back")}
         </Button>
         {job && (
           <div className="flex items-center gap-2">
@@ -697,7 +687,7 @@ export const JobPage: React.FC = () => {
                       </div>
                       <div className="rounded-lg border border-border/50 bg-background/25 p-3">
                         <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                          Job description
+                          {uiT("Job description")}
                         </div>
                         <div className="mt-2 text-sm font-medium">
                           {job.jobDescription ? "Saved" : "Missing"}
@@ -1012,13 +1002,11 @@ export const JobPage: React.FC = () => {
     </main>
   );
 };
-
 const mergeEvents = (events: StageEvent[], pending: StageEvent | null) => {
   if (!pending) return events;
   if (events.some((event) => event.id === pending.id)) return events;
   return [...events, pending].sort((a, b) => a.occurredAt - b.occurredAt);
 };
-
 const summarizeMemoryText = (
   value: string | null | undefined,
   maxLength: number,
@@ -1028,7 +1016,6 @@ const summarizeMemoryText = (
     .replace(/[#*_`>[\](){}-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-
   if (!text) return "";
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trim()}...`;

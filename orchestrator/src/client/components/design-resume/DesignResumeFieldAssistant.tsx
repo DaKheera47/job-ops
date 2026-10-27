@@ -4,6 +4,7 @@ import {
   type AiAssistMessage,
   AiAssistMessageList,
 } from "@client/components/ai-assist/AiAssistMessageList";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   DesignResumeAiFieldValueType,
   DesignResumeJson,
@@ -24,22 +25,18 @@ import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type FieldValue = string | string[];
-
 type PendingSuggestion = {
   messageId: string;
   value: FieldValue;
   valueType: DesignResumeAiFieldValueType;
 };
-
 type FieldAssistantMessage = AiAssistMessage & {
   suggestion?: PendingSuggestion;
 };
-
 type DragOffset = {
   x: number;
   y: number;
 };
-
 type DragSession = {
   pointerId: number;
   startClientX: number;
@@ -50,7 +47,6 @@ type DragSession = {
   width: number;
   height: number;
 };
-
 type DesignResumeFieldAssistantProps = {
   resumeJson: DesignResumeJson;
   fieldPath: string;
@@ -62,25 +58,20 @@ type DesignResumeFieldAssistantProps = {
   triggerClassName?: string;
   onApply: (value: FieldValue) => void;
 };
-
 const ASSISTANT_VIEWPORT_PADDING = 12;
-
 function isEmptyValue(value: FieldValue): boolean {
   if (Array.isArray(value)) return value.length === 0;
   return value.replace(/<[^>]*>/g, "").trim().length === 0;
 }
-
 function clampAxis(value: number, min: number, max: number): number {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
 }
-
 function clampDragOffset(
   offset: DragOffset,
   session: Pick<DragSession, "baseLeft" | "baseTop" | "width" | "height">,
 ): DragOffset {
   if (typeof window === "undefined") return offset;
-
   return {
     x: clampAxis(
       offset.x,
@@ -100,32 +91,28 @@ function clampDragOffset(
     ),
   };
 }
-
 function getPointerClientPoint(
   event: React.PointerEvent<HTMLDivElement>,
 ): DragOffset | null {
   if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
     return null;
   }
-
-  return { x: event.clientX, y: event.clientY };
+  return {
+    x: event.clientX,
+    y: event.clientY,
+  };
 }
-
 function renderResumeHtmlNodes(value: string): React.ReactNode {
   if (typeof document === "undefined") return value;
-
   const template = document.createElement("template");
   template.innerHTML = value;
-
   const renderNode = (node: Node, key: string): React.ReactNode => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent;
     if (node.nodeType !== Node.ELEMENT_NODE) return null;
-
     const element = node as HTMLElement;
     const children = Array.from(element.childNodes).map((child, index) =>
       renderNode(child, `${key}-${index}`),
     );
-
     switch (element.tagName) {
       case "P":
         return <p key={key}>{children}</p>;
@@ -145,12 +132,10 @@ function renderResumeHtmlNodes(value: string): React.ReactNode {
         return <Fragment key={key}>{children}</Fragment>;
     }
   };
-
   return Array.from(template.content.childNodes).map((node, index) =>
     renderNode(node, String(index)),
   );
 }
-
 function makeMessage(
   role: AiAssistMessage["role"],
   content: string,
@@ -163,11 +148,9 @@ function makeMessage(
     attachments: [],
   };
 }
-
 function SuggestionPreview({ suggestion }: { suggestion: PendingSuggestion }) {
   const previewClassName =
     "mt-3 rounded-md border border-border/60 bg-muted/20 p-3 text-sm leading-relaxed text-foreground";
-
   if (suggestion.valueType === "html" && typeof suggestion.value === "string") {
     return (
       <div
@@ -177,7 +160,6 @@ function SuggestionPreview({ suggestion }: { suggestion: PendingSuggestion }) {
       </div>
     );
   }
-
   if (
     suggestion.valueType === "string_list" &&
     Array.isArray(suggestion.value)
@@ -190,7 +172,6 @@ function SuggestionPreview({ suggestion }: { suggestion: PendingSuggestion }) {
       </ul>
     );
   }
-
   return (
     <div className={`${previewClassName} whitespace-pre-wrap`}>
       {Array.isArray(suggestion.value)
@@ -199,7 +180,6 @@ function SuggestionPreview({ suggestion }: { suggestion: PendingSuggestion }) {
     </div>
   );
 }
-
 export const DesignResumeFieldAssistant: React.FC<
   DesignResumeFieldAssistantProps
 > = ({
@@ -213,12 +193,16 @@ export const DesignResumeFieldAssistant: React.FC<
   triggerClassName,
   onApply,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<FieldAssistantMessage[]>([]);
   const [pendingSuggestion, setPendingSuggestion] =
     useState<PendingSuggestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [dragOffset, setDragOffset] = useState<DragOffset>({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState<DragOffset>({
+    x: 0,
+    y: 0,
+  });
   const [isDragging, setIsDragging] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -226,33 +210,31 @@ export const DesignResumeFieldAssistant: React.FC<
   const currentValueRef = useRef(value);
   const lastPromptLengthBucketRef = useRef<string>("0");
   currentValueRef.current = value;
-
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
-
   const resetSession = () => {
     abortRef.current?.abort();
     abortRef.current = null;
     setMessages([]);
     setPendingSuggestion(null);
     setIsGenerating(false);
-    setDragOffset({ x: 0, y: 0 });
+    setDragOffset({
+      x: 0,
+      y: 0,
+    });
     setIsDragging(false);
     dragSessionRef.current = null;
   };
-
   const closeSession = () => {
     resetSession();
     setOpen(false);
   };
-
   const sendPrompt = async (
     content: string,
     _attachments: JobChatImageAttachment[],
   ) => {
     if (isGenerating) return;
-
     const wasEmptyAtStart = isEmptyValue(currentValueRef.current);
     const promptLengthBucket = bucketQueryLength(content);
     lastPromptLengthBucketRef.current = promptLengthBucket;
@@ -261,7 +243,6 @@ export const DesignResumeFieldAssistant: React.FC<
     setIsGenerating(true);
     setPendingSuggestion(null);
     setMessages((current) => [...current, makeMessage("user", content)]);
-
     try {
       const result = await api.generateDesignResumeFieldSuggestion({
         document: resumeJson,
@@ -276,7 +257,6 @@ export const DesignResumeFieldAssistant: React.FC<
         prompt: content,
         signal: controller.signal,
       });
-
       const assistantMessage = makeMessage("assistant", result.message);
       const suggestion = {
         messageId: assistantMessage.id,
@@ -292,7 +272,6 @@ export const DesignResumeFieldAssistant: React.FC<
         was_empty: wasEmptyAtStart,
         prompt_length_bucket: promptLengthBucket,
       });
-
       if (wasEmptyAtStart && isEmptyValue(currentValueRef.current)) {
         onApply(result.suggestion);
         trackProductEvent("resume_studio_ai_field_suggestion_completed", {
@@ -305,7 +284,6 @@ export const DesignResumeFieldAssistant: React.FC<
         toast.success(`${label} filled with AI draft.`);
         return;
       }
-
       setPendingSuggestion(suggestion);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
@@ -322,7 +300,6 @@ export const DesignResumeFieldAssistant: React.FC<
       setIsGenerating(false);
     }
   };
-
   const applySuggestion = (suggestion: PendingSuggestion) => {
     onApply(suggestion.value);
     setPendingSuggestion(null);
@@ -335,18 +312,14 @@ export const DesignResumeFieldAssistant: React.FC<
     });
     toast.success(`${label} updated.`);
   };
-
   const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (typeof event.button === "number" && event.button !== 0) return;
-
     const point = getPointerClientPoint(event);
     const contentRect = contentRef.current?.getBoundingClientRect();
     if (!point || !contentRect) return;
-
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-
     dragSessionRef.current = {
       pointerId: event.pointerId,
       startClientX: point.x,
@@ -359,25 +332,19 @@ export const DesignResumeFieldAssistant: React.FC<
     };
     setIsDragging(true);
   };
-
   const drag = (event: React.PointerEvent<HTMLDivElement>) => {
     const session = dragSessionRef.current;
     if (!session || session.pointerId !== event.pointerId) return;
-
     const point = getPointerClientPoint(event);
     if (!point) return;
-
     event.preventDefault();
     event.stopPropagation();
-
     const nextOffset = {
       x: session.startOffset.x + point.x - session.startClientX,
       y: session.startOffset.y + point.y - session.startClientY,
     };
-
     setDragOffset(clampDragOffset(nextOffset, session));
   };
-
   const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const session = dragSessionRef.current;
     if (session && session.pointerId === event.pointerId) {
@@ -386,13 +353,15 @@ export const DesignResumeFieldAssistant: React.FC<
     dragSessionRef.current = null;
     setIsDragging(false);
   };
-
   return (
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          setDragOffset({ x: 0, y: 0 });
+          setDragOffset({
+            x: 0,
+            y: 0,
+          });
           setOpen(true);
           return;
         }
@@ -461,7 +430,7 @@ export const DesignResumeFieldAssistant: React.FC<
             className="h-7 w-7"
             onClick={closeSession}
             aria-label="Close AI assistant"
-            title="Close"
+            title={uiT("Close")}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -481,7 +450,6 @@ export const DesignResumeFieldAssistant: React.FC<
               renderAssistantActions={(message) => {
                 const isPending = pendingSuggestion?.messageId === message.id;
                 if (!message.suggestion && !isPending) return null;
-
                 return (
                   <div className="space-y-2">
                     {message.suggestion ? (

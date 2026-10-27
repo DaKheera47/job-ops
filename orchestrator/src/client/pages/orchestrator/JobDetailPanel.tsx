@@ -18,6 +18,7 @@ import {
 import { useProfile } from "@client/hooks/useProfile";
 import { useRescoreJob } from "@client/hooks/useRescoreJob";
 import { useSettings } from "@client/hooks/useSettings";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
 import { resolveFilenameLanguage } from "@client/lib/pdf-filename";
 import {
@@ -92,9 +93,7 @@ interface JobDetailPanelProps {
   onPauseRefreshChange?: (paused: boolean) => void;
   onRetrySelectedJob: () => void;
 }
-
 type InspectorTab = "brief" | "tailoring" | "apply";
-
 const tabCopy: Record<
   InspectorTab,
   {
@@ -124,7 +123,6 @@ const tabCopy: Record<
       "!border-emerald-400/65 !bg-emerald-500/20 !text-emerald-100",
   },
 };
-
 const InspectorTabsList: React.FC<{
   inspectorTab: InspectorTab;
   disabled?: boolean;
@@ -146,7 +144,6 @@ const InspectorTabsList: React.FC<{
           <span className="text-sm">{copy.label}</span>
         </TabsTrigger>
       );
-
       return (
         <Tip
           key={value}
@@ -160,7 +157,6 @@ const InspectorTabsList: React.FC<{
     })}
   </TabsList>
 );
-
 const statusTone: Record<
   Job["status"],
   {
@@ -208,7 +204,6 @@ const statusTone: Record<
     icon: "bg-slate-500/70",
   },
 };
-
 const getPrimaryAction = (job: Job): string => {
   if (job.status === "processing") return "Processing";
   if (job.status === "ready") return "Mark Applied";
@@ -219,7 +214,6 @@ const getPrimaryAction = (job: Job): string => {
   if (job.status === "expired") return "Expired";
   return "Review Job";
 };
-
 const getDefaultInspectorTab = (
   job: Pick<Job, "status"> | null,
   activeTab: FilterTab,
@@ -228,7 +222,6 @@ const getDefaultInspectorTab = (
   if (activeTab === "ready" || job.status === "ready") return "apply";
   return "brief";
 };
-
 const Stat: React.FC<{
   label: string;
   value?: string | null;
@@ -252,34 +245,35 @@ const Stat: React.FC<{
     </div>
   );
 };
-
 const KitStatus: React.FC<{
   icon: React.ReactNode;
   label: string;
   ready: boolean;
   readyLabel?: string;
   optional?: boolean;
-}> = ({ icon, label, ready, readyLabel = "Ready", optional = false }) => (
-  <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border/30 px-3 py-2.5 last:border-b-0">
-    <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-      <span className="text-muted-foreground/85">{icon}</span>
-      <span className="truncate">{label}</span>
-    </span>
-    <span
-      className={cn(
-        "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
-        ready
-          ? "bg-emerald-500/10 text-emerald-300"
-          : optional
-            ? "bg-sky-500/10 text-sky-300"
-            : "bg-amber-500/10 text-amber-300",
-      )}
-    >
-      {ready ? readyLabel : optional ? "Optional" : "Missing"}
-    </span>
-  </div>
-);
-
+}> = ({ icon, label, ready, readyLabel = "Ready", optional = false }) => {
+  const { t: uiT } = useUiTranslation();
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border/30 px-3 py-2.5 last:border-b-0">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+        <span className="text-muted-foreground/85">{icon}</span>
+        <span className="truncate">{label}</span>
+      </span>
+      <span
+        className={cn(
+          "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+          ready
+            ? "bg-emerald-500/10 text-emerald-300"
+            : optional
+              ? "bg-sky-500/10 text-sky-300"
+              : "bg-amber-500/10 text-amber-300",
+        )}
+      >
+        {ready ? readyLabel : optional ? uiT("Optional") : "Missing"}
+      </span>
+    </div>
+  );
+};
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   activeTab,
   activeJobs,
@@ -291,6 +285,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onPauseRefreshChange,
   onRetrySelectedJob,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const navigate = useNavigate();
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("brief");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -308,8 +303,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const { settings } = useSettings();
   const { personName, profile } = useProfile();
-  const filenameLanguage = resolveFilenameLanguage({ settings, profile });
-
+  const filenameLanguage = resolveFilenameLanguage({
+    settings,
+    profile,
+  });
   const jobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
     : "#";
@@ -329,7 +326,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     if (!resumeProjects || catalog.length === 0) {
       return storedSelectedProjectIds;
     }
-
     return resolveResumeProjectSelection({
       catalog,
       resumeProjects,
@@ -353,7 +349,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const applicationKitReady =
     hasTailoredSummary && hasTailoredSkills && hasResumePdf;
   const brief = parseJobBrief(selectedJob?.jobBrief || null);
-
   const loadCatalog = useCallback(async () => {
     try {
       setCatalog(await api.getResumeProjectsCatalog());
@@ -361,11 +356,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       setCatalog([]);
     }
   }, []);
-
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
-
   useEffect(() => {
     const selection = selectedJob ?? selectedJobListItem;
     const currentJobId = selection?.id ?? null;
@@ -376,11 +369,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     setIsEditDetailsOpen(false);
     onPauseRefreshChange?.(false);
   }, [activeTab, selectedJob, selectedJobListItem, onPauseRefreshChange]);
-
   useEffect(() => {
     return () => onPauseRefreshChange?.(false);
   }, [onPauseRefreshChange]);
-
   const handleJobMoved = useCallback(
     (jobId: string) => {
       const currentIndex = activeJobs.findIndex((job) => job.id === jobId);
@@ -390,23 +381,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     },
     [activeJobs, onSelectJobId],
   );
-
   const handleSaveDescription = useCallback(
     async (jobDescription: string) => {
       if (!selectedJob) return;
-      await api.updateJob(selectedJob.id, { jobDescription });
+      await api.updateJob(selectedJob.id, {
+        jobDescription,
+      });
       await onJobUpdated();
     },
     [onJobUpdated, selectedJob],
   );
-
   const openEditDetails = useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
-
   const handleCopyInfo = useCallback(async () => {
     if (!selectedJob) return;
-
     try {
       await copyTextToClipboard(formatJobForWebhook(selectedJob));
       toast.success("Copied job info");
@@ -414,7 +403,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       toast.error("Could not copy job info");
     }
   }, [selectedJob]);
-
   const handleProcess = useCallback(async () => {
     if (!selectedJob) return;
     try {
@@ -447,7 +435,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       setIsProcessing(false);
     }
   }, [handleJobMoved, onJobUpdated, selectedJob]);
-
   const handleMarkApplied = useCallback(async () => {
     if (!selectedJob || selectedJob.status !== "ready") return;
     try {
@@ -470,7 +457,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       setIsApplying(false);
     }
   }, [handleJobMoved, markAsAppliedMutation, onJobUpdated, selectedJob]);
-
   const handlePrimaryAction = useCallback(async () => {
     if (!selectedJob) return;
     if (selectedJob.status === "discovered") {
@@ -493,7 +479,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     }
     setInspectorTab("brief");
   }, [handleMarkApplied, navigate, selectedJob]);
-
   const handleJobListingOpened = useCallback(() => {
     if (!selectedJob) return;
     setOpenedListingJobIds((current) => {
@@ -502,7 +487,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       return next;
     });
   }, [selectedJob]);
-
   const handleSkip = useCallback(async () => {
     if (!selectedJob) return;
     try {
@@ -520,7 +504,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       showErrorToast(error, "Failed to skip");
     }
   }, [handleJobMoved, onJobUpdated, selectedJob, skipJobMutation]);
-
   const handleOpenPdf = useCallback(() => {
     if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
       return;
@@ -528,7 +511,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       showErrorToast(error, "Could not open PDF");
     });
   }, [selectedJob]);
-
   const handleDownloadPdf = useCallback(() => {
     if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
       return;
@@ -536,7 +518,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       showErrorToast(error, "Could not download PDF");
     });
   }, [selectedJob, selectedPdfFilename]);
-
   const handleUploadPdf = useCallback(
     async (file: File) => {
       if (!selectedJob) return;
@@ -556,7 +537,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     },
     [onJobUpdated, selectedJob],
   );
-
   if (!selectedJob) {
     if (selectedJobListItem) {
       const isLoadingDetails = selectedJobLoadState !== "error";
@@ -567,7 +547,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         : isPdfStale(selectedJobListItem)
           ? STALE_PDF_MESSAGE
           : null;
-
       return (
         <Tabs
           value={inspectorTab}
@@ -587,12 +566,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <div className="flex min-w-0 flex-col gap-4 rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <Stat
-                label="Location"
+                label={uiT("Location")}
                 value={selectedJobListItem.location}
                 tone="blue"
               />
               <Stat
-                label="Salary"
+                label={uiT("Salary")}
                 value={selectedJobListItem.salary}
                 tone="green"
               />
@@ -656,7 +635,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </Tabs>
       );
     }
-
     return (
       <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-2 text-center">
@@ -673,7 +651,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       </div>
     );
   }
-
   const primaryBusy =
     isProcessing || isApplying || selectedJob.status === "processing";
   const canGenerate = ["discovered", "ready"].includes(selectedJob.status);
@@ -843,8 +820,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         <TabsContent value="brief" className="space-y-4">
           {!brief && (
             <div className="grid gap-2 sm:grid-cols-2">
-              <Stat label="Location" value={selectedJob.location} tone="blue" />
-              <Stat label="Salary" value={selectedJob.salary} tone="green" />
+              <Stat
+                label={uiT("Location")}
+                value={selectedJob.location}
+                tone="blue"
+              />
+              <Stat
+                label={uiT("Salary")}
+                value={selectedJob.salary}
+                tone="green"
+              />
               <Stat label="Level" value={selectedJob.jobLevel} />
               <Stat label="Function" value={selectedJob.jobFunction} />
               <Stat label="Type" value={selectedJob.jobType} />

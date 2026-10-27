@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   BranchInfo,
   Job,
@@ -32,18 +33,17 @@ import { GhostwriterContextSelector } from "./GhostwriterContextSelector";
 import { MessageList } from "./MessageList";
 
 const JOB_EMAIL_LIMIT = 100;
-
 type GhostwriterPanelProps = {
   job: Job;
   initialPrompt?: string | null;
   onInitialPromptConsumed?: () => void;
 };
-
 export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
   job,
   initialPrompt,
   onInitialPromptConsumed,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [notes, setNotes] = useState<JobNote[]>([]);
@@ -62,16 +62,13 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     null,
   );
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const consumedInitialPromptRef = useRef<string | null>(null);
   const runTriggerRef = useRef<"new_prompt" | "regenerate" | "edit">(
     "new_prompt",
   );
-
   useEffect(() => {
     const container = messageListRef.current;
     if (!container) return;
@@ -81,7 +78,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       container.scrollTop = container.scrollHeight;
     }
   });
-
   const loadMessages = useCallback(async () => {
     const data = await api.listJobGhostwriterMessages(job.id, {
       limit: 300,
@@ -92,7 +88,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     setSelectedEmailIds(data.selectedEmailIds);
     setSelectedDocumentIds(data.selectedDocumentIds);
   }, [job.id]);
-
   const loadNotes = useCallback(async () => {
     setAreNotesLoading(true);
     try {
@@ -104,11 +99,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       setAreNotesLoading(false);
     }
   }, [job.id]);
-
   const loadEmails = useCallback(async () => {
     setAreEmailsLoading(true);
     try {
-      const data = await api.getJobEmails(job.id, { limit: JOB_EMAIL_LIMIT });
+      const data = await api.getJobEmails(job.id, {
+        limit: JOB_EMAIL_LIMIT,
+      });
       setEmails(data.items);
     } catch (error) {
       showErrorToast(error, "Failed to load emails");
@@ -116,7 +112,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       setAreEmailsLoading(false);
     }
   }, [job.id]);
-
   const loadDocuments = useCallback(async () => {
     setAreDocumentsLoading(true);
     try {
@@ -128,7 +123,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       setAreDocumentsLoading(false);
     }
   }, [job.id]);
-
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -144,7 +138,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       setIsLoading(false);
     }
   }, [loadDocuments, loadEmails, loadMessages, loadNotes]);
-
   useEffect(() => {
     void load();
     return () => {
@@ -152,7 +145,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       streamAbortRef.current = null;
     };
   }, [load]);
-
   useEffect(() => {
     if (areNotesLoading) return;
     const noteIds = new Set(notes.map((note) => note.id));
@@ -160,7 +152,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       current.filter((noteId) => noteIds.has(noteId)),
     );
   }, [areNotesLoading, notes]);
-
   useEffect(() => {
     if (areDocumentsLoading) return;
     const documentIds = new Set(documents.map((document) => document.id));
@@ -168,7 +159,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       current.filter((documentId) => documentIds.has(documentId)),
     );
   }, [areDocumentsLoading, documents]);
-
   const onStreamEvent = useCallback(
     (event: JobChatStreamEvent) => {
       if (event.type === "ready") {
@@ -201,7 +191,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         });
         return;
       }
-
       if (event.type === "delta") {
         setMessages((current) =>
           current.map((message) =>
@@ -217,7 +206,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         );
         return;
       }
-
       if (event.type === "completed" || event.type === "cancelled") {
         if (event.type === "completed") {
           trackProductEvent("ghostwriter_response_completed", {
@@ -238,7 +226,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         setIsStreaming(false);
         return;
       }
-
       if (event.type === "error") {
         toast.error(event.message);
         setStreamingMessageId(null);
@@ -248,11 +235,9 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     },
     [job.id],
   );
-
   const sendMessage = useCallback(
     async (content: string, attachments: JobChatImageAttachment[] = []) => {
       if (isStreaming) return;
-
       const optimisticUser: JobChatMessage = {
         id: `tmp-user-${Date.now()}`,
         threadId: messages[messages.length - 1]?.threadId || "pending-thread",
@@ -270,14 +255,11 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
       setMessages((current) => [...current, optimisticUser]);
       setIsStreaming(true);
       runTriggerRef.current = "new_prompt";
-
       const controller = new AbortController();
       streamAbortRef.current = controller;
-
       try {
         await api.streamJobGhostwriterMessage(
           job.id,
@@ -289,15 +271,15 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
             attachments,
             signal: controller.signal,
           },
-          { onEvent: onStreamEvent },
+          {
+            onEvent: onStreamEvent,
+          },
         );
-
         await loadMessages();
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-
         showErrorToast(error, "Failed to send message");
       } finally {
         streamAbortRef.current = null;
@@ -315,7 +297,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       selectedNoteIds,
     ],
   );
-
   const stopStreaming = useCallback(async () => {
     if (!activeRunId) return;
     try {
@@ -330,7 +311,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       showErrorToast(error, "Failed to stop run");
     }
   }, [activeRunId, job.id, loadMessages]);
-
   const regenerate = useCallback(
     async (assistantMessageId: string) => {
       if (isStreaming) return;
@@ -343,12 +323,10 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         if (targetIndex === -1) return current;
         return current.slice(0, targetIndex);
       });
-
       setIsStreaming(true);
       runTriggerRef.current = "regenerate";
       const controller = new AbortController();
       streamAbortRef.current = controller;
-
       try {
         await api.streamRegenerateJobGhostwriterMessage(
           job.id,
@@ -359,7 +337,9 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
             selectedDocumentIds,
             signal: controller.signal,
           },
-          { onEvent: onStreamEvent },
+          {
+            onEvent: onStreamEvent,
+          },
         );
         await loadMessages();
       } catch (error) {
@@ -382,7 +362,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       selectedNoteIds,
     ],
   );
-
   const editMessage = useCallback(
     async (
       messageId: string,
@@ -418,12 +397,10 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
           },
         ];
       });
-
       setIsStreaming(true);
       runTriggerRef.current = "edit";
       const controller = new AbortController();
       streamAbortRef.current = controller;
-
       try {
         await api.editJobGhostwriterMessage(
           job.id,
@@ -436,7 +413,9 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
             attachments,
             signal: controller.signal,
           },
-          { onEvent: onStreamEvent },
+          {
+            onEvent: onStreamEvent,
+          },
         );
         await loadMessages();
       } catch (error) {
@@ -459,7 +438,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       selectedNoteIds,
     ],
   );
-
   const updateSelectedContext = useCallback(
     async (input: {
       selectedNoteIds?: string[];
@@ -470,7 +448,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       const previousSelectedNoteIds = selectedNoteIds;
       const previousSelectedEmailIds = selectedEmailIds;
       const previousSelectedDocumentIds = selectedDocumentIds;
-
       if (input.selectedNoteIds !== undefined) {
         setSelectedNoteIds(input.selectedNoteIds);
       }
@@ -480,9 +457,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       if (input.selectedDocumentIds !== undefined) {
         setSelectedDocumentIds(input.selectedDocumentIds);
       }
-
       setIsSavingContext(true);
-
       try {
         const result = await api.updateJobGhostwriterContext(job.id, {
           selectedNoteIds: input.selectedNoteIds,
@@ -503,7 +478,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     },
     [job.id, selectedDocumentIds, selectedEmailIds, selectedNoteIds],
   );
-
   const updateSelectedNotes = useCallback(
     (nextSelectedNoteIds: string[]) =>
       updateSelectedContext({
@@ -512,7 +486,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       }),
     [updateSelectedContext],
   );
-
   const updateSelectedEmails = useCallback(
     (nextSelectedEmailIds: string[]) =>
       updateSelectedContext({
@@ -521,7 +494,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       }),
     [updateSelectedContext],
   );
-
   const updateSelectedDocuments = useCallback(
     (nextSelectedDocumentIds: string[]) =>
       updateSelectedContext({
@@ -530,7 +502,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       }),
     [updateSelectedContext],
   );
-
   const switchBranch = useCallback(
     async (messageId: string) => {
       try {
@@ -543,16 +514,13 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     },
     [job.id],
   );
-
   const canReset = useMemo(() => {
     return !isStreaming && messages.length > 0;
   }, [isStreaming, messages]);
-
   useEffect(() => {
     const content = initialPrompt?.trim();
     if (!content || isLoading || isStreaming) return;
     if (consumedInitialPromptRef.current === content) return;
-
     consumedInitialPromptRef.current = content;
     onInitialPromptConsumed?.();
     void sendMessage(content);
@@ -563,7 +531,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     onInitialPromptConsumed,
     sendMessage,
   ]);
-
   const resetConversation = useCallback(async () => {
     try {
       await api.resetJobGhostwriterConversation(job.id);
@@ -574,7 +541,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       showErrorToast(error, "Failed to reset conversation");
     }
   }, [job.id]);
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col max-w-6xl mx-auto">
       <div
@@ -663,7 +629,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void resetConversation()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   LocationInputMode,
   LocationMatchStrictness,
@@ -41,7 +42,10 @@ import { TokenizedInput } from "./TokenizedInput";
 
 interface AutomaticRunSettingsCardProps {
   values: AutomaticRunValues;
-  countryOptions: Array<{ value: string; label: string }>;
+  countryOptions: Array<{
+    value: string;
+    label: string;
+  }>;
   countrySuggestion: string | null;
   countrySelectionInvalid: boolean;
   cityLocationDraft: string;
@@ -58,7 +62,6 @@ interface AutomaticRunSettingsCardProps {
     checked: boolean,
   ) => void;
 }
-
 export function AutomaticRunSettingsCard({
   values,
   countryOptions,
@@ -111,10 +114,12 @@ export function AutomaticRunSettingsCard({
     </Card>
   );
 }
-
 interface LocationPreferencesProps {
   values: AutomaticRunValues;
-  countryOptions: Array<{ value: string; label: string }>;
+  countryOptions: Array<{
+    value: string;
+    label: string;
+  }>;
   countrySuggestion: string | null;
   countrySelectionInvalid: boolean;
   cityLocationDraft: string;
@@ -131,7 +136,6 @@ interface LocationPreferencesProps {
     checked: boolean,
   ) => void;
 }
-
 function LocationPreferences({
   values,
   countryOptions,
@@ -148,6 +152,7 @@ function LocationPreferences({
   onProximityChange,
   onToggleWorkplaceType,
 }: LocationPreferencesProps) {
+  const { t: uiT } = useUiTranslation();
   return (
     <div className="flex flex-col gap-4">
       {values.locationMode === "cities" && countrySuggestion ? (
@@ -208,14 +213,14 @@ function LocationPreferences({
               value={values.country}
               options={countryOptions}
               onValueChange={onCountryChange}
-              placeholder="Select country"
+              placeholder={uiT("Select country")}
               searchPlaceholder="Search country..."
               emptyText="No matching countries."
               triggerClassName="h-10 w-full"
               ariaLabel={
                 values.country
                   ? formatCountryLabel(values.country)
-                  : "Select country"
+                  : uiT("Select country")
               }
             />
             {countrySelectionInvalid ? (
@@ -284,20 +289,17 @@ function LocationPreferences({
     </div>
   );
 }
-
 interface RadioOption {
   value: string;
   label: string;
   description: string;
 }
-
 interface RadioOptionGroupProps {
   label: string;
   value: string;
   options: RadioOption[];
   onChange: (value: string) => void;
 }
-
 function RadioOptionGroup({
   label,
   value,
@@ -319,7 +321,6 @@ function RadioOptionGroup({
     </div>
   );
 }
-
 interface AutomaticRunAdvancedSettingsProps {
   searchScope: LocationSearchScope;
   matchStrictness: LocationMatchStrictness;
@@ -337,7 +338,6 @@ interface AutomaticRunAdvancedSettingsProps {
   onRunBudgetInputChange: (value: string) => void;
   onRunBudgetInputBlur: () => void;
 }
-
 export function AutomaticRunAdvancedSettings({
   searchScope,
   matchStrictness,
@@ -438,12 +438,10 @@ export function AutomaticRunAdvancedSettings({
     </Card>
   );
 }
-
 function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
   if (workplaceType === "onsite") return "On-site";
   return workplaceType.charAt(0).toUpperCase() + workplaceType.slice(1);
 }
-
 function formatWorkplaceTypeDescription(workplaceType: WorkplaceType): string {
   if (workplaceType === "remote") return "Work away from an office.";
   if (workplaceType === "hybrid") return "Split home and office time.";

@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import type {
   WatchlistJobResult,
@@ -37,9 +38,15 @@ interface WatchlistSourceResultsCardProps {
   jobDetails: Record<string, JobDetailsState>;
   movingJobRef: string | null;
   ignorePending: boolean;
-  ignoreVariables?: { source: string; sourceJobId: string };
+  ignoreVariables?: {
+    source: string;
+    sourceJobId: string;
+  };
   unignorePending: boolean;
-  unignoreVariables?: { source: string; sourceJobId: string };
+  unignoreVariables?: {
+    source: string;
+    sourceJobId: string;
+  };
   onIgnore: (input: { source: string; sourceJobId: string }) => void;
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
@@ -52,7 +59,6 @@ interface WatchlistSourceResultsCardProps {
     source: WatchlistSelectedSource,
   ) => void;
 }
-
 function getStatusBadge(item: WatchlistFetchState) {
   if (item.status === "loading") {
     return (
@@ -62,26 +68,21 @@ function getStatusBadge(item: WatchlistFetchState) {
       </span>
     );
   }
-
   if (item.status === "success") return null;
-
   return (
     <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive">
       Error
     </span>
   );
 }
-
 function formatWatchlistErrorDiagnostics(error: unknown): string {
   if (typeof error === "string") return error;
-
   try {
     return JSON.stringify(error, null, 2);
   } catch {
     return String(error);
   }
 }
-
 export function WatchlistSourceResultsCard({
   item,
   sourceTypes,
@@ -104,7 +105,6 @@ export function WatchlistSourceResultsCard({
   const sourceDescriptor = sourceTypes.find(
     (sourceType) => sourceType.sourceType === item.source.sourceType,
   );
-
   return (
     <AccordionItem value={item.source.id} className="border-0">
       <AccordionTrigger className="flex items-center justify-between gap-4 border-b px-4 py-3">
@@ -197,12 +197,15 @@ export function WatchlistSourceResultsCard({
     </AccordionItem>
   );
 }
-
 interface WatchlistSourceJobsProps
   extends Omit<WatchlistSourceResultsCardProps, "item" | "sourceTypes"> {
-  item: Extract<WatchlistFetchState, { status: "success" }>;
+  item: Extract<
+    WatchlistFetchState,
+    {
+      status: "success";
+    }
+  >;
 }
-
 function WatchlistSourceJobs({
   item,
   pipelineSearchTerms,
@@ -221,6 +224,7 @@ function WatchlistSourceJobs({
   onOpenWorkspaceJob,
   onLoadJobDetails,
 }: WatchlistSourceJobsProps) {
+  const { t: uiT } = useUiTranslation();
   const rankedJobs = rankWatchlistJobs(
     item.jobs,
     pipelineSearchTerms,
@@ -232,7 +236,6 @@ function WatchlistSourceJobs({
   const visibleRankedJobs = showIgnored
     ? rankedJobs
     : rankedJobs.filter((rankedJob) => rankedJob.rowState !== "ignored");
-
   return (
     <div className="space-y-0">
       <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
@@ -257,7 +260,9 @@ function WatchlistSourceJobs({
           <TableRow className="hover:bg-transparent">
             <TableHead className="h-9 px-3 text-xs">Job</TableHead>
             <TableHead className="h-9 w-[180px] text-xs">Company</TableHead>
-            <TableHead className="h-9 w-[220px] text-xs">Location</TableHead>
+            <TableHead className="h-9 w-[220px] text-xs">
+              {uiT("Location")}
+            </TableHead>
             <TableHead className="h-9 w-[140px] text-xs">Posted</TableHead>
             <TableHead className="h-9 px-3 text-xs text-right">
               <span className="sr-only">Actions</span>

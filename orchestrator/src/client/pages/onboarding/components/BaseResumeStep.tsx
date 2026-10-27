@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { FileText, Upload } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -25,7 +26,6 @@ const DEFAULT_LONG_RUNNING_MESSAGE =
   "Still working. Larger PDFs and DOCX files can take a little longer.";
 const CODEX_LONG_RUNNING_MESSAGE =
   "Still working. Codex imports can take around a minute for larger resumes.";
-
 function getResumeImportProgressProfile(selectedProvider?: LlmProviderId) {
   if (selectedProvider === "codex") {
     return {
@@ -33,13 +33,11 @@ function getResumeImportProgressProfile(selectedProvider?: LlmProviderId) {
       longRunningMessage: CODEX_LONG_RUNNING_MESSAGE,
     };
   }
-
   return {
     totalMs: RESUME_IMPORT_TOTAL_MS,
     longRunningMessage: DEFAULT_LONG_RUNNING_MESSAGE,
   };
 }
-
 function ResumeImportProgress({
   fileName,
   selectedProvider,
@@ -47,19 +45,17 @@ function ResumeImportProgress({
   fileName: string | null;
   selectedProvider?: LlmProviderId;
 }) {
+  const { t: uiT } = useUiTranslation();
   const [elapsedMs, setElapsedMs] = useState(0);
   const progressProfile = getResumeImportProgressProfile(selectedProvider);
-
   useEffect(() => {
     setElapsedMs(0);
     const startedAt = Date.now();
     const interval = window.setInterval(() => {
       setElapsedMs(Date.now() - startedAt);
     }, RESUME_IMPORT_TICK_MS);
-
     return () => window.clearInterval(interval);
   }, []);
-
   const cappedElapsedMs = Math.min(elapsedMs, progressProfile.totalMs);
   const activeStepIndex = Math.min(
     RESUME_IMPORT_STEPS.length - 1,
@@ -72,7 +68,6 @@ function ResumeImportProgress({
     Math.max(6, Math.round((cappedElapsedMs / progressProfile.totalMs) * 96)),
   );
   const isLongRunning = elapsedMs >= progressProfile.totalMs;
-
   return (
     <output
       className="block rounded-lg border border-border/60 bg-muted/10 p-5"
@@ -85,7 +80,9 @@ function ResumeImportProgress({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-sm font-medium">Importing resume</div>
+              <div className="text-sm font-medium">
+                {uiT("Importing resume")}
+              </div>
               <div className="truncate text-xs text-muted-foreground">
                 {fileName ?? "Selected resume file"}
               </div>
@@ -97,7 +94,7 @@ function ResumeImportProgress({
           <Progress
             value={progressValue}
             className="h-1.5"
-            aria-label="Resume import progress"
+            aria-label={uiT("Resume import progress")}
           />
           <p className="bg-gradient-to-r from-muted-foreground via-foreground to-muted-foreground bg-clip-text text-sm leading-6 text-transparent motion-safe:animate-pulse">
             {isLongRunning
@@ -109,7 +106,6 @@ function ResumeImportProgress({
     </output>
   );
 }
-
 export const BaseResumeStep: React.FC<{
   allowReactiveResume?: boolean;
   allowSelfHostedReactiveResume?: boolean;
@@ -157,6 +153,7 @@ export const BaseResumeStep: React.FC<{
   onRxresumeUrlChange,
   onTemplateResumeChange,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const effectiveResumeSetupMode = allowReactiveResume
     ? resumeSetupMode
@@ -170,7 +167,6 @@ export const BaseResumeStep: React.FC<{
   const supportedFormats = allowReactiveResume
     ? "Supported formats: PDF, DOCX, and Reactive Resume JSON."
     : "Supported formats: PDF and DOCX.";
-
   return (
     <div className="space-y-6" data-onboarding-target="resume-options">
       <input
@@ -231,10 +227,10 @@ export const BaseResumeStep: React.FC<{
                 />
                 <div className="space-y-1">
                   <div className="text-base font-medium text-foreground">
-                    {option.title}
+                    {uiT(option.title)}
                   </div>
                   <div className="text-sm leading-6 text-muted-foreground">
-                    {option.description}
+                    {uiT(option.description)}
                   </div>
                 </div>
               </label>
@@ -253,9 +249,9 @@ export const BaseResumeStep: React.FC<{
           ) : (
             <div className="rounded-lg border border-border/60 bg-muted/10 p-5">
               <div className="space-y-2">
-                <div className="text-sm font-medium">{uploadTitle}</div>
+                <div className="text-sm font-medium">{uiT(uploadTitle)}</div>
                 <p className="text-sm text-muted-foreground">
-                  {uploadDescription}
+                  {uiT(uploadDescription)}
                 </p>
               </div>
 
@@ -266,10 +262,10 @@ export const BaseResumeStep: React.FC<{
                   disabled={isBusy}
                 >
                   <Upload className="h-4 w-4" />
-                  Upload resume file
+                  {uiT("Upload resume file")}
                 </Button>
                 <div className="text-xs text-muted-foreground">
-                  {supportedFormats}
+                  {uiT(supportedFormats)}
                 </div>
               </div>
             </div>

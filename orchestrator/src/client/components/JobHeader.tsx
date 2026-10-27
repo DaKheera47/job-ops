@@ -1,4 +1,5 @@
 import { isAwaitingAiScore, ScoreRing } from "@client/components";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { AppliedDuplicateMatch, Job, JobListItem } from "@shared/types.js";
 import { Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
 import type React from "react";
@@ -22,16 +23,14 @@ interface JobHeaderProps {
   onCheckSponsor?: () => Promise<void>;
   jobCTA?: React.ReactNode;
 }
-
 interface SponsorPillProps {
   score: number | null;
   names: string | null;
   onCheck?: () => Promise<void>;
 }
-
 const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
+  const { t: uiT } = useUiTranslation();
   const [isChecking, setIsChecking] = useState(false);
-
   const parsedNames = useMemo(() => {
     if (!names) return [];
     try {
@@ -40,7 +39,6 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
       return [];
     }
   }, [names]);
-
   const handleCheck = async () => {
     if (!onCheck) return;
     setIsChecking(true);
@@ -71,16 +69,16 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
           ) : (
             <Search className="h-2 w-2" />
           )}
-          <span>{isChecking ? "Checking..." : "Check Sponsorship Status"}</span>
+          <span>
+            {isChecking ? uiT("Checking...") : "Check Sponsorship Status"}
+          </span>
         </Button>
       </Tip>
     );
   }
-
   if (score == null) {
     return null;
   }
-
   const getStatus = (s: number) => {
     if (s >= 95)
       return {
@@ -100,7 +98,6 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
       color: "text-slate-400",
     };
   };
-
   const status = getStatus(score);
   const tooltip = (
     <>
@@ -113,7 +110,6 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
       <p className="opacity-80 mt-1 text-[10px]">{`${score}% match`}</p>
     </>
   );
-
   return (
     <StatusIndicator
       dotColor={status.dot}
@@ -124,14 +120,12 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
     />
   );
 };
-
 const AppliedDuplicatePill: React.FC<{
   match: AppliedDuplicateMatch | null | undefined;
 }> = ({ match }) => {
   if (!match) {
     return null;
   }
-
   const appliedDate = formatDate(match.appliedAt) ?? "Unknown date";
   const tooltip = (
     <div className="space-y-1">
@@ -142,7 +136,6 @@ const AppliedDuplicatePill: React.FC<{
       </p>
     </div>
   );
-
   return (
     <StatusIndicator
       dotColor={appliedDuplicateIndicator.dot}
@@ -153,19 +146,18 @@ const AppliedDuplicatePill: React.FC<{
     />
   );
 };
-
 const postingAgeDotColor = {
   fresh: "bg-emerald-500",
   aging: "bg-amber-500",
   old: "bg-slate-500",
 };
-
 export const JobHeader: React.FC<JobHeaderProps> = ({
   job,
   className,
   onCheckSponsor,
   jobCTA,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const jobStatus = getJobStatusIndicator(job.status);
   const fullJob = "tracerLinksEnabled" in job ? job : null;
   const tracerStatus = fullJob
@@ -177,7 +169,9 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   const isJobPage = pathname.startsWith("/job/");
   const jobPageLinkState = isJobPage
     ? undefined
-    : { jobPageBackTo: `${location.pathname}${location.search}` };
+    : {
+        jobPageBackTo: `${location.pathname}${location.search}`,
+      };
   const deadline = formatDate(job.deadline);
   const postingAge = formatPostingAgeLabel(job.datePosted);
   const jobStatusTooltip =
@@ -295,7 +289,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {fullJob?.isRemote === true && (
             <StatusIndicator
               variant="emerald"
-              label="Remote"
+              label={uiT("Remote")}
               dotColor="bg-emerald-400"
               tooltip="The job claims to be remote"
             />

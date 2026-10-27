@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type {
   BillingStatusResponse,
@@ -18,7 +19,6 @@ type BillingSettingsSectionProps = {
   onUpgrade: () => void;
   onManage: () => void;
 };
-
 const usageLabels: Record<HostedUsageAction, string> = {
   job_search: "Job-source searches",
   pipeline_run: "Pipeline runs",
@@ -26,9 +26,7 @@ const usageLabels: Record<HostedUsageAction, string> = {
   ghostwriter: "Ghostwriter generations",
   pdf_export: "PDF exports",
 };
-
 const numberFormatter = new Intl.NumberFormat("en-GB");
-
 function formatPeriodEnd(value: number | null): string | null {
   if (!value) return null;
   return new Intl.DateTimeFormat("en-GB", {
@@ -37,12 +35,10 @@ function formatPeriodEnd(value: number | null): string | null {
     year: "numeric",
   }).format(new Date(value * 1_000));
 }
-
 function UsageMeter({ usage }: { usage: HostedUsageActionSummary }) {
   const usedUnits = Math.max(0, usage.usedUnits + usage.reservedUnits);
   const percentage = Math.min(100, (usedUnits / usage.limitUnits) * 100);
   const label = usageLabels[usage.action];
-
   return (
     <li className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-4">
@@ -65,7 +61,6 @@ function UsageMeter({ usage }: { usage: HostedUsageActionSummary }) {
     </li>
   );
 }
-
 export function BillingSettingsSection({
   status,
   isLoading,
@@ -73,6 +68,7 @@ export function BillingSettingsSection({
   onUpgrade,
   onManage,
 }: BillingSettingsSectionProps) {
+  const { t: uiT } = useUiTranslation();
   const pro = status?.plan === "pro";
   const includedAi = status?.platformAiIncluded;
   const periodEnd = formatPeriodEnd(
@@ -81,15 +77,14 @@ export function BillingSettingsSection({
   const cancellationScheduled = Boolean(
     pro && status?.subscription?.cancelAtPeriodEnd,
   );
-
   return (
-    <SettingsSectionFrame mode="panel" title="Billing" value="billing">
+    <SettingsSectionFrame mode="panel" title={uiT("Billing")} value="billing">
       <Card className="shadow-none">
         <CardHeader className="flex flex-col gap-6 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">
-                <h3>{pro ? "Pro" : "Free"}</h3>
+                <h3>{pro ? uiT("Pro") : uiT("Free")}</h3>
               </CardTitle>
               <Badge variant={pro ? "default" : "secondary"}>
                 Current plan

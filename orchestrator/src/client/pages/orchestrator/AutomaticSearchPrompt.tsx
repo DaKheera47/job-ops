@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,31 +37,35 @@ export function AutomaticSearchPrompt({
   onGenerateSearchPlan,
   onConfigureManually,
 }: AutomaticSearchPromptProps) {
+  const { t: uiT } = useUiTranslation();
   return (
     <div className="flex w-full flex-col">
       <header className="mb-6 space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Find your next role
+          {uiT("Find your next role")}
         </h1>
         <p className="max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">
-          Tell us what you’re looking for. We’ll prepare a search you can
-          review.
+          {uiT(
+            "Tell us what you’re looking for. We’ll prepare a search you can review.",
+          )}
         </p>
       </header>
 
       <Label htmlFor="search-plan-prompt" className="mb-2">
-        What kind of jobs are you looking for?
+        {uiT("What kind of jobs are you looking for?")}
       </Label>
       <Textarea
         id="search-plan-prompt"
         value={searchPrompt}
         onChange={(event) => onSearchPromptChange(event.target.value)}
-        placeholder="Backend roles in Manchester. Hybrid or remote, using TypeScript or Python."
+        placeholder={uiT(
+          "Backend roles in Manchester. Hybrid or remote, using TypeScript or Python.",
+        )}
         className="min-h-36 resize-y rounded-lg bg-background px-4 py-3 text-base leading-7 shadow-none"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Try:</span>
+        <span className="text-xs text-muted-foreground">{uiT("Try:")}</span>
         {SEARCH_PROMPT_EXAMPLES.map((example) => (
           <Button
             key={example.label}
@@ -69,9 +74,9 @@ export function AutomaticSearchPrompt({
             size="sm"
             className="h-7 px-2.5 text-xs font-normal"
             disabled={isPlanningSearch}
-            onClick={() => onSearchPromptChange(example.prompt)}
+            onClick={() => onSearchPromptChange(uiT(example.prompt))}
           >
-            {example.label}
+            {uiT(example.label)}
           </Button>
         ))}
       </div>
@@ -86,7 +91,9 @@ export function AutomaticSearchPrompt({
           {isPlanningSearch ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : null}
-          {isPlanningSearch ? "Building your search…" : "Build my search"}
+          {isPlanningSearch
+            ? uiT("Building your search…")
+            : uiT("Build my search")}
           {!isPlanningSearch ? <ArrowRight className="h-4 w-4" /> : null}
         </Button>
         <Button
@@ -96,11 +103,11 @@ export function AutomaticSearchPrompt({
           disabled={isPlanningSearch}
           onClick={onConfigureManually}
         >
-          Enter search details instead
+          {uiT("Enter search details instead")}
         </Button>
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        Nothing runs until you start the search.
+        {uiT("Nothing runs until you start the search.")}
       </p>
     </div>
   );
