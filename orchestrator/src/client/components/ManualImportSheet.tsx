@@ -47,8 +47,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
               Manual Import
             </SheetTitle>
             <SheetDescription>
-              Paste a job description, review the AI draft, then import the
-              role.
+              Paste a job description or read it from a PDF, review the AI
+              draft, then import the role.
             </SheetDescription>
           </SheetHeader>
 

@@ -17,6 +17,7 @@ Manual import accepts:
 
 - plain text job descriptions
 - raw HTML job descriptions
+- text-based PDF job descriptions (local browser extraction)
 - job links/URLs
 - a list of public job URLs, one per line, in **URL list** mode (up to 25 URLs)
 
@@ -27,6 +28,26 @@ existing single-job flow is unchanged.
 When a URL is provided, backend fetch attempts depend on whether the page can be resolved with `curl`. Some job sites block or heavily script content, so certain links will not resolve cleanly.
 
 If you enter a URL and paste the description manually, the URL you entered is preserved through AI inference and takes precedence over any inferred URL.
+
+### Import a PDF job description
+
+1. Open **Manual Import** in single-job mode.
+2. Choose a file under **PDF job description**. This replaces the description
+   below and clears any previous URL so it cannot be attached to a different job.
+3. Review and edit the extracted text. Extraction alone does not call AI.
+4. Add the job URL, or fill it in during review, then select **Analyze JD**.
+5. Review the inferred fields and import. A valid job URL is still required.
+
+The PDF file stays in your browser and is not uploaded or stored. **Analyze JD**
+sends the reviewed text to your configured AI provider through the existing
+manual-import service. Limits: 10 MB, 100 pages, and 40,000 extracted characters.
+Oversized input is rejected rather than silently truncated.
+
+Scanned/image-only PDFs need OCR and are not supported by this input. Use an OCR
+tool and paste the resulting text instead. A PDF containing both text and scans
+may yield only its text layer; always check the extracted description. Damaged or
+password-protected files should be repaired/unlocked first. A failed extraction
+keeps the previous description so you can continue manually.
 
 ## 2) AI inference
 

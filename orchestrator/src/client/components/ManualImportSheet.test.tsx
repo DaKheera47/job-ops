@@ -1,8 +1,13 @@
+import { extractPdfJobDescription } from "@client/lib/pdf-job-description";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { ManualImportSheet } from "./ManualImportSheet";
+
+vi.mock("@client/lib/pdf-job-description", () => ({
+  extractPdfJobDescription: vi.fn(),
+}));
 
 vi.mock("../api", () => ({
   fetchJobFromUrl: vi.fn(),
@@ -26,6 +31,105 @@ describe("ManualImportSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseSettings.mockReturnValue({ autoTailorOnManualImport: true });
+  });
+
+  it("reviews PDF text before AI analysis and imports the reviewed draft", async () => {
+    vi.mocked(extractPdfJobDescription).mockResolvedValue(
+      "Backend Engineer\nAcme Labs",
+    );
+    vi.mocked(api.inferManualJob).mockResolvedValue({
+      job: {
+        title: "Backend Engineer",
+        employer: "Acme Labs",
+        jobUrl: "https://example.com/role",
+      },
+    });
+    vi.mocked(api.importManualJob).mockResolvedValue({ id: "pdf-job" } as any);
+    const imported = vi.fn();
+    render(
+      <ManualImportSheet open onOpenChange={vi.fn()} onImported={imported} />,
+    );
+    fireEvent.change(screen.getByLabelText("Job URL"), {
+      target: { value: "https://old.example/job" },
+    });
+    fireEvent.change(screen.getByLabelText(/PDF job description/i), {
+      target: {
+        files: [new File(["pdf"], "role.pdf", { type: "application/pdf" })],
+      },
+    });
+    const textarea = screen.getByLabelText("Job description");
+    await waitFor(() =>
+      expect(textarea).toHaveValue("Backend Engineer\nAcme Labs"),
+    );
+    expect(api.inferManualJob).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Job URL")).toHaveValue("");
+    fireEvent.change(textarea, {
+      target: { value: "Reviewed Backend Engineer at Acme Labs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+    await screen.findByDisplayValue("Backend Engineer");
+    expect(api.inferManualJob).toHaveBeenCalledWith({
+      jobDescription: "Reviewed Backend Engineer at Acme Labs",
+    });
+    fireEvent.click(screen.getByRole("button", { name: /import & tailor/i }));
+    await waitFor(() =>
+      expect(imported).toHaveBeenCalledWith(
+        expect.objectContaining({ jobId: "pdf-job" }),
+      ),
+    );
+    expect(api.importManualJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        job: expect.objectContaining({
+          jobDescription: "Reviewed Backend Engineer at Acme Labs",
+        }),
+      }),
+    );
+  });
+
+  it("keeps the previous description when PDF extraction fails", async () => {
+    vi.mocked(extractPdfJobDescription).mockRejectedValue(
+      new Error("Scanned documents need OCR."),
+    );
+    render(
+      <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
+    );
+    fireEvent.change(screen.getByLabelText("Job description"), {
+      target: { value: "Existing description" },
+    });
+    fireEvent.change(screen.getByLabelText(/PDF job description/i), {
+      target: { files: [new File(["pdf"], "scan.pdf")] },
+    });
+    await screen.findByText("Scanned documents need OCR.");
+    expect(screen.getByLabelText("Job description")).toHaveValue(
+      "Existing description",
+    );
+    expect(api.inferManualJob).not.toHaveBeenCalled();
+  });
+
+  it("blocks analysis during extraction and ignores a PDF that finishes after closing", async () => {
+    let finish!: (value: string) => void;
+    vi.mocked(extractPdfJobDescription).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const props = { onOpenChange: vi.fn(), onImported: vi.fn() };
+    const { rerender } = render(<ManualImportSheet open {...props} />);
+    fireEvent.change(screen.getByLabelText("Job description"), {
+      target: { value: "Existing text" },
+    });
+    fireEvent.change(screen.getByLabelText(/PDF job description/i), {
+      target: { files: [new File(["pdf"], "role.pdf")] },
+    });
+    expect(screen.getByRole("button", { name: /analyze jd/i })).toBeDisabled();
+    expect(screen.getByLabelText("Job description")).toBeDisabled();
+    rerender(<ManualImportSheet open={false} {...props} />);
+    finish("Late result");
+    rerender(<ManualImportSheet open {...props} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Job description")).toHaveValue(""),
+    );
+    expect(api.inferManualJob).not.toHaveBeenCalled();
   });
 
   it("runs analyze -> review -> import on the happy path", async () => {
