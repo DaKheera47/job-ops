@@ -13,22 +13,24 @@ const RELATIVE_SOURCE_PATTERN =
   /\b(ago|today|yesterday|minute|hour|day|week|month|year)s?\b/i;
 
 function parsePostingDate(value: string): Date | null {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? `${value}T00:00:00`
+    : value.includes("T")
+      ? value
+      : value.replace(" ", "T");
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+function calendarDayValue(date: Date): number {
+  // Compare local calendar dates without the 23/25-hour days around DST changes.
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function getCalendarAgeDays(date: Date, now: Date): number {
   return Math.max(
     0,
-    Math.floor(
-      (startOfLocalDay(now).getTime() - startOfLocalDay(date).getTime()) /
-        86_400_000,
-    ),
+    Math.floor((calendarDayValue(now) - calendarDayValue(date)) / 86_400_000),
   );
 }
 
@@ -125,7 +127,7 @@ export function formatPostingAgeLabel(
   const ageDays = getCalendarAgeDays(parsed, now);
   const absolute =
     raw.length === 10
-      ? (formatDate(raw) ?? raw)
+      ? (formatDate(parsed.toISOString()) ?? raw)
       : (formatDateTime(parsed.toISOString()) ?? raw);
 
   return {
