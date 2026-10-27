@@ -71,13 +71,15 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   const actions = (
     <div className="flex items-center gap-2">
       {primaryAction}
-      {onScoreUnscored && (unscoredCount > 0 || isScoringUnscored) ? (
+      {onScoreUnscored ? (
         <Button
           type="button"
           variant="ghost"
           size="sm"
           className="gap-2"
-          disabled={isPipelineRunning || isScoringUnscored}
+          disabled={
+            isPipelineRunning || isScoringUnscored || unscoredCount === 0
+          }
           onClick={onScoreUnscored}
         >
           {isScoringUnscored ? (
