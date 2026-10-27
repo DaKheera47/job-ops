@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { logger } from "@infra/logger";
 import {
   getLlmMessageText,
@@ -24,8 +25,12 @@ const VALIDATION_SCHEMA: JsonSchemaDefinition = {
 /** Models commonly available via Claude Code CLI. */
 export const CLAUDE_CLI_SUGGESTED_MODELS: string[] = [
   "claude-sonnet-5",
+  "claude-sonnet-5-5",
+  "claude-opus-5-5",
   "claude-opus-4-8",
+  "claude-haiku-5-5",
   "claude-haiku-4-5-20251001",
+  "claude-fable-5-1",
   "claude-fable-5",
 ];
 
@@ -236,6 +241,23 @@ async function runClaudeCliOnce(args: {
     procArgs.push("--model", cliModel);
   }
   procArgs.push("--json-schema", JSON.stringify(args.jsonSchema.schema));
+  // Opt-in (CLAUDE_CLI_LEAN=1): structured-output calls need no tools, skills,
+  // MCP servers, or project settings. Skipping them removes thousands of fixed
+  // prompt tokens per call.
+  const lean = process.env.CLAUDE_CLI_LEAN === "1";
+  if (lean) {
+    procArgs.push(
+      "--tools",
+      "",
+      "--disable-slash-commands",
+      "--strict-mcp-config",
+      "--setting-sources",
+      "",
+      "--no-session-persistence",
+      "--system-prompt",
+      "You output only the requested JSON.",
+    );
+  }
 
   const shell = shouldSpawnClaudeViaWindowsShell(bin);
 
@@ -246,6 +268,7 @@ async function runClaudeCliOnce(args: {
 
     const child = args.spawnFn(bin, procArgs, {
       stdio: ["pipe", "pipe", "pipe"],
+      ...(lean ? { cwd: tmpdir() } : {}),
       env: { ...process.env },
       windowsHide: true,
       shell,
