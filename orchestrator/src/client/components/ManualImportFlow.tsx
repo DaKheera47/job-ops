@@ -32,6 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
+import { PdfJobDescriptionInput } from "./PdfJobDescriptionInput";
+
 type ManualImportStep =
   | "paste"
   | "loading"
@@ -368,6 +370,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   const [bulkItems, setBulkItems] = useState<BulkImportItem[]>([]);
   const [fetchUrl, setFetchUrl] = useState("");
   const [isFetching, setIsFetching] = useState(false);
+  const [isReadingPdf, setIsReadingPdf] = useState(false);
   const [draft, setDraft] = useState<ManualJobDraftState>(emptyDraft);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -411,6 +414,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       setTailorAfterImport(autoTailorOnManualImport);
       return;
     }
+    setIsReadingPdf(false);
     setStep("paste");
     setImportMode("single");
     setRawDescription("");
@@ -445,9 +449,15 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       : STEP_LABEL_BY_ID[progressStep];
 
   const canAnalyze =
-    rawDescription.trim().length > 0 && step !== "loading" && !isFetching;
+    rawDescription.trim().length > 0 &&
+    step !== "loading" &&
+    !isFetching &&
+    !isReadingPdf;
   const canFetch =
-    fetchUrl.trim().length > 0 && !isFetching && step === "paste";
+    fetchUrl.trim().length > 0 &&
+    !isFetching &&
+    !isReadingPdf &&
+    step === "paste";
   const parsedBulkUrls = useMemo(
     () => parseBulkUrls(bulkUrlText),
     [bulkUrlText],
@@ -740,6 +750,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
+                  disabled={isReadingPdf}
                   onClick={() => setMode(mode)}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -812,6 +823,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                   <div className="flex gap-2">
                     <Input
                       id="fetch-url"
+                      disabled={isReadingPdf}
                       value={fetchUrl}
                       onChange={(event) => setFetchUrl(event.target.value)}
                       placeholder="https://example.com/job-posting"
@@ -853,6 +865,22 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                   </div>
                 </div>
 
+                {active && (
+                  <PdfJobDescriptionInput
+                    disabled={isFetching}
+                    onBusy={setIsReadingPdf}
+                    onText={(text) => {
+                      setRawDescription(text);
+                      setFetchUrl("");
+                      setFetchedSourceUrl(null);
+                      setImportSource("pasted_description");
+                      setImportSourceHost(null);
+                      setError(null);
+                      setFetchNotice(null);
+                    }}
+                  />
+                )}
+
                 <div className="space-y-2">
                   <label
                     htmlFor="raw-description"
@@ -862,6 +890,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                   </label>
                   <Textarea
                     id="raw-description"
+                    disabled={isReadingPdf}
                     value={rawDescription}
                     onChange={(event) => {
                       setRawDescription(event.target.value);
