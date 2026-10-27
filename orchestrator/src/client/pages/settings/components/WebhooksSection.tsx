@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { WebhookValues } from "@client/pages/settings/types";
@@ -15,7 +16,6 @@ type WebhooksSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   pipelineWebhook,
   jobCompleteWebhook,
@@ -24,13 +24,17 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     register,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
-
   return (
-    <SettingsSectionFrame mode={layoutMode} title="Webhooks" value="webhooks">
+    <SettingsSectionFrame
+      mode={layoutMode}
+      title={uiT("Webhooks")}
+      value="webhooks"
+    >
       <div className="space-y-6">
         <div className="space-y-4">
           <div className="text-sm font-medium">Pipeline Status</div>

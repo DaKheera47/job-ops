@@ -18,6 +18,7 @@ import {
 import { PageHeader, PageMain } from "@client/components/layout";
 import { SectionWorkspacePanel } from "@client/components/section-workspace/SectionWorkspace";
 import { useDesignResumeStudio } from "@client/hooks/useDesignResumeStudio";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { DesignResumeJson } from "@shared/types";
 import {
   Download,
@@ -56,8 +57,8 @@ import {
 import { bucketCount, trackProductEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { formatUserFacingError } from "../lib/error-format";
-
 export const DesignResumePage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const navigate = useNavigate();
   const {
     draft,
@@ -104,17 +105,15 @@ export const DesignResumePage: React.FC = () => {
     handleMobileSectionSelect,
     getDesignResumeSectionBadge,
   } = useDesignResumeStudio();
-
   if (!activeSectionIsValid) {
     return <Navigate to="/design-resume" replace />;
   }
-
   if (isLoading) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
         <PageHeader
           icon={PenSquare}
-          title="Resume Studio"
+          title={uiT("Resume Studio")}
           subtitle="Loading your resume"
         />
         <PageMain className={DESIGN_RESUME_PAGE_MAIN_CLASS_NAME}>
@@ -125,7 +124,6 @@ export const DesignResumePage: React.FC = () => {
       </div>
     );
   }
-
   const rail = draft ? (
     <DesignResumeRail
       draft={draft}
@@ -148,7 +146,6 @@ export const DesignResumePage: React.FC = () => {
       activeSectionId={activeSection}
     />
   ) : null;
-
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       <input
@@ -178,7 +175,7 @@ export const DesignResumePage: React.FC = () => {
 
       <PageHeader
         icon={PenSquare}
-        title="Resume Studio"
+        title={uiT("Resume Studio")}
         subtitle="Edit your resume details"
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
@@ -284,7 +281,7 @@ export const DesignResumePage: React.FC = () => {
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
               <div className="inline-flex rounded-full border border-border/70 bg-muted/20 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Resume Studio
+                {uiT("Resume Studio")}
               </div>
               <h2 className="text-3xl font-semibold tracking-tight text-foreground">
                 Import your resume to start editing it here.
@@ -300,7 +297,7 @@ export const DesignResumePage: React.FC = () => {
                   disabled={resumeImporting}
                 >
                   <Import className="mr-2 h-4 w-4" />
-                  {resumeImporting ? "Importing resume" : "Import resume"}
+                  {resumeImporting ? uiT("Importing resume") : "Import resume"}
                 </Button>
                 {error ? (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
@@ -332,7 +329,7 @@ export const DesignResumePage: React.FC = () => {
                 )}
                 onClick={() => setMobileWorkspaceView("edit")}
               >
-                Edit
+                {uiT("Edit")}
               </button>
               <button
                 type="button"
@@ -387,9 +384,15 @@ export const DesignResumePage: React.FC = () => {
                     badge={getDesignResumeSectionBadge(activeSection)}
                     secondaryBadge={
                       dirty
-                        ? { label: "Autosaving", variant: "secondary" }
+                        ? {
+                            label: "Autosaving",
+                            variant: "secondary",
+                          }
                         : saveState === "saved"
-                          ? { label: "Autosaved", variant: "outline" }
+                          ? {
+                              label: "Autosaved",
+                              variant: "outline",
+                            }
                           : null
                     }
                     actions={
@@ -494,14 +497,13 @@ export const DesignResumePage: React.FC = () => {
                 {DESIGN_RESUME_NAV_GROUPS.map((group) => (
                   <section key={group.id} className="space-y-2">
                     <div className="px-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      {group.label}
+                      {uiT(group.label)}
                     </div>
                     <div className="space-y-1">
                       {group.items.map((item) => {
                         const Icon = getDesignResumeSectionIcon(item.id);
                         const isActive = activeSection === item.id;
                         const badge = getDesignResumeSectionBadge(item.id);
-
                         return (
                           <button
                             key={item.id}
@@ -546,7 +548,7 @@ export const DesignResumePage: React.FC = () => {
       {dialogState && draft ? (
         <ItemDialog
           open={Boolean(dialogState)}
-          title={`${dialogState.index == null ? "Add" : "Edit"} ${dialogState.definition.singularTitle}`}
+          title={`${dialogState.index == null ? uiT("Add") : uiT("Edit")} ${dialogState.definition.singularTitle}`}
           description={dialogState.definition.description}
           item={activeDialogItem}
           fields={dialogState.definition.fields}
@@ -671,7 +673,7 @@ export const DesignResumePage: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-[#F1703E] text-white hover:bg-[#d9612f]"
               onClick={() => {

@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   Bot,
   Eye,
@@ -32,7 +33,6 @@ import { getByPath, toBoolean, toText } from "./utils";
 const itemActionClassName =
   "h-8 gap-2 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground 2xl:px-3";
 const itemActionLabelClassName = "xl:hidden 2xl:inline";
-
 function reorderItems<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   if (fromIndex === toIndex) return items;
   const nextItems = [...items];
@@ -41,7 +41,6 @@ function reorderItems<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   nextItems.splice(toIndex, 0, currentItem);
   return nextItems;
 }
-
 function getItemPreview(
   item: Record<string, unknown>,
   definition: ItemDefinition,
@@ -50,25 +49,20 @@ function getItemPreview(
     ? toText(getByPath(item, definition.secondaryField))
     : "";
   if (secondaryValue) return secondaryValue;
-
   const tagField = definition.fields.find((field) => field.type === "tags");
   if (!tagField) return "";
-
   const value = getByPath(item, tagField.key);
   if (!Array.isArray(value)) return "";
-
   return value
     .map((entry) => toText(entry))
     .filter(Boolean)
     .join(", ");
 }
-
 function getDeviceLayout(): "mobile" | "desktop" {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function")
     return "desktop";
   return window.matchMedia("(max-width: 639px)").matches ? "mobile" : "desktop";
 }
-
 type DesignResumeListSectionProps = {
   definition: ItemDefinition;
   items: Record<string, unknown>[];
@@ -85,7 +79,6 @@ type DesignResumeListSectionProps = {
   isDragging?: boolean;
   isDragTarget?: boolean;
 };
-
 type DesignResumeListItemCardProps = {
   definition: ItemDefinition;
   item: Record<string, unknown>;
@@ -107,9 +100,7 @@ type DesignResumeListItemCardProps = {
   ) => void;
   projectPolicy?: ProjectPolicyConfig;
 };
-
 export type ProjectTailoringMode = "manual" | "ai-selectable" | "must-include";
-
 export type ProjectPolicyConfig = {
   getMode: (projectId: string) => ProjectTailoringMode;
   onModeChange: (projectId: string, mode: ProjectTailoringMode) => void;
@@ -120,7 +111,6 @@ export type ProjectPolicyConfig = {
   disabled?: boolean;
   isSaving?: boolean;
 };
-
 const projectModeOptions: Array<{
   mode: ProjectTailoringMode;
   label: string;
@@ -155,7 +145,6 @@ const projectModeOptions: Array<{
     activeClassName: "border-amber-200/35 bg-amber-300/12 text-amber-200",
   },
 ];
-
 function ProjectTailoringModeControls({
   projectName,
   disabled,
@@ -169,13 +158,13 @@ function ProjectTailoringModeControls({
   onModeChange: (mode: ProjectTailoringMode) => void;
   selectedMode: ProjectTailoringMode;
 }) {
+  const { t: uiT } = useUiTranslation();
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
       <div className="flex max-w-full flex-wrap gap-1.5">
         {projectModeOptions.map((option) => {
           const Icon = option.icon;
           const active = selectedMode === option.mode;
-
           return (
             <Tip
               key={option.mode}
@@ -207,13 +196,14 @@ function ProjectTailoringModeControls({
       </div>
       <div className="min-h-4">
         {isSaving ? (
-          <span className="text-[11px] text-muted-foreground">Saving...</span>
+          <span className="text-[11px] text-muted-foreground">
+            {uiT("Saving...")}
+          </span>
         ) : null}
       </div>
     </div>
   );
 }
-
 function DesignResumeListItemCard({
   definition,
   item,
@@ -231,6 +221,7 @@ function DesignResumeListItemCard({
   onProjectModeChange,
   projectPolicy,
 }: DesignResumeListItemCardProps) {
+  const { t: uiT } = useUiTranslation();
   const isHidden = toBoolean(item.hidden, false);
   const primaryLabel = toText(
     getByPath(item, definition.primaryField),
@@ -257,7 +248,6 @@ function DesignResumeListItemCard({
     (definition.key !== "projects" || projectSelectedMode === "manual");
   const showVisibilityPill = definition.key !== "projects";
   const showHideAction = definition.key !== "projects";
-
   return (
     <li
       ref={cardRef}
@@ -296,11 +286,7 @@ function DesignResumeListItemCard({
             {showVisibilityPill ? (
               <button
                 type="button"
-                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${
-                  isHidden
-                    ? "border-border/70 bg-muted/20 text-muted-foreground hover:bg-muted/30"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
-                }`}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${isHidden ? "border-border/70 bg-muted/20 text-muted-foreground hover:bg-muted/30" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"}`}
                 onClick={() => onToggleHidden(index)}
               >
                 {isHidden ? (
@@ -332,7 +318,7 @@ function DesignResumeListItemCard({
                 onClick={() => onEdit(index)}
               >
                 <Pencil className="h-4 w-4 text-blue-400" />
-                <span className={itemActionLabelClassName}>Edit</span>
+                <span className={itemActionLabelClassName}>{uiT("Edit")}</span>
               </Button>
               {showHideAction ? (
                 <>
@@ -371,7 +357,6 @@ function DesignResumeListItemCard({
     </li>
   );
 }
-
 export function DesignResumeListSectionContent({
   definition,
   items,
@@ -380,6 +365,7 @@ export function DesignResumeListSectionContent({
   onUpdateItems,
   projectPolicy,
 }: DesignResumeListSectionProps) {
+  const { t: uiT } = useUiTranslation();
   const [pendingRemovalIndex, setPendingRemovalIndex] = useState<number | null>(
     null,
   );
@@ -398,7 +384,6 @@ export function DesignResumeListSectionContent({
       : null,
     "this item",
   );
-
   const confirmRemoval = () => {
     if (pendingRemovalIndex == null) return;
     onUpdateItems(
@@ -412,10 +397,8 @@ export function DesignResumeListSectionContent({
     });
     setPendingRemovalIndex(null);
   };
-
   const showProjectPolicyControls =
     definition.key === "projects" && projectPolicy;
-
   const toggleItemHidden = (index: number) => {
     const isHidden = toBoolean(items[index]?.hidden, false);
     const nextItems = [...items];
@@ -431,7 +414,6 @@ export function DesignResumeListSectionContent({
       device_layout: getDeviceLayout(),
     });
   };
-
   const updateProjectInclusionMode = (
     index: number,
     projectId: string,
@@ -446,12 +428,10 @@ export function DesignResumeListSectionContent({
     onUpdateItems(nextItems);
     projectPolicy.onModeChange(projectId, mode);
   };
-
   const resetDragState = () => {
     setDraggingIndex(null);
     setDragOverIndex(null);
   };
-
   const handleDragStart = (
     event: DragEvent<HTMLButtonElement>,
     index: number,
@@ -460,19 +440,16 @@ export function DesignResumeListSectionContent({
     setDragOverIndex(index);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(index));
-
     const card = cardRefs.current[index];
     if (card) {
       event.dataTransfer.setDragImage(card, 24, 24);
     }
   };
-
   const handleDrop = (event: DragEvent<HTMLElement>, index: number) => {
     event.preventDefault();
     const rawIndex = event.dataTransfer.getData("text/plain");
     const fromIndex =
       draggingIndex ?? (rawIndex ? Number.parseInt(rawIndex, 10) : Number.NaN);
-
     if (
       Number.isNaN(fromIndex) ||
       fromIndex < 0 ||
@@ -482,7 +459,6 @@ export function DesignResumeListSectionContent({
       resetDragState();
       return;
     }
-
     onUpdateItems(reorderItems(items, fromIndex, index));
     trackProductEvent("resume_studio_section_edited", {
       section: definition.key,
@@ -492,7 +468,6 @@ export function DesignResumeListSectionContent({
     });
     resetDragState();
   };
-
   return (
     <>
       <div className="space-y-3">
@@ -511,7 +486,7 @@ export function DesignResumeListSectionContent({
 
             <Button type="button" variant="outline" onClick={onAdd}>
               <Plus className="mr-2 h-4 w-4" />
-              Add
+              {uiT("Add")}
             </Button>
           </div>
           {showProjectPolicyControls ? (
@@ -624,7 +599,7 @@ export function DesignResumeListSectionContent({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmRemoval}
@@ -638,7 +613,6 @@ export function DesignResumeListSectionContent({
     </>
   );
 }
-
 export function DesignResumeListSection({
   dragHandleProps,
   onDragOver,

@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { CalendarDays } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,11 @@ import { FilterPill } from "./FilterPill";
 import { datePresetOptions } from "./filterOptions";
 import { getDateRangeForPreset, toggleDimension } from "./filterUtils";
 import type { DateFilterPillProps } from "./types";
-
 export const DateFilterPill: React.FC<DateFilterPillProps> = ({
   dateFilter,
   onDateFilterChange,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const clearDateFilter = () =>
     onDateFilterChange({
       dimensions: [],
@@ -23,7 +24,6 @@ export const DateFilterPill: React.FC<DateFilterPillProps> = ({
       endDate: null,
       preset: null,
     });
-
   return (
     <FilterPill
       icon={<CalendarDays />}
@@ -72,7 +72,7 @@ export const DateFilterPill: React.FC<DateFilterPillProps> = ({
                     })
                   }
                 >
-                  Last {option.label}
+                  Last {uiT(option.label)}
                 </Button>
               ))}
             </div>

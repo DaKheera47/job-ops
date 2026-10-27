@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { PromptTemplatesValues } from "@client/pages/settings/types";
 import {
@@ -19,32 +20,32 @@ type PromptTemplatesSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 const TEMPLATE_FIELD_NAMES =
   PROMPT_TEMPLATE_SETTING_KEYS as PromptTemplateSettingKey[];
-
 export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
   values,
   isLoading,
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const { control, setValue } = useFormContext<UpdateSettingsInput>();
-
   const handleResetOne = (key: PromptTemplateSettingKey) => {
-    setValue(key, values[key].default, { shouldDirty: true });
+    setValue(key, values[key].default, {
+      shouldDirty: true,
+    });
   };
-
   const handleResetAll = () => {
     for (const key of TEMPLATE_FIELD_NAMES) {
-      setValue(key, values[key].default, { shouldDirty: true });
+      setValue(key, values[key].default, {
+        shouldDirty: true,
+      });
     }
   };
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
-      title="Prompt Templates"
+      title={uiT("Prompt Templates")}
       value="prompt-templates"
     >
       <div className="space-y-4">
@@ -78,7 +79,6 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
 
         {TEMPLATE_FIELD_NAMES.map((key) => {
           const definition = PROMPT_TEMPLATE_DEFINITIONS[key];
-
           return (
             <div key={key} className="space-y-3 rounded-lg border p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -97,7 +97,7 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
                   onClick={() => handleResetOne(key)}
                   disabled={isLoading || isSaving}
                 >
-                  Reset
+                  {uiT("Reset")}
                 </Button>
               </div>
 

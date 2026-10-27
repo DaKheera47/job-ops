@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   PostApplicationJobEmailItem,
   PostApplicationProcessingStatus,
@@ -19,13 +20,10 @@ import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const JOB_EMAIL_LIMIT = 100;
-
 type EmailFilter = "all" | "auto_linked" | "manual_linked" | "pending_user";
-
 type JobEmailsPanelProps = {
   jobId: string;
 };
-
 const filterOptions: Array<{
   id: EmailFilter;
   label: string;
@@ -52,38 +50,32 @@ const filterOptions: Array<{
     matches: (status) => status === "pending_user",
   },
 ];
-
 const statusLabel: Record<PostApplicationProcessingStatus, string> = {
   auto_linked: "Auto linked",
   pending_user: "Needs review",
   manual_linked: "Manual",
   ignored: "Ignored",
 };
-
 const statusClassName: Record<PostApplicationProcessingStatus, string> = {
   auto_linked: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
   pending_user: "border-amber-500/30 bg-amber-500/10 text-amber-300",
   manual_linked: "border-sky-500/30 bg-sky-500/10 text-sky-300",
   ignored: "border-border/60 bg-muted/25 text-muted-foreground",
 };
-
 function formatEpochMs(value: number | null): string {
   if (!value) return "Unknown date";
   return formatDateTime(new Date(value).toISOString()) ?? "Unknown date";
 }
-
 function getSenderLabel(item: PostApplicationJobEmailItem): string {
   const senderName = item.message.senderName?.trim();
   if (senderName) return senderName;
   const address = item.message.fromAddress.trim();
   return address || "Unknown sender";
 }
-
 function formatConfidence(value: number | null): string {
   if (value === null) return "n/a";
   return `${Math.round(value)}%`;
 }
-
 function getAccountLabel(items: PostApplicationJobEmailItem[]): string | null {
   const labels = Array.from(
     new Set(
@@ -96,11 +88,12 @@ function getAccountLabel(items: PostApplicationJobEmailItem[]): string | null {
   if (labels.length === 1) return labels[0] ?? null;
   return `${labels.length} accounts`;
 }
-
 const EmptyState: React.FC<{
   title: string;
   description: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{
+    className?: string;
+  }>;
 }> = ({ title, description, icon: Icon = Inbox }) => (
   <div className="flex min-h-[16rem] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/20 p-6 text-center">
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-muted/30 text-muted-foreground">
@@ -112,13 +105,11 @@ const EmptyState: React.FC<{
     </p>
   </div>
 );
-
-const EmailRow: React.FC<{ item: PostApplicationJobEmailItem }> = ({
-  item,
-}) => {
+const EmailRow: React.FC<{
+  item: PostApplicationJobEmailItem;
+}> = ({ item }) => {
   const sender = getSenderLabel(item);
   const date = formatEpochMs(item.message.receivedAt);
-
   return (
     <article className="grid gap-3 border-b border-border/50 px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
@@ -181,26 +172,26 @@ const EmailRow: React.FC<{ item: PostApplicationJobEmailItem }> = ({
     </article>
   );
 };
-
 export const JobEmailsPanel: React.FC<JobEmailsPanelProps> = ({ jobId }) => {
+  const { t: uiT } = useUiTranslation();
   const [activeFilter, setActiveFilter] = React.useState<EmailFilter>("all");
   const emailsQuery = useQuery({
     queryKey: queryKeys.jobs.emails(jobId, JOB_EMAIL_LIMIT),
-    queryFn: () => api.getJobEmails(jobId, { limit: JOB_EMAIL_LIMIT }),
+    queryFn: () =>
+      api.getJobEmails(jobId, {
+        limit: JOB_EMAIL_LIMIT,
+      }),
   });
-
   useQueryErrorToast(
     emailsQuery.error,
     "Failed to load captured emails. Please try again.",
   );
-
   const items = emailsQuery.data?.items ?? [];
   const filter = filterOptions.find((option) => option.id === activeFilter);
   const filteredItems = items.filter((item) =>
     filter?.matches(item.message.processingStatus),
   );
   const accountLabel = getAccountLabel(items);
-
   return (
     <section className="rounded-xl border border-border/50 bg-card/85">
       <div className="border-b border-border/50 px-4 py-3">
@@ -213,9 +204,7 @@ export const JobEmailsPanel: React.FC<JobEmailsPanelProps> = ({ jobId }) => {
                 <Badge variant="secondary" className="text-[10px]">
                   {emailsQuery.isLoading
                     ? "Loading"
-                    : `${filteredItems.length} of ${
-                        emailsQuery.data?.total ?? items.length
-                      }`}
+                    : `${filteredItems.length} of ${emailsQuery.data?.total ?? items.length}`}
                 </Badge>
               </div>
               {accountLabel && (
@@ -236,7 +225,7 @@ export const JobEmailsPanel: React.FC<JobEmailsPanelProps> = ({ jobId }) => {
                 className="h-8 px-2 text-xs"
                 onClick={() => setActiveFilter(option.id)}
               >
-                {option.label}
+                {uiT(option.label)}
               </Button>
             ))}
           </div>

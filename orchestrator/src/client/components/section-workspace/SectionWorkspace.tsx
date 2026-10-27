@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { Search } from "lucide-react";
 import type React from "react";
 import {
@@ -10,19 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
 export type SectionWorkspaceBadge = {
   label: string;
   variant?: React.ComponentProps<typeof Badge>["variant"];
 };
-
 export type SectionWorkspaceItem<TSectionId extends string = string> = {
   id: TSectionId;
   label: string;
   description: string;
   searchTerms?: string[];
 };
-
 export type SectionWorkspaceGroup<
   TGroupId extends string = string,
   TSectionId extends string = string,
@@ -31,7 +29,6 @@ export type SectionWorkspaceGroup<
   label: string;
   items: SectionWorkspaceItem<TSectionId>[];
 };
-
 type SectionWorkspaceNavProps<
   TGroupId extends string = string,
   TSectionId extends string = string,
@@ -47,7 +44,6 @@ type SectionWorkspaceNavProps<
   searchEmptyLabel: string;
   getItemBadge?: (sectionId: TSectionId) => SectionWorkspaceBadge | null;
 };
-
 export function sectionWorkspaceItemMatchesSearch(
   searchTerm: string,
   item: SectionWorkspaceItem,
@@ -61,7 +57,6 @@ export function sectionWorkspaceItemMatchesSearch(
   ].join(" ");
   return haystack.toLowerCase().includes(normalized);
 }
-
 export function SectionWorkspaceNav<
   TGroupId extends string = string,
   TSectionId extends string = string,
@@ -77,6 +72,7 @@ export function SectionWorkspaceNav<
   searchEmptyLabel,
   getItemBadge,
 }: SectionWorkspaceNavProps<TGroupId, TSectionId>) {
+  const { t: uiT } = useUiTranslation();
   const trimmedSearch = searchValue.trim();
   return (
     <aside className="lg:sticky lg:top-6 lg:self-start">
@@ -112,7 +108,7 @@ export function SectionWorkspaceNav<
                   className="border-b border-border/60 px-2 last:border-b-0"
                 >
                   <AccordionTrigger className="py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground hover:no-underline">
-                    {group.label}
+                    {uiT(group.label)}
                   </AccordionTrigger>
                   <AccordionContent className="pb-3">
                     <div className="space-y-1">
@@ -133,14 +129,14 @@ export function SectionWorkspaceNav<
                             onClick={() => onSectionSelect(item.id)}
                           >
                             <span className="min-w-0 flex-1 truncate">
-                              {item.label}
+                              {uiT(item.label)}
                             </span>
                             {badge ? (
                               <Badge
                                 variant={badge.variant ?? "secondary"}
                                 className="shrink-0"
                               >
-                                {badge.label}
+                                {uiT(badge.label)}
                               </Badge>
                             ) : null}
                           </Button>
@@ -161,7 +157,6 @@ export function SectionWorkspaceNav<
     </aside>
   );
 }
-
 type SectionWorkspacePanelProps = {
   groupLabel: string;
   sectionLabel: string;
@@ -173,7 +168,6 @@ type SectionWorkspacePanelProps = {
   footer?: React.ReactNode;
   scrollable?: boolean;
 };
-
 export function SectionWorkspacePanel({
   groupLabel,
   sectionLabel,
@@ -185,6 +179,7 @@ export function SectionWorkspacePanel({
   footer,
   scrollable = false,
 }: SectionWorkspacePanelProps) {
+  const { t: uiT } = useUiTranslation();
   const header = (
     <header
       className={cn(
@@ -193,30 +188,30 @@ export function SectionWorkspacePanel({
       )}
     >
       <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-        <span>{groupLabel}</span>
+        <span>{uiT(groupLabel)}</span>
         <span>/</span>
-        <span>{sectionLabel}</span>
+        <span>{uiT(sectionLabel)}</span>
       </div>
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-2xl font-semibold tracking-tight">
-              {sectionLabel}
+              {uiT(sectionLabel)}
             </h2>
             {badge ? (
               <Badge variant={badge.variant ?? "secondary"}>
-                {badge.label}
+                {uiT(badge.label)}
               </Badge>
             ) : null}
             {secondaryBadge ? (
               <Badge variant={secondaryBadge.variant ?? "secondary"}>
-                {secondaryBadge.label}
+                {uiT(secondaryBadge.label)}
               </Badge>
             ) : null}
           </div>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            {sectionDescription}
+            {uiT(sectionDescription)}
           </p>
         </div>
 
@@ -228,7 +223,6 @@ export function SectionWorkspacePanel({
       </div>
     </header>
   );
-
   if (!scrollable) {
     return (
       <section className="h-fit space-y-4 rounded-2xl border border-border/70 bg-card p-6">
@@ -240,7 +234,6 @@ export function SectionWorkspacePanel({
       </section>
     );
   }
-
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
       {header}

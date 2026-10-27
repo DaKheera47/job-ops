@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { JobNote } from "@shared/types.js";
 import { useQuery } from "@tanstack/react-query";
 import { Edit2, FileText, PlusCircle, Trash2 } from "lucide-react";
@@ -31,14 +32,20 @@ const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
     (left, right) =>
       new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
-
 type JobNotesCardProps = {
   jobId: string;
 };
-
 export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
+  const { t: uiT } = useUiTranslation();
   const [editorState, setEditorState] = React.useState<
-    { mode: "create" } | { mode: "edit"; noteId: string } | null
+    | {
+        mode: "create";
+      }
+    | {
+        mode: "edit";
+        noteId: string;
+      }
+    | null
   >(null);
   const [selectedNoteId, setSelectedNoteId] = React.useState<string | null>(
     null,
@@ -47,7 +54,6 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
   const [draftContent, setDraftContent] = React.useState("");
   const [editorError, setEditorError] = React.useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = React.useState<JobNote | null>(null);
-
   const notesQuery = useQuery<JobNote[]>({
     queryKey: queryKeys.jobs.notes(jobId),
     queryFn: () => api.getJobNotes(jobId),
@@ -56,12 +62,10 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
   const createNoteMutation = useCreateJobNoteMutation();
   const updateNoteMutation = useUpdateJobNoteMutation();
   const deleteNoteMutation = useDeleteJobNoteMutation();
-
   useQueryErrorToast(
     notesQuery.error,
     "Failed to load notes. Please try again.",
   );
-
   const notes = React.useMemo(
     () => sortNotesByUpdatedAtDesc(notesQuery.data ?? []),
     [notesQuery.data],
@@ -72,56 +76,59 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
   );
   const isSaving = createNoteMutation.isPending || updateNoteMutation.isPending;
   const isDeleting = deleteNoteMutation.isPending;
-
   const resetEditor = React.useCallback(() => {
     setEditorState(null);
     setDraftTitle("");
     setDraftContent("");
     setEditorError(null);
   }, []);
-
   const openCreateEditor = React.useCallback(() => {
-    setEditorState({ mode: "create" });
+    setEditorState({
+      mode: "create",
+    });
     setSelectedNoteId(null);
     setDraftTitle("");
     setDraftContent("");
     setEditorError(null);
   }, []);
-
   const openEditEditor = React.useCallback((note: JobNote) => {
-    setEditorState({ mode: "edit", noteId: note.id });
+    setEditorState({
+      mode: "edit",
+      noteId: note.id,
+    });
     setDraftTitle(note.title);
     setDraftContent(markdownToTipTapHtml(note.content));
     setEditorError(null);
     setSelectedNoteId(note.id);
   }, []);
-
   const confirmDeleteNote = React.useCallback((note: JobNote) => {
     setNoteToDelete(note);
   }, []);
-
   const saveNote = React.useCallback(async () => {
     const title = draftTitle.trim();
     const content = tipTapHtmlToMarkdown(draftContent).trim();
-
     if (!title || !content) {
       setEditorError("Title and note content are required.");
       return;
     }
-
     try {
       const savedNote =
         editorState?.mode === "edit"
           ? await updateNoteMutation.mutateAsync({
               jobId,
               noteId: editorState.noteId,
-              input: { title, content },
+              input: {
+                title,
+                content,
+              },
             })
           : await createNoteMutation.mutateAsync({
               jobId,
-              input: { title, content },
+              input: {
+                title,
+                content,
+              },
             });
-
       toast.success("Note saved");
       setSelectedNoteId(savedNote.id);
       resetEditor();
@@ -137,10 +144,8 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
     resetEditor,
     updateNoteMutation,
   ]);
-
   const handleDeleteNote = React.useCallback(async () => {
     if (!noteToDelete) return;
-
     try {
       await deleteNoteMutation.mutateAsync({
         jobId,
@@ -171,21 +176,17 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
     resetEditor,
     selectedNoteId,
   ]);
-
   const canEditOtherNotes = editorState === null;
-
   React.useEffect(() => {
     if (editorState) return;
     if (notes.length === 0) {
       setSelectedNoteId(null);
       return;
     }
-
     if (!selectedNoteId || !notes.some((note) => note.id === selectedNoteId)) {
       setSelectedNoteId(notes[0]?.id ?? null);
     }
   }, [editorState, notes, selectedNoteId]);
-
   const startViewingNote = React.useCallback(
     (note: JobNote) => {
       if (editorState) return;
@@ -193,11 +194,9 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
     },
     [editorState],
   );
-
   const selectedTimestamp = selectedNote
     ? (formatDateTime(selectedNote.updatedAt) ?? selectedNote.updatedAt)
     : null;
-
   return (
     <section data-testid="job-notes-section" className="w-full">
       <Card className="border-border/50">
@@ -311,7 +310,7 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
                       htmlFor="job-note-title"
                       className="text-[10px] uppercase tracking-wide text-muted-foreground"
                     >
-                      Title
+                      {uiT("Title")}
                     </label>
                     <Input
                       id="job-note-title"
@@ -359,7 +358,7 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" disabled={isSaving || isDeleting}>
-                      {isSaving ? "Saving..." : "Save note"}
+                      {isSaving ? uiT("Saving...") : "Save note"}
                     </Button>
                     <Button
                       type="button"
@@ -367,7 +366,7 @@ export const JobNotesCard: React.FC<JobNotesCardProps> = ({ jobId }) => {
                       onClick={resetEditor}
                       disabled={isSaving || isDeleting}
                     >
-                      Cancel
+                      {uiT("Cancel")}
                     </Button>
                     {editorState.mode === "edit" && selectedNote && (
                       <Button

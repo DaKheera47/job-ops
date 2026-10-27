@@ -1,4 +1,5 @@
 import { useSettings } from "@client/hooks/useSettings";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   getRenderableJobDescription,
   looksLikeHtmlJobDescription,
@@ -40,10 +41,8 @@ type JobDescriptionPanelProps = {
   onSave?: (description: string) => Promise<void> | void;
   onOpen?: () => void;
 };
-
 const defaultHelperText =
   "Base description extracted from the job listing, editable if something looks off. Used by the Ghostwriter and for fit assessment.";
-
 export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   className,
   description: rawDescription,
@@ -57,6 +56,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   onSave,
   onOpen,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const { renderMarkdownInJobDescriptions } = useSettings();
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState(
@@ -72,12 +72,10 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
     [rawDescription],
   );
   const canEdit = Boolean(onSave);
-
   useEffect(() => {
     if (isEditing) return;
     setEditedDescription(rawDescription ?? "");
   }, [isEditing, rawDescription]);
-
   const handleCopy = async () => {
     try {
       await copyTextToClipboard(rawDescription || description);
@@ -86,15 +84,12 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       showErrorToast(error, "Failed to copy job description");
     }
   };
-
   const handleCancel = () => {
     setIsEditing(false);
     setEditedDescription(rawDescription ?? "");
   };
-
   const handleSave = async () => {
     if (!onSave) return;
-
     try {
       setIsSaving(true);
       await onSave(editedDescription);
@@ -106,7 +101,6 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       setIsSaving(false);
     }
   };
-
   const actions = !isEditing ? (
     <>
       {jobUrl ? (
@@ -126,7 +120,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       {canEdit ? (
         <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
           <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-          Edit
+          {uiT("Edit")}
         </Button>
       ) : null}
     </>
@@ -138,7 +132,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
         onClick={handleCancel}
         disabled={isSaving}
       >
-        Cancel
+        {uiT("Cancel")}
       </Button>
       <Button
         size="sm"
@@ -151,11 +145,10 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
         ) : (
           <Save className="mr-1.5 h-3.5 w-3.5" />
         )}
-        Save
+        {uiT("Save")}
       </Button>
     </>
   );
-
   const body = (
     <div
       className={cn(
@@ -186,7 +179,6 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       )}
     </div>
   );
-
   if (!collapsible) {
     return (
       <div
@@ -200,7 +192,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
                 <FileText className="h-3.5 w-3.5 text-sky-400/80" />
-                Job description
+                {uiT("Job description")}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground/65">
                 {helperText}
@@ -213,7 +205,6 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
       </div>
     );
   }
-
   return (
     <Accordion
       type="single"
@@ -233,7 +224,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
                 <FileText className="h-3.5 w-3.5 text-sky-400/80" />
-                Job description
+                {uiT("Job description")}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground/65 max-w-3/5">
                 {helperText}

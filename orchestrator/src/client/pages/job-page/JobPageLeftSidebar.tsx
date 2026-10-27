@@ -1,4 +1,5 @@
 import { isAwaitingAiScore, ScoreRing } from "@client/components";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { Job } from "@shared/types.js";
 import {
   ClipboardList,
@@ -13,9 +14,7 @@ import { Link } from "react-router-dom";
 import { formatPostingAgeLabel } from "@/client/lib/job-posting-age";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
-
 export { ScoreRing, isAwaitingAiScore };
-
 export type JobMemoryView =
   | "overview"
   | "note"
@@ -23,16 +22,16 @@ export type JobMemoryView =
   | "timeline"
   | "emails"
   | "ghostwriter";
-
 type JobPageLeftSidebarProps = {
   job: Job;
   activeMemoryView: JobMemoryView;
   baseJobPath: string;
-  navigationState?: { jobPageBackTo: string };
+  navigationState?: {
+    jobPageBackTo: string;
+  };
   selectedProjects: string[];
   sourceLabel: string;
 };
-
 const memoryLinks = [
   {
     id: "overview" as const,
@@ -65,13 +64,11 @@ const memoryLinks = [
     icon: Sparkles,
   },
 ];
-
-const PostingAgeRow: React.FC<{ datePosted: Job["datePosted"] }> = ({
-  datePosted,
-}) => {
+const PostingAgeRow: React.FC<{
+  datePosted: Job["datePosted"];
+}> = ({ datePosted }) => {
   const postingAge = formatPostingAgeLabel(datePosted);
   if (!postingAge) return null;
-
   return (
     <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
       <span className="text-muted-foreground">Posted</span>
@@ -81,7 +78,6 @@ const PostingAgeRow: React.FC<{ datePosted: Job["datePosted"] }> = ({
     </div>
   );
 };
-
 export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
   job,
   activeMemoryView,
@@ -89,101 +85,104 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
   navigationState,
   selectedProjects,
   sourceLabel,
-}) => (
-  <aside className="space-y-4 xl:sticky xl:top-5">
-    <section className="rounded-xl border border-border/50 bg-card/85 p-4">
-      <div className="flex gap-4 flex-row items-start justify-between">
-        <div className="min-w-0 space-y-1">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Application dossier
+}) => {
+  const { t: uiT } = useUiTranslation();
+  return (
+    <aside className="space-y-4 xl:sticky xl:top-5">
+      <section className="rounded-xl border border-border/50 bg-card/85 p-4">
+        <div className="flex gap-4 flex-row items-start justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Application dossier
+            </div>
+            <h1 className="text-2xl font-semibold leading-tight">
+              {job.employer}
+            </h1>
+            <div className="text-sm text-muted-foreground">{job.title}</div>
           </div>
-          <h1 className="text-2xl font-semibold leading-tight">
-            {job.employer}
-          </h1>
-          <div className="text-sm text-muted-foreground">{job.title}</div>
+          <div className="flex justify-start sm:justify-end">
+            <ScoreRing
+              score={job.suitabilityScore}
+              isAwaitingAi={isAwaitingAiScore(job)}
+              suitabilityReason={job.suitabilityReason}
+              jobId={job.id}
+            />
+          </div>
         </div>
-        <div className="flex justify-start sm:justify-end">
-          <ScoreRing
-            score={job.suitabilityScore}
-            isAwaitingAi={isAwaitingAiScore(job)}
-            suitabilityReason={job.suitabilityReason}
-            jobId={job.id}
-          />
-        </div>
-      </div>
 
-      <div className="mt-5 space-y-3 text-sm">
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Source</span>
-          <span className="text-right font-medium">{sourceLabel}</span>
-        </div>
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Location</span>
-          <span className="text-right font-medium">
-            {job.location || "Unknown"}
-          </span>
-        </div>
-        <PostingAgeRow datePosted={job.datePosted} />
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Found</span>
-          <span className="text-right font-medium">
-            {formatDateTime(job.discoveredAt) ?? job.discoveredAt}
-          </span>
-        </div>
-        {job.appliedAt && (
+        <div className="mt-5 space-y-3 text-sm">
           <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-            <span className="text-muted-foreground">Applied</span>
+            <span className="text-muted-foreground">{uiT("Source")}</span>
+            <span className="text-right font-medium">{sourceLabel}</span>
+          </div>
+          <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-muted-foreground">{uiT("Location")}</span>
             <span className="text-right font-medium">
-              {formatDateTime(job.appliedAt) ?? job.appliedAt}
+              {job.location || "Unknown"}
             </span>
           </div>
-        )}
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Outcome</span>
-          <span className="text-right font-medium">
-            {job.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
-          </span>
+          <PostingAgeRow datePosted={job.datePosted} />
+          <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-muted-foreground">Found</span>
+            <span className="text-right font-medium">
+              {formatDateTime(job.discoveredAt) ?? job.discoveredAt}
+            </span>
+          </div>
+          {job.appliedAt && (
+            <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+              <span className="text-muted-foreground">{uiT("Applied")}</span>
+              <span className="text-right font-medium">
+                {formatDateTime(job.appliedAt) ?? job.appliedAt}
+              </span>
+            </div>
+          )}
+          <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-muted-foreground">Outcome</span>
+            <span className="text-right font-medium">
+              {job.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
+            </span>
+          </div>
+          <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-muted-foreground">Projects Chosen</span>
+            <span className="text-right font-medium">
+              {selectedProjects.length > 0
+                ? selectedProjects.length
+                : "No projects"}
+            </span>
+          </div>
         </div>
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Projects Chosen</span>
-          <span className="text-right font-medium">
-            {selectedProjects.length > 0
-              ? selectedProjects.length
-              : "No projects"}
-          </span>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section className="rounded-xl border border-border/50 bg-card/70 p-3">
-      <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        Links
-      </div>
-      <div className="space-y-1">
-        {memoryLinks.map(({ id: linkView, label, icon: Icon }) => {
-          const path =
-            linkView === "overview"
-              ? baseJobPath
-              : `${baseJobPath}/${linkView === "note" ? "notes" : linkView}`;
-          return (
-            <Button
-              asChild
-              key={linkView}
-              variant={activeMemoryView === linkView ? "outline" : "ghost"}
-              className={cn(
-                "h-9 w-full justify-between px-2 text-left text-sm",
-              )}
-            >
-              <Link to={path} state={navigationState}>
-                <span className="flex min-w-0 items-center gap-2">
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{label}</span>
-                </span>
-              </Link>
-            </Button>
-          );
-        })}
-      </div>
-    </section>
-  </aside>
-);
+      <section className="rounded-xl border border-border/50 bg-card/70 p-3">
+        <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Links
+        </div>
+        <div className="space-y-1">
+          {memoryLinks.map(({ id: linkView, label, icon: Icon }) => {
+            const path =
+              linkView === "overview"
+                ? baseJobPath
+                : `${baseJobPath}/${linkView === "note" ? "notes" : linkView}`;
+            return (
+              <Button
+                asChild
+                key={linkView}
+                variant={activeMemoryView === linkView ? "outline" : "ghost"}
+                className={cn(
+                  "h-9 w-full justify-between px-2 text-left text-sm",
+                )}
+              >
+                <Link to={path} state={navigationState}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </span>
+                </Link>
+              </Button>
+            );
+          })}
+        </div>
+      </section>
+    </aside>
+  );
+};

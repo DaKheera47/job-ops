@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { resolveResumeProjectSelection } from "@shared/resume-projects";
 import type {
@@ -86,7 +87,6 @@ interface TailoringSectionsProps {
   onToggleProject: (id: string) => void;
   onTracerLinksEnabledChange: (value: boolean) => void;
 }
-
 type SectionState =
   | "ready"
   | "review"
@@ -94,20 +94,17 @@ type SectionState =
   | "optional"
   | "source"
   | "none";
-
 type NoSelectedProjectsReason =
   | "projects-loading"
   | "settings-loading"
   | "no-projects"
   | "no-project-slots"
   | "selection-empty";
-
 type NoSelectedProjectsInfoCopy = {
   reason: NoSelectedProjectsReason;
   title: string;
   description: string;
 };
-
 const sectionClass =
   "overflow-hidden rounded-md border border-border/55 bg-background/25 px-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const triggerClass =
@@ -116,10 +113,13 @@ const inputClass =
   "w-full rounded-md border border-border/60 bg-background/65 px-3 py-2 text-sm leading-6 ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 const actionButtonClass =
   "h-7 border-border/60 bg-background/45 px-2 text-[11px] text-muted-foreground hover:bg-muted/35 hover:text-foreground";
-
 const stateCopy: Record<
   SectionState,
-  { label: string; icon: React.ElementType; className: string }
+  {
+    label: string;
+    icon: React.ElementType;
+    className: string;
+  }
 > = {
   ready: {
     label: "Ready",
@@ -152,24 +152,18 @@ const stateCopy: Record<
     className: "border-sky-500/20 bg-sky-500/10 text-sky-300",
   },
 };
-
 const textHasValue = (value: string) => value.trim().length > 0;
-
 const sectionStateForText = (value: string): SectionState =>
   textHasValue(value) ? "ready" : "missing";
-
 const parseSkillGroupKeywordsInput = (input: string): string[] =>
   input
     .split(/[\n,]/g)
     .map((keyword) => keyword.trim())
     .filter(Boolean);
-
 const skillGroupHasKeywords = (keywordsText: string) =>
   parseSkillGroupKeywordsInput(keywordsText).length > 0;
-
 const skillGroupNeedsReview = (group: EditableSkillGroup) =>
   !textHasValue(group.name) || !skillGroupHasKeywords(group.keywordsText);
-
 export function getNoSelectedProjectsInfo(args: {
   catalog: ResumeProjectCatalogItem[];
   isCatalogLoading: boolean;
@@ -185,7 +179,6 @@ export function getNoSelectedProjectsInfo(args: {
         "Project options are still loading. Wait a moment before deciding whether this job has no selected projects.",
     };
   }
-
   if (args.catalog.length === 0) {
     return {
       reason: "no-projects",
@@ -194,7 +187,6 @@ export function getNoSelectedProjectsInfo(args: {
         "No projects were found in your base resume. Add projects to your resume to include them here.",
     };
   }
-
   if (args.isResumeProjectsSettingsLoading) {
     return {
       reason: "settings-loading",
@@ -203,7 +195,6 @@ export function getNoSelectedProjectsInfo(args: {
         "Project options are available, but selection settings are still loading. Wait a moment or select projects manually below.",
     };
   }
-
   const settings = args.resumeProjectsSettings;
   if (!settings) {
     return {
@@ -212,14 +203,12 @@ export function getNoSelectedProjectsInfo(args: {
       description: "Project choices will appear when settings finish loading.",
     };
   }
-
   const resolution = resolveResumeProjectSelection({
     catalog: args.catalog,
     resumeProjects: settings,
     selectedProjectIds: [...args.selectedIds],
   });
   if (resolution.effectiveSelectedIds.length > 0) return null;
-
   if (resolution.targetCount === 0) {
     return {
       reason: "no-project-slots",
@@ -228,7 +217,6 @@ export function getNoSelectedProjectsInfo(args: {
         "Project settings currently allow 0 projects. Increase the target to include projects.",
     };
   }
-
   return {
     reason: "selection-empty",
     title: "No projects selected",
@@ -238,7 +226,6 @@ export function getNoSelectedProjectsInfo(args: {
         : "Choose projects below or use Pick again with AI.",
   };
 }
-
 const SectionTriggerLabel: React.FC<{
   title: string;
   state: SectionState;
@@ -251,7 +238,6 @@ const SectionTriggerLabel: React.FC<{
   const resolvedBadgeLabel =
     badgeLabel ??
     `${copy.label}${typeof count === "number" && count > 0 ? ` ${count}` : ""}`;
-
   return (
     <span className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-2">
       <span className="flex min-w-0 items-center gap-2">
@@ -276,7 +262,6 @@ const SectionTriggerLabel: React.FC<{
     </span>
   );
 };
-
 const NoSelectedProjectsInfo = ({
   info,
 }: {
@@ -301,7 +286,6 @@ const NoSelectedProjectsInfo = ({
     </span>
   </Tip>
 );
-
 export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   catalog,
   isCatalogLoading,
@@ -347,6 +331,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   onToggleProject,
   onTracerLinksEnabledChange,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [keywordDrafts, setKeywordDrafts] = useState<Record<string, string>>(
     {},
   );
@@ -407,7 +392,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
       !summaryFocusedRef.current,
     );
   }, []);
-
   const setSummaryTextareaRef = useCallback(
     (node: HTMLTextAreaElement | null) => {
       summaryResizeObserverRef.current?.disconnect();
@@ -434,7 +418,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   useLayoutEffect(() => {
     syncSummaryTextareaHeight();
   }, [summary, syncSummaryTextareaHeight]);
-
   return (
     <Accordion type="multiple" className="space-y-2">
       <AccordionItem value="summary" className={sectionClass}>
@@ -528,7 +511,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
               id="tailor-summary-edit"
               ref={setSummaryTextareaRef}
               className={`${inputClass} resize-y overflow-y-auto pt-7`}
-              style={{ minHeight: TAILOR_TEXTAREA_MIN_HEIGHT_PX }}
+              style={{
+                minHeight: TAILOR_TEXTAREA_MIN_HEIGHT_PX,
+              }}
               value={summary}
               onChange={(event) => onSummaryChange(event.target.value)}
               onFocus={() => {
@@ -843,9 +828,12 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
       )}
 
       <AccordionItem value="tracer-links" className={sectionClass}>
-        <AccordionTrigger className={triggerClass} aria-label="Tracer Links">
+        <AccordionTrigger
+          className={triggerClass}
+          aria-label={uiT("Tracer Links")}
+        >
           <SectionTriggerLabel
-            title="Tracer Links"
+            title={uiT("Tracer Links")}
             state={tracerLinksEnabled ? "ready" : "optional"}
           />
         </AccordionTrigger>

@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { PageHeader, PageMain, SectionCard } from "@client/components/layout";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   JobTracerLinkAnalyticsItem,
   TracerAnalyticsResponse,
@@ -51,12 +52,10 @@ const chartConfig = {
     color: "var(--chart-1)",
   },
 };
-
 function formatUnixTimestamp(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "-";
   return new Date(value * 1000).toLocaleString();
 }
-
 function formatRecentActivity(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "-";
   const date = new Date(value * 1000);
@@ -75,21 +74,18 @@ function formatRecentActivity(value: number | null): string {
     day: "numeric",
   });
 }
-
 function toUnixStartOfDay(value: string): number | undefined {
   if (!value) return undefined;
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return undefined;
   return Math.floor(date.getTime() / 1000);
 }
-
 function toUnixEndOfDay(value: string): number | undefined {
   if (!value) return undefined;
   const date = new Date(`${value}T23:59:59`);
   if (Number.isNaN(date.getTime())) return undefined;
   return Math.floor(date.getTime() / 1000);
 }
-
 function formatDayLabel(day: string): string {
   const date = new Date(`${day}T00:00:00`);
   if (Number.isNaN(date.getTime())) return day;
@@ -98,7 +94,6 @@ function formatDayLabel(day: string): string {
     day: "numeric",
   });
 }
-
 function formatRelativeTime(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "No activity yet";
   const diffSeconds = Math.max(0, Math.floor(Date.now() / 1000) - value);
@@ -113,8 +108,8 @@ function formatRelativeTime(value: number | null): string {
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
-
 export const TracerLinksPage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const [selectedDrilldownJobId, setSelectedDrilldownJobId] = useState<
     string | null
   >(null);
@@ -123,7 +118,6 @@ export const TracerLinksPage: React.FC = () => {
   const [includeBots, setIncludeBots] = useState(false);
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
   const [drilldownMode, setDrilldownMode] = useState<"human" | "all">("human");
-
   const query = useMemo(
     () => ({
       from: toUnixStartOfDay(fromDate),
@@ -133,14 +127,12 @@ export const TracerLinksPage: React.FC = () => {
     }),
     [fromDate, toDate, includeBots],
   );
-
   const analyticsQuery = useQuery<TracerAnalyticsResponse>({
     queryKey: queryKeys.tracer.analytics(query),
     queryFn: () => api.getTracerAnalytics(query),
   });
   const analytics = analyticsQuery.data ?? null;
   const isLoading = analyticsQuery.isPending;
-
   const jobDrilldownQuery = useQuery({
     queryKey: queryKeys.tracer.jobLinks(selectedDrilldownJobId ?? "", {
       from: query.from,
@@ -164,7 +156,6 @@ export const TracerLinksPage: React.FC = () => {
       : jobDrilldownQuery.error instanceof Error
         ? jobDrilldownQuery.error.message
         : null;
-
   const chartData = analytics?.timeSeries ?? [];
   const totalViews = analytics?.totals.clicks ?? 0;
   const humanClicks = analytics?.totals.humanClicks ?? 0;
@@ -177,7 +168,6 @@ export const TracerLinksPage: React.FC = () => {
     }
     return jobIds.size;
   }, [analytics]);
-
   const visibleDays = useMemo(() => {
     if (query.from && query.to && query.to >= query.from) {
       const secondsPerDay = 24 * 60 * 60;
@@ -185,18 +175,18 @@ export const TracerLinksPage: React.FC = () => {
     }
     return chartData.length > 0 ? chartData.length : 30;
   }, [chartData.length, query.from, query.to]);
-
   const selectedJobId = jobDrilldown?.job.id ?? null;
   const drilldownGroupedLinks = useMemo(() => {
     if (!jobDrilldown) {
-      return { active: [], inactive: [] } as const;
+      return {
+        active: [],
+        inactive: [],
+      } as const;
     }
-
     const hasActivity = (row: JobTracerLinkAnalyticsItem) =>
       drilldownMode === "human" ? row.humanClicks > 0 : row.clicks > 0;
     const uniqueOpens = (row: JobTracerLinkAnalyticsItem) =>
       drilldownMode === "human" ? row.humanClicks : row.uniqueOpens;
-
     const active = jobDrilldown.links.filter(hasActivity).sort((a, b) => {
       const lastClickDelta = (b.lastClickedAt ?? 0) - (a.lastClickedAt ?? 0);
       if (lastClickDelta !== 0) return lastClickDelta;
@@ -204,12 +194,13 @@ export const TracerLinksPage: React.FC = () => {
       if (uniqueDelta !== 0) return uniqueDelta;
       return b.humanClicks - a.humanClicks;
     });
-
     const inactive = jobDrilldown.links
       .filter((row) => !hasActivity(row))
       .sort((a, b) => a.destinationUrl.localeCompare(b.destinationUrl));
-
-    return { active, inactive } as const;
+    return {
+      active,
+      inactive,
+    } as const;
   }, [drilldownMode, jobDrilldown]);
   const drilldownSummary = useMemo(() => {
     if (!jobDrilldown) return null;
@@ -227,9 +218,12 @@ export const TracerLinksPage: React.FC = () => {
         return row.lastClickedAt;
       return latest;
     }, null);
-    return { humanClicks, totalClicks, lastActivityAt };
+    return {
+      humanClicks,
+      totalClicks,
+      lastActivityAt,
+    };
   }, [drilldownMode, jobDrilldown]);
-
   const handleCopyDestination = async (
     destinationUrl: string,
     isActiveLink: boolean,
@@ -247,14 +241,12 @@ export const TracerLinksPage: React.FC = () => {
   };
   const getRowClicks = (row: JobTracerLinkAnalyticsItem) =>
     drilldownMode === "human" ? row.humanClicks : row.clicks;
-
   const getDateRangeDaysBucket = () => {
     if (!query.from || !query.to || query.to < query.from) return "unset";
     const secondsPerDay = 24 * 60 * 60;
     const days = Math.floor((query.to - query.from) / secondsPerDay) + 1;
     return bucketCount(days);
   };
-
   const trackFiltersApplied = () => {
     trackProductEvent("tracer_filters_applied", {
       include_bots: includeBots,
@@ -263,7 +255,6 @@ export const TracerLinksPage: React.FC = () => {
       date_range_days_bucket: getDateRangeDaysBucket(),
     });
   };
-
   const handleSelectTopJob = (job: TracerAnalyticsTopJob, rank: number) => {
     trackProductEvent("tracer_drilldown_opened", {
       rank,
@@ -273,7 +264,6 @@ export const TracerLinksPage: React.FC = () => {
     setSelectedDrilldownJobId(job.jobId);
     setIsDrilldownOpen(true);
   };
-
   const handleSetDrilldownMode = (mode: "human" | "all") => {
     if (drilldownMode === mode) return;
     setDrilldownMode(mode);
@@ -281,12 +271,11 @@ export const TracerLinksPage: React.FC = () => {
       mode,
     });
   };
-
   return (
     <>
       <PageHeader
         icon={BarChart3}
-        title="Tracer Links"
+        title={uiT("Tracer Links")}
         subtitle="Outbound resume link analytics"
       />
 
@@ -295,7 +284,7 @@ export const TracerLinksPage: React.FC = () => {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="filters" className="border-none">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="text-sm font-semibold">Filters</div>
+                <div className="text-sm font-semibold">{uiT("Filters")}</div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
@@ -391,7 +380,12 @@ export const TracerLinksPage: React.FC = () => {
             <ChartContainer config={chartConfig} className="h-[240px] w-full">
               <BarChart
                 data={chartData}
-                margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                margin={{
+                  top: 8,
+                  right: 8,
+                  left: -12,
+                  bottom: 0,
+                }}
               >
                 <CartesianGrid vertical={false} />
                 <XAxis
@@ -404,7 +398,10 @@ export const TracerLinksPage: React.FC = () => {
                 />
                 <YAxis axisLine={false} tickLine={false} width={30} />
                 <ChartTooltip
-                  cursor={{ fill: "var(--color-clicks)", opacity: 0.18 }}
+                  cursor={{
+                    fill: "var(--color-clicks)",
+                    opacity: 0.18,
+                  }}
                   content={
                     <ChartTooltipContent
                       nameKey="clicks"

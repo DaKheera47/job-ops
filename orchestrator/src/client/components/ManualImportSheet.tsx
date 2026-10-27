@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 /**
  * Manual job import flow (paste JD -> infer -> review -> import).
  */
@@ -26,7 +27,6 @@ interface ManualImportSheetProps {
   initialSource?: ManualImportTrackingSource | null;
   initialSourceHost?: string | null;
 }
-
 export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
   open,
   onOpenChange,
@@ -35,6 +35,7 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
   initialSource,
   initialSourceHost,
 }) => {
+  const { t: uiT } = useUiTranslation();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-xl overflow-hidden">
@@ -44,11 +45,12 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
               <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </span>
-              Add a job
+              {uiT("Add a job")}
             </SheetTitle>
             <SheetDescription>
-              Add a link, description, or PDF. Review the details before adding
-              the job.
+              {uiT(
+                "Add a link, description, or PDF. Review the details before adding the job.",
+              )}
             </SheetDescription>
           </SheetHeader>
 
