@@ -1,6 +1,6 @@
 import { PageHeader, StatusIndicator } from "@client/components/layout";
 import type { JobSource } from "@shared/types.js";
-import { FileText, Loader2, Search, Square, X } from "lucide-react";
+import { FileText, Gauge, Loader2, Search, Square, X } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +15,9 @@ interface OrchestratorHeaderProps {
   onOpenAutomaticRun: () => void;
   onCancelPipeline: () => void;
   onOpenManualImport: () => void;
+  unscoredCount?: number;
+  isScoringUnscored?: boolean;
+  onScoreUnscored?: () => void;
 }
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
@@ -28,6 +31,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   onOpenAutomaticRun,
   onCancelPipeline,
   onOpenManualImport,
+  unscoredCount = 0,
+  isScoringUnscored = false,
+  onScoreUnscored,
 }) => {
   const primaryAction = hideRunAction ? null : isPipelineRunning ? (
     <Button
@@ -65,6 +71,25 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   const actions = (
     <div className="flex items-center gap-2">
       {primaryAction}
+      {onScoreUnscored && (unscoredCount > 0 || isScoringUnscored) ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          disabled={isPipelineRunning || isScoringUnscored}
+          onClick={onScoreUnscored}
+        >
+          {isScoringUnscored ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Gauge className="h-4 w-4" />
+          )}
+          {isScoringUnscored
+            ? "Scoring..."
+            : `Score unscored (${unscoredCount})`}
+        </Button>
+      ) : null}
       <Button
         type="button"
         variant="ghost"

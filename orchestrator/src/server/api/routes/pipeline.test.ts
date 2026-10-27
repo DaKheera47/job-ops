@@ -1007,6 +1007,17 @@ describe.sequential("Pipeline API routes", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  it("score-unscored does nothing when there are no unscored jobs", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/score-unscored`, {
+      method: "POST",
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual({ started: false, count: 0 });
+  });
+
   // -- Challenge endpoints --
   // Route-level tests only: validates wiring, request validation, and 404 on
   // unknown extractor. The actual solver (browser-utils/solver.ts) launches a

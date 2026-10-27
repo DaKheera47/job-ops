@@ -1,8 +1,10 @@
+import * as api from "@client/api";
 import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { useSettings } from "@client/hooks/useSettings";
 import type { Job } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { trackProductEvent } from "@/lib/analytics";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorJobWorkspaceContainer } from "./orchestrator/OrchestratorJobWorkspaceContainer";
@@ -22,6 +24,7 @@ import { getEnabledSources } from "./orchestrator/utils";
 
 export const OrchestratorPage: React.FC = () => {
   const [isManualImportOpen, setIsManualImportOpen] = useState(false);
+  const [isScoringUnscored, setIsScoringUnscored] = useState(false);
   const filters = useOrchestratorFilters();
   const navigation = useOrchestratorNavigation({
     searchParams: filters.searchParams,
@@ -123,6 +126,31 @@ export const OrchestratorPage: React.FC = () => {
     setIsRunModeModalOpen,
   ]);
 
+  const unscoredCount = useMemo(
+    () =>
+      jobs.filter(
+        (job) => job.status === "discovered" && job.suitabilityScore == null,
+      ).length,
+    [jobs],
+  );
+
+  useEffect(() => {
+    if (unscoredCount === 0) setIsScoringUnscored(false);
+  }, [unscoredCount]);
+
+  const handleScoreUnscored = useCallback(async () => {
+    setIsScoringUnscored(true);
+    try {
+      const result = await api.scoreUnscoredJobs();
+      if (!result.started) setIsScoringUnscored(false);
+    } catch (error) {
+      setIsScoringUnscored(false);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start scoring",
+      );
+    }
+  }, []);
+
   return (
     <>
       <OrchestratorHeader
@@ -140,6 +168,9 @@ export const OrchestratorPage: React.FC = () => {
         onOpenManualImport={() => {
           setIsManualImportOpen(true);
         }}
+        unscoredCount={unscoredCount}
+        isScoringUnscored={isScoringUnscored}
+        onScoreUnscored={handleScoreUnscored}
       />
 
       <main
