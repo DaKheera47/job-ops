@@ -76,6 +76,10 @@ const renderFilters = (
     onEmploymentTypesChange: vi.fn(),
     locationFilter: "",
     onLocationFilterChange: vi.fn(),
+    includeKeywords: "",
+    onIncludeKeywordsChange: vi.fn(),
+    excludeKeywords: "",
+    onExcludeKeywordsChange: vi.fn(),
     dateFilter: {
       dimensions: [],
       startDate: null,

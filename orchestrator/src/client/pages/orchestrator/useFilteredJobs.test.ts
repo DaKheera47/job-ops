@@ -32,6 +32,8 @@ const baseFilters: JobFilters = {
   postedWithinDays: null,
   employmentTypes: [],
   location: "",
+  includeKeywords: "",
+  excludeKeywords: "",
   sort: { key: "score", direction: "desc" },
 };
 
@@ -312,5 +314,37 @@ describe("useFilteredJobs", () => {
     );
 
     expect(result.current.map((job) => job.id)).toEqual(["london"]);
+  });
+  it("filters by include keywords (any term) and exclude keywords", () => {
+    const jobs: Job[] = [
+      {
+        ...baseJob,
+        id: "winter",
+        title: "Software Developer Co-op (Winter 2027)",
+      },
+      { ...baseJob, id: "summer", title: "Software Intern (Summer 2027)" },
+      { ...baseJob, id: "senior", title: "Senior Co-op Mentor (Winter 2027)" },
+      {
+        ...baseJob,
+        id: "french",
+        title: "Étudiant en génie logiciel, hiver 2027",
+      },
+    ];
+    const ids = (filters: Partial<JobFilters>) =>
+      renderHook(() =>
+        useFilteredJobs(jobs, makeFilters({ activeTab: "all", ...filters })),
+      ).result.current.map((job) => job.id);
+
+    expect(ids({ includeKeywords: "winter 2027, summer 2027" }).sort()).toEqual(
+      ["senior", "summer", "winter"],
+    );
+    expect(
+      ids({ includeKeywords: "winter 2027", excludeKeywords: "senior" }),
+    ).toEqual(["winter"]);
+    expect(ids({ excludeKeywords: "etudiant" }).sort()).toEqual([
+      "senior",
+      "summer",
+      "winter",
+    ]);
   });
 });
