@@ -1,3 +1,4 @@
+import { getTenantId, runWithRequestContext } from "@infra/request-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClaudeCliClient } from "./claude-cli/client";
 import { CodexClient } from "./codex/client";
@@ -269,6 +270,49 @@ describe("LlmService provider normalization", () => {
 
     expect(models[0]).toBe("claude-sonnet-5");
     expect(models.length).toBeGreaterThan(1);
+  });
+
+  it("preserves fenced content independently across concurrent tenant completions", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      const tenantId = getTenantId();
+      await Promise.resolve();
+      const value =
+        tenantId === "tenant-a"
+          ? 'Example:\n```json\n{"tenant":"a"}\n```'
+          : 'Different example: ```typescript\nconst owner = "b";\n```';
+      return completionResponse(
+        "```json\n" + JSON.stringify({ value }) + "\n```",
+      );
+    });
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-key",
+      allowEnvironmentCredentials: false,
+    });
+    const results = await Promise.all(
+      ["tenant-a", "tenant-b"].map((tenantId) =>
+        runWithRequestContext({ tenantId }, () =>
+          llm.callJson<{ value: string }>({
+            model: "test-model",
+            messages: [{ role: "user", content: "Return structured content." }],
+            jsonSchema: TEST_SCHEMA,
+            maxRetries: 0,
+          }),
+        ),
+      ),
+    );
+    expect(results).toEqual([
+      {
+        success: true,
+        data: { value: 'Example:\n```json\n{"tenant":"a"}\n```' },
+      },
+      {
+        success: true,
+        data: {
+          value: 'Different example: ```typescript\nconst owner = "b";\n```',
+        },
+      },
+    ]);
   });
 
   it("retries a 200 response whose completion is empty and succeeds on the next attempt", async () => {

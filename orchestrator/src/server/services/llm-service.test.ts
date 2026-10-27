@@ -312,6 +312,38 @@ describe("LlmService", () => {
 });
 
 describe("parseJsonContent", () => {
+  it.each([
+    false,
+    true,
+  ])("preserves code fences inside JSON strings (wrapped=%s)", (wrapped) => {
+    const value = {
+      description:
+        "Example:\n```typescript\nconst value = { enabled: true };\n```",
+      label: "```json is literal text",
+    };
+    const json = JSON.stringify(value);
+    const content = wrapped ? "```json\n" + json + "\n```" : json;
+    expect(parseJsonContent(content)).toEqual(value);
+  });
+
+  it.each([
+    false,
+    true,
+  ])("preserves complete JSON arrays (wrapped=%s)", (wrapped) => {
+    const json = '[{"title":"First"},{"title":"Second"}]';
+    const content = wrapped ? "```json\n" + json + "\n```" : json;
+    expect(parseJsonContent(content)).toEqual([
+      { title: "First" },
+      { title: "Second" },
+    ]);
+  });
+
+  it("does not reinterpret a valid JSON string containing braces as an object", () => {
+    expect(parseJsonContent(JSON.stringify('Example: {"enabled":true}'))).toBe(
+      'Example: {"enabled":true}',
+    );
+  });
+
   it("parses clean JSON", () => {
     const result = parseJsonContent<{ foo: string }>('{"foo": "bar"}');
     expect(result.foo).toBe("bar");
