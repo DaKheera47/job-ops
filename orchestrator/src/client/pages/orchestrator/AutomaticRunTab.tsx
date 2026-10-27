@@ -798,16 +798,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
         <div
           className={cn(
-            "min-h-0 flex-1",
-            automaticTab === "details"
-              ? "overflow-visible pr-1"
-              : "overflow-y-auto",
+            "min-h-0 flex-1 pr-1",
+            automaticTab === "details" ? "overflow-visible" : "overflow-y-auto",
           )}
         >
-          <TabsContent
-            value="describe"
-            className="mx-auto mt-0 w-full max-w-3xl py-2"
-          >
+          <TabsContent value="describe" className="mt-0 w-full py-2">
             <AutomaticSearchPrompt
               searchPrompt={searchPrompt}
               isPlanningSearch={isPlanningSearch}

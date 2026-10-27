@@ -38,6 +38,8 @@ AI fills the same fields you can edit yourself; it never starts discovery. **Des
 
 The configuration form keeps its existing layout and controls. **Search notes** contains any AI assumptions or limitations and is collapsed by default. Ranking preferences influence scores rather than strictly excluding listings, including salary preferences.
 
+The search description and configuration form use the same page width.
+
 If AI setup is unavailable, the review clearly says that the existing criteria were kept. Edit them yourself or return to the description and try again.
 
 ### Search settings
