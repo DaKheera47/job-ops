@@ -11,7 +11,6 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
-import { RUN_MODE_STORAGE_KEY } from "./orchestrator/run-mode";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
@@ -213,11 +212,11 @@ vi.mock("./orchestrator/OrchestratorHeader", () => ({
     <div data-testid="header">
       {!hideRunAction ? (
         <button type="button" onClick={onOpenAutomaticRun}>
-          {isSearchComposerOpen ? "Close Search" : "Run Search"}
+          {isSearchComposerOpen ? "Close Search" : "Find jobs"}
         </button>
       ) : null}
       <button type="button" onClick={onOpenManualImport}>
-        Import job manually
+        Add a job
       </button>
       <button type="button" onClick={onCancelPipeline}>
         Cancel Pipeline
@@ -432,33 +431,21 @@ vi.mock("./orchestrator/JobListPanel", () => ({
   ),
 }));
 
-vi.mock("./orchestrator/RunModeModal", () => ({
-  RunModeModal: ({
-    open,
-    mode,
+vi.mock("./orchestrator/OrchestratorSearchComposer", () => ({
+  OrchestratorSearchComposer: ({
     onSaveAndRunAutomatic,
   }: {
-    open: boolean;
-    mode: "automatic" | "manual";
     onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   }) => (
-    <div data-testid="run-mode-modal">
-      {open ? (
-        <>
-          <h1>
-            {mode === "automatic"
-              ? "What kind of jobs are you looking for?"
-              : "Review job details"}
-          </h1>
-          <button
-            type="button"
-            data-testid="run-automatic"
-            onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
-          >
-            Run automatic
-          </button>
-        </>
-      ) : null}
+    <div data-testid="search-composer">
+      <h1>Find your next role</h1>
+      <button
+        type="button"
+        data-testid="run-automatic"
+        onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
+      >
+        Start search
+      </button>
     </div>
   ),
 }));
@@ -523,11 +510,11 @@ const pressKeyOn = (
 };
 
 const openAutomaticRunComposer = () => {
-  fireEvent.click(screen.getByRole("button", { name: /run search/i }));
+  fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
 };
 
 const openManualImport = () => {
-  fireEvent.click(screen.getByRole("button", { name: /import job manually/i }));
+  fireEvent.click(screen.getByRole("button", { name: /add a job/i }));
 };
 
 describe("OrchestratorPage", () => {
@@ -1152,14 +1139,14 @@ describe("OrchestratorPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /what kind of jobs are you looking for\?/i,
+        name: /find your next role/i,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /close search/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /run search/i }),
+      screen.queryByRole("button", { name: /find jobs/i }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
   });
@@ -1183,16 +1170,16 @@ describe("OrchestratorPage", () => {
 
     expect(
       screen.queryByRole("heading", {
-        name: /what kind of jobs are you looking for\?/i,
+        name: /find your next role/i,
       }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /run search/i }),
+      screen.getByRole("button", { name: /find jobs/i }),
     ).toBeInTheDocument();
   });
 
-  it("reopens the search composer in the last selected mode", () => {
-    localStorage.setItem(RUN_MODE_STORAGE_KEY, "manual");
+  it("always opens Find jobs even when the previous mode was manual", () => {
+    localStorage.setItem("jobops.pipeline.run-mode.v1", "manual");
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
@@ -1209,7 +1196,7 @@ describe("OrchestratorPage", () => {
     openAutomaticRunComposer();
 
     expect(
-      screen.getByRole("heading", { name: /review job details/i }),
+      screen.getByRole("heading", { name: /find your next role/i }),
     ).toBeInTheDocument();
   });
 
@@ -1260,14 +1247,14 @@ describe("OrchestratorPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /what kind of jobs are you looking for\?/i,
+        name: /find your next role/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /run search/i }),
+      screen.queryByRole("button", { name: /find jobs/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /import job manually/i }),
+      screen.getByRole("button", { name: /add a job/i }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("summary")).not.toBeInTheDocument();
     expect(screen.queryByText(/no jobs found/i)).not.toBeInTheDocument();
@@ -1293,7 +1280,7 @@ describe("OrchestratorPage", () => {
     expect(screen.getByTestId("summary")).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /what kind of jobs are you looking for\?/i,
+        name: /find your next role/i,
       }),
     ).not.toBeInTheDocument();
   });

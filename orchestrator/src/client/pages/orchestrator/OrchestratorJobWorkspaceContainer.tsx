@@ -9,7 +9,6 @@ import { tabs } from "./constants";
 import { FloatingJobActionsBar } from "./FloatingJobActionsBar";
 import { OrchestratorJobsWorkspace } from "./OrchestratorJobsWorkspace";
 import { OrchestratorMobileJobDrawer } from "./OrchestratorMobileJobDrawer";
-import type { RunMode } from "./run-mode";
 import { useFilteredJobs } from "./useFilteredJobs";
 import { useJobSelectionActions } from "./useJobSelectionActions";
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
@@ -34,7 +33,7 @@ interface OrchestratorJobWorkspaceContainerProps {
   filters: ReturnType<typeof useOrchestratorFilters>;
   navigation: ReturnType<typeof useOrchestratorNavigation>;
   ui: ReturnType<typeof useOrchestratorUiState>;
-  openRunMode: (mode: RunMode) => void;
+  onFindJobs: () => void;
 }
 
 export const OrchestratorJobWorkspaceContainer: React.FC<
@@ -53,7 +52,7 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
   filters,
   navigation,
   ui,
-  openRunMode,
+  onFindJobs,
 }) => {
   const jobListHandleRef = useRef<VirtualListHandle | null>(null);
   const activeJobs = useFilteredJobs(jobs, {
@@ -189,24 +188,24 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
       navigation.activeTab === "all"
     ) {
       return {
-        label: "Run search",
-        onClick: () => openRunMode("automatic"),
+        label: "Find jobs",
+        onClick: onFindJobs,
       };
     }
 
     return undefined;
-  }, [counts.discovered, handleTabChange, navigation.activeTab, openRunMode]);
+  }, [counts.discovered, handleTabChange, navigation.activeTab, onFindJobs]);
 
   const secondaryEmptyStateAction = useMemo(() => {
     if (navigation.activeTab === "ready") {
       return {
-        label: "Run search",
-        onClick: () => openRunMode("automatic"),
+        label: "Find jobs",
+        onClick: onFindJobs,
       };
     }
 
     return undefined;
-  }, [navigation.activeTab, openRunMode]);
+  }, [navigation.activeTab, onFindJobs]);
 
   const emptyStateMessage = useMemo(() => {
     if (filters.dateFilter.dimensions.length === 0) {

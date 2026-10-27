@@ -5,13 +5,19 @@ description: Import jobs from pasted descriptions and run AI-assisted inference.
 sidebar_position: 4
 ---
 
-Manual import lets users add jobs that automated scrapers miss.
+## What it is
 
-## Big picture
+**Add a job** imports a job you already found from a link, pasted description, or text-based PDF.
+
+## Why it exists
+
+It lets you track and tailor opportunities that automated searches miss, without running discovery.
+
+## How to use it
 
 User pastes raw description, AI infers structure, user reviews edits, then import saves the job. By default the import also tailors and scores the job; this can be skipped per-import (or globally via Settings) so the job lands in Discovered and can be tailored later.
 
-## 1) Input
+### 1) Input
 
 Manual import accepts:
 
@@ -29,9 +35,9 @@ When a URL is provided, backend fetch attempts depend on whether the page can be
 
 If you enter a URL and paste the description manually, the URL you entered is preserved through AI inference and takes precedence over any inferred URL.
 
-### Import a PDF job description
+#### Import a PDF job description
 
-1. Open **Manual Import** in single-job mode.
+1. Select **Add a job** in the Jobs header and keep **Single job** selected.
 2. Choose a file under **PDF job description**. This replaces the description
    below and clears any previous URL so it cannot be attached to a different job.
 3. Review and edit the extracted text. Extraction alone does not call AI.
@@ -49,7 +55,7 @@ may yield only its text layer; always check the extracted description. Damaged o
 password-protected files should be repaired/unlocked first. A failed extraction
 keeps the previous description so you can continue manually.
 
-## 2) AI inference
+### 2) AI inference
 
 Endpoint:
 
@@ -71,11 +77,11 @@ Practical limit:
 
 If no LLM key is configured, inference is skipped and user can fill fields manually.
 
-## 3) Review and edit
+### 3) Review and edit
 
 User reviews inferred fields and corrects missing/wrong values.
 
-## 4) Storage and scoring
+### 4) Storage and scoring
 
 Import endpoint:
 
@@ -96,3 +102,14 @@ On import with tailoring skipped (`skipTailoring: true` or workspace setting off
 - Stores source as `manual`
 - Job lands in `discovered` immediately; no LLM scoring, no PDF render
 - Tailoring can be triggered later from the job detail view
+
+## Common problems
+
+- If a job link cannot be fetched, paste the description instead.
+- If PDF extraction fails or misses scanned text, use a text-based PDF or paste the description.
+- Review inferred fields before adding the job; a valid job URL is required in the review step.
+
+## Related pages
+
+- [Find jobs](/docs/next/features/pipeline-run)
+- [Orchestrator](/docs/next/features/orchestrator)

@@ -24,11 +24,16 @@ import {
   type UpdatePipelineSearchPresetInput,
   type WatchlistSelectedSource,
 } from "@shared/types";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { showErrorToast } from "@/client/lib/error-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
@@ -64,7 +69,6 @@ import { getSourceStatus } from "./automatic-run-source-status";
 
 interface AutomaticRunTabProps {
   open: boolean;
-  showPromptIntro?: boolean;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -141,7 +145,6 @@ function normalizeRunBudget(value: number): number {
 
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   open,
-  showPromptIntro = true,
   settings,
   enabledSources,
   pipelineSources,
@@ -168,7 +171,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [automaticTab, setAutomaticTab] = useState<"describe" | "details">(
     "describe",
   );
-  const [planSummary, setPlanSummary] = useState<string | null>(null);
   const [planWarnings, setPlanWarnings] = useState<string[]>([]);
   const [planSource, setPlanSource] = useState<"ai" | "fallback" | null>(null);
   const wasOpenRef = useRef(open);
@@ -338,7 +340,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     });
     setSelectedPreset(memory?.presetId ?? "custom");
     setAdvancedOpen(false);
-    setPlanSummary(null);
     setPlanWarnings([]);
     setPlanSource(null);
   }, [open, settings, reset]);
@@ -346,7 +347,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   useEffect(() => {
     if (open && !wasOpenRef.current) {
       setAutomaticTab("describe");
-      setPlanSummary(null);
       setPlanWarnings([]);
       setPlanSource(null);
     }
@@ -698,7 +698,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       });
       applySearchConfig(result.config);
       setSelectedSavedSearchId(null);
-      setPlanSummary(result.summary);
       setPlanWarnings(result.warnings);
       setPlanSource(result.source);
       trackProductEvent("jobs_search_composer_details_opened", {
@@ -799,23 +798,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
         <div
           className={cn(
-            "min-h-0 flex-1",
-            automaticTab === "details"
-              ? "overflow-visible pr-1"
-              : "overflow-y-auto",
+            "min-h-0 flex-1 pr-1",
+            automaticTab === "details" ? "overflow-visible" : "overflow-y-auto",
           )}
         >
-          <TabsContent
-            value="describe"
-            className="mt-0 flex min-h-0 flex-1 flex-col items-center py-10 sm:py-14"
-          >
+          <TabsContent value="describe" className="mt-0 w-full py-2">
             <AutomaticSearchPrompt
-              showIntro={showPromptIntro}
               searchPrompt={searchPrompt}
               isPlanningSearch={isPlanningSearch}
-              planSummary={planSummary}
-              planWarnings={planWarnings}
-              planSource={planSource}
               onSearchPromptChange={setSearchPrompt}
               onGenerateSearchPlan={() => void handleGenerateSearchPlan()}
               onConfigureManually={() => {
@@ -853,25 +843,30 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               </div>
             </header>
 
-            {planSummary ? (
-              <Alert>
-                <Info />
-                <AlertTitle>
-                  {planSource === "fallback"
-                    ? "Current settings kept"
-                    : "Review generated settings"}
-                </AlertTitle>
-                <AlertDescription className="flex flex-col gap-2">
-                  <p>{planSummary}</p>
-                  {planWarnings.length > 0 ? (
-                    <ul className="flex list-disc flex-col gap-1 pl-5">
+            {planSource === "fallback" ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+              >
+                AI couldn’t build this search. Review the existing details or
+                try again.
+              </p>
+            ) : null}
+            {planWarnings.length > 0 ? (
+              <Accordion type="single" collapsible>
+                <AccordionItem value="notes" className="border-b-0">
+                  <AccordionTrigger className="py-2 text-sm text-muted-foreground hover:no-underline">
+                    Search notes ({planWarnings.length})
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
                       {planWarnings.map((warning) => (
                         <li key={warning}>{warning}</li>
                       ))}
                     </ul>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             ) : null}
 
             <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">

@@ -1,18 +1,15 @@
-import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import type {
   AppSettings,
   JobSource,
   WatchlistSelectedSource,
 } from "@shared/types";
 import type React from "react";
+import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
-import { RunModeModal } from "./RunModeModal";
-import type { RunMode } from "./run-mode";
 import type { PipelineSearchPresetComposerProps } from "./usePipelineSearchPresets";
 
 interface OrchestratorSearchComposerProps
   extends PipelineSearchPresetComposerProps {
-  mode: RunMode;
   settings: AppSettings | null;
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
@@ -24,16 +21,12 @@ interface OrchestratorSearchComposerProps
   onToggleWatchlistSource: (sourceId: string, checked: boolean) => void;
   onSetSelectedWatchlistSourceIds: (ids: string[]) => void;
   isWatchlistSourcesLoading: boolean;
-  onOpenChange: (open: boolean) => void;
-  onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
-  onManualImported: (result: ManualImportResult) => Promise<void>;
 }
 
 export const OrchestratorSearchComposer: React.FC<
   OrchestratorSearchComposerProps
 > = ({
-  mode,
   settings,
   enabledSources,
   pipelineSources,
@@ -45,10 +38,7 @@ export const OrchestratorSearchComposer: React.FC<
   onToggleWatchlistSource,
   onSetSelectedWatchlistSourceIds,
   isWatchlistSourcesLoading,
-  onOpenChange,
-  onModeChange,
   onSaveAndRunAutomatic,
-  onManualImported,
   savedSearches,
   isSavedSearchesLoading,
   onCreateSavedSearch,
@@ -56,35 +46,31 @@ export const OrchestratorSearchComposer: React.FC<
   onDeleteSavedSearch,
   onApplySavedSearch,
 }) => {
-  if (mode === "automatic" && !settings) return null;
+  if (!settings) return null;
 
   return (
-    <RunModeModal
-      open={true}
-      mode={mode}
-      showCloseButton={false}
-      showModeTabs
-      settings={settings}
-      enabledSources={enabledSources}
-      pipelineSources={pipelineSources}
-      onToggleSource={onToggleSource}
-      onSetPipelineSources={onSetPipelineSources}
-      watchlistSources={watchlistSources}
-      selectedWatchlistSourceIds={selectedWatchlistSourceIds}
-      onToggleWatchlistSource={onToggleWatchlistSource}
-      onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
-      isWatchlistSourcesLoading={isWatchlistSourcesLoading}
-      isPipelineRunning={isPipelineRunning}
-      onOpenChange={onOpenChange}
-      onModeChange={onModeChange}
-      onSaveAndRunAutomatic={onSaveAndRunAutomatic}
-      onManualImported={onManualImported}
-      savedSearches={savedSearches}
-      isSavedSearchesLoading={isSavedSearchesLoading}
-      onCreateSavedSearch={onCreateSavedSearch}
-      onUpdateSavedSearch={onUpdateSavedSearch}
-      onDeleteSavedSearch={onDeleteSavedSearch}
-      onApplySavedSearch={onApplySavedSearch}
-    />
+    <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <AutomaticRunTab
+        open
+        settings={settings}
+        enabledSources={enabledSources}
+        pipelineSources={pipelineSources}
+        onToggleSource={onToggleSource}
+        onSetPipelineSources={onSetPipelineSources}
+        watchlistSources={watchlistSources}
+        selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+        onToggleWatchlistSource={onToggleWatchlistSource}
+        onSetSelectedWatchlistSourceIds={onSetSelectedWatchlistSourceIds}
+        isWatchlistSourcesLoading={isWatchlistSourcesLoading}
+        isPipelineRunning={isPipelineRunning}
+        onSaveAndRun={onSaveAndRunAutomatic}
+        savedSearches={savedSearches}
+        isSavedSearchesLoading={isSavedSearchesLoading}
+        onCreateSavedSearch={onCreateSavedSearch}
+        onUpdateSavedSearch={onUpdateSavedSearch}
+        onDeleteSavedSearch={onDeleteSavedSearch}
+        onApplySavedSearch={onApplySavedSearch}
+      />
+    </section>
   );
 };

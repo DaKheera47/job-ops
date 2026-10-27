@@ -73,10 +73,8 @@ export const OrchestratorPage: React.FC = () => {
   const {
     isRunModeModalOpen,
     setIsRunModeModalOpen,
-    runMode,
-    setRunMode,
     isCancelling,
-    openRunMode,
+    openSearch,
     handleCancelPipeline,
     handleSaveAndRunAutomatic,
     handleManualImported,
@@ -90,10 +88,6 @@ export const OrchestratorPage: React.FC = () => {
     navigateWithContext: navigation.navigateWithContext,
   });
 
-  const openPreferredRunMode = useCallback(() => {
-    openRunMode(runMode);
-  }, [openRunMode, runMode]);
-
   const isFirstRunWorkspace =
     !isLoading && jobs.length === 0 && !isPipelineRunning;
   const isSearchComposerVisible = isRunModeModalOpen || isFirstRunWorkspace;
@@ -101,14 +95,14 @@ export const OrchestratorPage: React.FC = () => {
 
   useEffect(() => {
     if (isSearchComposerVisible && !wasSearchComposerVisible.current) {
-      trackProductEvent("jobs_search_composer_opened", { mode: runMode });
+      trackProductEvent("jobs_search_composer_opened", { mode: "automatic" });
     }
     wasSearchComposerVisible.current = isSearchComposerVisible;
-  }, [isSearchComposerVisible, runMode]);
+  }, [isSearchComposerVisible]);
 
   const canToggleSearchComposer = !isFirstRunWorkspace;
   const searchPresetProps = usePipelineSearchPresets({
-    enabled: isSearchComposerVisible && runMode === "automatic",
+    enabled: isSearchComposerVisible,
   });
   const ui = useOrchestratorUiState({
     isSearchComposerVisible,
@@ -121,11 +115,11 @@ export const OrchestratorPage: React.FC = () => {
       return;
     }
 
-    openPreferredRunMode();
+    openSearch();
   }, [
     canToggleSearchComposer,
     isSearchComposerVisible,
-    openPreferredRunMode,
+    openSearch,
     setIsRunModeModalOpen,
   ]);
 
@@ -144,7 +138,6 @@ export const OrchestratorPage: React.FC = () => {
         onOpenAutomaticRun={handleToggleAutomaticRun}
         onCancelPipeline={handleCancelPipeline}
         onOpenManualImport={() => {
-          setRunMode("manual");
           setIsManualImportOpen(true);
         }}
       />
@@ -158,7 +151,6 @@ export const OrchestratorPage: React.FC = () => {
       >
         {isSearchComposerVisible ? (
           <OrchestratorSearchComposer
-            mode={runMode}
             settings={settings ?? null}
             enabledSources={enabledSources}
             pipelineSources={pipelineSources}
@@ -170,10 +162,7 @@ export const OrchestratorPage: React.FC = () => {
             onSetSelectedWatchlistSourceIds={setSelectedWatchlistSourceIds}
             isWatchlistSourcesLoading={isWatchlistSourcesLoading}
             isPipelineRunning={isPipelineRunning}
-            onOpenChange={setIsRunModeModalOpen}
-            onModeChange={setRunMode}
             onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
-            onManualImported={handleManualImported}
             {...searchPresetProps}
           />
         ) : (
@@ -191,7 +180,7 @@ export const OrchestratorPage: React.FC = () => {
             filters={filters}
             navigation={navigation}
             ui={ui}
-            openRunMode={openPreferredRunMode}
+            onFindJobs={openSearch}
           />
         )}
       </main>

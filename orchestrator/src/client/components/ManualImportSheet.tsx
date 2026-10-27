@@ -44,11 +44,11 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
               <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </span>
-              Manual Import
+              Add a job
             </SheetTitle>
             <SheetDescription>
-              Paste a job description or read it from a PDF, review the AI
-              draft, then import the role.
+              Add a link, description, or PDF. Review the details before adding
+              the job.
             </SheetDescription>
           </SheetHeader>
 

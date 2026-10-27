@@ -1,23 +1,22 @@
 ---
 id: pipeline-run
-title: Run Search
-description: How to use Run Search (Automatic vs Manual), natural-language setup, presets, source controls, and advanced run settings.
+title: Find jobs
+description: Describe a search or enter its criteria, review the same editable plan, then start searching.
 sidebar_position: 2
 ---
 
 ## What it is
 
-Run Search is the Jobs-page run modal for starting either:
+**Find jobs** discovers new opportunities. Describe what you want with AI assistance, or enter the search criteria yourself. Both lead to the same editable review screen.
 
-- an **Automatic** job search
-- a **Manual** one-job import
+**Add a job** is a separate action for a link, description, or PDF you already have. It does not run discovery.
 
 For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow).
 For manual import internals, read [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Why it exists
 
-The modal provides one place to describe a search, review the generated settings, and control run volume, source compatibility, and processing aggressiveness before consuming compute/time.
+The configuration screen keeps your criteria visible before any discovery starts.
 
 It helps you:
 
@@ -29,30 +28,25 @@ It helps you:
 
 ## How to use it
 
-1. Open the Jobs page and use the top-right **Run search** control.
-2. Choose either **Automatic** or **Manual** tab.
-3. For Automatic, describe the search you want or switch to **Configure details**.
-4. Review the settings, edit anything you want, then run the search.
+1. Open **Jobs > Find jobs**.
+2. Describe your search, for example: `Graduate software engineering jobs in Manchester. Prefer backend work and hybrid or remote roles.`
+3. Select **Build my search**. To skip AI setup, select **Enter search details instead**.
+4. In **Configure your search**, review the existing role, location, ranking, source, and run settings.
+5. Select **Run search** when the criteria are ready.
 
-### Automatic tab
+AI fills the same fields you can edit yourself; it never starts discovery. **Describe search** returns to your brief while keeping the criteria you have edited. Rebuilding uses those current criteria as context.
 
-#### Describe search
+The configuration form keeps its existing layout and controls. **Search notes** contains any AI assumptions or limitations and is collapsed by default. Ranking preferences influence scores rather than strictly excluding listings, including salary preferences.
 
-The Automatic tab opens on **Describe search** first.
+The search description and configuration form use the same page width.
 
-1. Enter a detailed search brief, such as `Find software engineering jobs in Manchester above GBP 60k. Surface backend/API roles, lower-score graduate programmes, and prefer hybrid or remote options.`
-2. Select **Generate search settings**.
-3. Review the generated settings in **Configure details**.
+If AI setup is unavailable, the review clearly says that the existing criteria were kept. Edit them yourself or return to the description and try again.
 
-AI fills the existing controls only. It does not start the search automatically.
-
-The generated plan can update search terms, ranking preferences, country, map radius or cities, workplace type, location scope, match strictness, source selection, preset mode, score threshold, resume count, and max jobs discovered. Incompatible or unavailable sources are removed before settings are applied.
-
-Add as much detail as possible. Mention what the AI should rank higher or lower, such as salary targets, role seniority, visa sponsorship, graduate programmes, domains, commute limits, or preferred responsibilities.
+### Search settings
 
 #### Presets
 
-Three presets set defaults for run aggressiveness:
+Choose a search-depth preset in the roles card. Three presets set defaults for run aggressiveness:
 
 - **Fast**: lower processing volume, higher score threshold
 - **Balanced**: middle-ground defaults
@@ -60,13 +54,12 @@ Three presets set defaults for run aggressiveness:
 
 If values are edited manually, the UI shows **Custom**.
 
-The automatic modal remembers the last preset choice and `Max jobs discovered`
+Find jobs remembers the last preset choice and `Max jobs discovered`
 value in this browser. If you picked **Custom**, it reopens in Custom mode with
 the same values. The pipeline run itself still derives per-source caps from the
 saved budget when you start the run.
 
-Run Search also remembers whether you last used **Automatic** or **Manual** in
-this browser and reopens that mode next time.
+**Find jobs** always opens search setup. Adding a job does not change that entry point.
 
 #### Search area
 
@@ -132,9 +125,9 @@ Source behavior differs:
 
 #### Estimate and run gating
 
-The footer estimate shows expected discovered jobs and resume-processing range.
+The **Your search** panel shows the criteria and role, location, and source counts.
 
-`Run search` is disabled when:
+**Run search** is disabled when:
 
 - a run is already in progress
 - required save/run work is still in progress
@@ -172,13 +165,11 @@ updates its counters live. **Exceptional matches** counts jobs with a
 suitability score above 90. Importing and processing continue in the background
 for now.
 
-### Manual tab
+### Add a job you already found
 
-Manual mode opens direct import flow in the same modal.
+Select **Add a job** in the Jobs header. Paste a link or job description, upload a text-based PDF, or choose **URL list** for multiple links. Review the extracted details before adding the job.
 
-Use it when you already have a specific job description or link and do not want full discovery.
-
-For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](/docs/next/extractors/manual).
+For formats and limits, see [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Common problems
 
@@ -191,7 +182,7 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 ### Search says system admin access is required
 
-- Search settings saved by the Run Search form are scoped to the signed-in user's workspace and do not require system admin access.
+- Search settings saved by the Find jobs form are scoped to the signed-in user's workspace and do not require system admin access.
 - If the request also changes a protected setting, remove that change or ask a system admin to update it in **Settings**.
 
 ### Radius search cannot resolve nearby places

@@ -131,7 +131,7 @@ function ensureStorage(): Storage {
 describe("AutomaticRunTab", () => {
   const openConfigureDetails = () => {
     const trigger = screen.queryByRole("button", {
-      name: "Configure manually",
+      name: "Enter search details instead",
     });
     if (trigger) {
       fireEvent.click(trigger);
@@ -192,14 +192,14 @@ describe("AutomaticRunTab", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "What kind of jobs are you looking for?",
+        name: "Find your next role",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText("What kind of jobs are you looking for?"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Generate search" }),
+      screen.getByRole("button", { name: "Build my search" }),
     ).toBeInTheDocument();
   });
 
@@ -257,7 +257,7 @@ describe("AutomaticRunTab", () => {
         target: { value: "Find platform jobs in London" },
       },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Generate search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Build my search" }));
 
     await waitFor(() => {
       expect(api.planPipelineSearch).toHaveBeenCalledWith(
@@ -279,7 +279,17 @@ describe("AutomaticRunTab", () => {
 
     expect(onSaveAndRun).not.toHaveBeenCalled();
     expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
-    expect(screen.getByText("Review generated settings")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: "Configure your search" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Assumed remote-friendly roles."),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Search notes (1)" }));
+    expect(
+      screen.getByText("Assumed remote-friendly roles."),
+    ).toBeInTheDocument();
     expect(trackProductEvent).toHaveBeenCalledWith(
       "jobs_search_composer_plan_generated",
       {
@@ -293,13 +303,65 @@ describe("AutomaticRunTab", () => {
       { source: "generated_plan" },
     );
     expect(
-      screen.getByText("Focused the search on platform roles."),
-    ).toBeInTheDocument();
+      screen.queryByText("Focused the search on platform roles."),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Ranking preferences")).toHaveValue(
       "Prioritize backend platform work and remote-friendly roles.",
     );
     expect(screen.getAllByText("Platform Engineer").length).toBeGreaterThan(0);
     expect(screen.getAllByText("London").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Ranking preferences"), {
+      target: { value: "Prefer paid platform roles" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Describe search" }));
+    expect(
+      screen.getByLabelText("What kind of jobs are you looking for?"),
+    ).toHaveValue("Find platform jobs in London");
+    openConfigureDetails();
+    expect(screen.getByLabelText("Ranking preferences")).toHaveValue(
+      "Prefer paid platform roles",
+    );
+    expect(onSaveAndRun).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing criteria and shows a short notice when AI is unavailable", async () => {
+    vi.mocked(api.planPipelineSearch).mockImplementationOnce(
+      async ({ currentConfig }) => ({
+        source: "fallback",
+        config: currentConfig,
+        summary:
+          "A long provider explanation that should not take over the review.",
+        warnings: [],
+      }),
+    );
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn()}
+      />,
+    );
+    fireEvent.change(
+      screen.getByLabelText("What kind of jobs are you looking for?"),
+      { target: { value: "Platform roles" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Build my search" }));
+    expect(
+      await screen.findByText(/AI couldn’t build this search\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "A long provider explanation that should not take over the review.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Configure your search" }),
+    ).toBeInTheDocument();
   });
 
   it("shows detected country as a suggestion when location settings are still defaults", () => {

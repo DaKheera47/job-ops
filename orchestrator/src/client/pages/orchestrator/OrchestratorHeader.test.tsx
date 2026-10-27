@@ -21,33 +21,6 @@ vi.mock("@/components/ui/sheet", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="menu">{children}</div>
-  ),
-  DropdownMenuItem: ({
-    children,
-    onSelect,
-  }: {
-    children: React.ReactNode;
-    onSelect?: () => void;
-  }) => (
-    <button type="button" role="menuitem" onClick={() => onSelect?.()}>
-      {children}
-    </button>
-  ),
-  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  DropdownMenuSeparator: () => <hr />,
-}));
-
 const renderHeader = (
   overrides: Partial<React.ComponentProps<typeof OrchestratorHeader>> = {},
 ) => {
@@ -74,9 +47,9 @@ const renderHeader = (
 };
 
 describe("OrchestratorHeader", () => {
-  it("opens automatic run from the navbar button", () => {
+  it("opens search setup from Find jobs", () => {
     const { props } = renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: /run search/i }));
+    fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 
@@ -90,16 +63,10 @@ describe("OrchestratorHeader", () => {
     expect(props.onOpenAutomaticRun).toHaveBeenCalled();
   });
 
-  it("opens manual import from the overflow menu", () => {
+  it("opens import directly from Add a job", () => {
     const { props } = renderHeader();
 
-    expect(
-      screen.getByRole("button", { name: /more job actions/i }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("menuitem", { name: /import job manually/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /add a job/i }));
 
     expect(props.onOpenManualImport).toHaveBeenCalled();
   });
@@ -107,13 +74,10 @@ describe("OrchestratorHeader", () => {
   it("hides the run action while keeping manual import reachable", () => {
     renderHeader({ hideRunAction: true });
     expect(
-      screen.queryByRole("button", { name: /run search/i }),
+      screen.queryByRole("button", { name: /find jobs/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /more job actions/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitem", { name: /import job manually/i }),
+      screen.getByRole("button", { name: /add a job/i }),
     ).toBeInTheDocument();
   });
 
