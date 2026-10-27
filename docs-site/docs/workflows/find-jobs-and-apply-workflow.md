@@ -52,6 +52,11 @@ For each discovered job:
 - read the AI fit justification in **Fit Assessment**
 - decide whether the opportunity is worth advancing
 
+Posting-age labels use your browser's local calendar dates. A date-only source value
+such as `2026-05-25` stays on May 25 for the age label, tooltip, and posting-date
+sort. Day counts remain consistent across daylight-saving clock changes. Jobs
+are marked fresh through day 4, aging from day 5 through day 14, and old from day 15.
+
 ### 4) Work from `Ready` for applications
 
 `ready` jobs are the primary application queue.
