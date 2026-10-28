@@ -572,6 +572,89 @@ describe("design resume service", () => {
     ).toBe(true);
   });
 
+  it("keeps basics.website.label synced across overlapping autosave updates when the client retains a stale session label", async () => {
+    const serverStoredResumeJson = makeValidResumeJson({
+      basics: {
+        ...(buildDefaultReactiveResumeDocument().basics as Record<
+          string,
+          unknown
+        >),
+        name: "John Doe",
+        website: {
+          url: "www.johndoe.dev",
+          label: "www.johndoe.dev",
+        },
+      },
+    });
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
+      makeDocumentRow({
+        revision: 2,
+        resumeJson: serverStoredResumeJson,
+      }),
+    );
+
+    const updated = await updateCurrentDesignResume({
+      baseRevision: 2,
+      document: {
+        ...serverStoredResumeJson,
+        basics: {
+          ...serverStoredResumeJson.basics,
+          website: {
+            url: "www.johndoe.uk",
+            label: "https://www.johndoe.uk",
+          },
+        },
+      },
+    });
+
+    expect(updated.resumeJson.basics.website).toEqual({
+      url: "www.johndoe.uk",
+      label: "www.johndoe.uk",
+    });
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        revision: 3,
+        resumeJson: expect.objectContaining({
+          basics: expect.objectContaining({
+            website: {
+              url: "www.johndoe.uk",
+              label: "www.johndoe.uk",
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("syncs a stale basics.website.label when reading or exporting an existing stored document", async () => {
+    const resumeJson = makeValidResumeJson({
+      basics: {
+        ...(buildDefaultReactiveResumeDocument().basics as Record<
+          string,
+          unknown
+        >),
+        name: "John Doe",
+        website: {
+          url: "www.johndoe.uk",
+          label: "https://www.johndoe.uk",
+        },
+      },
+    });
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
+      makeDocumentRow({ resumeJson }),
+    );
+
+    const result = await getCurrentDesignResume();
+
+    if (!result) {
+      throw new Error("Expected stored design resume document");
+    }
+    expect(result.resumeJson.basics.website).toEqual({
+      url: "www.johndoe.uk",
+      label: "www.johndoe.uk",
+    });
+  });
+
   it("uses structural equality for patch test operations", async () => {
     await expect(
       updateCurrentDesignResume({
