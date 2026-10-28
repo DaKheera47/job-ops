@@ -127,6 +127,13 @@ const HEALTH_PROBE_CONFIG_BY_SOURCE: Record<
       naukriMaxJobsPerTerm: "1",
     },
   },
+  upwork: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: "worldwide",
+    settings: {
+      upworkMaxJobsPerTerm: "1",
+    },
+  },
   fiveamsat: {
     searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
     selectedCountry: "egypt",
