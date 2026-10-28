@@ -32,6 +32,26 @@ afterEach(() => {
 });
 
 describe("JobListPanel", () => {
+  it("offers CSV export for the complete filtered list before virtualization", () => {
+    const jobs = createJobs(50);
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs.slice(10, 45)}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Export jobs as CSV" }),
+    ).toBeEnabled();
+  });
+
   it("shows a loading state when fetching jobs", () => {
     render(
       <JobListPanel
