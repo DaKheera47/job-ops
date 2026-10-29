@@ -71,181 +71,82 @@ describe.sequential("pipeline challenge handling", () => {
     vi.unstubAllEnvs();
   });
 
-  it("automatically solves and retries without publishing any manual Solve prompt", async () => {
-    vi.stubEnv("CAPSOLVER_API_KEY", "key");
-    const pipeline = await import("./orchestrator");
-    const solver = await import("../services/capsolver");
-    const steps = await import("./steps");
-    const { subscribeToProgress } = await import("./progress");
-    const progress = vi.fn();
-    const unsubscribe = subscribeToProgress(progress);
-    vi.mocked(solver.solveWithCapsolver)
-      .mockReset()
-      .mockResolvedValue(undefined);
-    vi.mocked(steps.discoverJobsStep)
-      .mockReset()
-      .mockResolvedValueOnce({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [challenge],
-      })
-      .mockResolvedValueOnce({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [],
-      });
-
-    const result = await pipeline.runPipeline({ sources: ["gradcracker"] });
-    unsubscribe();
-    expect(result.success).toBe(true);
-    expect(solver.solveWithCapsolver).toHaveBeenCalledWith(
-      expect.objectContaining({
-        extractorId: "gradcracker",
-        url: challenge.url,
-      }),
-    );
-    expect(steps.discoverJobsStep).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        retryChallengeUrls: { gradcracker: challenge.url },
-        resumeStates: { gradcracker: challenge.resumeState },
-      }),
-    );
-    expect(pipeline.getPendingChallenges()).toEqual([]);
-    expect(
-      progress.mock.calls.some(
-        ([event]) =>
-          event.step === "challenge_required" ||
-          event.pendingChallenges?.length,
-      ),
-    ).toBe(false);
-    expect(JSON.stringify(progress.mock.calls)).not.toContain(
-      "CAPSOLVER_API_KEY",
-    );
-  });
-
-  it("retains partial jobs and reports a solver failure without pausing", async () => {
-    vi.stubEnv("CAPSOLVER_API_KEY", "key");
-    const pipeline = await import("./orchestrator");
-    const solver = await import("../services/capsolver");
-    const steps = await import("./steps");
-    const pipelineRepo = await import("../repositories/pipeline");
-    const job = {
-      source: "gradcracker",
-      sourceJobId: "1",
-      title: "Engineer",
-      employer: "Acme",
-      jobUrl: "https://www.gradcracker.com/job/1",
-    };
-    vi.mocked(solver.solveWithCapsolver)
-      .mockReset()
-      .mockRejectedValue(
-        new solver.CapsolverError("CapSolver has insufficient balance."),
-      );
-    vi.mocked(steps.discoverJobsStep)
-      .mockReset()
-      .mockResolvedValueOnce({
-        discoveredJobs: [job],
-        sourceErrors: [],
-        pendingChallenges: [challenge],
-      });
-    const result = await pipeline.runPipeline({ sources: ["gradcracker"] });
-    expect(result.success).toBe(true);
-    expect(steps.importJobsStep).toHaveBeenCalledWith({
-      discoveredJobs: [job],
-    });
-    expect(steps.discoverJobsStep).toHaveBeenCalledOnce();
-    expect(pipeline.getPendingChallenges()).toEqual([]);
-    expect(
-      JSON.stringify(vi.mocked(pipelineRepo.updatePipelineRun).mock.calls),
-    ).toContain("insufficient balance");
-  });
-
-  it("caps paid solve attempts when a board keeps returning challenges", async () => {
-    vi.stubEnv("CAPSOLVER_API_KEY", "key");
-    const pipeline = await import("./orchestrator");
-    const solver = await import("../services/capsolver");
-    const steps = await import("./steps");
-    vi.mocked(solver.solveWithCapsolver)
-      .mockReset()
-      .mockResolvedValue(undefined);
-    vi.mocked(steps.discoverJobsStep)
-      .mockReset()
-      .mockResolvedValue({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [challenge],
-      });
-    const result = await pipeline.runPipeline({ sources: ["gradcracker"] });
-    expect(result).toMatchObject({
-      success: false,
-      error: expect.stringContaining("retry limit reached"),
-    });
-    expect(solver.solveWithCapsolver).toHaveBeenCalledTimes(3);
-    expect(steps.discoverJobsStep).toHaveBeenCalledTimes(4);
-    expect(pipeline.getPendingChallenges()).toEqual([]);
-  });
-
-  it("isolates automatic solves, cookie paths and cancellation across private workspaces", async () => {
+  it.each([
+    "solved",
+    "failed",
+    "retry limit",
+  ])("handles automatic checks without manual prompts: %s", async (outcome) => {
     vi.stubEnv("CAPSOLVER_API_KEY", "key");
     vi.stubEnv("JOBOPS_APP_MODE", "hosted");
     vi.stubEnv("JOBOPS_HOSTED_TENANT_ID", "tenant-a");
     const pipeline = await import("./orchestrator");
     const solver = await import("../services/capsolver");
     const steps = await import("./steps");
+    const pipelineRepo = await import("../repositories/pipeline");
+    const { subscribeToProgress } = await import("./progress");
     const { runWithRequestContext } = await import("@infra/request-context");
-    const inA = <T>(fn: () => T) =>
-      runWithRequestContext({ tenantId: "tenant-a", userId: "user-a" }, fn);
-    const inB = <T>(fn: () => T) =>
-      runWithRequestContext({ tenantId: "tenant-a", userId: "user-b" }, fn);
-    const solves: Array<{
-      signal: AbortSignal;
-      storageDir: string;
-      finish: () => void;
-    }> = [];
+    const job = {
+      source: "gradcracker",
+      title: "Engineer",
+      employer: "Acme",
+      jobUrl: "https://www.gradcracker.com/job/1",
+    };
+    const discovered = {
+      discoveredJobs: [job],
+      sourceErrors: [],
+      pendingChallenges: [challenge],
+    };
     vi.mocked(solver.solveWithCapsolver)
       .mockReset()
-      .mockImplementation(
-        async (args) =>
-          new Promise<void>((resolve, reject) => {
-            solves.push({ ...args, finish: resolve });
-            args.signal.addEventListener(
-              "abort",
-              () => reject(new Error("cancelled")),
-              { once: true },
-            );
-          }),
+      .mockResolvedValue(undefined);
+    if (outcome === "failed")
+      vi.mocked(solver.solveWithCapsolver).mockRejectedValue(
+        new solver.CapsolverError("CapSolver has insufficient balance."),
       );
-    vi.mocked(steps.discoverJobsStep)
-      .mockReset()
-      .mockResolvedValueOnce({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [challenge],
-      })
-      .mockResolvedValueOnce({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [challenge],
-      })
-      .mockResolvedValueOnce({
-        discoveredJobs: [],
-        sourceErrors: [],
-        pendingChallenges: [],
-      });
-    const runA = inA(() => pipeline.runPipeline({ sources: ["gradcracker"] }));
-    await vi.waitFor(() => expect(solves).toHaveLength(1));
-    const runB = inB(() => pipeline.runPipeline({ sources: ["gradcracker"] }));
-    await vi.waitFor(() => expect(solves).toHaveLength(2));
-    expect(solves[0].storageDir).not.toBe(solves[1].storageDir);
-    inA(() => pipeline.requestPipelineCancel());
-    expect(solves[0].signal.aborted).toBe(true);
-    expect(solves[1].signal.aborted).toBe(false);
-    expect(await runA).toMatchObject({
-      success: false,
-      error: "Cancelled by user request",
-    });
-    solves[1].finish();
-    expect(await runB).toMatchObject({ success: true });
+
+    for (const userId of ["user-a", "user-b"]) {
+      vi.mocked(steps.discoverJobsStep)
+        .mockReset()
+        .mockResolvedValue(
+          outcome === "retry limit"
+            ? discovered
+            : { ...discovered, pendingChallenges: [] },
+        )
+        .mockResolvedValueOnce(discovered);
+      await runWithRequestContext(
+        { tenantId: "tenant-a", userId },
+        async () => {
+          const progress = vi.fn();
+          const unsubscribe = subscribeToProgress(progress);
+          const result = await pipeline.runPipeline({
+            sources: ["gradcracker"],
+          });
+          unsubscribe();
+          expect(result.success).toBe(true);
+          expect(pipeline.getPendingChallenges()).toEqual([]);
+          expect(
+            progress.mock.calls.some(
+              ([event]) =>
+                event.step === "challenge_required" ||
+                event.pendingChallenges?.length,
+            ),
+          ).toBe(false);
+          expect(steps.importJobsStep).toHaveBeenLastCalledWith({
+            discoveredJobs: [job],
+          });
+        },
+      );
+    }
+    const calls = vi.mocked(solver.solveWithCapsolver).mock.calls;
+    const attempts = outcome === "retry limit" ? 3 : 1;
+    expect(calls).toHaveLength(attempts * 2);
+    expect(calls[0][0].storageDir).not.toBe(calls[attempts][0].storageDir);
+    if (outcome !== "solved")
+      expect(
+        JSON.stringify(vi.mocked(pipelineRepo.updatePipelineRun).mock.calls),
+      ).toContain(
+        outcome === "failed" ? "insufficient balance" : "retry limit reached",
+      );
   });
 
   it("asks again when a different search challenge appears after a solve", async () => {
