@@ -724,6 +724,15 @@ export const progressHelpers = {
       pendingChallenges: challenges,
     }),
 
+  challengeSolvingAutomatically: (extractorName: string) =>
+    updateProgress({
+      step: "crawling",
+      message: "Resolving browser checks automatically",
+      detail: `${extractorName}: resolving browser check automatically`,
+      // Publishing a pending challenge would expose the manual Solve action.
+      pendingChallenges: [],
+    }),
+
   challengeResolved: (remaining: PendingChallenge[]) =>
     updateProgress({
       step: "challenge_required",

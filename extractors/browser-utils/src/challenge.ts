@@ -25,6 +25,10 @@ const CF_CHALLENGE_MARKERS = [
   "vercel-protection",
 ] as const;
 
+export function isChallengeHtml(html: string): boolean {
+  return CF_CHALLENGE_MARKERS.some((marker) => html.includes(marker));
+}
+
 /** A challenge solve can navigate between checking and reading page content. */
 export async function readPageContentIfReady(
   page: Page,
@@ -51,7 +55,7 @@ export async function readPageContentIfReady(
 export async function isChallengePage(page: Page): Promise<boolean> {
   try {
     const html = await page.content();
-    return CF_CHALLENGE_MARKERS.some((marker) => html.includes(marker));
+    return isChallengeHtml(html);
   } catch {
     // Page may have navigated or crashed — treat as not a challenge
     return false;

@@ -11,6 +11,11 @@ const challenge = {
   resumeState: { cursor: "page-2" },
 };
 
+vi.mock("../services/capsolver", () => ({
+  CapsolverError: class extends Error {},
+  solveWithCapsolver: vi.fn(async () => undefined),
+}));
+
 vi.mock("../repositories/pipeline", () => ({
   createPipelineRun: vi.fn(async () => ({
     id: "run-challenge-1",
@@ -50,6 +55,8 @@ describe.sequential("pipeline challenge handling", () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.stubEnv("CAPSOLVER_API_KEY", "");
+    vi.stubEnv("CAPSOLVER_PROXY", "");
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-pipeline-challenge-"));
     process.env.DATA_DIR = tempDir;
     process.env.NODE_ENV = "test";
@@ -61,6 +68,85 @@ describe.sequential("pipeline challenge handling", () => {
     const { closeDb } = await import("../db/index");
     closeDb();
     await rm(tempDir, { recursive: true, force: true });
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    "solved",
+    "failed",
+    "retry limit",
+  ])("handles automatic checks without manual prompts: %s", async (outcome) => {
+    vi.stubEnv("CAPSOLVER_API_KEY", "key");
+    vi.stubEnv("JOBOPS_APP_MODE", "hosted");
+    vi.stubEnv("JOBOPS_HOSTED_TENANT_ID", "tenant-a");
+    const pipeline = await import("./orchestrator");
+    const solver = await import("../services/capsolver");
+    const steps = await import("./steps");
+    const pipelineRepo = await import("../repositories/pipeline");
+    const { subscribeToProgress } = await import("./progress");
+    const { runWithRequestContext } = await import("@infra/request-context");
+    const job = {
+      source: "gradcracker",
+      title: "Engineer",
+      employer: "Acme",
+      jobUrl: "https://www.gradcracker.com/job/1",
+    };
+    const discovered = {
+      discoveredJobs: [job],
+      sourceErrors: [],
+      pendingChallenges: [challenge],
+    };
+    vi.mocked(solver.solveWithCapsolver)
+      .mockReset()
+      .mockResolvedValue(undefined);
+    if (outcome === "failed")
+      vi.mocked(solver.solveWithCapsolver).mockRejectedValue(
+        new solver.CapsolverError("CapSolver has insufficient balance."),
+      );
+
+    for (const userId of ["user-a", "user-b"]) {
+      vi.mocked(steps.discoverJobsStep)
+        .mockReset()
+        .mockResolvedValue(
+          outcome === "retry limit"
+            ? discovered
+            : { ...discovered, pendingChallenges: [] },
+        )
+        .mockResolvedValueOnce(discovered);
+      await runWithRequestContext(
+        { tenantId: "tenant-a", userId },
+        async () => {
+          const progress = vi.fn();
+          const unsubscribe = subscribeToProgress(progress);
+          const result = await pipeline.runPipeline({
+            sources: ["gradcracker"],
+          });
+          unsubscribe();
+          expect(result.success).toBe(true);
+          expect(pipeline.getPendingChallenges()).toEqual([]);
+          expect(
+            progress.mock.calls.some(
+              ([event]) =>
+                event.step === "challenge_required" ||
+                event.pendingChallenges?.length,
+            ),
+          ).toBe(false);
+          expect(steps.importJobsStep).toHaveBeenLastCalledWith({
+            discoveredJobs: [job],
+          });
+        },
+      );
+    }
+    const calls = vi.mocked(solver.solveWithCapsolver).mock.calls;
+    const attempts = outcome === "retry limit" ? 3 : 1;
+    expect(calls).toHaveLength(attempts * 2);
+    expect(calls[0][0].storageDir).not.toBe(calls[attempts][0].storageDir);
+    if (outcome !== "solved")
+      expect(
+        JSON.stringify(vi.mocked(pipelineRepo.updatePipelineRun).mock.calls),
+      ).toContain(
+        outcome === "failed" ? "insufficient balance" : "retry limit reached",
+      );
   });
 
   it("asks again when a different search challenge appears after a solve", async () => {
