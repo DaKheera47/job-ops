@@ -160,6 +160,17 @@ through the active search term, location, and job board one value at a time.
 - An extractor that does not finish within 10 minutes is marked as failed. The
   remaining extractors continue instead of leaving the run stuck indefinitely.
 
+Administrators can configure automatic Cloudflare solving with
+`CAPSOLVER_API_KEY` and `CAPSOLVER_PROXY`. With a non-empty key, the run shows
+automatic progress and never asks users to select **Solve**, including when the
+solver fails. Failed or unsupported checks are recorded as source errors; jobs
+already found are retained and other sources can finish. If no jobs were found
+and an automatic check failed, the run reports a failure. Without a key, the
+manual behavior above remains the default.
+
+See [automatic browser checks](/docs/next/getting-started/automatic-browser-checks)
+for setup, supported checks, and costs.
+
 After discovery, the scoring card shows the job currently being ranked and
 updates its counters live. **Exceptional matches** counts jobs with a
 suitability score above 90. Importing and processing continue in the background

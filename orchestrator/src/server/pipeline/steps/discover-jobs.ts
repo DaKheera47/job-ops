@@ -35,6 +35,11 @@ import {
   type PipelineConfig,
 } from "@shared/types";
 import {
+  createCloudflareFetch,
+  isCapsolverConfigured,
+  isChallengeHtml,
+} from "browser-utils";
+import {
   type CrawlSource,
   type PendingChallenge,
   progressHelpers,
@@ -331,11 +336,21 @@ export async function discoverJobsStep(args: {
 
         let timedOut = false;
         const shouldCancel = () => timedOut || args.shouldCancel?.() === true;
+        const automatic = isCapsolverConfigured();
         const browserScopeKey =
-          manifest.id === "hiringcafe" ? getPrivateDataScope().scopeKey : null;
+          manifest.id === "hiringcafe" && !automatic
+            ? getPrivateDataScope().scopeKey
+            : null;
         const browserCookieDir = browserScopeKey
           ? getPrivateCloudflareCookieStorageDir()
           : null;
+        const automaticFetch =
+          manifest.id === "hiringcafe" && automatic
+            ? await createCloudflareFetch(
+                "hiringcafe",
+                getPrivateCloudflareCookieStorageDir(),
+              )
+            : null;
         const run = manifest.run({
           source: grouped.sources[0],
           selectedSources: grouped.sources,
@@ -343,8 +358,17 @@ export async function discoverJobsStep(args: {
           searchTerms,
           selectedCountry: getLegacyLocationSelection(locationIntent),
           cookieStorageDir: getPrivateCloudflareCookieStorageDir(),
-          browserPageReader:
-            browserScopeKey && browserCookieDir
+          browserPageReader: automaticFetch
+            ? async (url) => {
+                const response = await automaticFetch(url);
+                const html = await response.text();
+                return {
+                  status: response.status,
+                  html,
+                  challenged: isChallengeHtml(html),
+                };
+              }
+            : browserScopeKey && browserCookieDir
               ? (url) =>
                   readHiringCafeBrowserPage(
                     browserScopeKey,

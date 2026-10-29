@@ -1,7 +1,7 @@
 import { runWithRequestContext } from "@infra/request-context";
 import type { PipelineConfig } from "@shared/types";
 import type { ExtractorRuntimeContext } from "@shared/types/extractors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getProgress, resetProgress, subscribeToProgress } from "../progress";
 import { discoverJobsStep } from "./discover-jobs";
 
@@ -69,6 +69,54 @@ describe("discoverJobsStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetProgress();
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("uses the automatic HTTP reader rather than opening a Hiring Cafe browser when a key is configured", async () => {
+    vi.stubEnv("CAPSOLVER_API_KEY", "key");
+    vi.stubEnv("CAPSOLVER_PROXY", "http://proxy.example:8080");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+    const browser = await import("@server/services/hiring-cafe-browser");
+    hiringCafeFetch.mockResolvedValue({
+      status: 403,
+      text: async () => "<title>Just a moment...</title>",
+    });
+    const run = vi.fn(async (ctx: ExtractorRuntimeContext) => {
+      const page = await ctx.browserPageReader?.("https://hiringcafe.com/");
+      expect(page).toEqual({
+        status: 403,
+        html: "<title>Just a moment...</title>",
+        challenged: true,
+      });
+      return {
+        success: false,
+        jobs: [],
+        challengeRequired: "https://hiringcafe.com/",
+      };
+    });
+    const manifest = {
+      id: "hiringcafe",
+      displayName: "Hiring Cafe",
+      providesSources: ["hiringcafe"],
+      run,
+    };
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: '["engineer"]',
+      jobspyCountryIndeed: "worldwide",
+    } as any);
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["hiringcafe", manifest]]),
+      manifestBySource: new Map([["hiringcafe", manifest]]),
+      availableSources: ["hiringcafe"],
+    } as any);
+    const result = await discoverJobsStep({
+      mergedConfig: { ...baseConfig, sources: ["hiringcafe"] },
+    });
+    expect(result.pendingChallenges).toHaveLength(1);
+    expect(run).toHaveBeenCalledOnce();
+    expect(browser.readHiringCafeBrowserPage).not.toHaveBeenCalled();
   });
 
   it("carries a Hiring Cafe search checkpoint into a retry", async () => {
