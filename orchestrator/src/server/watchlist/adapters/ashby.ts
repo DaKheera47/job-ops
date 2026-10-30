@@ -72,13 +72,9 @@ async function loadBoard(
           );
         }
         const value = { ...snapshot, companyLinks };
-        const bytes = snapshot.jobs.reduce(
-          (total, job) =>
-            total +
-            2 *
-              (job.descriptionHtml.length + job.descriptionPlain.length + 4000),
-          0,
-        );
+        const bytes =
+          2 * JSON.stringify([snapshot.jobs, [...companyLinks]]).length +
+          snapshot.jobs.length * 1024;
         cache.set(key, { value, expiresAt: Date.now() + 60_000, bytes });
         while (
           cache.size > 50 ||
