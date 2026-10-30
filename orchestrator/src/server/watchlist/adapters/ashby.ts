@@ -1,15 +1,4 @@
 import {
-  type AshbyBoard,
-  type AshbyJob,
-  ashbyBoardLabel,
-  ashbyLocation,
-  getAshbyBoard,
-  getCursorJobLinks,
-  parseAshbyUrl,
-  resolveAshbySource,
-} from "@career-boards/ashby";
-import { ASHBY_JOB_ID } from "@career-boards/ashby/ashby-url";
-import {
   notFound,
   requestTimeout,
   serviceUnavailable,
@@ -18,112 +7,217 @@ import {
 import { getUserId } from "@infra/request-context";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getActiveTenantId } from "@server/tenancy/context";
+import {
+  ASHBY_API_ORIGIN,
+  ASHBY_JOB_ID,
+  ASHBY_JOBS_ORIGIN,
+  ashbyBoardLabel,
+  parseAshbyUrl,
+} from "@shared/ashby";
 import { buildLocationEvidence } from "@shared/location-intelligence";
-import type { ManualJobDraft, WatchlistSelectedSource } from "@shared/types";
+import type { WatchlistSelectedSource } from "@shared/types";
 import PQueue from "p-queue";
 import { z } from "zod";
+import { readPublicAshbyUrl } from "../ashby-http";
+import { getCursorJobLinks, resolveAshbySource } from "../ashby-source";
 import type { WatchlistCatalogSourceAdapter } from "./types";
 
+const address = z.object({
+  addressLocality: z.string().max(2000).nullish(),
+  addressRegion: z.string().max(2000).nullish(),
+  addressCountry: z.string().max(2000).nullish(),
+});
+const location = z.object({
+  location: z.string().max(2000).nullish(),
+  address: address.nullish(),
+});
+const posting = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1).max(1000),
+  isListed: z.boolean(),
+  descriptionHtml: z.string().max(1024 * 1024),
+  descriptionPlain: z.string().max(1024 * 1024),
+  location: z.string().max(2000).nullish(),
+  address: z.object({ postalAddress: address.nullish() }).nullish(),
+  secondaryLocations: z.array(location).max(1000).nullish(),
+  workplaceType: z.string().nullish(),
+  publishedAt: z.string().nullish(),
+  employmentType: z.string().nullish(),
+  department: z.string().nullish(),
+  team: z.string().nullish(),
+  shouldDisplayCompensationOnJobPostings: z.boolean().nullish(),
+  compensation: z
+    .object({ scrapeableCompensationSalarySummary: z.string().nullish() })
+    .nullish(),
+});
+const feed = z.object({ apiVersion: z.literal("1"), jobs: z.array(posting) });
 const catalogSchema = z.object({
   label: z.string().trim().min(1).max(200),
   ashbyUrl: z.string().url().max(2000),
 });
-type BoardSnapshot = AshbyBoard & { companyLinks: Map<string, string> };
-const cache = new Map<
-  string,
-  { value: BoardSnapshot; expiresAt: number; bytes: number }
->();
-const inFlight = new Map<string, Promise<BoardSnapshot>>();
-// Public requests share a concurrency budget; cached data is always tenant/user scoped.
+type Job = z.infer<typeof posting>;
+type Snapshot = { board: string; jobs: Job[]; links: Map<string, string> };
+type CachedBoard = {
+  expires: number;
+  bytes: number;
+  promise: Promise<Snapshot>;
+};
+const boards = new Map<string, CachedBoard>();
 const requests = new PQueue({ concurrency: 2 });
 
-async function loadBoard(
+async function fetchBoard(
+  board: string,
+  signal?: AbortSignal,
+): Promise<Snapshot> {
+  const response = await readPublicAshbyUrl(
+    `${ASHBY_API_ORIGIN}/posting-api/job-board/${board}?includeCompensation=true`,
+    { signal, maxBytes: 25 * 1024 * 1024, accept: "application/json" },
+  );
+  let payload: unknown;
+  try {
+    payload = JSON.parse(response.text);
+  } catch {
+    throw new Error("Ashby returned invalid JSON.");
+  }
+  const parsed = feed.safeParse(payload);
+  if (!parsed.success)
+    throw new Error("Ashby returned an invalid or unsupported job feed.");
+  // URLs are derived from the validated board/UUID, never accepted from the feed.
+  const jobs = [
+    ...new Map(
+      parsed.data.jobs
+        .filter((job) => job.isListed)
+        .map((job) => [job.id, job]),
+    ).values(),
+  ];
+  const links =
+    board === "cursor"
+      ? await getCursorJobLinks(signal)
+      : new Map<string, string>();
+  if (board === "cursor" && jobs.some((job) => !links.has(job.id)))
+    throw new Error("Cursor's public job links could not be verified.");
+  return { board, jobs, links };
+}
+
+function loadBoard(
   careersUrl: string,
   signal?: AbortSignal,
-): Promise<BoardSnapshot> {
+): Promise<Snapshot> {
   if (signal?.aborted)
     throw requestTimeout("Ashby request timed out or was cancelled.");
   const userId = getUserId();
   if (!userId) throw new Error("User context is required for Ashby Watchlist.");
   const { board } = parseAshbyUrl(careersUrl);
   const key = JSON.stringify([getActiveTenantId(), userId, board]);
-  for (const [entryKey, entry] of cache)
-    if (entry.expiresAt <= Date.now()) cache.delete(entryKey);
-  const saved = cache.get(key);
-  if (saved) return saved.value;
-  const pending = inFlight.get(key);
-  if (pending) return pending;
-  if (inFlight.size >= 100)
-    throw serviceUnavailable("Ashby is busy. Try again shortly.");
-  const promise = requests
-    .add(
-      async () => {
-        const snapshot = await getAshbyBoard(careersUrl, signal);
-        const companyLinks =
-          board === "cursor"
-            ? await getCursorJobLinks(signal)
-            : new Map<string, string>();
-        if (
-          board === "cursor" &&
-          snapshot.jobs.some((job) => !companyLinks.has(job.id))
-        ) {
-          throw new Error(
-            "Cursor's public job links could not be verified. Try again later.",
-          );
-        }
-        const value = { ...snapshot, companyLinks };
-        const bytes =
-          2 * JSON.stringify([snapshot.jobs, [...companyLinks]]).length +
-          snapshot.jobs.length * 1024;
-        cache.set(key, { value, expiresAt: Date.now() + 60_000, bytes });
-        while (
-          cache.size > 50 ||
-          [...cache.values()].reduce((total, entry) => total + entry.bytes, 0) >
-            64 * 1024 * 1024
-        ) {
-          const oldest = cache.keys().next().value;
-          if (!oldest) break;
-          cache.delete(oldest);
-        }
-        return value;
-      },
-      { signal },
-    )
-    .catch((error) => {
-      if (signal?.aborted)
-        throw requestTimeout("Ashby request timed out or was cancelled.");
-      throw upstreamError("Could not load the public Ashby careers source.", {
-        reason: sanitizeUnknown(error),
-      });
-    }) as Promise<BoardSnapshot>;
-  inFlight.set(key, promise);
-  try {
-    return await promise;
-  } finally {
-    inFlight.delete(key);
+  for (const [id, entry] of boards)
+    if (entry.expires <= Date.now()) boards.delete(id);
+  const cached = boards.get(key);
+  if (cached) return cached.promise;
+  if (boards.size >= 50) {
+    const oldest = [...boards].find(([, item]) => item.bytes > 0);
+    if (!oldest) throw serviceUnavailable("Ashby is busy. Try again shortly.");
+    boards.delete(oldest[0]);
   }
+  const entry: CachedBoard = {
+    expires: Date.now() + 60_000,
+    bytes: 0,
+    promise: requests
+      .add(
+        async () => {
+          const result = await fetchBoard(board, signal);
+          entry.expires = Date.now() + 60_000;
+          entry.bytes =
+            2 * JSON.stringify([result.jobs, [...result.links]]).length +
+            result.jobs.length * 1024;
+          while (
+            [...boards.values()].reduce(
+              (total, item) => total + item.bytes,
+              0,
+            ) >
+            64 * 1024 * 1024
+          ) {
+            const oldest = [...boards].find(([, item]) => item.bytes > 0);
+            if (oldest) boards.delete(oldest[0]);
+          }
+          return result;
+        },
+        { signal, throwOnTimeout: true },
+      )
+      .catch((error) => {
+        if (boards.get(key) === entry) boards.delete(key);
+        if (signal?.aborted)
+          throw requestTimeout("Ashby request timed out or was cancelled.");
+        throw upstreamError("Could not load the public Ashby careers source.", {
+          reason: sanitizeUnknown(error),
+        });
+      }),
+  };
+  boards.set(key, entry);
+  return entry.promise;
+}
+
+function jobData(
+  source: WatchlistSelectedSource,
+  snapshot: Snapshot,
+  job: Job,
+) {
+  const companyUrl = snapshot.links.get(job.id);
+  const places = [
+    { location: job.location, address: job.address?.postalAddress },
+    ...(job.secondaryLocations ?? []),
+  ].map((place) => {
+    const parts = place.location?.trim()
+      ? [place.location.trim()]
+      : [place.address?.addressLocality, place.address?.addressRegion].filter(
+          Boolean,
+        );
+    const country = place.address?.addressCountry?.trim();
+    if (
+      country &&
+      !parts.some((part) =>
+        part
+          ?.split(/[,;]/)
+          .some((item) => item.trim().toLowerCase() === country.toLowerCase()),
+      )
+    )
+      parts.push(country);
+    return parts.join(", ");
+  });
+  return {
+    source: `ashby:${snapshot.board}`,
+    sourceJobId: job.id,
+    title: job.title,
+    employer: source.label,
+    jobUrl: companyUrl ?? `${ASHBY_JOBS_ORIGIN}/${snapshot.board}/${job.id}`,
+    applicationLink: companyUrl
+      ? `${companyUrl}#apply`
+      : `${ASHBY_JOBS_ORIGIN}/${snapshot.board}/${job.id}/application`,
+    location:
+      [
+        job.workplaceType === "OnSite"
+          ? "On-site"
+          : ["Remote", "Hybrid"].includes(job.workplaceType ?? "")
+            ? job.workplaceType
+            : null,
+        ...new Set(places),
+      ]
+        .filter(Boolean)
+        .join("; ") || null,
+  };
 }
 
 async function findJob(
   source: WatchlistSelectedSource,
-  jobRef: string,
+  id: string,
   signal?: AbortSignal,
 ) {
-  if (!ASHBY_JOB_ID.test(jobRef))
+  if (!ASHBY_JOB_ID.test(id))
     throw notFound("Ashby posting was not found in the selected source.");
   const snapshot = await loadBoard(source.careersUrl, signal);
-  const job = snapshot.jobs.find((item) => item.id === jobRef);
+  const job = snapshot.jobs.find((item) => item.id === id);
   if (!job)
     throw notFound("Ashby posting was not found in the selected source.");
-  return { job, snapshot, ...jobLinks(snapshot, job) };
-}
-
-function jobLinks(snapshot: BoardSnapshot, job: AshbyJob) {
-  const companyUrl = snapshot.companyLinks.get(job.id);
-  return {
-    jobUrl: companyUrl ?? job.jobUrl,
-    applicationLink: companyUrl ? `${companyUrl}#apply` : job.applyUrl,
-  };
+  return { job, data: jobData(source, snapshot, job) };
 }
 
 export const ashbyWatchlistAdapter: WatchlistCatalogSourceAdapter = {
@@ -150,12 +244,12 @@ export const ashbyWatchlistAdapter: WatchlistCatalogSourceAdapter = {
     return z
       .array(catalogSchema)
       .parse(entries)
-      .map((entry) => {
-        const { board, careersUrl } = parseAshbyUrl(entry.ashbyUrl);
+      .map(({ label, ashbyUrl }) => {
+        const { board, careersUrl } = parseAshbyUrl(ashbyUrl);
         return {
           id: `ashby:${board}`,
           sourceType: "ashby",
-          label: entry.label,
+          label,
           careersUrl,
           cxsJobsUrl: null,
         };
@@ -175,72 +269,68 @@ export const ashbyWatchlistAdapter: WatchlistCatalogSourceAdapter = {
   },
   async normalizeCustomSelection(input) {
     const signal = AbortSignal.timeout(30_000);
-    const resolved = await resolveAshbySource(input.careersUrl, signal);
-    await loadBoard(resolved.careersUrl, signal);
+    const { board, careersUrl } = await resolveAshbySource(
+      input.careersUrl,
+      signal,
+    );
+    await loadBoard(careersUrl, signal);
     return {
+      careersUrl,
       label:
         input.label?.trim() && input.label.trim() !== input.careersUrl.trim()
           ? input.label.trim()
-          : ashbyBoardLabel(resolved.board),
-      careersUrl: resolved.careersUrl,
+          : ashbyBoardLabel(board),
     };
   },
   async fetchJobs({ source, signal }) {
     const snapshot = await loadBoard(source.careersUrl, signal);
-    const jobs = snapshot.jobs.map((job) => ({
-      jobRef: job.id,
-      source: `ashby:${snapshot.board}`,
-      sourceJobId: job.id,
-      sourceType: "ashby",
-      title: job.title,
-      employer: source.label,
-      ...jobLinks(snapshot, job),
-      location: ashbyLocation(job),
-      postedAt: job.publishedAt ?? null,
-      isRemote:
-        job.workplaceType === "Remote"
-          ? true
-          : ["Hybrid", "OnSite"].includes(job.workplaceType ?? "")
-            ? false
-            : undefined,
-      locationEvidence: buildLocationEvidence({
-        rawLocation: ashbyLocation(job),
-        workplaceType: job.workplaceType,
-        source: "ashby",
-      }),
-    }));
+    const jobs = snapshot.jobs.map((job) => {
+      const data = jobData(source, snapshot, job);
+      return {
+        ...data,
+        jobRef: job.id,
+        sourceType: "ashby",
+        postedAt: job.publishedAt ?? null,
+        isRemote:
+          job.workplaceType === "Remote"
+            ? true
+            : ["Hybrid", "OnSite"].includes(job.workplaceType ?? "")
+              ? false
+              : undefined,
+        locationEvidence: buildLocationEvidence({
+          rawLocation: data.location,
+          workplaceType: job.workplaceType,
+          source: "ashby",
+        }),
+      };
+    });
     return { total: jobs.length, fetched: jobs.length, jobs };
   },
   async fetchJobDetails({ source, jobRef, signal }) {
-    const { job, jobUrl } = await findJob(source, jobRef, signal);
-    return { jobRef, jobUrl, descriptionHtml: job.descriptionHtml };
+    const { job, data } = await findJob(source, jobRef, signal);
+    return {
+      jobRef,
+      jobUrl: data.jobUrl,
+      descriptionHtml: job.descriptionHtml,
+    };
   },
   async prepareImportDraft({ source, jobRef, signal }) {
-    const { job, snapshot, jobUrl, applicationLink } = await findJob(
-      source,
-      jobRef,
-      signal,
-    );
-    const draft: ManualJobDraft = {
-      source: `ashby:${snapshot.board}`,
-      sourceJobId: job.id,
-      title: job.title,
-      employer: source.label,
-      jobUrl,
-      applicationLink,
-      location: ashbyLocation(job) ?? undefined,
-      jobDescription: job.descriptionPlain,
-      jobType: job.employmentType ?? undefined,
-      jobFunction: job.team ?? job.department ?? undefined,
-      salary:
-        job.shouldDisplayCompensationOnJobPostings === true
-          ? (job.compensation?.scrapeableCompensationSalarySummary ?? undefined)
-          : undefined,
-    };
+    const { job, data } = await findJob(source, jobRef, signal);
     return {
-      draft,
-      source: draft.source ?? null,
-      sourceHost: new URL(jobUrl).hostname,
+      source: data.source,
+      sourceHost: new URL(data.jobUrl).hostname,
+      draft: {
+        ...data,
+        location: data.location ?? undefined,
+        jobDescription: job.descriptionPlain,
+        jobType: job.employmentType ?? undefined,
+        jobFunction: job.team ?? job.department ?? undefined,
+        salary:
+          job.shouldDisplayCompensationOnJobPostings === true
+            ? (job.compensation?.scrapeableCompensationSalarySummary ??
+              undefined)
+            : undefined,
+      },
     };
   },
 };

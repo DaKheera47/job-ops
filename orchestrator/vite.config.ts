@@ -46,12 +46,12 @@ export default defineConfig({
       "src/**/*.test.tsx",
       "../docs-site/src/**/*.test.ts",
       "../docs-site/src/**/*.test.tsx",
-      "../career-boards/*/src/**/*.test.ts",
+      "../career-boards/**/*.test.ts",
       "../shared/src/**/*.test.ts",
       "../extractors/**/tests/**/*.test.ts",
       "../visa-sponsor-providers/**/*.test.ts",
     ],
-    exclude: ["**/node_modules/**", "dist/**"],
+    exclude: ["node_modules/**", "dist/**"],
   },
   resolve: {
     alias: {
@@ -61,14 +61,6 @@ export default defineConfig({
       "@infra": path.resolve(__dirname, "./src/server/infra"),
       "@shared": path.resolve(__dirname, "../shared/src"),
       "job-ops-shared": path.resolve(__dirname, "../shared/src"),
-      "@career-boards/ashby/ashby-url": path.resolve(
-        __dirname,
-        "../career-boards/ashby/src/ashby-url.ts",
-      ),
-      "@career-boards/ashby": path.resolve(
-        __dirname,
-        "../career-boards/ashby/src/index.ts",
-      ),
       "@career-boards/bamboohr": path.resolve(
         __dirname,
         "../career-boards/bamboohr/src/index.ts",

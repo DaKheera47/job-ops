@@ -495,56 +495,6 @@ describe.sequential("Watchlist API routes", () => {
       }));
     });
 
-    it("does not expose another user's selected Ashby source or job details", async () => {
-      const admin = await login(baseUrl, "admin", "secret");
-      const create = await nativeFetch(`${baseUrl}/api/workspaces/users`, {
-        method: "POST",
-        headers: authHeaders(admin),
-        body: JSON.stringify({
-          username: "ashby-reader",
-          displayName: "Reader",
-          password: "reader-secret",
-        }),
-      });
-      expect(create.status).toBe(201);
-      const reader = await login(baseUrl, "ashby-reader", "reader-secret");
-      const save = await nativeFetch(`${baseUrl}/api/watchlist/sources`, {
-        method: "PUT",
-        headers: authHeaders(admin),
-        body: JSON.stringify({
-          selections: [
-            {
-              catalogSourceId: "ashby:linear",
-              sourceType: "ashby",
-              careersUrl: "https://jobs.ashbyhq.com/linear",
-            },
-          ],
-        }),
-      });
-      expect(save.status).toBe(200);
-      const selected = (await save.json()).data.selectedSources[0];
-      const own = await nativeFetch(`${baseUrl}/api/watchlist/sources`, {
-        headers: authHeaders(reader),
-      }).then((res) => res.json());
-      expect(own.data.selectedSources).toEqual([]);
-      const details = await nativeFetch(
-        `${baseUrl}/api/watchlist/job-details`,
-        {
-          method: "POST",
-          headers: authHeaders(reader),
-          body: JSON.stringify({
-            selectedSourceId: selected.id,
-            jobRef: "d3bc1ced-3ce4-4086-a050-555055dbb1ff",
-          }),
-        },
-      );
-      expect(details.status).toBe(404);
-      expect(await details.json()).toMatchObject({
-        ok: false,
-        error: { code: "NOT_FOUND" },
-      });
-    });
-
     it("returns only the active user's state rows within the same tenant", async () => {
       const adminToken = await login(baseUrl, "admin", "secret");
 

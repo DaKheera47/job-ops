@@ -1,4 +1,3 @@
-import { ashbyBoardLabel, parseAshbyUrl } from "@career-boards/ashby/ashby-url";
 import {
   bamboohrUrlToCompanyLabel,
   parseBamboohrUrl,
@@ -8,6 +7,7 @@ import {
   workdayUrlToCompanyLabel,
   workdayUrlToSourceKey,
 } from "@career-boards/workday";
+import { ashbyBoardLabel, parseAshbyUrl } from "@shared/ashby";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";

@@ -1,4 +1,5 @@
 import { lookup } from "node:dns/promises";
+import type { IncomingMessage } from "node:http";
 import { request } from "node:https";
 import { isIP } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
@@ -59,11 +60,16 @@ export function parsePublicAshbyPageUrl(input: string): URL {
 
 export async function readPublicAshbyUrl(
   input: string,
-  options: { signal?: AbortSignal; maxBytes: number; accept: string },
+  options: {
+    signal?: AbortSignal;
+    maxBytes: number;
+    accept: string;
+  },
 ): Promise<{ text: string; url: string }> {
-  const signal = options.signal
-    ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
-    : AbortSignal.timeout(30_000);
+  const signal = AbortSignal.any([
+    AbortSignal.timeout(30_000),
+    ...(options.signal ? [options.signal] : []),
+  ]);
   let url = parsePublicAshbyPageUrl(input);
   let retries = 0;
   for (let redirects = 0; redirects <= 5; ) {
@@ -87,20 +93,14 @@ export async function readPublicAshbyUrl(
       );
     }
     const address = addresses.find((item) => item.family === 4) ?? addresses[0];
-    const result = await new Promise<{
-      status: number;
-      location?: string;
-      retryAfter?: string;
-      text: string;
-    }>((resolve, reject) => {
+    const response = await new Promise<IncomingMessage>((resolve, reject) => {
       const req = request(
         url,
         {
-          method: "GET",
           signal,
           agent: false,
           family: address.family,
-          // Pin the checked address while retaining the original hostname for TLS and Host.
+          // Keep TLS/Host intact while pinning the vetted address against DNS rebinding.
           lookup: (_hostname, _options, callback) =>
             callback(null, address.address, address.family),
           headers: {
@@ -109,91 +109,65 @@ export async function readPublicAshbyUrl(
             "user-agent": "JobOps/1.0 (public Ashby careers reader)",
           },
         },
-        (res) => {
-          const status = res.statusCode ?? 502;
-          if (status !== 200) {
-            res.destroy();
-            resolve({
-              status,
-              location: res.headers.location,
-              retryAfter: res.headers["retry-after"],
-              text: "",
-            });
-            return;
-          }
-          if (
-            (res.headers["content-encoding"] &&
-              res.headers["content-encoding"] !== "identity") ||
-            Number(res.headers["content-length"] ?? 0) > options.maxBytes
-          ) {
-            res.destroy();
-            reject(
-              new Error(
-                "Ashby response exceeds the supported size or encoding.",
-              ),
-            );
-            return;
-          }
-          const contentType = res.headers["content-type"] ?? "";
-          if (
-            !options.accept
-              .split(",")
-              .some((type) => contentType.toLowerCase().startsWith(type))
-          ) {
-            res.destroy();
-            reject(
-              new Error("Ashby response has an unsupported content type."),
-            );
-            return;
-          }
-          const chunks: Buffer[] = [];
-          let bytes = 0;
-          res.on("data", (chunk: Buffer) => {
-            bytes += chunk.length;
-            if (bytes > options.maxBytes) {
-              res.destroy(
-                new Error("Ashby response exceeds the supported size."),
-              );
-            } else chunks.push(chunk);
-          });
-          res.on("error", reject);
-          res.on("end", () =>
-            resolve({ status, text: Buffer.concat(chunks).toString("utf8") }),
-          );
-        },
+        resolve,
       );
       req.on("error", () =>
-        reject(
-          new Error(
-            signal.aborted
-              ? "Ashby request timed out or was cancelled."
-              : "Could not fetch the public Ashby careers source.",
-          ),
-        ),
+        reject(new Error("Could not fetch the public Ashby careers source.")),
       );
       req.end();
     });
-    if ([301, 302, 303, 307, 308].includes(result.status) && result.location) {
-      url = parsePublicAshbyPageUrl(new URL(result.location, url).href);
-      redirects += 1;
-      continue;
-    }
-    if ((result.status === 429 || result.status >= 500) && retries++ === 0) {
-      const retrySeconds = result.retryAfter ? Number(result.retryAfter) : 1;
+    try {
+      const status = response.statusCode ?? 502;
       if (
-        Number.isFinite(retrySeconds) &&
-        retrySeconds >= 0 &&
-        retrySeconds <= 2
+        [301, 302, 303, 307, 308].includes(status) &&
+        response.headers.location
       ) {
-        await delay(retrySeconds * 1000, undefined, { signal });
+        url = parsePublicAshbyPageUrl(
+          new URL(response.headers.location, url).href,
+        );
+        redirects += 1;
         continue;
       }
+      if ((status === 429 || status >= 500) && retries++ === 0) {
+        const seconds = Number(response.headers["retry-after"] ?? 1);
+        if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 2) {
+          response.destroy();
+          await delay(seconds * 1000, undefined, { signal });
+          continue;
+        }
+      }
+      if (status !== 200)
+        throw new Error(`Ashby careers request failed with HTTP ${status}.`);
+      if (
+        (response.headers["content-encoding"] &&
+          response.headers["content-encoding"] !== "identity") ||
+        Number(response.headers["content-length"] ?? 0) > options.maxBytes
+      ) {
+        throw new Error(
+          "Ashby response exceeds the supported size or encoding.",
+        );
+      }
+      if (
+        !options.accept
+          .split(",")
+          .some((type) =>
+            response.headers["content-type"]?.toLowerCase().startsWith(type),
+          )
+      ) {
+        throw new Error("Ashby response has an unsupported content type.");
+      }
+      const chunks: Buffer[] = [];
+      let bytes = 0;
+      for await (const chunk of response) {
+        bytes += chunk.length;
+        if (bytes > options.maxBytes)
+          throw new Error("Ashby response exceeds the supported size.");
+        chunks.push(chunk);
+      }
+      return { text: Buffer.concat(chunks).toString("utf8"), url: url.href };
+    } finally {
+      response.destroy();
     }
-    if (result.status !== 200)
-      throw new Error(
-        `Ashby careers request failed with HTTP ${result.status}.`,
-      );
-    return { text: result.text, url: url.href };
   }
   throw new Error("Ashby careers page redirected too many times.");
 }
