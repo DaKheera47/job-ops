@@ -46,7 +46,7 @@ export default defineConfig({
       "src/**/*.test.tsx",
       "../docs-site/src/**/*.test.ts",
       "../docs-site/src/**/*.test.tsx",
-      "../career-boards/**/*.test.ts",
+      "../career-boards/*/src/**/*.test.ts",
       "../shared/src/**/*.test.ts",
       "../extractors/**/tests/**/*.test.ts",
       "../visa-sponsor-providers/**/*.test.ts",
