@@ -48,6 +48,7 @@ describe.sequential("Watchlist API routes", () => {
   let tempDir: string;
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     await stopServer({ server, closeDb, tempDir });
   });
@@ -65,6 +66,11 @@ describe.sequential("Watchlist API routes", () => {
       expect(body.ok).toBe(true);
       expect(body.data.catalogSources).toEqual(
         expect.arrayContaining([
+          expect.objectContaining({
+            id: "ashby:linear",
+            sourceType: "ashby",
+            careersUrl: "https://jobs.ashbyhq.com/linear",
+          }),
           expect.objectContaining({
             id: "bamboohr:https://ashteadtechnology.bamboohr.com/careers",
             label: "Ashtead Technology",
@@ -94,6 +100,11 @@ describe.sequential("Watchlist API routes", () => {
       expect(body.data.availableSourceTypes).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
+            sourceType: "ashby",
+            label: "Ashby",
+            supportsCustomSource: true,
+          }),
+          expect.objectContaining({
             sourceType: "workday",
             label: "Workday",
             supportsCustomSource: true,
@@ -107,6 +118,46 @@ describe.sequential("Watchlist API routes", () => {
           }),
         ]),
       );
+    });
+
+    it("rejects equivalent Ashby aliases after normalization without replacing saved sources", async () => {
+      const { ashbyWatchlistAdapter } = await import(
+        "@server/watchlist/adapters/ashby"
+      );
+      vi.spyOn(
+        ashbyWatchlistAdapter,
+        "normalizeCustomSelection",
+      ).mockResolvedValue({
+        label: "Linear",
+        careersUrl: "https://jobs.ashbyhq.com/linear",
+      });
+      const res = await nativeFetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": "ashby-alias-test",
+        },
+        body: JSON.stringify({
+          selections: [
+            {
+              sourceType: "ashby",
+              careersUrl: "https://jobs.ashbyhq.com/Linear",
+            },
+            { sourceType: "ashby", careersUrl: "https://linear.app/careers" },
+          ],
+        }),
+      });
+      expect(res.status).toBe(422);
+      expect(res.headers.get("x-request-id")).toBe("ashby-alias-test");
+      expect(await res.json()).toMatchObject({
+        ok: false,
+        error: { code: "UNPROCESSABLE_ENTITY" },
+        meta: { requestId: "ashby-alias-test" },
+      });
+      const body = await nativeFetch(`${baseUrl}/api/watchlist/sources`).then(
+        (response) => response.json(),
+      );
+      expect(body.data.selectedSources).toEqual([]);
     });
 
     it("stores only the user's selected watchlist sources", async () => {

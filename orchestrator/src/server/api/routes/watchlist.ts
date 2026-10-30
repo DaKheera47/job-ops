@@ -376,6 +376,16 @@ watchlistRouter.put(
       }
     }
 
+    if (
+      new Set(normalizedSelections.map((selection) => selection.careersUrl))
+        .size !== normalizedSelections.length
+    ) {
+      return fail(
+        res,
+        unprocessableEntity("Duplicate watchlist sources are not allowed"),
+      );
+    }
+
     const selectedSources = await watchlistRepo.replaceWatchlistSelectedSources(
       {
         selections: normalizedSelections,

@@ -7,6 +7,7 @@ import {
   workdayUrlToCompanyLabel,
   workdayUrlToSourceKey,
 } from "@career-boards/workday";
+import { ashbyBoardLabel, parseAshbyUrl } from "@shared/ashby";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import type { LocationIntent } from "@shared/location-intelligence.js";
 import { normalizeCountryKey } from "@shared/location-support.js";
@@ -54,6 +55,9 @@ export function getNormalizedWatchlistCareersUrl(
   if (!trimmed) return "";
 
   try {
+    if (sourceType === "ashby") {
+      return parseAshbyUrl(trimmed).careersUrl;
+    }
     if (sourceType === "bamboohr") {
       return parseBamboohrUrl(trimmed).canonicalCareersUrl;
     }
@@ -93,6 +97,9 @@ export function getWatchlistPreviewLabel(
   if (!normalizedCareersUrl) return "Custom source";
 
   try {
+    if (sourceType === "ashby") {
+      return ashbyBoardLabel(parseAshbyUrl(normalizedCareersUrl).board);
+    }
     if (sourceType === "bamboohr") {
       return bamboohrUrlToCompanyLabel(normalizedCareersUrl);
     }
@@ -229,8 +236,10 @@ export function rankWatchlistJobs(
         ? matchJobLocationIntent(
             {
               location: job.location,
-              locationEvidence: null,
-              isRemote: /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
+              locationEvidence: watchlistJob.locationEvidence ?? null,
+              isRemote:
+                watchlistJob.isRemote ??
+                /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
             },
             locationIntent,
           )

@@ -7,6 +7,26 @@ import {
 } from "./utils";
 
 describe("getWatchlistSourceKey", () => {
+  it("normalizes Ashby posting URLs and company aliases to the same source", () => {
+    const saved = {
+      catalogSourceId: null,
+      sourceType: "ashby",
+      careersUrl: "https://jobs.ashbyhq.com/Linear",
+    };
+    const draft = { ...saved, careersUrl: "https://linear.app/careers" };
+    expect(getWatchlistSelectionIdentityKey(saved)).toBe(
+      getWatchlistSelectionIdentityKey(draft),
+    );
+    expect(
+      getWatchlistPreviewLabel("ashby", "https://jobs.ashbyhq.com/openai"),
+    ).toBe("OpenAI");
+    expect(
+      getNormalizedWatchlistCareersUrl(
+        "ashby",
+        "https://jobs.ashbyhq.com/Cursor",
+      ),
+    ).toBe("https://cursor.com/careers");
+  });
   it("uses parsed tenant and site for myworkdaysite URLs", () => {
     expect(
       getWatchlistSourceKey(
