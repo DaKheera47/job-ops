@@ -54,6 +54,8 @@ function createJobInputFromWatchlistJob(
       draft.applicationLink ?? job.applicationLink,
     ),
     location: optionalString(draft.location ?? job.location),
+    ...(job.locationEvidence ? { locationEvidence: job.locationEvidence } : {}),
+    ...(job.isRemote !== undefined ? { isRemote: job.isRemote } : {}),
     datePosted: optionalString(job.postedAt),
     jobDescription: optionalString(draft.jobDescription),
     jobType: optionalString(draft.jobType),

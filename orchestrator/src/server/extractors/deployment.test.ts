@@ -3,6 +3,24 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("extractor deployment config", () => {
+  it("ships and live-syncs the Ashby career board package", async () => {
+    const dockerfile = await readFile(
+      resolve(process.cwd(), "../Dockerfile"),
+      "utf8",
+    );
+    const compose = await readFile(
+      resolve(process.cwd(), "../docker-compose.yml"),
+      "utf8",
+    );
+    expect(
+      dockerfile.match(/COPY career-boards\/ashby\/package\*\.json/g),
+    ).toHaveLength(2);
+    expect(
+      dockerfile.match(/COPY career-boards\/ashby \.\/career-boards\/ashby/g),
+    ).toHaveLength(2);
+    expect(compose).toContain("path: ./career-boards/ashby/src");
+    expect(compose).toContain("target: /app/career-boards/ashby/src");
+  });
   it("ships the BambooHR career board package in Docker runtime images", async () => {
     const dockerfile = await readFile(resolve(process.cwd(), "../Dockerfile"), {
       encoding: "utf8",

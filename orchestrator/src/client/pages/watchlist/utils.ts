@@ -1,3 +1,4 @@
+import { ashbyBoardLabel, parseAshbyUrl } from "@career-boards/ashby/ashby-url";
 import {
   bamboohrUrlToCompanyLabel,
   parseBamboohrUrl,
@@ -54,6 +55,9 @@ export function getNormalizedWatchlistCareersUrl(
   if (!trimmed) return "";
 
   try {
+    if (sourceType === "ashby") {
+      return parseAshbyUrl(trimmed).careersUrl;
+    }
     if (sourceType === "bamboohr") {
       return parseBamboohrUrl(trimmed).canonicalCareersUrl;
     }
@@ -93,6 +97,9 @@ export function getWatchlistPreviewLabel(
   if (!normalizedCareersUrl) return "Custom source";
 
   try {
+    if (sourceType === "ashby") {
+      return ashbyBoardLabel(parseAshbyUrl(normalizedCareersUrl).board);
+    }
     if (sourceType === "bamboohr") {
       return bamboohrUrlToCompanyLabel(normalizedCareersUrl);
     }
@@ -229,8 +236,10 @@ export function rankWatchlistJobs(
         ? matchJobLocationIntent(
             {
               location: job.location,
-              locationEvidence: null,
-              isRemote: /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
+              locationEvidence: watchlistJob.locationEvidence ?? null,
+              isRemote:
+                watchlistJob.isRemote ??
+                /(?:^|\b)remote(?:\b|$)/i.test(job.location ?? ""),
             },
             locationIntent,
           )

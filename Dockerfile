@@ -79,6 +79,7 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/ashby/package*.json ./career-boards/ashby/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
 COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
@@ -107,6 +108,7 @@ FROM node-deps AS build-sources
 COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
+COPY career-boards/ashby ./career-boards/ashby
 COPY career-boards/bamboohr ./career-boards/bamboohr
 COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday
@@ -157,6 +159,7 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/ashby/package*.json ./career-boards/ashby/
 COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
 COPY career-boards/greenhouse/package*.json ./career-boards/greenhouse/
 COPY career-boards/workday/package*.json ./career-boards/workday/
@@ -250,6 +253,7 @@ COPY --from=client-build /app/orchestrator/dist ./orchestrator/dist
 COPY --from=docs-build /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
+COPY career-boards/ashby ./career-boards/ashby
 COPY career-boards/bamboohr ./career-boards/bamboohr
 COPY career-boards/greenhouse ./career-boards/greenhouse
 COPY career-boards/workday ./career-boards/workday

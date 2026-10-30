@@ -1,0 +1,14 @@
+{
+  "name": "@career-boards/ashby",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ashby-url": "./src/ashby-url.ts"
+  },
+  "dependencies": {
+    "jsdom": "^25.0.1",
+    "zod": "^3.23.8"
+  }
+}
