@@ -430,19 +430,6 @@ export function extractBodyText(payload: GmailFullMessage["payload"]): string {
   return chunks.join("\n\n").trim();
 }
 
-export function buildEmailText(input: {
-  from: string;
-  subject: string;
-  date: string;
-  body: string;
-}): string {
-  return `From: ${input.from}
-Subject: ${input.subject}
-Date: ${input.date}
-Body:
-${input.body}`.trim();
-}
-
 function asString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
