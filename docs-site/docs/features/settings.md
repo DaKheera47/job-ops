@@ -236,6 +236,8 @@ Readiness requires:
 
 **Account password** sets or changes the password of the account you are signed in as. Accounts that already have a password must supply the current one; accounts created through single sign-on have none and can set one directly. Keeping a password is what lets you sign in when an identity provider is unavailable, so JobOps refuses to unlink the last connected account of a password-less user.
 
+The **Security** block also holds **Passkeys**, available to every signed-in user. Click **Add passkey** to register the device you are on, then sign in later with your PIN, fingerprint, or face instead of your password. Registered passkeys can be renamed inline or removed, and a **Synced** badge marks credentials your password manager shares across devices. The **Add passkey** button is disabled unless the browser supports WebAuthn and the page is served over HTTPS or from `localhost`. Self-hosted containers must set `WEBAUTHN_ORIGINS` to the origin browsers use, proxied or not. See [Passkeys](/docs/next/features/passkeys).
+
 ### Backup
 
 ![Backup settings section](/img/features/settings-backup-section.png)
@@ -375,5 +377,6 @@ curl -X POST "http://localhost:3001/api/backups"
 - [Overview](/docs/next/features/overview)
 - [Orchestrator](/docs/next/features/orchestrator)
 - [Ghostwriter](/docs/next/features/ghostwriter)
+- [Passkeys](/docs/next/features/passkeys)
 - [Self-Hosting](/docs/next/getting-started/self-hosting)
 - [Single Sign-On Setup](/docs/next/getting-started/sso-setup)

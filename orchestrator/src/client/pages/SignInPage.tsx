@@ -8,8 +8,14 @@ import {
   signupWithCredentials,
   startSsoLogin,
 } from "@client/api";
+import {
+  isPasskeySupported,
+  PasskeyCancelledError,
+  signInWithPasskey,
+} from "@client/lib/passkeys";
 import type { SsoProviderInfo } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
+import { Fingerprint } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -54,6 +60,7 @@ export function SignInPage() {
     retry: false,
   });
   const ssoProviders = ssoProvidersQuery.data ?? [];
+  const [passkeysAvailable] = useState(() => isPasskeySupported());
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -179,6 +186,31 @@ export function SignInPage() {
           ? error.message
           : `Unable to continue with ${provider.displayName}`,
       );
+      setIsBusy(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    setIsBusy(true);
+    setErrorMessage(null);
+
+    try {
+      const user = await signInWithPasskey();
+      setRememberedUsers(
+        rememberAuthUser({
+          username: user.username,
+          displayName: user.displayName,
+        }),
+      );
+      navigate(nextPath, { replace: true });
+    } catch (error) {
+      if (!(error instanceof PasskeyCancelledError)) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to sign in with a passkey",
+        );
+      }
       setIsBusy(false);
     }
   };
@@ -323,6 +355,18 @@ export function SignInPage() {
                     : "Sign in"}
               </Button>
             </form>
+            {authMode === "sign-in" && passkeysAvailable ? (
+              <Button
+                className="mt-3 w-full"
+                type="button"
+                variant="outline"
+                disabled={isBusy}
+                onClick={() => void handlePasskeySignIn()}
+              >
+                <Fingerprint className="h-4 w-4" />
+                Sign in with a passkey
+              </Button>
+            ) : null}
             {ssoProviders.length > 0 ? (
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-3">

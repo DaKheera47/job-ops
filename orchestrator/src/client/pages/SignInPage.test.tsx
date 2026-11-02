@@ -38,6 +38,17 @@ vi.mock("@client/api", () => ({
   startSsoLogin: vi.fn(),
 }));
 
+const passkeyMocks = vi.hoisted(() => {
+  class PasskeyCancelledError extends Error {}
+  return {
+    PasskeyCancelledError,
+    isPasskeySupported: vi.fn(() => true),
+    signInWithPasskey: vi.fn(),
+  };
+});
+
+vi.mock("@client/lib/passkeys", () => passkeyMocks);
+
 import {
   getAppStatus,
   getAuthBootstrapStatus,
@@ -127,6 +138,8 @@ describe("SignInPage", () => {
     };
     vi.mocked(signupWithCredentials).mockResolvedValue(authUser);
     vi.mocked(signInWithCredentials).mockResolvedValue(undefined);
+    passkeyMocks.isPasskeySupported.mockReturnValue(true);
+    passkeyMocks.signInWithPasskey.mockResolvedValue(authUser);
   });
 
   afterEach(() => {
@@ -158,6 +171,59 @@ describe("SignInPage", () => {
       expect(signInWithCredentials).toHaveBeenCalledWith("admin", "secret");
       expect(screen.getByText("ready-page")).toBeInTheDocument();
     });
+  });
+
+  it("signs in with a passkey when the browser supports it", async () => {
+    renderSignInPage(
+      ["/sign-in?next=%2Fjobs%2Fready"],
+      <Route path="/jobs/ready" element={<div>ready-page</div>} />,
+    );
+
+    const passkeyButton = await screen.findByRole("button", {
+      name: "Sign in with a passkey",
+    });
+    fireEvent.click(passkeyButton);
+
+    await waitFor(() => {
+      expect(passkeyMocks.signInWithPasskey).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("ready-page")).toBeInTheDocument();
+    });
+    expect(localStorage.getItem("jobops.rememberedAuthUsers")).toContain(
+      "admin",
+    );
+  });
+
+  it("stays quiet when the passkey prompt is dismissed", async () => {
+    passkeyMocks.signInWithPasskey.mockRejectedValueOnce(
+      new passkeyMocks.PasskeyCancelledError("dismissed"),
+    );
+
+    renderSignInPage(["/sign-in"]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Sign in with a passkey" }),
+      ).toBeEnabled();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("hides the passkey button when the browser cannot use passkeys", async () => {
+    passkeyMocks.isPasskeySupported.mockReturnValue(false);
+
+    renderSignInPage(["/sign-in"]);
+
+    await waitFor(() => {
+      expect(restoreAuthSessionFromLegacyCredentials).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Sign in with a passkey" }),
+    ).toBeNull();
   });
 
   it("prefills a remembered username but still requires a password", async () => {

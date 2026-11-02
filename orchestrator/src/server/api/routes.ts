@@ -5,6 +5,7 @@
 import { Router } from "express";
 import { appStatusRouter } from "./routes/app-status";
 import { authRouter } from "./routes/auth";
+import { authPasskeysRouter } from "./routes/auth-passkeys";
 import { authSsoRouter } from "./routes/auth-sso";
 import { backupRouter } from "./routes/backup";
 import { billingRouter } from "./routes/billing";
@@ -50,6 +51,7 @@ apiRouter.use("/backups", backupRouter);
 apiRouter.use("/tracer-links", tracerLinksRouter);
 apiRouter.use("/workspaces", workspacesRouter);
 apiRouter.use("/auth/sso", authSsoRouter);
+apiRouter.use("/auth/passkeys", authPasskeysRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/workday", workdayRouter);
 apiRouter.use("/watchlist", watchlistRouter);
