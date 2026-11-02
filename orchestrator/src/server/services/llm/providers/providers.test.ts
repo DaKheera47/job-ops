@@ -12,6 +12,7 @@ import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
+import { runcrateStrategy } from "./runcrate";
 
 const schema = {
   name: "test_schema",
@@ -38,6 +39,18 @@ describe("provider adapters", () => {
           model: "gpt-6.1-sol",
         },
         expectedUrl: "https://global.api-route.com/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "runcrate-json_schema",
+        strategy: runcrateStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.runcrate.ai/v1",
+          apiKey: "runcrate-test",
+          model: "deepseek-ai/DeepSeek-V4.1-Flash",
+        },
+        expectedUrl: "https://api.runcrate.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {

@@ -12,6 +12,7 @@ describe("resolveLlmApiKey", () => {
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
     delete process.env.API_ROUTE_API_KEY;
+    delete process.env.RUNCRATE_API_KEY;
   });
 
   afterEach(() => {
@@ -126,6 +127,27 @@ describe("resolveLlmApiKey", () => {
         allowEnvironmentCredentials: false,
       }),
     ).toBe("tenant-two-test");
+  });
+
+  it("uses the Runcrate key only when environment credentials are allowed", async () => {
+    process.env.RUNCRATE_API_KEY = "runcrate-platform-test";
+    const { resolveLlmApiKey } = await loadResolver();
+    expect(resolveLlmApiKey({ provider: "runcrate" })).toBe(
+      "runcrate-platform-test",
+    );
+    expect(
+      resolveLlmApiKey({
+        provider: "runcrate",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "runcrate",
+        storedApiKey: "tenant-runcrate-test",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("tenant-runcrate-test");
   });
 
   it("does not fall through to any environment key when disabled", async () => {
