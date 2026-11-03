@@ -60,6 +60,34 @@ export async function getAuthBootstrapStatus(): Promise<AuthBootstrapStatus> {
   return fetchApi<AuthBootstrapStatus>("/auth/bootstrap-status");
 }
 
+export async function getProxyAuthStatus(): Promise<{ enabled: boolean }> {
+  return fetchApi<{ enabled: boolean }>("/auth/proxy/status");
+}
+
+/**
+ * Exchanges the identity a trusted reverse proxy forwarded for a session. Like
+ * the other sign-in calls it runs before there is a session, so it skips
+ * `fetchApi` and its redirect-to-sign-in recovery.
+ */
+export async function signInWithProxyHeader(): Promise<AuthUser> {
+  const res = await fetch("/api/auth/proxy", { method: "POST" });
+  const parsed = await readAuthResponse<{
+    token: string;
+    user: AuthUser;
+  }>(res);
+  if ("ok" in parsed) {
+    if (!parsed.ok) throw toApiError(res, parsed);
+  } else if (!parsed.success) {
+    throw toApiError(res, parsed);
+  }
+  const result = parsed.data as { token?: string; user?: AuthUser } | undefined;
+  if (!result?.token || !result.user) {
+    throw new Error("Proxy sign-in response was incomplete");
+  }
+  setAuthenticatedSession(result.token);
+  return result.user;
+}
+
 export async function setupFirstAdmin(input: {
   username: string;
   password: string;

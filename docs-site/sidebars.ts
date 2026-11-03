@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
         "getting-started/self-hosting",
         "getting-started/gmail-oauth-setup",
         "getting-started/sso-setup",
+        "getting-started/proxy-auth",
       ],
     },
     {
@@ -68,6 +69,7 @@ const sidebars: SidebarsConfig = {
         "getting-started/self-hosting",
         "getting-started/gmail-oauth-setup",
         "getting-started/sso-setup",
+        "getting-started/proxy-auth",
         "getting-started/database-backups",
         "troubleshooting/common-problems",
       ],

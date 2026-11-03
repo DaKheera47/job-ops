@@ -8,6 +8,10 @@ import {
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import { verifyPassword } from "@server/auth/password";
+import {
+  completeProxyLogin,
+  isProxyAuthEnabled,
+} from "@server/auth/proxy-header/service";
 import { getJobOpsAppConfig } from "@server/config/app-mode";
 import { isDemoMode } from "@server/config/demo";
 import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-analytics";
@@ -188,6 +192,28 @@ authRouter.post(
     }
 
     ok(res, { token, expiresIn });
+  }),
+);
+
+authRouter.get(
+  "/proxy/status",
+  asyncRoute(async (_req: Request, res: Response) => {
+    ok(res, { enabled: !isDemoMode() && isProxyAuthEnabled() });
+  }),
+);
+
+authRouter.post(
+  "/proxy",
+  asyncRoute(async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      fail(
+        res,
+        serviceUnavailable("Proxy sign-in is disabled in the public demo."),
+      );
+      return;
+    }
+    const { token, expiresIn, user, created } = await completeProxyLogin(req);
+    ok(res, { token, expiresIn, user, created });
   }),
 );
 

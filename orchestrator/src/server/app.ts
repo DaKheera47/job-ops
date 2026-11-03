@@ -229,12 +229,14 @@ export function createAuthGuard() {
       (normalizedPath === "/api/auth/login" ||
         normalizedPath === "/api/auth/logout" ||
         normalizedPath === "/api/auth/signup" ||
-        normalizedPath === "/api/auth/setup")
+        normalizedPath === "/api/auth/setup" ||
+        normalizedPath === "/api/auth/proxy")
     )
       return true;
     if (
       normalizedMethod === "GET" &&
-      normalizedPath === "/api/auth/bootstrap-status"
+      (normalizedPath === "/api/auth/bootstrap-status" ||
+        normalizedPath === "/api/auth/proxy/status")
     )
       return true;
     if (
