@@ -48,6 +48,50 @@ function resolveConfig(req: Request): ProxyAuthConfig {
   return config;
 }
 
+function readHost(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value.includes("://") ? value : `http://${value}`).host;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The app answers cross-origin requests with an open CORS policy, so a trusted
+ * peer (for example loopback) is not enough on its own: any web page in the
+ * user's browser could post to this endpoint with a header it chose and read
+ * the token back. A request that a browser marks as cross-origin is refused.
+ * Non-browser clients send neither header and pass.
+ */
+function assertNotCrossOrigin(req: Request): void {
+  const fetchSite = req.headers["sec-fetch-site"];
+  if (typeof fetchSite === "string") {
+    if (fetchSite !== "same-origin" && fetchSite !== "none") {
+      throw forbidden("Cross-origin proxy sign-in is not allowed");
+    }
+    return;
+  }
+
+  // Browsers without Fetch Metadata still send Origin on a POST.
+  const origin = req.headers.origin;
+  if (origin === undefined) return;
+
+  const originHost = typeof origin === "string" ? readHost(origin) : null;
+  const allowedHosts = new Set(
+    [
+      req.headers.host,
+      process.env.JOBOPS_PUBLIC_BASE_URL,
+      process.env.SSO_REDIRECT_BASE_URL,
+    ]
+      .map((value) => readHost(value?.trim()))
+      .filter((host): host is string => host !== null),
+  );
+  if (!originHost || !allowedHosts.has(originHost)) {
+    throw forbidden("Cross-origin proxy sign-in is not allowed");
+  }
+}
+
 export function isProxyAuthEnabled(): boolean {
   return (
     getJobOpsAppConfig().appMode !== "hosted" && getProxyAuthConfig() !== null
@@ -66,6 +110,7 @@ export async function completeProxyLogin(
   }
 
   const config = resolveConfig(req);
+  assertNotCrossOrigin(req);
 
   const rawUsername = readSingleHeader(req, config.userHeader);
   const username = rawUsername ? usersRepo.normalizeUsername(rawUsername) : "";

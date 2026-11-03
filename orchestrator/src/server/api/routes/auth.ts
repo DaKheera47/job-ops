@@ -212,6 +212,10 @@ authRouter.post(
       );
       return;
     }
+    // The global CORS policy is open; this response carries a session token, so
+    // it must never be readable by another origin.
+    res.removeHeader("Access-Control-Allow-Origin");
+    res.removeHeader("Access-Control-Allow-Credentials");
     const { token, expiresIn, user, created } = await completeProxyLogin(req);
     ok(res, { token, expiresIn, user, created });
   }),

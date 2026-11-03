@@ -91,6 +91,10 @@ The user header was missing or sent more than once. Confirm the proxy sets exact
 
 Create the user in **Settings → Environment & Workspaces → Security**, or set `PROXY_AUTH_ALLOW_SIGNUP=true`.
 
+### `Cross-origin proxy sign-in is not allowed`
+
+A browser marked the request as cross-origin (`Sec-Fetch-Site`), or its `Origin` host does not match the `Host` header or `JOBOPS_PUBLIC_BASE_URL` / `SSO_REDIRECT_BASE_URL`. This blocks other websites from using your browser to request a session. Open JobOps through the proxy's own address. If your proxy rewrites `Host` and an older browser is affected, set `JOBOPS_PUBLIC_BASE_URL` to the public URL.
+
 ### Security note
 
 Whoever controls the header becomes that user, including the admin if their username matches. Treat network access to JobOps as equivalent to the proxy's own login.

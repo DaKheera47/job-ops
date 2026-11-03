@@ -102,6 +102,55 @@ describe.sequential("Proxy header auth routes", () => {
       expect(me.status).toBe(200);
     });
 
+    it("refuses requests a browser marks as cross-origin", async () => {
+      await start(PROXY_ENV);
+      await setupAdmin();
+
+      for (const site of ["cross-site", "same-site"]) {
+        const res = await proxyLogin({
+          "x-remote-user": "admin",
+          "sec-fetch-site": site,
+        });
+        expect(res.status).toBe(403);
+        expect(res.headers.get("access-control-allow-origin")).toBeNull();
+      }
+
+      const sameOrigin = await proxyLogin({
+        "x-remote-user": "admin",
+        "sec-fetch-site": "same-origin",
+      });
+      expect(sameOrigin.status).toBe(200);
+    });
+
+    it("falls back to the Origin header without Fetch Metadata", async () => {
+      await start(PROXY_ENV);
+      await setupAdmin();
+
+      const foreign = await proxyLogin({
+        "x-remote-user": "admin",
+        origin: "https://evil.example",
+      });
+      expect(foreign.status).toBe(403);
+
+      const own = await proxyLogin({
+        "x-remote-user": "admin",
+        origin: baseUrl,
+      });
+      expect(own.status).toBe(200);
+    });
+
+    it("never exposes the token response to other origins via CORS", async () => {
+      await start(PROXY_ENV);
+      await setupAdmin();
+
+      const res = await proxyLogin({
+        "x-remote-user": "admin",
+        origin: baseUrl,
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    });
+
     it("rejects a repeated user header instead of provisioning a merged name", async () => {
       await start({ ...PROXY_ENV, PROXY_AUTH_ALLOW_SIGNUP: "true" });
       await setupAdmin();
