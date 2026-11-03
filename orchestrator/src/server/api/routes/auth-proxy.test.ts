@@ -1,4 +1,4 @@
-import type { Server } from "node:http";
+import { request as httpRequest, type Server } from "node:http";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { startServer, stopServer } from "./test-utils";
@@ -100,6 +100,33 @@ describe.sequential("Proxy header auth routes", () => {
         headers: { Authorization: `Bearer ${body.data.token}` },
       });
       expect(me.status).toBe(200);
+    });
+
+    it("rejects a repeated user header instead of provisioning a merged name", async () => {
+      await start({ ...PROXY_ENV, PROXY_AUTH_ALLOW_SIGNUP: "true" });
+      await setupAdmin();
+
+      // fetch folds repeated headers into one field, so send two real lines.
+      const status = await new Promise<number>((resolve, reject) => {
+        const req = httpRequest(
+          `${baseUrl}/api/auth/proxy`,
+          {
+            method: "POST",
+            headers: { "x-remote-user": ["alice", "bob"] },
+          },
+          (res) => {
+            res.resume();
+            resolve(res.statusCode ?? 0);
+          },
+        );
+        req.once("error", reject);
+        req.end();
+      });
+      expect(status).toBe(401);
+
+      const { db, schema } = await import("@server/db");
+      const rows = await db.select().from(schema.users);
+      expect(rows.map((row) => row.username)).toEqual(["admin"]);
     });
 
     it("rejects unknown users when signup is off", async () => {

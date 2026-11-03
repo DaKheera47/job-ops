@@ -37,7 +37,11 @@ PROXY_AUTH_ALLOW_SIGNUP=false
 
 `PROXY_AUTH_ENABLED=true` without at least one valid `PROXY_AUTH_TRUSTED_PROXIES` entry is ignored and a warning is logged, because otherwise any client could forge the header.
 
-Restart the container after editing `.env`.
+Docker Compose reads `.env` only when the container is created, so recreate the service after editing it:
+
+```bash
+docker compose up -d --force-recreate job-ops
+```
 
 ### 3) Forward the header from your proxy
 
@@ -49,7 +53,7 @@ jobops.example.com {
     uri /api/authz/forward-auth
     copy_headers Remote-User Remote-Name
   }
-  reverse_proxy job-ops:3005 {
+  reverse_proxy job-ops:3001 {
     header_up X-Remote-User {http.request.header.Remote-User}
     header_up X-Remote-Name {http.request.header.Remote-Name}
   }
@@ -71,7 +75,7 @@ Open JobOps through the proxy. The sign-in page calls `POST /api/auth/proxy`, an
 
 ### The sign-in form still appears
 
-- Check that `PROXY_AUTH_ENABLED=true` and `PROXY_AUTH_TRUSTED_PROXIES` are set and the container was restarted.
+- Check that `PROXY_AUTH_ENABLED=true` and `PROXY_AUTH_TRUSTED_PROXIES` are set and the service was recreated with `docker compose up -d --force-recreate job-ops`.
 - `GET /api/auth/proxy/status` returns `{ "enabled": true }` when the feature is active.
 - After you log out, the sign-in page signs you in again as long as the proxy still forwards your identity. End the session at the proxy to sign out fully.
 

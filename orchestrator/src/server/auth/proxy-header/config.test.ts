@@ -16,6 +16,33 @@ describe("getProxyAuthConfig", () => {
     ).toBeNull();
   });
 
+  it.each([
+    "10.0.0.5/",
+    "10.0.0.5/ ",
+    "10.0.0.5/-1",
+    "10.0.0.5/8/8",
+    "10.0.0.5/0x8",
+    "10.0.0.5/33",
+    "::1/129",
+  ])("rejects the malformed entry %j instead of trusting everyone", (entry) => {
+    expect(
+      getProxyAuthConfig({
+        PROXY_AUTH_ENABLED: "true",
+        PROXY_AUTH_TRUSTED_PROXIES: entry,
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps valid entries when others are malformed", () => {
+    const config = getProxyAuthConfig({
+      PROXY_AUTH_ENABLED: "true",
+      PROXY_AUTH_TRUSTED_PROXIES: "10.0.0.5/, 192.168.1.0/24",
+    });
+    if (!config) throw new Error("expected config");
+    expect(isTrustedProxyAddress(config, "192.168.1.9")).toBe(true);
+    expect(isTrustedProxyAddress(config, "8.8.8.8")).toBe(false);
+  });
+
   it("applies defaults and normalizes header names", () => {
     const config = getProxyAuthConfig({
       PROXY_AUTH_ENABLED: "1",

@@ -36,8 +36,9 @@ function buildTrustedProxyList(raw: string): {
     const entry = part.trim();
     if (!entry) continue;
 
-    const [address = "", prefix] = entry.split("/");
-    const family = isIP(address);
+    const segments = entry.split("/");
+    const [address = "", prefix] = segments;
+    const family = segments.length > 2 ? 0 : isIP(address);
     if (family === 0) {
       logger.warn("Ignoring invalid PROXY_AUTH_TRUSTED_PROXIES entry", {
         entry,
@@ -52,7 +53,9 @@ function buildTrustedProxyList(raw: string): {
       continue;
     }
 
-    const bits = Number(prefix);
+    // `Number("")` is 0, so a trailing slash would otherwise become a /0
+    // subnet that trusts every peer. Only a plain decimal prefix is accepted.
+    const bits = /^\d{1,3}$/.test(prefix) ? Number(prefix) : Number.NaN;
     const maxBits = family === 4 ? 32 : 128;
     if (!Number.isInteger(bits) || bits < 0 || bits > maxBits) {
       logger.warn("Ignoring invalid PROXY_AUTH_TRUSTED_PROXIES entry", {

@@ -20,8 +20,15 @@ export type ProxyLoginResult = {
 const MAX_HEADER_LENGTH = 200;
 
 function readSingleHeader(req: Request, name: string): string | null {
+  // Node folds repeated fields into one "a, b" string, so count them in the
+  // raw list: a repeated header is ambiguous and is refused, not picked from.
+  let occurrences = 0;
+  for (let index = 0; index < req.rawHeaders.length; index += 2) {
+    if (req.rawHeaders[index]?.toLowerCase() === name) occurrences += 1;
+  }
+  if (occurrences !== 1) return null;
+
   const value = req.headers[name];
-  // A repeated header is ambiguous; refuse it rather than pick one.
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > MAX_HEADER_LENGTH) return null;
