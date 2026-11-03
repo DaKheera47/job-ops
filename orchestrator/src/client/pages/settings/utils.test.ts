@@ -15,6 +15,15 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("api_route")).toBe(true);
     expect(normalizeLlmProvider("api-route")).toBe("api_route");
   });
+  it("offers Runcrate with authenticated model discovery", () => {
+    const config = getLlmProviderConfig("runcrate");
+    expect(config.label).toBe("Runcrate");
+    expect(config.showApiKey).toBe(true);
+    expect(config.showBaseUrl).toBe(false);
+    expect(config.keyHelperHref).toBe("https://runcrate.ai/dashboard/api-keys");
+    expect(supportsLlmModelSuggestions("runcrate")).toBe(true);
+    expect(normalizeLlmProvider("runcrate")).toBe("runcrate");
+  });
   it("treats openai-compatible as a dedicated configurable provider", () => {
     const config = getLlmProviderConfig("openai_compatible");
 

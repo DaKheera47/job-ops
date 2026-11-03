@@ -116,6 +116,7 @@ JobOps works with the model provider you already use:
 - OpenRouter
 - Requesty
 - [API Route](https://www.api-route.com/)
+- [Runcrate](https://runcrate.ai) (open-weight models: DeepSeek, Qwen, GLM, Kimi, and more)
 - Any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
 
 ---
