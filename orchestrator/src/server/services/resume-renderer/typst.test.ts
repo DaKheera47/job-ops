@@ -292,6 +292,20 @@ describe("typst resume renderer", () => {
     expect(template).toContain("trailing: bullet-trailing(entry)");
   });
 
+  it("lets clean-print-cv experience entries break across pages", async () => {
+    const template = await readTypstTemplate("clean-print-cv");
+
+    // The package's own experience-entry is unbreakable, so a long entry would
+    // leave a blank page under the section heading.
+    expect(template).toMatch(
+      /#let experience-entry\(exp\)[\s\S]*?breakable: true/,
+    );
+    expect(template).toContain("#let cv-experience(experience)");
+    expect(template.indexOf("#let cv-experience(experience)")).toBeLessThan(
+      template.indexOf("cv-experience(data.experience)"),
+    );
+  });
+
   it("renders the newly supported native sections and picture block", async () => {
     const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(
