@@ -12,6 +12,7 @@ describe("resolveLlmApiKey", () => {
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
     delete process.env.API_ROUTE_API_KEY;
+    delete process.env.UBERLLM_API_KEY;
   });
 
   afterEach(() => {
@@ -126,6 +127,27 @@ describe("resolveLlmApiKey", () => {
         allowEnvironmentCredentials: false,
       }),
     ).toBe("tenant-two-test");
+  });
+
+  it("uses the UberLLM key only when environment credentials are allowed", async () => {
+    process.env.UBERLLM_API_KEY = "ullm-platform-test";
+    const { resolveLlmApiKey } = await loadResolver();
+    expect(resolveLlmApiKey({ provider: "uberllm" })).toBe(
+      "ullm-platform-test",
+    );
+    expect(
+      resolveLlmApiKey({
+        provider: "uberllm",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "uberllm",
+        storedApiKey: "tenant-one-test",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("tenant-one-test");
   });
 
   it("does not fall through to any environment key when disabled", async () => {

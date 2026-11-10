@@ -12,6 +12,7 @@ import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
+import { uberLlmStrategy } from "./uberllm";
 
 const schema = {
   name: "test_schema",
@@ -28,6 +29,18 @@ const messages = [{ role: "user" as const, content: "hello" }];
 describe("provider adapters", () => {
   it("builds requests for each provider/mode path", () => {
     const cases = [
+      {
+        name: "uberllm-json_schema",
+        strategy: uberLlmStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://api.uberllm.dev/v1",
+          apiKey: "ullm-test",
+          model: "deepseek/deepseek-v4.1-flash",
+        },
+        expectedUrl: "https://api.uberllm.dev/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
       {
         name: "api-route-json_schema",
         strategy: apiRouteStrategy,

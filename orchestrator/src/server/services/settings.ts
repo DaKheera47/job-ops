@@ -68,6 +68,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "api_route") {
     return "https://global.api-route.com/v1";
   }
+  if (normalized === "uberllm") {
+    return "https://api.uberllm.dev/v1";
+  }
   if (normalized === "orcarouter") {
     return "https://api.orcarouter.ai/v1";
   }

@@ -50,7 +50,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 ![Model settings section](/img/features/settings-model-section.png)
 
 - In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
-- Choose provider (`atlascloud`, `litellm`, `openrouter`, `orcarouter`, `requesty`, `api_route`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
+- Choose provider (`atlascloud`, `litellm`, `openrouter`, `orcarouter`, `requesty`, `api_route`, `uberllm`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `claude_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -61,6 +61,7 @@ Each meter includes completed usage and work currently in progress. Limits reset
 - Provider defaults are applied automatically when the model fields are left blank:
   - `atlascloud` defaults to `deepseek-ai/deepseek-v3.2`
   - `api_route` defaults to `gpt-6.1-sol`; select a different model if your key cannot access it
+  - `uberllm` uses the shared default `google/gemini-3-flash-preview`, which UberLLM serves under the same ID
   - `openai` defaults to `gpt-5.4-mini`
   - `codex` defaults to `gpt-5.4-mini`
   - `glm` defaults to `glm-5.1`
@@ -78,10 +79,12 @@ Each meter includes completed usage and work currently in progress. Limits reset
   - `ollama`: locally installed Ollama models
   - `orcarouter`: available models from the OrcaRouter gateway
   - `api_route`: model IDs available to your key from `https://global.api-route.com/v1/models`, excluding known image, video, embedding, and audio model families
+  - `uberllm`: chat models from `https://api.uberllm.dev/v1/models`, which lists chat models only
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
 - For LiteLLM, JobOps uses `http://localhost:4000` by default. Point the base URL at your proxy (a trailing `/v1` is accepted) and, if the proxy enforces auth, enter a virtual key; one key then reaches every provider the proxy routes to, with its budgets and fallbacks applied.
 - For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
 - For [API Route](https://www.api-route.com/), create a key in [API Keys](https://www.api-route.com/api-keys), select API Route, and choose a chat model visible to that key. The endpoint is preset. Use exact IDs without adding an upstream-provider prefix. For environment setup, set `LLM_PROVIDER=api_route`, `API_ROUTE_API_KEY` (or `LLM_API_KEY`), and `MODEL` to the chosen ID. See the [API documentation](https://github.com/DennyHo0917/api-route/blob/main/API.md). JobOps sends the same task prompts and necessary profile/job fields as for its other hosted providers; keys remain in the existing secret storage. Screenshot attachments are not enabled by this integration.
+- For [UberLLM](https://uberllm.dev), create a key at [uberllm.dev/signup](https://uberllm.dev/signup), select UberLLM, and pick a model from the list. The endpoint is preset. Model IDs use the `vendor/model` form (for example `deepseek/deepseek-v4.1-flash` or `openai/gpt-5.4-mini`), the same form JobOps already uses for its default model. For environment setup, set `LLM_PROVIDER=uberllm`, `UBERLLM_API_KEY` (or `LLM_API_KEY`), and optionally `MODEL`. Credit is prepaid; current per-model prices are at [uberllm.dev/models](https://uberllm.dev/models). JobOps sends the same task prompts and necessary profile/job fields as for its other hosted providers; keys remain in the existing secret storage. Screenshot attachments are not enabled by this integration.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save
 
