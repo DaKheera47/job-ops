@@ -15,6 +15,15 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("api_route")).toBe(true);
     expect(normalizeLlmProvider("api-route")).toBe("api_route");
   });
+  it("offers UberLLM with authenticated model discovery", () => {
+    const config = getLlmProviderConfig("uberllm");
+    expect(config.label).toBe("UberLLM");
+    expect(config.showApiKey).toBe(true);
+    expect(config.showBaseUrl).toBe(false);
+    expect(config.keyHelperHref).toBe("https://uberllm.dev/signup");
+    expect(supportsLlmModelSuggestions("uberllm")).toBe(true);
+    expect(normalizeLlmProvider("UberLLM")).toBe("uberllm");
+  });
   it("treats openai-compatible as a dedicated configurable provider", () => {
     const config = getLlmProviderConfig("openai_compatible");
 

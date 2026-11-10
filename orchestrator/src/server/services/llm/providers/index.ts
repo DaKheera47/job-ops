@@ -15,6 +15,7 @@ import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
+import { uberLlmStrategy } from "./uberllm";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
   api_route: apiRouteStrategy,
@@ -23,6 +24,7 @@ export const strategies: Record<LlmProvider, ProviderStrategy> = {
   openrouter: openRouterStrategy,
   orcarouter: orcaRouterStrategy,
   requesty: requestyStrategy,
+  uberllm: uberLlmStrategy,
   lmstudio: lmStudioStrategy,
   ollama: ollamaStrategy,
   openai: openAiStrategy,

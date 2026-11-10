@@ -275,6 +275,7 @@ export class LlmService {
       this.provider !== "ollama" &&
       this.provider !== "requesty" &&
       this.provider !== "api_route" &&
+      this.provider !== "uberllm" &&
       this.provider !== "orcarouter"
     ) {
       return [];
@@ -311,7 +312,7 @@ export class LlmService {
             ),
         );
       }
-      if (this.provider === "orcarouter") {
+      if (this.provider === "orcarouter" || this.provider === "uberllm") {
         return this.listRequestyModels();
       }
       return this.listOllamaModels();
@@ -765,7 +766,11 @@ export class LlmService {
     if (!response.ok) {
       const detail = await getResponseDetail(response);
       const providerName =
-        this.provider === "api_route" ? "API Route" : "Requesty";
+        this.provider === "api_route"
+          ? "API Route"
+          : this.provider === "uberllm"
+            ? "UberLLM"
+            : "Requesty";
       throw new Error(detail || `${providerName} returned ${response.status}.`);
     }
 
@@ -833,6 +838,7 @@ function normalizeProvider(
   if (normalized === "codex") return "codex";
   if (normalized === "requesty") return "requesty";
   if (normalized === "api_route") return "api_route";
+  if (normalized === "uberllm") return "uberllm";
   if (normalized === "orcarouter") return "orcarouter";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
@@ -887,6 +893,7 @@ function normalizeGeminiModelName(value: string): string {
 
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "api_route") return "gpt-6.1-sol";
+  if (provider === "uberllm") return "google/gemini-3-flash-preview";
   if (provider === "atlascloud") return "deepseek-ai/deepseek-v3.2";
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "anthropic") return "claude-sonnet-4-6";
