@@ -24,10 +24,13 @@
     "typst-theme:generate": "node ./scripts/generate-typst-themes.mjs",
     "typst-theme:validate": "node ./scripts/generate-typst-themes.mjs --check && npm --workspace orchestrator run test:run -- src/server/services/resume-renderer/typst.test.ts",
     "release:set-version": "node ./scripts/set-orchestrator-version.mjs",
-    "knip": "knip"
+    "knip": "knip",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@gglint/cli": "0.5.1",
     "@types/node": "^25.2.3",
+    "husky": "9.1.7",
     "knip": "^5.83.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
