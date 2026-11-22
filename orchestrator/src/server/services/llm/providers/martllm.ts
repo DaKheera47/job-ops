@@ -5,15 +5,15 @@ import {
   extractChatCompletionsText,
 } from "./factory";
 
-export const uberLlmStrategy = createProviderStrategy({
-  provider: "uberllm",
-  defaultBaseUrl: "https://api.uberllm.dev/v1",
+export const martLlmStrategy = createProviderStrategy({
+  provider: "martllm",
+  defaultBaseUrl: "https://api.martllm.com/v1",
   requiresApiKey: true,
   modes: ["json_schema", "json_object", "text", "none"],
   validationPaths: ["/models"],
   buildRequest: ({ mode, baseUrl, apiKey, model, messages, jsonSchema }) => ({
     url: joinUrl(baseUrl, "/chat/completions"),
-    headers: buildHeaders({ apiKey, provider: "uberllm" }),
+    headers: buildHeaders({ apiKey, provider: "martllm" }),
     body: buildChatCompletionsBody({ mode, model, messages, jsonSchema }),
   }),
   extractText: extractChatCompletionsText,

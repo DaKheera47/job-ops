@@ -31,7 +31,7 @@ export const LLM_PROVIDER_VALUES = [
   "orcarouter",
   "requesty",
   "api_route",
-  "uberllm",
+  "martllm",
   "lmstudio",
   "ollama",
   "openai",

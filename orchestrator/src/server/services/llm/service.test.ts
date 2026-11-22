@@ -339,7 +339,7 @@ describe("LlmService provider normalization", () => {
     expect(String(requestedUrl)).toBe("https://router.requesty.ai/v1/models");
   });
 
-  it("lists UberLLM models with the supplied tenant key", async () => {
+  it("lists MartLLM models with the supplied tenant key", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -352,17 +352,17 @@ describe("LlmService provider normalization", () => {
       ),
     );
     const llm = new LlmService({
-      provider: "uberllm",
+      provider: "martllm",
       apiKey: "tenant-ullm-test",
       allowEnvironmentCredentials: false,
     });
-    expect(llm.getProvider()).toBe("uberllm");
+    expect(llm.getProvider()).toBe("martllm");
     expect(await llm.listModels()).toEqual([
       "google/gemini-3-flash-preview",
       "deepseek/deepseek-v4.1-flash",
     ]);
     const [url, init] = fetchSpy.mock.calls[0] ?? [];
-    expect(String(url)).toBe("https://api.uberllm.dev/v1/models");
+    expect(String(url)).toBe("https://api.martllm.com/v1/models");
     expect(new Headers(init?.headers).get("Authorization")).toBe(
       "Bearer tenant-ullm-test",
     );

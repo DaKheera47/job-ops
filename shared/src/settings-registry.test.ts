@@ -12,12 +12,12 @@ describe("settingsRegistry helpers", () => {
       "claude-haiku-4-5",
     );
   });
-  it("gives UberLLM the shared vendor/model default", () => {
-    expect(getDefaultModelForProvider("uberllm")).toBe(
+  it("gives MartLLM the shared vendor/model default", () => {
+    expect(getDefaultModelForProvider("martllm")).toBe(
       "google/gemini-3-flash-preview",
     );
     expect(
-      getDefaultModelForProvider("uberllm", "deepseek/deepseek-v4.1-flash"),
+      getDefaultModelForProvider("martllm", "deepseek/deepseek-v4.1-flash"),
     ).toBe("deepseek/deepseek-v4.1-flash");
   });
   describe("searchCities defaults", () => {
