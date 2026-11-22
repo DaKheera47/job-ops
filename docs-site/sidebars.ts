@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
         "extractors/jobindex",
         "extractors/seek",
         "extractors/freehire",
+        "extractors/eurojobs",
         "extractors/manual",
         "extractors/ukvisajobs",
       ],

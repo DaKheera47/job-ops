@@ -17,6 +17,7 @@ export const EXTRACTOR_SOURCE_IDS = [
   "fiveamsat",
   "wazzuf",
   "freehire",
+  "eurojobs",
   "manual",
 ] as const;
 
@@ -87,6 +88,7 @@ export const EXTRACTOR_SOURCE_METADATA: Record<
   fiveamsat: { label: "Khamsat", order: 109, category: "pipeline" },
   wazzuf: { label: "WUZZUF", order: 110, category: "pipeline" },
   freehire: { label: "FreeHire", order: 115, category: "pipeline" },
+  eurojobs: { label: "EuroJobs", order: 117, category: "pipeline" },
   manual: { label: "Manual", order: 120, category: "manual" },
 };
 
