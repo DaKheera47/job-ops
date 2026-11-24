@@ -140,6 +140,20 @@ vi.mock("../components/LogEventModal", () => ({
         >
           Submit Log Event
         </button>
+        <button
+          type="button"
+          data-testid="mock-log-rejected"
+          onClick={() =>
+            onLog({
+              stage: "rejected",
+              title: "Rejected",
+              date: "2026-06-12",
+              notes: "Position filled",
+            })
+          }
+        >
+          Submit Rejected Event
+        </button>
       </div>
     ) : null,
 }));
@@ -560,6 +574,157 @@ describe("JobPage timeline actions", () => {
         screen.getByRole("button", { name: /log event/i }),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("logs a rejected stage event for an applied job", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "applied" }) as Job,
+    );
+    vi.mocked(api.transitionJobStage).mockResolvedValue({
+      id: "evt-rejected",
+      applicationId: "job-1",
+      title: "Rejected",
+      groupId: null,
+      fromStage: "applied",
+      toStage: "closed",
+      occurredAt: 1_781_222_400,
+      metadata: {
+        eventLabel: "Rejected",
+        note: "Position filled",
+        reasonCode: "job_page_manual_stage",
+        actor: "user",
+        eventType: "status_update",
+      },
+      outcome: "rejected",
+    });
+
+    renderJobPage("/job/job-1");
+
+    fireEvent.click(await screen.findByRole("button", { name: /log event/i }));
+    fireEvent.click(await screen.findByTestId("mock-log-rejected"));
+
+    await waitFor(() =>
+      expect(api.transitionJobStage).toHaveBeenCalledWith(
+        "job-1",
+        expect.objectContaining({
+          toStage: "closed",
+          outcome: "rejected",
+          metadata: expect.objectContaining({
+            eventLabel: "Rejected",
+            note: "Position filled",
+            reasonCode: "job_page_manual_stage",
+            actor: "user",
+            eventType: "status_update",
+          }),
+        }),
+      ),
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith("Event logged");
+    expect(celebrateOffer).not.toHaveBeenCalled();
+  });
+
+  it("logs an offer stage event for an applied job on the timeline view and celebrates", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "applied" }) as Job,
+    );
+    vi.mocked(api.transitionJobStage).mockResolvedValue({
+      id: "evt-offer",
+      applicationId: "job-1",
+      title: "Offer Received",
+      groupId: null,
+      fromStage: "applied",
+      toStage: "offer",
+      occurredAt: 1_781_222_400,
+      metadata: null,
+      outcome: null,
+    });
+
+    const { queryClient } = renderJobPage("/job/job-1/timeline");
+    queryClient.setQueryDefaults(queryKeys.jobs.all, { gcTime: Infinity });
+    const listKey = queryKeys.jobs.list();
+    queryClient.setQueryData(listKey, {
+      jobs: [createJob({ status: "applied" })],
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /log event/i }));
+    fireEvent.click(await screen.findByTestId("mock-log-submit"));
+
+    await waitFor(() =>
+      expect(api.transitionJobStage).toHaveBeenCalledWith(
+        "job-1",
+        expect.objectContaining({
+          toStage: "offer",
+          outcome: null,
+        }),
+      ),
+    );
+    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true);
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith("Event logged");
+    expect(celebrateOffer).toHaveBeenCalled();
+  });
+
+  it("shows an error toast when logging a stage event fails for an applied job", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "applied" }) as Job,
+    );
+    vi.mocked(api.transitionJobStage).mockRejectedValueOnce(
+      new Error("Stage update failed"),
+    );
+
+    renderJobPage("/job/job-1");
+
+    fireEvent.click(await screen.findByRole("button", { name: /log event/i }));
+    fireEvent.click(await screen.findByTestId("mock-log-rejected"));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Stage update failed"),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("hides log event when an applied job is already closed", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "applied" }) as Job,
+    );
+    vi.mocked(api.getJobStageEvents).mockResolvedValue([
+      {
+        id: "evt-closed",
+        applicationId: "job-1",
+        title: "Rejected",
+        groupId: null,
+        fromStage: "applied",
+        toStage: "closed",
+        occurredAt: 1_781_222_400,
+        metadata: null,
+        outcome: "rejected",
+      },
+    ]);
+
+    renderJobPage("/job/job-1/timeline");
+
+    expect(
+      await screen.findByText(
+        "This application is closed. Stage logging is disabled.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /log event/i })).toBeNull();
+  });
+
+  it("blocks stage logging when job is not applied or in progress", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "ready" }) as Job,
+    );
+
+    renderJobPage("/job/job-1/timeline");
+
+    expect(
+      await screen.findByText(
+        "Mark this job as applied to start tracking application stages.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /log event/i })).toBeNull();
   });
 });
 

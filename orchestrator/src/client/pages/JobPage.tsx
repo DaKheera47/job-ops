@@ -306,8 +306,8 @@ export const JobPage: React.FC = () => {
     eventId?: string,
   ) => {
     if (!job) return;
-    if (job.status !== "in_progress") {
-      toast.error("Move this job to In Progress to track stages.");
+    if (job.status !== "applied" && job.status !== "in_progress") {
+      toast.error("Mark this job as applied to track stages.");
       return;
     }
 
