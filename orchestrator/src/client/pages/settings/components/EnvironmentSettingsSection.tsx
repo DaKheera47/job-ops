@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { ConnectedAccountsSection } from "@client/pages/settings/components/ConnectedAccountsSection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
@@ -23,10 +24,9 @@ type EnvironmentSettingsSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 const workspaceUsersQueryKey = ["workspaces", "users"] as const;
-
 function AccountManagementSection() {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -34,7 +34,6 @@ function AccountManagementSection() {
   const [resetPasswordByUserId, setResetPasswordByUserId] = useState<
     Record<string, string>
   >({});
-
   const meQuery = useQuery({
     queryKey: queryKeys.auth.currentUser(),
     queryFn: api.getCurrentAuthUser,
@@ -45,33 +44,34 @@ function AccountManagementSection() {
     queryFn: api.listWorkspaceUsers,
     enabled: meQuery.data?.isSystemAdmin === true,
   });
-
   const createUserMutation = useMutation({
     mutationFn: api.createWorkspaceUser,
     onSuccess: async () => {
       setUsername("");
       setDisplayName("");
       setPassword("");
-      await queryClient.invalidateQueries({ queryKey: workspaceUsersQueryKey });
+      await queryClient.invalidateQueries({
+        queryKey: workspaceUsersQueryKey,
+      });
       toast.success("User created");
     },
     onError: (error) => {
       showErrorToast(error, "Failed to create user");
     },
   });
-
   const disableUserMutation = useMutation({
     mutationFn: (input: { userId: string; isDisabled: boolean }) =>
       api.setWorkspaceUserDisabled(input.userId, input.isDisabled),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workspaceUsersQueryKey });
+      await queryClient.invalidateQueries({
+        queryKey: workspaceUsersQueryKey,
+      });
       toast.success("User updated");
     },
     onError: (error) => {
       showErrorToast(error, "Failed to update user");
     },
   });
-
   const resetPasswordMutation = useMutation({
     mutationFn: (input: { userId: string; password: string }) =>
       api.resetWorkspaceUserPassword(input.userId, input.password),
@@ -86,7 +86,6 @@ function AccountManagementSection() {
       showErrorToast(error, "Failed to reset password");
     },
   });
-
   if (!meQuery.data?.isSystemAdmin) {
     return (
       <div className="space-y-2">
@@ -97,9 +96,7 @@ function AccountManagementSection() {
       </div>
     );
   }
-
   const users = usersQuery.data ?? [];
-
   return (
     <div className="space-y-5">
       <div className="space-y-1">
@@ -113,12 +110,12 @@ function AccountManagementSection() {
         <Input
           value={displayName}
           onChange={(event) => setDisplayName(event.currentTarget.value)}
-          placeholder="Name"
+          placeholder={uiT("Name")}
         />
         <Input
           value={username}
           onChange={(event) => setUsername(event.currentTarget.value)}
-          placeholder="Username"
+          placeholder={uiT("Username")}
           autoComplete="off"
         />
         <Input
@@ -165,7 +162,7 @@ function AccountManagementSection() {
                     <Badge variant="secondary">System admin</Badge>
                   ) : null}
                   {user.isDisabled ? (
-                    <Badge variant="destructive">Disabled</Badge>
+                    <Badge variant="destructive">{uiT("Disabled")}</Badge>
                   ) : null}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -201,7 +198,7 @@ function AccountManagementSection() {
                     })
                   }
                 >
-                  Reset
+                  {uiT("Reset")}
                 </Button>
               </div>
               <Button
@@ -232,16 +229,15 @@ function AccountManagementSection() {
     </div>
   );
 }
-
 export const EnvironmentSettingsSection: React.FC<
   EnvironmentSettingsSectionProps
 > = ({ values, isLoading, isSaving, layoutMode }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     register,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
   const { private: privateValues } = values;
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
@@ -265,7 +261,7 @@ export const EnvironmentSettingsSection: React.FC<
                 error={errors.ukvisajobsEmail?.message as string | undefined}
               />
               <SettingsInput
-                label="Password"
+                label={uiT("Password")}
                 inputProps={register("ukvisajobsPassword")}
                 type="password"
                 placeholder="Enter new password"

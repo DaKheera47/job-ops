@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import {
   ALL_JOB_STATUSES,
@@ -5,10 +6,8 @@ import {
 } from "@client/pages/settings/constants";
 import type { JobStatus } from "@shared/types";
 import { AlertTriangle, Trash2 } from "lucide-react";
-
 import type React from "react";
 import { useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +33,6 @@ type DangerZoneSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
   statusesToClear,
   toggleStatusToClear,
@@ -45,6 +43,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [scoreThreshold, setScoreThreshold] = useState<string>("");
   const parsedThreshold = parseInt(scoreThreshold, 10);
   const isValidThreshold =
@@ -59,7 +58,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4" />
           <span className="text-base font-semibold tracking-wider">
-            Danger Zone
+            {uiT("Danger Zone")}
           </span>
         </div>
       }
@@ -85,18 +84,10 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
                   type="button"
                   onClick={() => toggleStatusToClear(status)}
                   disabled={isLoading || isSaving}
-                  className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50 ${
-                    isSelected
-                      ? "border-destructive bg-destructive/10"
-                      : "border-border"
-                  }`}
+                  className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50 ${isSelected ? "border-destructive bg-destructive/10" : "border-border"}`}
                 >
                   <div
-                    className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                      isSelected
-                        ? "border-destructive"
-                        : "border-muted-foreground"
-                    }`}
+                    className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-destructive" : "border-muted-foreground"}`}
                   >
                     {isSelected && (
                       <div className="h-2 w-2 rounded-full bg-destructive" />
@@ -135,7 +126,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleClearByStatuses}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -208,7 +199,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => {
                         if (isValidThreshold) {
@@ -260,7 +251,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleClearDatabase}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

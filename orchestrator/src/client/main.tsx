@@ -6,6 +6,7 @@ import { AppErrorBoundary } from "@/client/components/AppErrorBoundary";
 import { AppModeProvider } from "@/client/components/layout";
 import { queryClient } from "@/client/lib/queryClient";
 import { App } from "./App";
+import { UiLanguageProvider } from "./lib/i18n/language";
 import "../index.css";
 
 const rootElement = document.getElementById("root");
@@ -17,7 +18,9 @@ ReactDOM.createRoot(rootElement).render(
       <BrowserRouter>
         <AppModeProvider>
           <AppErrorBoundary>
-            <App />
+            <UiLanguageProvider>
+              <App />
+            </UiLanguageProvider>
           </AppErrorBoundary>
         </AppModeProvider>
       </BrowserRouter>

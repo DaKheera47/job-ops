@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -18,7 +19,6 @@ type BaseResumeSelectionProps = {
   disabled?: boolean;
   isLoading?: boolean;
 };
-
 export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   value,
   onValueChange,
@@ -26,17 +26,21 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   disabled = false,
   isLoading = false,
 }) => {
-  const [resumes, setResumes] = useState<{ id: string; name: string }[]>([]);
+  const { t: uiT } = useUiTranslation();
+  const [resumes, setResumes] = useState<
+    {
+      id: string;
+      name: string;
+    }[]
+  >([]);
   const [isFetchingResumes, setIsFetchingResumes] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
   const fetchResumes = useCallback(async () => {
     if (!hasRxResumeAccess) {
       setResumes([]);
       setFetchError(null);
       return;
     }
-
     setIsFetchingResumes(true);
     setFetchError(null);
     try {
@@ -56,20 +60,17 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
       setIsFetchingResumes(false);
     }
   }, [hasRxResumeAccess, onValueChange, value]);
-
   useEffect(() => {
     if (hasRxResumeAccess) {
       fetchResumes();
     }
   }, [hasRxResumeAccess, fetchResumes]);
-
   useEffect(() => {
     if (!hasRxResumeAccess) {
       setResumes([]);
       setFetchError(null);
     }
   }, [hasRxResumeAccess]);
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -84,7 +85,7 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
           <RefreshCw
             className={`h-3 w-3 mr-1 ${isFetchingResumes ? "animate-spin" : ""}`}
           />
-          Refresh
+          {uiT("Refresh")}
         </Button>
       </div>
 

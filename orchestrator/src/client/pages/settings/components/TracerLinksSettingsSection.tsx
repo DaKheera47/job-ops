@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { TracerReadinessResponse } from "@shared/types";
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
@@ -12,15 +13,12 @@ type TracerLinksSettingsSectionProps = {
   onVerifyNow: () => void | Promise<void>;
   layoutMode?: "accordion" | "panel";
 };
-
 const STALE_AFTER_MS = 15 * 60_000;
-
 function formatLastChecked(value: number | null): string {
   if (!value) return "Never";
   const date = new Date(value);
   return date.toLocaleString();
 }
-
 function deriveStatus(
   readiness: TracerReadinessResponse | null,
   isChecking: boolean,
@@ -36,7 +34,6 @@ function deriveStatus(
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
     };
   }
-
   if (!readiness) {
     return {
       label: "Not configured",
@@ -44,7 +41,6 @@ function deriveStatus(
       icon: <AlertCircle className="h-3.5 w-3.5" />,
     };
   }
-
   const ageMs = Date.now() - readiness.checkedAt;
   if (ageMs > STALE_AFTER_MS) {
     return {
@@ -53,7 +49,6 @@ function deriveStatus(
       icon: <AlertCircle className="h-3.5 w-3.5" />,
     };
   }
-
   if (readiness.status === "ready") {
     return {
       label: "Ready",
@@ -61,7 +56,6 @@ function deriveStatus(
       icon: <CheckCircle2 className="h-3.5 w-3.5" />,
     };
   }
-
   if (readiness.status === "unavailable") {
     return {
       label: "Unavailable",
@@ -69,25 +63,23 @@ function deriveStatus(
       icon: <AlertCircle className="h-3.5 w-3.5" />,
     };
   }
-
   return {
     label: "Not configured",
     className: "border-muted text-muted-foreground",
     icon: <AlertCircle className="h-3.5 w-3.5" />,
   };
 }
-
 export const TracerLinksSettingsSection: React.FC<
   TracerLinksSettingsSectionProps
 > = ({ readiness, isLoading, isChecking, onVerifyNow, layoutMode }) => {
+  const { t: uiT } = useUiTranslation();
   const statusUi = deriveStatus(readiness, isChecking);
   const publicBaseUrl = readiness?.publicBaseUrl ?? null;
   const checkTimestamp = readiness?.checkedAt ?? null;
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
-      title="Tracer Links"
+      title={uiT("Tracer Links")}
       value="tracer-links"
     >
       <div className="space-y-4">

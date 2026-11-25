@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,6 @@ interface AutomaticSaveSearchDialogProps {
   onNameChange: (name: string) => void;
   onSave: () => void;
 }
-
 export function AutomaticSaveSearchDialog({
   open,
   mode,
@@ -30,6 +30,7 @@ export function AutomaticSaveSearchDialog({
   onNameChange,
   onSave,
 }: AutomaticSaveSearchDialogProps) {
+  const { t: uiT } = useUiTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -40,7 +41,7 @@ export function AutomaticSaveSearchDialog({
           <DialogDescription>Save the current search setup.</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="saved-search-name">Name</Label>
+          <Label htmlFor="saved-search-name">{uiT("Name")}</Label>
           <Input
             id="saved-search-name"
             value={name}
@@ -60,7 +61,7 @@ export function AutomaticSaveSearchDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {uiT("Cancel")}
           </Button>
           <Button
             type="button"
@@ -73,7 +74,7 @@ export function AutomaticSaveSearchDialog({
             ) : (
               <Check className="h-4 w-4" />
             )}
-            Save
+            {uiT("Save")}
           </Button>
         </DialogFooter>
       </DialogContent>

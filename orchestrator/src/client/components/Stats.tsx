@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 /**
  * Stats dashboard showing job counts by status.
  */
@@ -17,28 +18,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 interface StatsProps {
   stats: Record<JobStatus, number>;
 }
-
 const statConfig: Array<{
   key: JobStatus;
   label: string;
-  Icon: React.ComponentType<{ className?: string }>;
+  Icon: React.ComponentType<{
+    className?: string;
+  }>;
 }> = [
-  { key: "discovered", label: "Discovered", Icon: Search },
-  { key: "processing", label: "Processing", Icon: Loader2 },
-  { key: "ready", label: "Ready", Icon: Sparkles },
-  { key: "applied", label: "Applied", Icon: CheckCircle2 },
-  { key: "in_progress", label: "In Progress", Icon: CheckCircle2 },
-  { key: "skipped", label: "Skipped", Icon: XCircle },
-  { key: "expired", label: "Expired", Icon: Clock },
+  {
+    key: "discovered",
+    label: "Discovered",
+    Icon: Search,
+  },
+  {
+    key: "processing",
+    label: "Processing",
+    Icon: Loader2,
+  },
+  {
+    key: "ready",
+    label: "Ready",
+    Icon: Sparkles,
+  },
+  {
+    key: "applied",
+    label: "Applied",
+    Icon: CheckCircle2,
+  },
+  {
+    key: "in_progress",
+    label: "In Progress",
+    Icon: CheckCircle2,
+  },
+  {
+    key: "skipped",
+    label: "Skipped",
+    Icon: XCircle,
+  },
+  {
+    key: "expired",
+    label: "Expired",
+    Icon: Clock,
+  },
 ];
-
 export const Stats: React.FC<StatsProps> = ({ stats }) => {
+  const { t: uiT } = useUiTranslation();
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Overview</CardTitle>
+        <CardTitle>{uiT("Overview")}</CardTitle>
         <div className="text-sm text-muted-foreground">{total} total jobs</div>
       </CardHeader>
 

@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { Job, JobDocument } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -60,7 +61,6 @@ type JobDocumentsPanelProps = {
   onDownloadPdf: () => void;
   onRegeneratePdf: () => void;
 };
-
 function DocumentIcon({
   document,
 }: {
@@ -74,7 +74,6 @@ function DocumentIcon({
   }
   return <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />;
 }
-
 const DocumentPreview: React.FC<{
   document: JobDocument;
 }> = ({ document }) => {
@@ -90,13 +89,10 @@ const DocumentPreview: React.FC<{
     [canPreviewAsObject, document.id, document.jobId],
   );
   const { objectUrl, error } = useObjectUrl(loadObjectUrl);
-
   useEffect(() => {
     let cancelled = false;
-
     setTextPreview(null);
     setTextError(null);
-
     if (canPreviewAsText) {
       void api
         .getJobDocumentBlob(document.jobId, document.id)
@@ -108,12 +104,10 @@ const DocumentPreview: React.FC<{
           if (!cancelled) setTextError("Preview unavailable.");
         });
     }
-
     return () => {
       cancelled = true;
     };
   }, [canPreviewAsText, document.id, document.jobId]);
-
   if (!canPreviewAsObject && !canPreviewAsText) {
     return (
       <div className="rounded-md border border-dashed border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
@@ -121,7 +115,6 @@ const DocumentPreview: React.FC<{
       </div>
     );
   }
-
   if (error || textError) {
     return (
       <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
@@ -129,7 +122,6 @@ const DocumentPreview: React.FC<{
       </div>
     );
   }
-
   if (canPreviewAsObject && objectUrl) {
     return isJobDocumentSafeInlineImage(document) ? (
       <div className="max-h-[560px] overflow-auto rounded-md border border-border/50 bg-background/40 p-3">
@@ -147,7 +139,6 @@ const DocumentPreview: React.FC<{
       />
     );
   }
-
   if (canPreviewAsText && textPreview !== null) {
     return (
       <pre className="max-h-[520px] overflow-auto rounded-md border border-border/50 bg-background/60 p-4 text-xs leading-6 text-foreground/80">
@@ -155,7 +146,6 @@ const DocumentPreview: React.FC<{
       </pre>
     );
   }
-
   return (
     <div className="flex min-h-32 items-center justify-center rounded-md border border-border/50 bg-background/30 text-sm text-muted-foreground">
       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -163,14 +153,14 @@ const DocumentPreview: React.FC<{
     </div>
   );
 };
-
-const ResumePdfPreview: React.FC<{ jobId: string }> = ({ jobId }) => {
+const ResumePdfPreview: React.FC<{
+  jobId: string;
+}> = ({ jobId }) => {
   const loadObjectUrl = useCallback(
     () => createJobPdfObjectUrl(jobId),
     [jobId],
   );
   const { objectUrl, error } = useObjectUrl(loadObjectUrl);
-
   if (error) {
     return (
       <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
@@ -178,7 +168,6 @@ const ResumePdfPreview: React.FC<{ jobId: string }> = ({ jobId }) => {
       </div>
     );
   }
-
   if (!objectUrl) {
     return (
       <div className="flex min-h-32 items-center justify-center rounded-md border border-border/50 bg-background/30 text-sm text-muted-foreground">
@@ -187,7 +176,6 @@ const ResumePdfPreview: React.FC<{ jobId: string }> = ({ jobId }) => {
       </div>
     );
   }
-
   return (
     <iframe
       title="Resume PDF"
@@ -196,7 +184,6 @@ const ResumePdfPreview: React.FC<{ jobId: string }> = ({ jobId }) => {
     />
   );
 };
-
 export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
   job,
   isStalePdf,
@@ -211,30 +198,27 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
   onDownloadPdf,
   onRegeneratePdf,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const uploadDocumentInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<JobDocument | null>(
     null,
   );
-
   const documentsQuery = useQuery({
     queryKey: queryKeys.jobs.documents(job.id),
     queryFn: () => api.getJobDocuments(job.id),
   });
-
   const defaultAccordionValues = useMemo(() => {
     const values: string[] = [];
     if (job.pdfPath) values.push("resume-pdf");
     return values;
   }, [job.pdfPath]);
-
   const refreshDocuments = async () => {
     await queryClient.invalidateQueries({
       queryKey: queryKeys.jobs.documents(job.id),
     });
   };
-
   const handleUploadDocument = async (file: globalThis.File) => {
     try {
       setIsUploadingDocument(true);
@@ -250,7 +234,6 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
       }
     }
   };
-
   const handleDeleteDocument = async () => {
     if (!documentToDelete) return;
     try {
@@ -263,7 +246,6 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
       setDocumentToDelete(null);
     }
   };
-
   return (
     <>
       <section className="rounded-xl border border-border/50 bg-card/75">
@@ -449,7 +431,7 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
                       onClick={() => setDocumentToDelete(document)}
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                      Delete
+                      {uiT("Delete")}
                     </Button>
                   </div>
                 </div>

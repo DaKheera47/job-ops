@@ -1,4 +1,5 @@
 import { CollapsibleSection } from "@client/components/discovered-panel/CollapsibleSection";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   type ApplicationStage,
   STAGE_LABELS,
@@ -31,19 +32,20 @@ const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   offer: <MailCheck className="h-4 w-4" />,
   closed: <ClipboardList className="h-4 w-4" />,
 };
-
 const formatRange = (start: number, end: number) => {
   const startLabel = formatTimestamp(start);
   const endLabel = formatTimestamp(end);
   return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
 };
-
 type TimelineEntry =
   | {
       kind: "found";
       occurredAt: number;
     }
-  | { kind: "event"; event: StageEvent }
+  | {
+      kind: "event";
+      event: StageEvent;
+    }
   | {
       kind: "group";
       id: string;
@@ -51,48 +53,51 @@ type TimelineEntry =
       events: StageEvent[];
       occurredAt: number;
     };
-
 interface JobTimelineProps {
   events: StageEvent[];
   discoveredAt?: string | null;
   onEdit?: (event: StageEvent) => void;
   onDelete?: (eventId: string) => void;
 }
-
 export const JobTimeline: React.FC<JobTimelineProps> = ({
   events,
   discoveredAt,
   onEdit,
   onDelete,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(
     {},
   );
   const lastEvent = events.at(-1);
   const currentStage = lastEvent?.toStage ?? null;
-
   const entries = React.useMemo(() => {
-    const groups = new Map<string, { label: string; events: StageEvent[] }>();
+    const groups = new Map<
+      string,
+      {
+        label: string;
+        events: StageEvent[];
+      }
+    >();
     const standalone: StageEvent[] = [];
-
     events.forEach((event) => {
       const groupId = event.groupId;
       if (!groupId) {
         standalone.push(event);
         return;
       }
-
       const label = event.metadata?.groupLabel || "Grouped events";
-      const group = groups.get(groupId) ?? { label, events: [] };
+      const group = groups.get(groupId) ?? {
+        label,
+        events: [],
+      };
       group.events.push(event);
       groups.set(groupId, group);
     });
-
     const mapped: TimelineEntry[] = standalone.map((event) => ({
       kind: "event",
       event,
     }));
-
     groups.forEach((value, id) => {
       const sorted = [...value.events].sort(
         (a, b) => a.occurredAt - b.occurredAt,
@@ -105,7 +110,6 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
         occurredAt: sorted[0]?.occurredAt ?? 0,
       });
     });
-
     const foundTimestamp = toTimestampSeconds(discoveredAt);
     if (foundTimestamp !== null) {
       mapped.push({
@@ -113,12 +117,10 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
         occurredAt: foundTimestamp,
       });
     }
-
     return mapped.sort((a, b) => {
       return getEntryOccurredAt(a) - getEntryOccurredAt(b);
     });
   }, [events, discoveredAt]);
-
   if (entries.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border/50 p-6 text-sm text-muted-foreground">
@@ -126,7 +128,6 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {entries.map((entry, entryIndex) => {
@@ -135,7 +136,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
             <TimelineRow
               key="found"
               date={formatTimestampWithTime(entry.occurredAt)}
-              title="Discovered"
+              title={uiT("Discovered")}
               icon={<SearchCheck className="h-4 w-4" />}
               isLast={entryIndex === entries.length - 1}
             >
@@ -145,7 +146,6 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
             </TimelineRow>
           );
         }
-
         if (entry.kind === "event") {
           const title = entry.event.title || STAGE_LABELS[entry.event.toStage];
           const note = entry.event.metadata?.note;
@@ -191,10 +191,12 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
             </TimelineRow>
           );
         }
-
         const groupOpen = Boolean(openGroups[entry.id]);
         const toggleGroup = () =>
-          setOpenGroups((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }));
+          setOpenGroups((prev) => ({
+            ...prev,
+            [entry.id]: !prev[entry.id],
+          }));
         const groupStart = entry.events[0]?.occurredAt ?? entry.occurredAt;
         const groupEnd = entry.events.at(-1)?.occurredAt ?? entry.occurredAt;
         const groupCompleted = entry.events.some((event) =>
@@ -203,7 +205,6 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
         const isCurrentGroup =
           currentStage === entry.events.at(-1)?.toStage &&
           entryIndex === entries.length - 1;
-
         return (
           <div key={entry.id} className="space-y-2">
             <TimelineRow
@@ -247,19 +248,16 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
     </div>
   );
 };
-
 const toTimestampSeconds = (dateString: string | null | undefined) => {
   if (!dateString) return null;
   const timestamp = Date.parse(dateString);
   if (!Number.isFinite(timestamp)) return null;
   return Math.floor(timestamp / 1000);
 };
-
 const getEntryOccurredAt = (entry: TimelineEntry) => {
   if (entry.kind === "event") return entry.event.occurredAt;
   return entry.occurredAt;
 };
-
 interface TimelineRowProps {
   date: string;
   title: string;
@@ -273,7 +271,6 @@ interface TimelineRowProps {
   onDelete?: () => void;
   children?: React.ReactNode;
 }
-
 const TimelineRow: React.FC<TimelineRowProps> = ({
   date,
   title,
@@ -289,7 +286,6 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
 }) => {
   const isHollow = Boolean(isCurrent) && !isCompleted;
   const isFilled = !isHollow;
-
   return (
     <div
       className={cn(

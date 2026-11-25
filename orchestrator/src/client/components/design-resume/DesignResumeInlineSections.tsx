@@ -1,4 +1,5 @@
 import { getDesignResumeAssetContentBlob } from "@client/api/settings-profile";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { createId } from "@paralleldrive/cuid2";
 import type { DesignResumeJson } from "@shared/types";
 import { FileImage, ImagePlus, Plus, Trash2 } from "lucide-react";
@@ -19,7 +20,6 @@ const insetPanelClassName =
   "rounded-lg border border-border/60 bg-background/60";
 const subtlePanelClassName =
   "rounded-lg border border-border/60 bg-muted/20 px-4 py-3";
-
 function normalizeColorValue(value: string): string {
   const trimmed = value.trim();
   if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
@@ -31,7 +31,6 @@ function normalizeColorValue(value: string): string {
   }
   return "#000000";
 }
-
 type ColorFieldProps = {
   id: string;
   label: string;
@@ -39,7 +38,6 @@ type ColorFieldProps = {
   disabled?: boolean;
   onChange: (value: string) => void;
 };
-
 function ColorField({
   id,
   label,
@@ -48,7 +46,6 @@ function ColorField({
   onChange,
 }: ColorFieldProps) {
   const pickerValue = normalizeColorValue(value);
-
   return (
     <div className="grid gap-2">
       <label className={labelClassName} htmlFor={id}>
@@ -74,7 +71,6 @@ function ColorField({
     </div>
   );
 }
-
 type PictureSectionProps = {
   picture: Record<string, unknown>;
   pictureUploading: boolean;
@@ -84,7 +80,6 @@ type PictureSectionProps = {
   onDeletePicture: () => void;
   onUpdatePicture: (key: string, value: unknown) => void;
 };
-
 export function PictureSection({
   picture,
   pictureUploading,
@@ -94,24 +89,21 @@ export function PictureSection({
   onDeletePicture,
   onUpdatePicture,
 }: PictureSectionProps) {
+  const { t: uiT } = useUiTranslation();
   const editDisabled = !pictureEnabled;
   const pictureUrl = toText(picture.url);
   const [previewUrl, setPreviewUrl] = useState(pictureUrl);
-
   useEffect(() => {
     if (!pictureUrl) {
       setPreviewUrl("");
       return;
     }
-
     if (!pictureUrl.startsWith("/api/design-resume/assets/")) {
       setPreviewUrl(pictureUrl);
       return;
     }
-
     let objectUrl: string | null = null;
     let cancelled = false;
-
     getDesignResumeAssetContentBlob(pictureUrl)
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
@@ -124,13 +116,11 @@ export function PictureSection({
       .catch(() => {
         if (!cancelled) setPreviewUrl(pictureUrl);
       });
-
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [pictureUrl]);
-
   return (
     <div className="grid gap-3">
       {!pictureEnabled ? (
@@ -169,7 +159,7 @@ export function PictureSection({
               disabled={pictureUploading}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              {uiT("Delete")}
             </Button>
           </div>
         </div>
@@ -261,13 +251,11 @@ export function PictureSection({
     </div>
   );
 }
-
 type BasicsSectionProps = {
   resumeJson: DesignResumeJson;
   basics: Record<string, unknown>;
   onUpdateBasics: (path: string, value: unknown) => void;
 };
-
 export function BasicsSection({
   resumeJson,
   basics,
@@ -276,12 +264,36 @@ export function BasicsSection({
   return (
     <div className="grid gap-3">
       {[
-        { path: "name", label: "Name", ai: false },
-        { path: "headline", label: "Headline", ai: true },
-        { path: "email", label: "Email", ai: false },
-        { path: "phone", label: "Phone", ai: false },
-        { path: "location", label: "Location", ai: false },
-        { path: "website.url", label: "Website", ai: false },
+        {
+          path: "name",
+          label: "Name",
+          ai: false,
+        },
+        {
+          path: "headline",
+          label: "Headline",
+          ai: true,
+        },
+        {
+          path: "email",
+          label: "Email",
+          ai: false,
+        },
+        {
+          path: "phone",
+          label: "Phone",
+          ai: false,
+        },
+        {
+          path: "location",
+          label: "Location",
+          ai: false,
+        },
+        {
+          path: "website.url",
+          label: "Website",
+          ai: false,
+        },
       ].map(({ path, label, ai }) => (
         <div key={path} className="grid gap-2">
           <label className={labelClassName} htmlFor={fieldId("basics", path)}>
@@ -316,14 +328,12 @@ export function BasicsSection({
     </div>
   );
 }
-
 type BasicsCustomFieldsSectionProps = {
   title: string;
   customFields: Record<string, unknown>[];
   onUpdateTitle: (title: string) => void;
   onChange: (nextFields: Record<string, unknown>[]) => void;
 };
-
 export function BasicsCustomFieldsSection({
   title,
   customFields,
@@ -338,7 +348,6 @@ export function BasicsCustomFieldsSection({
     nextFields.splice(target, 0, item);
     onChange(nextFields);
   };
-
   return (
     <div className="space-y-3">
       <div className="grid gap-2">
@@ -445,13 +454,11 @@ export function BasicsCustomFieldsSection({
     </div>
   );
 }
-
 type SummarySectionProps = {
   resumeJson: DesignResumeJson;
   summary: Record<string, unknown>;
   onUpdateSummary: (key: string, value: unknown) => void;
 };
-
 export function SummarySection({
   resumeJson,
   summary,

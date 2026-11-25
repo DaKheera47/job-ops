@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { createId } from "@paralleldrive/cuid2";
 import type {
@@ -22,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { DesignResumeFieldAssistant } from "./DesignResumeFieldAssistant";
 import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
-
 export type ItemFieldType =
   | "text"
   | "number"
@@ -31,7 +31,6 @@ export type ItemFieldType =
   | "tags"
   | "toggle"
   | "icon";
-
 export type ItemFieldConfig = {
   key: string;
   label: string;
@@ -44,7 +43,6 @@ export type ItemFieldConfig = {
   groupWithNext?: boolean;
   aiAssist?: boolean;
 };
-
 type ItemDialogProps = {
   open: boolean;
   title: string;
@@ -59,14 +57,12 @@ type ItemDialogProps = {
   onSave: (item: Record<string, unknown>) => void;
   onDelete?: () => void;
 };
-
 type ItemDialogAiContext = {
   resumeJson: DesignResumeJson;
   section: string;
   itemLabel?: string | null;
   pathPrefix: string;
 };
-
 function getValue(source: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((current, segment) => {
     if (!current || typeof current !== "object" || Array.isArray(current)) {
@@ -75,7 +71,6 @@ function getValue(source: Record<string, unknown>, path: string): unknown {
     return (current as Record<string, unknown>)[segment];
   }, source);
 }
-
 function setValue(
   source: Record<string, unknown>,
   path: string,
@@ -94,7 +89,6 @@ function setValue(
   cursor[segments[segments.length - 1] ?? path] = value;
   return next;
 }
-
 function coerceDraftValue(field: ItemFieldConfig, value: unknown) {
   if (field.type === "tags") {
     return Array.isArray(value) ? value.map((entry) => String(entry)) : [];
@@ -107,18 +101,15 @@ function coerceDraftValue(field: ItemFieldConfig, value: unknown) {
   }
   return typeof value === "string" ? value : "";
 }
-
 function fieldIdForPath(path: string): string {
   return `design-resume-item-${path.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
-
 function parseTagInput(input: string): string[] {
   return input
     .split(/[\n,]/g)
     .map((entry) => entry.trim())
     .filter(Boolean);
 }
-
 function normalizeDraftForSave(
   draft: Record<string, unknown>,
   fields: ItemFieldConfig[],
@@ -141,7 +132,6 @@ function normalizeDraftForSave(
   }
   return next;
 }
-
 function renderTextField(
   field: ItemFieldConfig,
   value: string | number,
@@ -155,7 +145,6 @@ function renderTextField(
   const assistantSlot = assistant ? (
     <div className="flex shrink-0 items-center pr-1">{assistant}</div>
   ) : null;
-
   return (
     <div key={field.key} className="grid gap-2">
       <label className="text-sm font-medium" htmlFor={fieldId}>
@@ -184,7 +173,9 @@ function renderTextField(
             onChange={(event) => {
               if (fieldErrors[field.key]) {
                 setFieldErrors((current) => {
-                  const next = { ...current };
+                  const next = {
+                    ...current,
+                  };
                   delete next[field.key];
                   return next;
                 });
@@ -216,7 +207,9 @@ function renderTextField(
             onChange={(event) => {
               if (fieldErrors[field.key]) {
                 setFieldErrors((current) => {
-                  const next = { ...current };
+                  const next = {
+                    ...current,
+                  };
                   delete next[field.key];
                   return next;
                 });
@@ -248,7 +241,6 @@ function renderTextField(
     </div>
   );
 }
-
 function aiValueTypeForField(
   field: ItemFieldConfig,
 ): DesignResumeAiFieldValueType {
@@ -256,7 +248,6 @@ function aiValueTypeForField(
   if (field.type === "tags") return "string_list";
   return "plain_text";
 }
-
 function renderAiAssistant(
   field: ItemFieldConfig,
   value: unknown,
@@ -264,7 +255,6 @@ function renderAiAssistant(
   aiContext?: ItemDialogAiContext,
 ) {
   if (!aiContext || !field.aiAssist) return null;
-
   const valueType = aiValueTypeForField(field);
   const normalizedValue =
     valueType === "string_list"
@@ -274,7 +264,6 @@ function renderAiAssistant(
       : typeof value === "string"
         ? value
         : "";
-
   return (
     <DesignResumeFieldAssistant
       resumeJson={aiContext.resumeJson}
@@ -289,7 +278,6 @@ function renderAiAssistant(
     />
   );
 }
-
 function renderFields(
   fields: ItemFieldConfig[],
   draft: Record<string, unknown>,
@@ -308,7 +296,6 @@ function renderFields(
     const value = coerceDraftValue(field, getValue(draft, field.key));
     const fieldId = fieldIdForPath(field.key);
     const assistant = renderAiAssistant(field, value, updateField, aiContext);
-
     if (field.type === "richtext") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
@@ -324,7 +311,6 @@ function renderFields(
       i++;
       continue;
     }
-
     if (field.type === "textarea") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
@@ -353,7 +339,6 @@ function renderFields(
       i++;
       continue;
     }
-
     if (field.type === "tags") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
@@ -367,7 +352,10 @@ function renderFields(
               draft={tagDrafts[field.key] ?? ""}
               parseInput={parseTagInput}
               onDraftChange={(next) =>
-                setTagDrafts((current) => ({ ...current, [field.key]: next }))
+                setTagDrafts((current) => ({
+                  ...current,
+                  [field.key]: next,
+                }))
               }
               onValuesChange={(next) => updateField(field.key, next)}
               placeholder={field.placeholder ?? "Add a value"}
@@ -384,7 +372,6 @@ function renderFields(
       i++;
       continue;
     }
-
     if (field.type === "toggle") {
       nodes.push(
         <div
@@ -458,7 +445,6 @@ function renderFields(
       i++;
       continue;
     }
-
     nodes.push(
       renderTextField(
         field,
@@ -475,7 +461,6 @@ function renderFields(
   }
   return nodes;
 }
-
 export function ItemDialog({
   open,
   title,
@@ -490,13 +475,18 @@ export function ItemDialog({
   onSave,
   onDelete,
 }: ItemDialogProps) {
+  const { t: uiT } = useUiTranslation();
   const initialDraft = useMemo(
     () =>
       structuredClone(
         item ?? {
           id: createId(),
           hidden: false,
-          website: { label: "", url: "", inlineLink: false },
+          website: {
+            label: "",
+            url: "",
+            inlineLink: false,
+          },
         },
       ) as Record<string, unknown>,
     [item],
@@ -504,13 +494,11 @@ export function ItemDialog({
   const [draft, setDraft] = useState<Record<string, unknown>>(initialDraft);
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
   useEffect(() => {
     setDraft(initialDraft);
     setTagDrafts({});
     setFieldErrors({});
   }, [initialDraft]);
-
   const updateField = (path: string, value: unknown) => {
     setDraft((current) => setValue(current, path, value));
   };
@@ -523,7 +511,6 @@ export function ItemDialog({
           pathPrefix: aiPathPrefix,
         }
       : undefined;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto border-border/70 bg-background/95 px-6 pb-6 pt-6">
@@ -555,7 +542,7 @@ export function ItemDialog({
                 onClick={onDelete}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {uiT("Delete")}
               </Button>
             ) : null}
           </div>
@@ -565,7 +552,7 @@ export function ItemDialog({
               variant="ghost"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {uiT("Cancel")}
             </Button>
             <Button
               type="button"

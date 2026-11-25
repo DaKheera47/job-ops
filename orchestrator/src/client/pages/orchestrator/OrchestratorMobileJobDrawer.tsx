@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { Job, JobListItem } from "@shared/types.js";
 import type React from "react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ interface OrchestratorMobileJobDrawerProps {
   onPauseRefreshChange: (paused: boolean) => void;
   onRetrySelectedJob: () => void;
 }
-
 export const OrchestratorMobileJobDrawer: React.FC<
   OrchestratorMobileJobDrawerProps
 > = ({
@@ -34,32 +34,35 @@ export const OrchestratorMobileJobDrawer: React.FC<
   onJobUpdated,
   onPauseRefreshChange,
   onRetrySelectedJob,
-}) => (
-  <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="max-h-[90vh]">
-      <div className="flex items-center justify-between px-4 pt-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Job details
+}) => {
+  const { t: uiT } = useUiTranslation();
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[90vh]">
+        <div className="flex items-center justify-between px-4 pt-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Job details
+          </div>
+          <DrawerClose asChild>
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
+              {uiT("Close")}
+            </Button>
+          </DrawerClose>
         </div>
-        <DrawerClose asChild>
-          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-            Close
-          </Button>
-        </DrawerClose>
-      </div>
-      <div className="max-h-[calc(90vh-3.5rem)] overflow-y-auto px-4 pb-6 pt-3">
-        <JobDetailPanel
-          activeTab={activeTab}
-          activeJobs={activeJobs}
-          selectedJob={selectedJob}
-          selectedJobListItem={selectedJobListItem}
-          selectedJobLoadState={selectedJobLoadState}
-          onSelectJobId={onSelectJobId}
-          onJobUpdated={onJobUpdated}
-          onPauseRefreshChange={onPauseRefreshChange}
-          onRetrySelectedJob={onRetrySelectedJob}
-        />
-      </div>
-    </DrawerContent>
-  </Drawer>
-);
+        <div className="max-h-[calc(90vh-3.5rem)] overflow-y-auto px-4 pb-6 pt-3">
+          <JobDetailPanel
+            activeTab={activeTab}
+            activeJobs={activeJobs}
+            selectedJob={selectedJob}
+            selectedJobListItem={selectedJobListItem}
+            selectedJobLoadState={selectedJobLoadState}
+            onSelectJobId={onSelectJobId}
+            onJobUpdated={onJobUpdated}
+            onPauseRefreshChange={onPauseRefreshChange}
+            onRetrySelectedJob={onRetrySelectedJob}
+          />
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+};

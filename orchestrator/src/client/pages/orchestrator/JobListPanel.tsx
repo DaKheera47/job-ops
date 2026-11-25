@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { JobListItem } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import { forwardRef, useImperativeHandle } from "react";
@@ -22,7 +23,6 @@ interface EmptyStateAction {
   label: string;
   onClick: () => void;
 }
-
 interface JobListPanelProps {
   isLoading: boolean;
   jobs: JobListItem[];
@@ -37,9 +37,7 @@ interface JobListPanelProps {
   secondaryEmptyStateAction?: EmptyStateAction;
   emptyStateMessage?: string;
 }
-
 const ROW_ESTIMATE = 84;
-
 export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
   (
     {
@@ -58,6 +56,7 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
     },
     ref,
   ) => {
+    const { t: uiT } = useUiTranslation();
     const { ref: listRef, scrollMargin } =
       useWindowScrollMargin<HTMLDivElement>();
     const virtualizer = useVirtualizedList({
@@ -68,7 +67,6 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
       scrollMargin,
       getItemKey: (index) => activeJobs[index]?.id ?? index,
     });
-
     useImperativeHandle(
       ref,
       () => ({
@@ -77,7 +75,6 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
       }),
       [virtualizer],
     );
-
     if (isLoading && jobs.length === 0) {
       return (
         <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
@@ -88,12 +85,13 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
         </div>
       );
     }
-
     if (activeJobs.length === 0) {
       return (
         <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
           <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-            <div className="text-base font-semibold">No jobs found</div>
+            <div className="text-base font-semibold">
+              {uiT("No jobs found")}
+            </div>
             <p className="max-w-md text-sm text-muted-foreground">
               {emptyStateMessage ?? emptyStateCopy[activeTab]}
             </p>
@@ -119,9 +117,7 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
         </div>
       );
     }
-
     const virtualItems = virtualizer.getVirtualItems();
-
     return (
       <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
         <div className="divide-y divide-border/40">
@@ -161,7 +157,6 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
             {virtualItems.map((virtualRow) => {
               const job = activeJobs[virtualRow.index];
               if (!job) return null;
-
               const isSelected = job.id === selectedJobId;
               const isChecked = selectedJobIds.has(job.id);
               const statusToken =
@@ -172,7 +167,6 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
               const statusDotTitle = job.appliedDuplicateMatch
                 ? appliedDuplicateIndicator.label
                 : statusToken.label;
-
               return (
                 <div
                   key={virtualRow.key}
@@ -249,5 +243,4 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
     );
   },
 );
-
 JobListPanel.displayName = "JobListPanel";

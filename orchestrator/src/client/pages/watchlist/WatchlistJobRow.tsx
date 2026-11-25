@@ -1,4 +1,5 @@
 import { JobDescriptionPanel } from "@client/components/JobDescriptionPanel";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type {
   WatchlistJobResult,
   WatchlistSelectedSource,
@@ -34,9 +35,15 @@ interface WatchlistJobRowProps {
   details?: JobDetailsState;
   movingJobRef: string | null;
   ignorePending: boolean;
-  ignoreVariables?: { source: string; sourceJobId: string };
+  ignoreVariables?: {
+    source: string;
+    sourceJobId: string;
+  };
   unignorePending: boolean;
-  unignoreVariables?: { source: string; sourceJobId: string };
+  unignoreVariables?: {
+    source: string;
+    sourceJobId: string;
+  };
   onIgnore: (input: { source: string; sourceJobId: string }) => void;
   onUnignore: (input: { source: string; sourceJobId: string }) => void;
   onMoveToWorkspace: (
@@ -49,15 +56,12 @@ interface WatchlistJobRowProps {
     source: WatchlistSelectedSource,
   ) => void;
 }
-
 type WatchlistSignal = {
   label: string;
   dotClassName: string;
 };
-
 function formatPostedDate(value: string | null): string {
   if (!value) return "—";
-
   try {
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
@@ -66,7 +70,6 @@ function formatPostedDate(value: string | null): string {
     return value;
   }
 }
-
 export default function WatchlistJobRow({
   rankedJob,
   source,
@@ -82,6 +85,7 @@ export default function WatchlistJobRow({
   onOpenWorkspaceJob,
   onLoadJobDetails,
 }: WatchlistJobRowProps) {
+  const { t: uiT } = useUiTranslation();
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const watchlistJob = rankedJob.watchlistJob;
   const stateInput = {
@@ -97,49 +101,42 @@ export default function WatchlistJobRow({
     unignoreVariables?.source === stateInput.source &&
     unignoreVariables?.sourceJobId === stateInput.sourceJobId;
   const signals: WatchlistSignal[] = [];
-
   if (watchlistJob.workspaceJob) {
     signals.push({
       label: "Already in workspace",
       dotClassName: "bg-emerald-400",
     });
   }
-
   if (rankedJob.rowState === "ignored" && !watchlistJob.workspaceJob) {
     signals.push({
       label: "Ignored",
       dotClassName: "bg-muted-foreground/70",
     });
   }
-
   if (rankedJob.matchedSearchTerm) {
     signals.push({
       label: `${rankedJob.matchedSearchTerm} search match (${rankedJob.matchScore})`,
       dotClassName: "bg-primary",
     });
   }
-
   if (rankedJob.locationMatched) {
     signals.push({
       label: rankedJob.locationPriority > 0 ? "Location match" : "Remote match",
       dotClassName: "bg-emerald-400",
     });
   }
-
   if (watchlistJob.isNewSinceLastCheck) {
     signals.push({
       label: "New since last check",
       dotClassName: "bg-sky-400",
     });
   }
-
   const handleDescriptionOpenChange = (open: boolean) => {
     setIsDescriptionOpen(open);
     if (open) {
       onLoadJobDetails(watchlistJob, source);
     }
   };
-
   return (
     <>
       <TableRow className="group/row align-top even:bg-muted/20 odd:bg-muted/0">
@@ -176,7 +173,12 @@ export default function WatchlistJobRow({
               <button
                 type="button"
                 onClick={() => handleDescriptionOpenChange(true)}
-                className={cn(buttonVariants({ variant: "link" }), "px-0")}
+                className={cn(
+                  buttonVariants({
+                    variant: "link",
+                  }),
+                  "px-0",
+                )}
               >
                 {rankedJob.job.title}
               </button>
@@ -240,7 +242,7 @@ export default function WatchlistJobRow({
                       onClick={() => handleDescriptionOpenChange(true)}
                     >
                       <FileText className="mr-2 h-4 w-4" />
-                      Job description
+                      {uiT("Job description")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -263,7 +265,7 @@ export default function WatchlistJobRow({
                     onClick={() => handleDescriptionOpenChange(true)}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Job description
+                    {uiT("Job description")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={isUnignoring}
@@ -317,7 +319,7 @@ export default function WatchlistJobRow({
                       onClick={() => handleDescriptionOpenChange(true)}
                     >
                       <FileText className="mr-2 h-4 w-4" />
-                      Job description
+                      {uiT("Job description")}
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <a

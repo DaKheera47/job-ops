@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { Banknote } from "lucide-react";
 import type React from "react";
 import { Input } from "@/components/ui/input";
@@ -13,22 +14,21 @@ import type { SalaryFilterMode } from "../constants";
 import { FilterPill } from "./FilterPill";
 import { salaryModeOptions } from "./filterOptions";
 import type { SalaryFilterPillProps } from "./types";
-
 export const SalaryFilterPill: React.FC<SalaryFilterPillProps> = ({
   salaryFilter,
   onSalaryFilterChange,
   salaryActive,
   salarySummary,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const showSalaryMin =
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
   const showSalaryMax =
     salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
-
   return (
     <FilterPill
       icon={<Banknote />}
-      label="Salary"
+      label={uiT("Salary")}
       active={salaryActive}
       summary={salarySummary}
     >
@@ -72,7 +72,7 @@ export const SalaryFilterPill: React.FC<SalaryFilterPillProps> = ({
             <SelectContent>
               {salaryModeOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                  {uiT(option.label)}
                 </SelectItem>
               ))}
             </SelectContent>

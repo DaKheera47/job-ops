@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { JobSource, WatchlistSelectedSource } from "@shared/types";
 import {
   AnimatePresence,
@@ -24,7 +25,6 @@ import {
 import { sourceLabel } from "@/lib/utils";
 
 const SOURCE_MOTION_EASE = [0.22, 1, 0.36, 1] as const;
-
 export interface AutomaticSourcePickerRow {
   source: JobSource;
   selected: boolean;
@@ -34,7 +34,6 @@ export interface AutomaticSourcePickerRow {
     available: boolean;
   };
 }
-
 interface AutomaticSourcePickerCardProps {
   sourceRows: AutomaticSourcePickerRow[];
   selectedSourceRows: AutomaticSourcePickerRow[];
@@ -46,7 +45,6 @@ interface AutomaticSourcePickerCardProps {
   onSourceToggle: (source: JobSource, checked: boolean) => void;
   onWatchlistSourceToggle?: (sourceId: string, checked: boolean) => void;
 }
-
 export function AutomaticSourcePickerCard({
   sourceRows,
   selectedSourceRows,
@@ -60,24 +58,46 @@ export function AutomaticSourcePickerCard({
 }: AutomaticSourcePickerCardProps) {
   const prefersReducedMotion = useReducedMotion();
   const sourceMotionTransition = prefersReducedMotion
-    ? { duration: 0 }
-    : { duration: 0.22, ease: SOURCE_MOTION_EASE };
+    ? {
+        duration: 0,
+      }
+    : {
+        duration: 0.22,
+        ease: SOURCE_MOTION_EASE,
+      };
   const sourceSectionInitial = prefersReducedMotion
     ? false
-    : { opacity: 0, y: -8 };
-  const sourceSectionAnimate = { opacity: 1, y: 0 };
+    : {
+        opacity: 0,
+        y: -8,
+      };
+  const sourceSectionAnimate = {
+    opacity: 1,
+    y: 0,
+  };
   const sourceRowInitial = prefersReducedMotion
-    ? { opacity: 1 }
-    : { opacity: 0, y: 8, scale: 0.985 };
+    ? {
+        opacity: 1,
+      }
+    : {
+        opacity: 0,
+        y: 8,
+        scale: 0.985,
+      };
   const sourceRowExit = prefersReducedMotion
-    ? { opacity: 0 }
-    : { opacity: 0, y: -6, scale: 0.985 };
+    ? {
+        opacity: 0,
+      }
+    : {
+        opacity: 0,
+        y: -6,
+        scale: 0.985,
+      };
   const availableCount = sourceRows.filter(
     (row) => row.status.available,
   ).length;
   const selectedCount =
     selectedSourceRows.length + selectedWatchlistSourceIds.length;
-
   return (
     <Card>
       <CardHeader>
@@ -186,7 +206,6 @@ export function AutomaticSourcePickerCard({
     </Card>
   );
 }
-
 interface WatchlistSourceGroupProps {
   sources: WatchlistSelectedSource[];
   selectedSourceIds: string[];
@@ -197,7 +216,6 @@ interface WatchlistSourceGroupProps {
   rowExit: TargetAndTransition;
   onSourceToggle?: (sourceId: string, checked: boolean) => void;
 }
-
 function WatchlistSourceGroup({
   sources,
   selectedSourceIds,
@@ -208,6 +226,7 @@ function WatchlistSourceGroup({
   rowExit,
   onSourceToggle,
 }: WatchlistSourceGroupProps) {
+  const { t: uiT } = useUiTranslation();
   return (
     <motion.div layout transition={transition} className="space-y-2">
       <motion.div
@@ -220,7 +239,7 @@ function WatchlistSourceGroup({
           transition={transition}
           className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
         >
-          Watchlist
+          {uiT("Watchlist")}
         </motion.p>
         {sources.length > 0 ? (
           <Badge
@@ -256,7 +275,6 @@ function WatchlistSourceGroup({
           <AnimatePresence initial={false} mode="popLayout">
             {sources.map((source) => {
               const isSelected = selectedSourceIds.includes(source.id);
-
               return (
                 <motion.div
                   key={source.id}
@@ -295,7 +313,7 @@ function WatchlistSourceGroup({
                       variant="outline"
                       className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
                     >
-                      Watchlist
+                      {uiT("Watchlist")}
                     </Badge>
                   </Button>
                 </motion.div>
@@ -307,7 +325,6 @@ function WatchlistSourceGroup({
     </motion.div>
   );
 }
-
 interface SourceGroupProps {
   label: string;
   rows: AutomaticSourcePickerRow[];
@@ -318,7 +335,6 @@ interface SourceGroupProps {
   rowExit: TargetAndTransition;
   onSourceToggle: (source: JobSource, checked: boolean) => void;
 }
-
 function SourceGroup({
   label,
   rows,
@@ -330,7 +346,6 @@ function SourceGroup({
   onSourceToggle,
 }: SourceGroupProps) {
   if (rows.length === 0) return null;
-
   return (
     <motion.div layout transition={transition} className="space-y-2">
       <motion.p
@@ -385,7 +400,6 @@ function SourceGroup({
     </motion.div>
   );
 }
-
 interface UnavailableSourceGroupProps {
   rows: AutomaticSourcePickerRow[];
   transition: Transition;
@@ -393,7 +407,6 @@ interface UnavailableSourceGroupProps {
   rowAnimate: TargetAndTransition;
   rowExit: TargetAndTransition;
 }
-
 function UnavailableSourceGroup({
   rows,
   transition,
@@ -402,7 +415,6 @@ function UnavailableSourceGroup({
   rowExit,
 }: UnavailableSourceGroupProps) {
   if (rows.length === 0) return null;
-
   return (
     <motion.div layout transition={transition} className="space-y-2">
       <motion.p

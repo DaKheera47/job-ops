@@ -3,6 +3,7 @@ import { PageHeader, PageMain } from "@client/components/layout";
 import { ManualImportSheet } from "@client/components/ManualImportSheet";
 import { useSettings } from "@client/hooks/useSettings";
 import { showErrorToast } from "@client/lib/error-toast";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { queryKeys } from "@client/lib/queryKeys";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-intelligence.js";
 import type {
@@ -44,7 +45,6 @@ interface DraftSelectionPayload {
   label: string;
   careersUrl: string;
 }
-
 function getWatchlistSelectionsKey(
   selections: DraftSelectionPayload[],
 ): string {
@@ -52,7 +52,6 @@ function getWatchlistSelectionsKey(
     selections.map((selection) => getWatchlistSelectionIdentityKey(selection)),
   );
 }
-
 function getSourceTypeDescriptor(
   sourceTypes: WatchlistSourceTypeDescriptor[],
   sourceType: string,
@@ -63,7 +62,6 @@ function getSourceTypeDescriptor(
     null
   );
 }
-
 function getNormalizedSourceKey(value: string): string {
   try {
     const parsed = new URL(value);
@@ -73,7 +71,6 @@ function getNormalizedSourceKey(value: string): string {
     return value.trim();
   }
 }
-
 function getSourceHost(value: string): string | null {
   try {
     return new URL(value).hostname || null;
@@ -81,8 +78,8 @@ function getSourceHost(value: string): string | null {
     return null;
   }
 }
-
 export const WatchlistPage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { settings } = useSettings();
@@ -101,7 +98,6 @@ export const WatchlistPage: React.FC = () => {
   const [movingJobRef, setMovingJobRef] = useState<string | null>(null);
   const [showIgnored, setShowIgnored] = useState(false);
   const [sourceDrafts, setSourceDrafts] = useState<SourceSelectionDraft[]>([]);
-
   const { data: watchlistSourcesResponse } = useQuery({
     queryKey: queryKeys.watchlist.sources(),
     queryFn: api.getWatchlistSources,
@@ -113,7 +109,6 @@ export const WatchlistPage: React.FC = () => {
     enabled: Boolean(watchlistSourcesResponse?.selectedSources),
     staleTime: 30_000,
   });
-
   const saveSourcesMutation = useMutation({
     mutationFn: api.updateWatchlistSources,
     onSuccess: async () => {
@@ -152,19 +147,16 @@ export const WatchlistPage: React.FC = () => {
       showErrorToast(error, "Failed to restore watchlist job");
     },
   });
-
   const catalogSources = watchlistSourcesResponse?.catalogSources ?? [];
   const selectedSources = watchlistSourcesResponse?.selectedSources ?? [];
   const sourceTypes = watchlistSourcesResponse?.availableSourceTypes ?? [];
   const defaultSourceType = sourceTypes[0]?.sourceType ?? "workday";
-
   useEffect(() => {
     const savedSources = watchlistSourcesResponse?.selectedSources ?? [];
     if (savedSources.length === 0) {
       setSourceDrafts([]);
       return;
     }
-
     setSourceDrafts(
       savedSources.map((source) => ({
         id: source.id,
@@ -175,25 +167,24 @@ export const WatchlistPage: React.FC = () => {
       })),
     );
   }, [watchlistSourcesResponse?.selectedSources]);
-
   const items: WatchlistFetchState[] = useMemo(() => {
     if (selectedSources.length === 0) return [];
     if (watchlistResultsResponse) return watchlistResultsResponse.sources;
-    return selectedSources.map((source) => ({ status: "loading", source }));
+    return selectedSources.map((source) => ({
+      status: "loading",
+      source,
+    }));
   }, [selectedSources, watchlistResultsResponse]);
-
   const sourceStatusByDraftId = useMemo(() => {
     const savedById = new Map(
       selectedSources.map((source) => [source.id, source]),
     );
-
     return Object.fromEntries(
       sourceDrafts.map((draft) => {
         const savedSource = savedById.get(draft.id);
         if (!savedSource) {
           return [draft.id, "unsaved"] as const;
         }
-
         const isWatching = draft.isCustom
           ? savedSource.isCustom &&
             savedSource.catalogSourceId === null &&
@@ -208,7 +199,6 @@ export const WatchlistPage: React.FC = () => {
               )
           : !savedSource.isCustom &&
             savedSource.catalogSourceId === draft.catalogSourceId;
-
         return [draft.id, isWatching ? "watching" : "unsaved"] as const;
       }),
     );
@@ -245,14 +235,14 @@ export const WatchlistPage: React.FC = () => {
       }),
     [settings],
   );
-
   function addSourceDraft() {
     setSourceDrafts((current) => [
       ...current,
-      createSourceDraft({ sourceType: defaultSourceType }),
+      createSourceDraft({
+        sourceType: defaultSourceType,
+      }),
     ]);
   }
-
   function removeSourceDraft(index: number) {
     const draft = sourceDrafts[index];
     if (draft) {
@@ -266,24 +256,23 @@ export const WatchlistPage: React.FC = () => {
       const careersUrl = draft.isCustom
         ? draft.customUrl.trim()
         : (selectedCatalogSource?.careersUrl ?? savedSource?.careersUrl ?? "");
-
       trackProductEvent("watchlist_source_removed", {
         source_type:
           selectedCatalogSource?.sourceType ??
           savedSource?.sourceType ??
           draft.sourceType,
         ...(draft.catalogSourceId
-          ? { catalog_source_id: draft.catalogSourceId }
+          ? {
+              catalog_source_id: draft.catalogSourceId,
+            }
           : {}),
         source_url: careersUrl,
       });
     }
-
     setSourceDrafts((current) =>
       current.filter((_, draftIndex) => draftIndex !== index),
     );
   }
-
   function updateDraft(
     index: number,
     updater: (draft: SourceSelectionDraft) => SourceSelectionDraft,
@@ -294,10 +283,8 @@ export const WatchlistPage: React.FC = () => {
       ),
     );
   }
-
   const draftSelectionsState = useMemo(() => {
     const selections: DraftSelectionPayload[] = [];
-
     for (const [index, draft] of sourceDrafts.entries()) {
       if (draft.isCustom) {
         const careersUrl = getNormalizedWatchlistCareersUrl(
@@ -312,13 +299,10 @@ export const WatchlistPage: React.FC = () => {
           return {
             selections: null,
             error: new Error(
-              `Source ${index + 1} is missing a ${
-                descriptor?.customSourceInputLabel ?? "custom source URL"
-              }.`,
+              `Source ${index + 1} is missing a ${descriptor?.customSourceInputLabel ?? "custom source URL"}.`,
             ),
           };
         }
-
         selections.push({
           catalogSourceId: null,
           sourceType: draft.sourceType,
@@ -327,14 +311,12 @@ export const WatchlistPage: React.FC = () => {
         });
         continue;
       }
-
       if (!draft.catalogSourceId) {
         return {
           selections: null,
           error: new Error(`Source ${index + 1} is not selected.`),
         };
       }
-
       const catalogSource = catalogSources.find(
         (source) => source.id === draft.catalogSourceId,
       );
@@ -344,7 +326,6 @@ export const WatchlistPage: React.FC = () => {
           error: new Error(`Source ${index + 1} is no longer available.`),
         };
       }
-
       selections.push({
         catalogSourceId: catalogSource.id,
         sourceType: catalogSource.sourceType,
@@ -352,7 +333,6 @@ export const WatchlistPage: React.FC = () => {
         careersUrl: catalogSource.careersUrl,
       });
     }
-
     const uniqueUrls = new Set(
       selections.map((selection) => selection.careersUrl),
     );
@@ -362,7 +342,6 @@ export const WatchlistPage: React.FC = () => {
         error: new Error("Choose unique watchlist URLs."),
       };
     }
-
     return {
       selections,
       error: null,
@@ -413,7 +392,6 @@ export const WatchlistPage: React.FC = () => {
     persistedSelectionsKey,
     watchlistSourcesResponse?.selectedSources,
   ]);
-
   async function handleSaveSources() {
     if (draftSelectionsState.error) {
       const customDraft = sourceDrafts.find((draft) => draft.isCustom);
@@ -426,15 +404,14 @@ export const WatchlistPage: React.FC = () => {
       }
       throw draftSelectionsState.error;
     }
-
     if (!draftSelectionsState.selections || !hasUnsavedChanges) {
       return;
     }
-
     const selections = draftSelectionsState.selections;
     try {
-      await saveSourcesMutation.mutateAsync({ selections });
-
+      await saveSourcesMutation.mutateAsync({
+        selections,
+      });
       const catalogCount = selections.filter(
         (selection) => selection.catalogSourceId !== null,
       ).length;
@@ -442,13 +419,11 @@ export const WatchlistPage: React.FC = () => {
         (selection) => selection.catalogSourceId === null,
       );
       const customCount = customSelections.length;
-
       trackProductEvent("watchlist_sources_saved", {
         source_count: selections.length,
         catalog_count: catalogCount,
         custom_count: customCount,
       });
-
       for (const selection of customSelections) {
         trackProductEvent("watchlist_custom_url_saved", {
           source_type: selection.sourceType,
@@ -471,25 +446,23 @@ export const WatchlistPage: React.FC = () => {
       throw error;
     }
   }
-
   async function loadJobDetails(
     job: WatchlistJobResult,
     source: WatchlistSelectedSource,
   ) {
     const existing = jobDetails[job.jobRef];
     if (existing?.status === "success") return existing.details;
-
     setJobDetails((current) => ({
       ...current,
-      [job.jobRef]: { status: "loading" },
+      [job.jobRef]: {
+        status: "loading",
+      },
     }));
-
     try {
       const details = await api.fetchWatchlistJobDetails({
         selectedSourceId: source.id,
         jobRef: job.jobRef,
       });
-
       setJobDetails((current) => ({
         ...current,
         [job.jobRef]: {
@@ -509,7 +482,6 @@ export const WatchlistPage: React.FC = () => {
       return null;
     }
   }
-
   async function handleMoveToWorkspace(
     job: WatchlistJobResult,
     source: WatchlistSelectedSource,
@@ -535,7 +507,6 @@ export const WatchlistPage: React.FC = () => {
       setMovingJobRef(null);
     }
   }
-
   function handleWatchlistSourceMethodSelected(input: {
     method: "catalog" | "custom_url";
     catalogSourceId?: string;
@@ -545,20 +516,28 @@ export const WatchlistPage: React.FC = () => {
     trackProductEvent("watchlist_source_add_method_selected", {
       method: input.method,
       ...(input.catalogSourceId
-        ? { catalog_source_id: input.catalogSourceId }
+        ? {
+            catalog_source_id: input.catalogSourceId,
+          }
         : {}),
-      ...(input.sourceType ? { source_type: input.sourceType } : {}),
-      ...(input.careersUrl ? { source_url: input.careersUrl } : {}),
+      ...(input.sourceType
+        ? {
+            source_type: input.sourceType,
+          }
+        : {}),
+      ...(input.careersUrl
+        ? {
+            source_url: input.careersUrl,
+          }
+        : {}),
     });
   }
-
   function handleWatchlistSourceSearchNoResults(input: { searchText: string }) {
     trackProductEvent("watchlist_source_search_no_results", {
       search_text: input.searchText,
       search_length_bucket: bucketQueryLength(input.searchText),
     });
   }
-
   function handleIgnoreWatchlistJob(input: {
     source: string;
     sourceJobId: string;
@@ -572,23 +551,22 @@ export const WatchlistPage: React.FC = () => {
             job.sourceJobId === input.sourceJobId,
         ),
     )?.source;
-
     trackProductEvent("watchlist_job_ignored", {
       source_type: selectedSource?.sourceType ?? "unknown",
       ...(selectedSource?.catalogSourceId
-        ? { catalog_source_id: selectedSource.catalogSourceId }
+        ? {
+            catalog_source_id: selectedSource.catalogSourceId,
+          }
         : {}),
       source_url: selectedSource?.careersUrl ?? input.source,
     });
-
     ignoreMutation.mutate(input);
   }
-
   return (
     <>
       <PageHeader
         icon={Eye}
-        title="Watchlist"
+        title={uiT("Watchlist")}
         subtitle="Career pages you're watching"
       />
 
@@ -670,22 +648,33 @@ export const WatchlistPage: React.FC = () => {
             trackProductEvent("watchlist_job_moved_to_workspace", {
               source_type: importState.sourceType ?? "unknown",
               ...(importState.catalogSourceId
-                ? { catalog_source_id: importState.catalogSourceId }
+                ? {
+                    catalog_source_id: importState.catalogSourceId,
+                  }
                 : {}),
               source_url: importState.careersUrl,
             });
           }
-          await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.jobs.all,
+          });
           await queryClient.invalidateQueries({
             queryKey: queryKeys.watchlist.results(),
           });
           await queryClient.fetchQuery({
-            queryKey: queryKeys.jobs.list({ view: "list" }),
-            queryFn: () => api.getJobs({ view: "list" }),
+            queryKey: queryKeys.jobs.list({
+              view: "list",
+            }),
+            queryFn: () =>
+              api.getJobs({
+                view: "list",
+              }),
             staleTime: 0,
           });
           navigate(`/jobs/ready/${result.jobId}`, {
-            state: { refreshJobsAt: Date.now() },
+            state: {
+              refreshJobsAt: Date.now(),
+            },
           });
         }}
         initialDraft={importState.draft}

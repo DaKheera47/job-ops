@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS,
   GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED,
@@ -38,7 +39,6 @@ const APPROX_CHARS_PER_TOKEN = 4;
 const tokenCountFormatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
-
 type GhostwriterContextSelectorProps = {
   notes: JobNote[];
   emails: PostApplicationJobEmailItem[];
@@ -55,10 +55,11 @@ type GhostwriterContextSelectorProps = {
   onEmailsChange: (selectedEmailIds: string[]) => void;
   onDocumentsChange: (selectedDocumentIds: string[]) => void;
 };
-
 type ContextGroupProps<TItem> = {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{
+    className?: string;
+  }>;
   items: TItem[];
   selectedIds: string[];
   loadingLabel: string;
@@ -80,17 +81,14 @@ type ContextGroupProps<TItem> = {
   getUnavailableReason?: (item: TItem) => string | null;
   onChange: (selectedIds: string[]) => void;
 };
-
 function estimateTokensFromChars(chars: number): number {
   if (chars <= 0) return 0;
   return Math.ceil(chars / APPROX_CHARS_PER_TOKEN);
 }
-
 function formatTokenEstimate(tokens: number): string {
   if (tokens < 1000) return `${tokens}`;
   return `${tokenCountFormatter.format(tokens / 1000)}k`;
 }
-
 function getSelectedItems<TItem>(
   items: TItem[],
   selectedIds: string[],
@@ -101,7 +99,6 @@ function getSelectedItems<TItem>(
     .map((itemId) => itemsById.get(itemId))
     .filter((item): item is TItem => Boolean(item));
 }
-
 function estimateSelectedContextTokens<TItem>(input: {
   items: TItem[];
   selectedIds: string[];
@@ -110,7 +107,10 @@ function estimateSelectedContextTokens<TItem>(input: {
   getId: (item: TItem) => string;
   getContentLength: (item: TItem) => number;
   filterItem?: (item: TItem) => boolean;
-}): { selectedContentChars: number; estimatedTokens: number } {
+}): {
+  selectedContentChars: number;
+  estimatedTokens: number;
+} {
   const selectedContentChars = getSelectedItems(
     input.items,
     input.selectedIds,
@@ -122,7 +122,6 @@ function estimateSelectedContextTokens<TItem>(input: {
         total + Math.min(input.getContentLength(item), input.maxItemChars),
       0,
     );
-
   return {
     selectedContentChars,
     estimatedTokens: estimateTokensFromChars(
@@ -130,32 +129,27 @@ function estimateSelectedContextTokens<TItem>(input: {
     ),
   };
 }
-
 function getSenderLabel(email: PostApplicationJobEmailItem): string {
   const senderName = email.message.senderName?.trim();
   if (senderName) return senderName;
   const address = email.message.fromAddress.trim();
   return address || "Unknown sender";
 }
-
 function getEmailMeta(email: PostApplicationJobEmailItem): string {
   const receivedAt = email.message.receivedAt
     ? formatDateTime(new Date(email.message.receivedAt).toISOString())
     : null;
   return `${getSenderLabel(email)}${receivedAt ? ` - ${receivedAt}` : ""}`;
 }
-
 function canUseDocumentForGhostwriter(document: JobDocument): boolean {
   return canUseJobDocumentForTextContext(document);
 }
-
 function getDocumentMeta(document: JobDocument): string {
   return [
     document.mediaType || "Unknown type",
     formatJobDocumentByteSize(document.byteSize),
   ].join(" - ");
 }
-
 function ContextGroup<TItem>({
   title,
   icon: Icon,
@@ -189,11 +183,13 @@ function ContextGroup<TItem>({
         getId,
         getContentLength,
       })
-    : { selectedContentChars: 0, estimatedTokens: 0 };
+    : {
+        selectedContentChars: 0,
+        estimatedTokens: 0,
+      };
   const hasTotalOverflow =
     showTokenEstimate && selectedContentChars > maxTotalChars;
   const isAtSelectionLimit = selectedIds.length >= maxSelected;
-
   const toggleItem = (itemId: string) => {
     if (disabled || isLoading || isSaving) return;
     if (selectedIds.includes(itemId)) {
@@ -203,7 +199,6 @@ function ContextGroup<TItem>({
     if (isAtSelectionLimit) return;
     onChange([...selectedIds, itemId]);
   };
-
   return (
     <section>
       <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2">
@@ -244,7 +239,6 @@ function ContextGroup<TItem>({
             const isUnavailable =
               !isSelected && (isAtSelectionLimit || Boolean(unavailableReason));
             const checkboxId = getCheckboxId(item);
-
             return (
               <div
                 key={itemId}
@@ -308,7 +302,6 @@ function ContextGroup<TItem>({
     </section>
   );
 }
-
 export const GhostwriterContextSelector: React.FC<
   GhostwriterContextSelectorProps
 > = ({
@@ -327,6 +320,7 @@ export const GhostwriterContextSelector: React.FC<
   onEmailsChange,
   onDocumentsChange,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const selectedCount =
     selectedNoteIds.length +
     selectedEmailIds.length +
@@ -350,7 +344,6 @@ export const GhostwriterContextSelector: React.FC<
     }).estimatedTokens;
   const triggerLabel =
     selectedCount > 0 ? `${selectedCount} context` : "Context";
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -365,7 +358,7 @@ export const GhostwriterContextSelector: React.FC<
           )}
         >
           <Paperclip className="h-3.5 w-3.5" />
-          <span>{isSaving ? "Saving..." : triggerLabel}</span>
+          <span>{isSaving ? uiT("Saving...") : triggerLabel}</span>
           <ChevronDown className="h-3 w-3 text-muted-foreground" />
         </Button>
       </PopoverTrigger>

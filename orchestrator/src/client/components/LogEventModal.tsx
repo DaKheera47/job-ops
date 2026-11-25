@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { StageEvent } from "@shared/types.js";
 import { STAGE_LABELS } from "@shared/types.js";
@@ -33,9 +34,7 @@ const logEventSchema = z.object({
   reasonCode: z.string().optional(),
   salary: z.string().optional(),
 });
-
 export type LogEventFormValues = z.infer<typeof logEventSchema>;
-
 interface LogEventModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,30 +43,57 @@ interface LogEventModalProps {
   jobTitle?: string;
   employer?: string;
 }
-
 const STAGE_OPTIONS = [
-  { label: "No Stage Change (Keep current status)", value: "no_change" },
-  { label: STAGE_LABELS.applied, value: "applied" },
-  { label: STAGE_LABELS.recruiter_screen, value: "recruiter_screen" },
-  { label: STAGE_LABELS.assessment, value: "assessment" },
-  { label: STAGE_LABELS.hiring_manager_screen, value: "hiring_manager_screen" },
-  { label: STAGE_LABELS.technical_interview, value: "technical_interview" },
-  { label: STAGE_LABELS.onsite, value: "onsite" },
-  { label: STAGE_LABELS.offer, value: "offer" },
-  { label: "Rejected", value: "rejected" },
-  { label: "Withdrawn", value: "withdrawn" },
-  { label: STAGE_LABELS.closed, value: "closed" },
+  {
+    label: "No Stage Change (Keep current status)",
+    value: "no_change",
+  },
+  {
+    label: STAGE_LABELS.applied,
+    value: "applied",
+  },
+  {
+    label: STAGE_LABELS.recruiter_screen,
+    value: "recruiter_screen",
+  },
+  {
+    label: STAGE_LABELS.assessment,
+    value: "assessment",
+  },
+  {
+    label: STAGE_LABELS.hiring_manager_screen,
+    value: "hiring_manager_screen",
+  },
+  {
+    label: STAGE_LABELS.technical_interview,
+    value: "technical_interview",
+  },
+  {
+    label: STAGE_LABELS.onsite,
+    value: "onsite",
+  },
+  {
+    label: STAGE_LABELS.offer,
+    value: "offer",
+  },
+  {
+    label: "Rejected",
+    value: "rejected",
+  },
+  {
+    label: "Withdrawn",
+    value: "withdrawn",
+  },
+  {
+    label: STAGE_LABELS.closed,
+    value: "closed",
+  },
 ];
-
 const REASON_CODES = ["Skills", "Visa", "Timing", "Culture", "Unknown"];
-
 const toDateTimeLocal = (value: Date) => {
   const pad = (num: number) => String(num).padStart(2, "0");
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(
-    value.getMinutes(),
-  )}`;
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
 };
-
 export const LogEventModal: React.FC<LogEventModalProps> = ({
   isOpen,
   onClose,
@@ -76,6 +102,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
   jobTitle,
   employer,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     register,
     handleSubmit,
@@ -93,9 +120,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
       notes: "",
     },
   });
-
   const selectedStage = watch("stage");
-
   React.useEffect(() => {
     if (isOpen) {
       if (editingEvent) {
@@ -119,7 +144,6 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
       }
     }
   }, [isOpen, reset, editingEvent]);
-
   React.useEffect(() => {
     // Only auto-update title if we're not editing or if the title is empty/default
     if (!editingEvent) {
@@ -133,12 +157,10 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
       }
     }
   }, [selectedStage, setValue, editingEvent]);
-
   const onSubmit = async (values: LogEventFormValues) => {
     await onLog(values, editingEvent?.id);
     onClose();
   };
-
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent
@@ -153,9 +175,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
             {editingEvent
               ? "Update the details of this event."
               : jobTitle
-                ? `Record a new update or stage change for ${jobTitle}${
-                    employer ? ` at ${employer}` : ""
-                  }.`
+                ? `Record a new update or stage change for ${jobTitle}${employer ? ` at ${employer}` : ""}.`
                 : "Record a new update or stage change for this application."}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -174,7 +194,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
                   <SelectContent>
                     {STAGE_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {uiT(option.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -235,11 +255,11 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
 
           <AlertDialogFooter className="pt-4">
             <AlertDialogCancel type="button" onClick={onClose}>
-              Cancel
+              {uiT("Cancel")}
             </AlertDialogCancel>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
-                ? "Saving..."
+                ? uiT("Saving...")
                 : editingEvent
                   ? "Save Changes"
                   : "Log Event"}

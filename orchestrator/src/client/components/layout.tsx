@@ -3,6 +3,7 @@
  */
 
 import { getAppStatus, logout } from "@client/api";
+import { LanguageSelector, useUiTranslation } from "@client/lib/i18n/language";
 import { useQuery } from "@tanstack/react-query";
 import {
   ExternalLink,
@@ -40,20 +41,17 @@ import {
 import { isNavActive, NAV_LINKS } from "./navigation";
 import { StatusBadgeIndicator } from "./StatusIndicator";
 import { Tip } from "./Tip";
-
 export const AppModeContext = React.createContext({
   appMode: "local" as "local" | "hosted",
   isPending: false,
 });
-
-export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AppModeProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const appStatusQuery = useQuery({
     queryKey: queryKeys.app.status(),
     queryFn: getAppStatus,
   });
-
   return (
     <AppModeContext.Provider
       value={{
@@ -65,7 +63,6 @@ export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({
     </AppModeContext.Provider>
   );
 };
-
 const buildSignInPath = (username: string, nextPath: string): string => {
   const params = new URLSearchParams();
   params.set("user", username);
@@ -84,7 +81,11 @@ const buildSignInPath = (username: string, nextPath: string): string => {
 // ============================================================================
 
 interface PageHeaderProps {
-  icon: LucideIcon | React.FC<{ className?: string }>;
+  icon:
+    | LucideIcon
+    | React.FC<{
+        className?: string;
+      }>;
   title: string;
   subtitle: string;
   badge?: string;
@@ -94,7 +95,6 @@ interface PageHeaderProps {
   navOpen?: boolean;
   onNavOpenChange?: (open: boolean) => void;
 }
-
 export const PageHeader: React.FC<PageHeaderProps> = ({
   icon: Icon,
   title,
@@ -106,6 +106,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   navOpen: controlledNavOpen,
   onNavOpenChange,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [internalNavOpen, setInternalNavOpen] = useState(false);
@@ -120,13 +121,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     appMode === "hosted"
       ? NAV_LINKS.filter(({ to }) => to !== "/tracking-inbox")
       : NAV_LINKS;
-
   useEffect(() => {
     if (navOpen) {
       setRememberedUsers(loadRememberedAuthUsers());
     }
   }, [navOpen]);
-
   const handleNavClick = (to: string, activePaths?: string[]) => {
     if (isNavActive(location.pathname, to, activePaths)) {
       setNavOpen(false);
@@ -135,18 +134,19 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     setNavOpen(false);
     setTimeout(() => navigate(to), 150);
   };
-
   const handleRememberedUserClick = async (username: string) => {
     setNavOpen(false);
-    await logout({ redirect: false });
-    navigate(buildSignInPath(username, location.pathname), { replace: true });
+    await logout({
+      redirect: false,
+    });
+    navigate(buildSignInPath(username, location.pathname), {
+      replace: true,
+    });
   };
-
   const handleSignOut = async () => {
     setNavOpen(false);
     await logout();
   };
-
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -155,7 +155,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Open navigation menu</span>
+                <span className="sr-only">{uiT("Open navigation menu")}</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 flex flex-col">
@@ -176,7 +176,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     )}
                   >
                     <NavIcon className="h-4 w-4" />
-                    {label}
+                    {uiT(label)}
                   </button>
                 ))}
               </nav>
@@ -191,11 +191,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                         className="h-8 w-full justify-start gap-2 px-2 text-xs"
                       >
                         <UserRound className="h-3.5 w-3.5" />
-                        <span>Account</span>
+                        <span>{uiT("Account")}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuLabel>Remembered</DropdownMenuLabel>
+                      <DropdownMenuLabel>{uiT("Remembered")}</DropdownMenuLabel>
                       {rememberedUsers.length > 0 ? (
                         rememberedUsers.map((user) => (
                           <DropdownMenuItem
@@ -220,7 +220,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                         ))
                       ) : (
                         <DropdownMenuItem disabled>
-                          Sign in once to remember a username here.
+                          {uiT("Sign in once to remember a username here.")}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -229,7 +229,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                         className="gap-2"
                       >
                         <LogOut className="h-3.5 w-3.5" />
-                        <span>Sign out</span>
+                        <span>{uiT("Sign out")}</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -244,7 +244,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     >
                       <span className="truncate">Version {version}</span>
                       {updateAvailable && (
-                        <Tip asChild content={<p>Update available</p>}>
+                        <Tip asChild content={<p>{uiT("Update available")}</p>}>
                           <span className="h-2 w-2 shrink-0 cursor-pointer rounded-full bg-emerald-500" />
                         </Tip>
                       )}
@@ -259,7 +259,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                       }}
                       className="h-7 gap-1.5 px-2 text-xs"
                     >
-                      <span>Documentation</span>
+                      <span>{uiT("Documentation")}</span>
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -284,13 +284,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         </div>
 
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
+          <LanguageSelector />
           {actions}
         </div>
       </div>
     </header>
   );
 };
-
 export const StatusIndicator = StatusBadgeIndicator;
 
 // ============================================================================
@@ -301,7 +301,6 @@ interface SplitLayoutProps {
   children: React.ReactNode;
   className?: string;
 }
-
 export const SplitLayout: React.FC<SplitLayoutProps> = ({
   children,
   className,
@@ -326,7 +325,6 @@ interface ListPanelProps {
   footer?: React.ReactNode;
   className?: string;
 }
-
 export const ListPanel: React.FC<ListPanelProps> = ({
   children,
   header,
@@ -361,7 +359,6 @@ interface ListItemProps {
   children: React.ReactNode;
   className?: string;
 }
-
 export const ListItem: React.FC<ListItemProps> = ({
   selected,
   onClick,
@@ -391,7 +388,6 @@ interface DetailPanelProps {
   className?: string;
   sticky?: boolean;
 }
-
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   children,
   className,
@@ -418,7 +414,6 @@ interface EmptyStateProps {
   description?: string;
   action?: React.ReactNode;
 }
-
 export const EmptyState: React.FC<EmptyStateProps> = ({
   icon: Icon,
   title,
@@ -443,29 +438,42 @@ interface ScoreMeterProps {
   score: number | null;
   showLabel?: boolean;
 }
-
 const getScoreTokens = (score: number) => {
-  if (score >= 90) return { bar: "bg-emerald-500/80" };
-  if (score >= 70) return { bar: "bg-amber-500/80" };
-  if (score >= 50) return { bar: "bg-orange-500/80" };
-  return { bar: "bg-rose-500/80" };
+  if (score >= 90)
+    return {
+      bar: "bg-emerald-500/80",
+    };
+  if (score >= 70)
+    return {
+      bar: "bg-amber-500/80",
+    };
+  if (score >= 50)
+    return {
+      bar: "bg-orange-500/80",
+    };
+  return {
+    bar: "bg-rose-500/80",
+  };
 };
-
 export const ScoreMeter: React.FC<ScoreMeterProps> = ({
   score,
   showLabel = true,
 }) => {
+  const { t: uiT } = useUiTranslation();
   if (score == null) {
-    return <span className="text-xs text-muted-foreground">Not scored</span>;
+    return (
+      <span className="text-xs text-muted-foreground">{uiT("Not scored")}</span>
+    );
   }
-
   const tokens = getScoreTokens(score);
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <div className="h-1.5 w-12 rounded-full bg-muted/40">
         <div
           className={cn("h-1.5 rounded-full", tokens.bar)}
-          style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
+          style={{
+            width: `${Math.max(4, Math.min(100, score))}%`,
+          }}
         />
       </div>
       {showLabel && (
@@ -484,7 +492,6 @@ interface FullHeightSplitProps {
   sidebarWidth?: string;
   children: React.ReactNode;
 }
-
 export const FullHeightSplit: React.FC<FullHeightSplitProps> = ({
   sidebar,
   sidebarWidth = "lg:w-[420px]",
@@ -511,7 +518,6 @@ interface SectionCardProps {
   children: React.ReactNode;
   className?: string;
 }
-
 export const SectionCard: React.FC<SectionCardProps> = ({
   children,
   className,
@@ -534,7 +540,6 @@ interface PageMainProps {
   children: React.ReactNode;
   className?: string;
 }
-
 export const PageMain: React.FC<PageMainProps> = ({ children, className }) => (
   <main
     className={cn("container mx-auto space-y-6 px-4 py-6 pb-12", className)}

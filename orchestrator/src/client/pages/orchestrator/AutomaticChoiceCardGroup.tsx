@@ -1,14 +1,13 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
-
 export interface ChoiceCardOption<T extends string> {
   value: T;
   label: string;
   description: string;
   ariaLabel?: string;
 }
-
 interface AutomaticChoiceCardGroupProps<T extends string> {
   ariaLabel: string;
   value: T;
@@ -16,7 +15,6 @@ interface AutomaticChoiceCardGroupProps<T extends string> {
   columns: 1 | 2 | 3 | 4;
   onValueChange: (value: T) => void;
 }
-
 export function AutomaticChoiceCardGroup<T extends string>({
   ariaLabel,
   value,
@@ -24,6 +22,7 @@ export function AutomaticChoiceCardGroup<T extends string>({
   columns,
   onValueChange,
 }: AutomaticChoiceCardGroupProps<T>) {
+  const { t: uiT } = useUiTranslation();
   return (
     <RadioGroup
       aria-label={ariaLabel}
@@ -42,8 +41,8 @@ export function AutomaticChoiceCardGroup<T extends string>({
           <ChoiceCard
             key={option.value}
             id={id}
-            label={option.label}
-            description={option.description}
+            label={uiT(option.label)}
+            description={uiT(option.description)}
             control={
               <RadioGroupItem
                 id={id}
@@ -58,7 +57,6 @@ export function AutomaticChoiceCardGroup<T extends string>({
     </RadioGroup>
   );
 }
-
 interface AutomaticMultiChoiceCardGroupProps<T extends string> {
   ariaLabel: string;
   values: T[];
@@ -66,7 +64,6 @@ interface AutomaticMultiChoiceCardGroupProps<T extends string> {
   columns: 1 | 2 | 3 | 4;
   onValueChange: (value: T, checked: boolean) => void;
 }
-
 export function AutomaticMultiChoiceCardGroup<T extends string>({
   ariaLabel,
   values,
@@ -74,6 +71,7 @@ export function AutomaticMultiChoiceCardGroup<T extends string>({
   columns,
   onValueChange,
 }: AutomaticMultiChoiceCardGroupProps<T>) {
+  const { t: uiT } = useUiTranslation();
   return (
     <fieldset
       aria-label={ariaLabel}
@@ -90,8 +88,8 @@ export function AutomaticMultiChoiceCardGroup<T extends string>({
           <ChoiceCard
             key={option.value}
             id={id}
-            label={option.label}
-            description={option.description}
+            label={uiT(option.label)}
+            description={uiT(option.description)}
             control={
               <Checkbox
                 id={id}
@@ -108,7 +106,6 @@ export function AutomaticMultiChoiceCardGroup<T extends string>({
     </fieldset>
   );
 }
-
 function ChoiceCard({
   id,
   label,

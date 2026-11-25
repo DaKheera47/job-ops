@@ -9,6 +9,7 @@ import {
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   getRxResumeCredentialDrafts,
   getRxResumeCredentialPrecheckFailure,
@@ -113,7 +114,6 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   tailoringPromptTemplate: "",
   scoringPromptTemplate: "",
 };
-
 type LlmProviderValue = LlmProviderId | null;
 type RxResumeValidationBadgeState = {
   checked: boolean;
@@ -127,7 +127,6 @@ const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
   message: null,
   status: null,
 };
-
 type SettingsSectionId =
   | "billing"
   | "model"
@@ -141,7 +140,6 @@ type SettingsSectionId =
   | "display"
   | "backup"
   | "danger-zone";
-
 type SettingsGroupId =
   | "account"
   | "ai"
@@ -151,20 +149,17 @@ type SettingsGroupId =
   | "display"
   | "backups"
   | "danger";
-
 type SettingsSectionDescriptor = {
   id: SettingsSectionId;
   label: string;
   description: string;
   searchTerms: string[];
 };
-
 type SettingsNavGroup = {
   id: SettingsGroupId;
   items: SettingsSectionDescriptor[];
   label: string;
 };
-
 const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "account",
@@ -313,7 +308,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     ],
   },
 ];
-
 const SECTION_FIELD_MAP: Record<
   SettingsSectionId,
   Array<keyof UpdateSettingsInput>
@@ -373,14 +367,12 @@ const SECTION_FIELD_MAP: Record<
   backup: ["backupEnabled", "backupHour", "backupMaxCount"],
   "danger-zone": [],
 };
-
 function matchesSettingsSearch(
   searchTerm: string,
   item: SettingsSectionDescriptor,
 ): boolean {
   return sectionWorkspaceItemMatchesSearch(searchTerm, item);
 }
-
 const getRxResumeValidationFields = (): Array<keyof UpdateSettingsInput> => [
   "rxresumeApiKey",
   "rxresumeUrl",
@@ -399,19 +391,18 @@ const isRxResumeMissingConfigValidationFailure = (
   !validation.valid &&
   validation.status === 400 &&
   /not configured/i.test(validation.message ?? "");
-
 const normalizeLlmProviderValue = (
   value: string | null | undefined,
 ): LlmProviderValue => (value ? normalizeLlmProvider(value) : null);
-
 const LEGACY_MODEL_KEYS = {
   scoring: "modelScorer",
   tailoring: "modelTailoring",
   projectSelection: "modelProjectSelection",
 } as const;
-
 const mapPurposeOverridesToForm = (data: AppSettings) => {
-  const overrides = { ...(data.llmPurposeOverrides.override ?? {}) };
+  const overrides = {
+    ...(data.llmPurposeOverrides.override ?? {}),
+  };
   for (const [purpose, modelKey] of Object.entries(LEGACY_MODEL_KEYS)) {
     const typedPurpose = purpose as keyof typeof LEGACY_MODEL_KEYS;
     const legacyModel = data[modelKey].override;
@@ -424,7 +415,6 @@ const mapPurposeOverridesToForm = (data: AppSettings) => {
   }
   return overrides;
 };
-
 const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   model: null,
   modelScorer: null,
@@ -473,12 +463,13 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   tailoringPromptTemplate: null,
   scoringPromptTemplate: null,
 };
-
 function getResetSettingsPayload(
   canEditLlmSettings: boolean,
 ): Partial<UpdateSettingsInput> {
   if (canEditLlmSettings) return NULL_SETTINGS_PAYLOAD;
-  const payload: Partial<UpdateSettingsInput> = { ...NULL_SETTINGS_PAYLOAD };
+  const payload: Partial<UpdateSettingsInput> = {
+    ...NULL_SETTINGS_PAYLOAD,
+  };
   delete payload.model;
   delete payload.modelScorer;
   delete payload.modelTailoring;
@@ -490,7 +481,6 @@ function getResetSettingsPayload(
   delete payload.llmPurposeApiKeys;
   return payload;
 }
-
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   model: data.model.override ?? "",
   modelScorer: data.modelScorer.override ?? "",
@@ -543,21 +533,20 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   tailoringPromptTemplate: data.tailoringPromptTemplate.value ?? "",
   scoringPromptTemplate: data.scoringPromptTemplate.value ?? "",
 });
-
 const normalizeString = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 };
-
 const normalizePrivateInput = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   if (trimmed === "") return null;
   return trimmed || undefined;
 };
-
 const normalizePurposeOverrides = (
   value: UpdateSettingsInput["llmPurposeOverrides"],
-  options: { dropInheritedProviderOverrides?: boolean } = {},
+  options: {
+    dropInheritedProviderOverrides?: boolean;
+  } = {},
 ) => {
   if (!value) return null;
   const out: NonNullable<UpdateSettingsInput["llmPurposeOverrides"]> = {};
@@ -574,15 +563,26 @@ const normalizePurposeOverrides = (
     }
     if (provider || baseUrl || model) {
       out[purpose] = {
-        ...(provider ? { provider } : {}),
-        ...(baseUrl ? { baseUrl } : {}),
-        ...(model ? { model } : {}),
+        ...(provider
+          ? {
+              provider,
+            }
+          : {}),
+        ...(baseUrl
+          ? {
+              baseUrl,
+            }
+          : {}),
+        ...(model
+          ? {
+              model,
+            }
+          : {}),
       };
     }
   }
   return Object.keys(out).length > 0 ? out : null;
 };
-
 const normalizePurposeApiKeys = (
   value: UpdateSettingsInput["llmPurposeApiKeys"],
 ) => {
@@ -599,21 +599,17 @@ const normalizePurposeApiKeys = (
   }
   return out;
 };
-
 const stringArraysEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) return false;
   return left.every((value, index) => value === right[index]);
 };
-
 const nullIfSame = <T,>(value: T | null | undefined, defaultValue: T) =>
   value === defaultValue ? null : (value ?? null);
-
 const normalizeResumeProjectsForCatalog = (
   catalog: ResumeProjectCatalogItem[],
   current: ResumeProjectsSettings | null,
 ): ResumeProjectsSettings | null => {
   const allowed = new Set(catalog.map((project) => project.id));
-
   const base = current ?? {
     maxProjects: 0,
     lockedProjectIds: catalog
@@ -621,7 +617,6 @@ const normalizeResumeProjectsForCatalog = (
       .map((project) => project.id),
     aiSelectableProjectIds: [],
   };
-
   const lockedProjectIds = base.lockedProjectIds.filter((id) =>
     allowed.has(id),
   );
@@ -639,12 +634,14 @@ const normalizeResumeProjectsForCatalog = (
     catalog.length,
     Math.max(lockedProjectIds.length, maxProjectsInt, 3),
   );
-  return { maxProjects, lockedProjectIds, aiSelectableProjectIds };
+  return {
+    maxProjects,
+    lockedProjectIds,
+    aiSelectableProjectIds,
+  };
 };
-
 const getDerivedSettings = (settings: AppSettings | null) => {
   const profileProjects = settings?.profileProjects ?? [];
-
   return {
     model: {
       effective: settings?.model?.value ?? "",
@@ -744,10 +741,8 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       },
     },
     defaultResumeProjects: settings?.resumeProjects?.default ?? null,
-
     profileProjects,
     maxProjectsTotal: profileProjects.length,
-
     backup: {
       backupEnabled: {
         effective: settings?.backupEnabled?.value ?? false,
@@ -796,15 +791,14 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     },
   };
 };
-
 export const SettingsPage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const location = useLocation();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("model");
   const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([]);
-
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isBillingBusy, setIsBillingBusy] = useState(false);
@@ -834,7 +828,6 @@ export const SettingsPage: React.FC = () => {
     isChecking: isTracerReadinessChecking,
     refreshReadiness,
   } = useTracerReadiness();
-
   const methods = useForm<UpdateSettingsInput>({
     resolver: zodResolver(
       updateSettingsSchema,
@@ -842,7 +835,6 @@ export const SettingsPage: React.FC = () => {
     mode: "onChange",
     defaultValues: DEFAULT_FORM_VALUES,
   });
-
   const {
     clearErrors,
     handleSubmit,
@@ -854,7 +846,6 @@ export const SettingsPage: React.FC = () => {
     formState: { isDirty, errors, isValid, dirtyFields },
   } = methods;
   const { storedRxResume, setBaseResumeId } = useRxResumeConfigState(settings);
-
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings.current(),
     queryFn: api.getSettings,
@@ -890,8 +881,11 @@ export const SettingsPage: React.FC = () => {
   useQueryErrorToast(appStatusQuery.error, "Failed to load app status");
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
   useQueryErrorToast(billingQuery.error, "Failed to load billing status");
-
-  const openStripe = async (createSession: () => Promise<{ url: string }>) => {
+  const openStripe = async (
+    createSession: () => Promise<{
+      url: string;
+    }>,
+  ) => {
     setIsBillingBusy(true);
     try {
       const { url } = await createSession();
@@ -901,7 +895,6 @@ export const SettingsPage: React.FC = () => {
       setIsBillingBusy(false);
     }
   };
-
   const resumeProjectsValue = useWatch({
     control,
     name: "resumeProjects",
@@ -909,27 +902,24 @@ export const SettingsPage: React.FC = () => {
   const hasRxResumeAccess = Boolean(
     storedRxResume.hasV5 || rxresumeValidationStatus.valid,
   );
-
   useEffect(() => {
     if (!settingsQuery.data) return;
     setSettings(settingsQuery.data);
     reset(mapSettingsToForm(settingsQuery.data));
   }, [settingsQuery.data, reset]);
-
   useQueryErrorToast(settingsQuery.error, "Failed to load settings");
-
   useEffect(() => {
     if (!settings) return;
     const storedId = settings?.rxresumeBaseResumeId ?? null;
     setRxResumeBaseResumeIdDraft(storedId);
-    setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false });
+    setValue("rxresumeBaseResumeId", storedId, {
+      shouldDirty: false,
+    });
     setRxResumeProjectsOverride(null);
   }, [settings, setValue]);
-
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
-
     if (!rxResumeBaseResumeIdDraft) {
       setRxResumeProjectsOverride(null);
       return () => {
@@ -937,13 +927,11 @@ export const SettingsPage: React.FC = () => {
         controller.abort();
       };
     }
-
     if (!hasRxResumeAccess)
       return () => {
         isMounted = false;
         controller.abort();
       };
-
     setIsFetchingRxResumeProjects(true);
     api
       .getRxResumeProjects(rxResumeBaseResumeIdDraft, controller.signal)
@@ -955,7 +943,9 @@ export const SettingsPage: React.FC = () => {
           getValues("resumeProjects") ?? null,
         );
         if (normalized) {
-          setValue("resumeProjects", normalized, { shouldDirty: false });
+          setValue("resumeProjects", normalized, {
+            shouldDirty: false,
+          });
         }
       })
       .catch((error) => {
@@ -967,13 +957,11 @@ export const SettingsPage: React.FC = () => {
         if (!isMounted) return;
         setIsFetchingRxResumeProjects(false);
       });
-
     return () => {
       isMounted = false;
       controller.abort();
     };
   }, [rxResumeBaseResumeIdDraft, hasRxResumeAccess, getValues, setValue]);
-
   const derived = getDerivedSettings(settings);
   const {
     model,
@@ -989,20 +977,20 @@ export const SettingsPage: React.FC = () => {
     scoring,
     promptTemplates,
   } = derived;
-
   const handleCreateBackup = async () => {
     setIsCreatingBackup(true);
     try {
       await api.createManualBackup();
       toast.success("Backup created successfully");
-      await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.backups.all,
+      });
     } catch (error) {
       showErrorToast(error, "Failed to create backup");
     } finally {
       setIsCreatingBackup(false);
     }
   };
-
   const handleDeleteBackup = async (filename: string) => {
     const confirmed = window.confirm(
       `Delete backup "${filename}"? This action cannot be undone.`,
@@ -1014,14 +1002,15 @@ export const SettingsPage: React.FC = () => {
     try {
       await api.deleteBackup(filename);
       toast.success("Backup deleted successfully");
-      await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.backups.all,
+      });
     } catch (error) {
       showErrorToast(error, "Failed to delete backup");
     } finally {
       setIsDeletingBackup(false);
     }
   };
-
   const handleVerifyTracerReadiness = useCallback(async () => {
     try {
       const readiness = await refreshReadiness(true);
@@ -1039,20 +1028,17 @@ export const SettingsPage: React.FC = () => {
       showErrorToast(error, "Failed to verify tracer-link readiness");
     }
   }, [refreshReadiness]);
-
   const setRxResumeValidationStatus = useCallback(
     (validation: ValidationResult) => {
       setRxresumeValidationStatus(toRxResumeValidationBadgeState(validation));
     },
     [],
   );
-
   const clearRxResumeValidationFeedback = useCallback(() => {
     rxresumeSilentValidationAttemptedRef.current = false;
     setRxresumeValidationStatus(EMPTY_RXRESUME_VALIDATION_BADGE_STATE);
     clearErrors(["rxresumeApiKey"]);
   }, [clearErrors]);
-
   const validateRxresume = useCallback(
     async (options?: { silent?: boolean; persistOnSuccess?: boolean }) => {
       const { silent = false, persistOnSuccess = true } = options ?? {};
@@ -1075,7 +1061,6 @@ export const SettingsPage: React.FC = () => {
         getPersistErrorMessage: (error) =>
           formatUserFacingError(error, "RxResume validation failed"),
       });
-
       if (
         silent &&
         isRxResumeMissingConfigValidationFailure(result.validation)
@@ -1084,7 +1069,6 @@ export const SettingsPage: React.FC = () => {
       } else {
         setRxResumeValidationStatus(result.validation);
       }
-
       if (result.updatedSettings) {
         setSettings(result.updatedSettings);
         queryClient.setQueryData(
@@ -1096,11 +1080,9 @@ export const SettingsPage: React.FC = () => {
         }
         return;
       }
-
       if (!notify || result.validation.valid) {
         return;
       }
-
       if (result.precheckFailure) {
         toast.info(
           result.validation.message ??
@@ -1108,32 +1090,28 @@ export const SettingsPage: React.FC = () => {
         );
         return;
       }
-
       toast.error(
         result.validation.message || `Reactive Resume validation failed`,
       );
     },
     [getValues, queryClient, setRxResumeValidationStatus, storedRxResume],
   );
-
   useEffect(() => {
     if (!settings) return;
-
     if (
       !rxresumeValidationStatus.checked &&
       !rxresumeSilentValidationAttemptedRef.current
     ) {
-      void validateRxresume({ silent: true, persistOnSuccess: false });
+      void validateRxresume({
+        silent: true,
+        persistOnSuccess: false,
+      });
     }
   }, [rxresumeValidationStatus, settings, validateRxresume]);
-
   const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects;
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
-
   const lockedCount = resumeProjectsValue?.lockedProjectIds.length ?? 0;
-
   const canSave = isDirty && isValid;
-
   const onSave = async (data: UpdateSettingsInput) => {
     if (!settings) return;
     try {
@@ -1147,54 +1125,42 @@ export const SettingsPage: React.FC = () => {
         resumeProjectsEqual(resumeProjectsData, defaultResumeProjects)
           ? null
           : resumeProjectsData;
-
       const envPayload: Partial<UpdateSettingsInput> = {};
-
       if (dirtyFields.rxresumeUrl) {
         envPayload.rxresumeUrl = normalizeString(data.rxresumeUrl);
       }
-
       if (dirtyFields.ukvisajobsEmail || dirtyFields.ukvisajobsPassword) {
         envPayload.ukvisajobsEmail = normalizeString(data.ukvisajobsEmail);
       }
-
       if (dirtyFields.adzunaAppId || dirtyFields.adzunaAppKey) {
         envPayload.adzunaAppId = normalizeString(data.adzunaAppId);
       }
-
       if (canEditLlmSettings && dirtyFields.llmProvider) {
         envPayload.llmProvider = data.llmProvider ?? null;
       }
-
       if (canEditLlmSettings && dirtyFields.llmBaseUrl) {
         envPayload.llmBaseUrl = normalizeString(data.llmBaseUrl);
       }
-
       if (canEditLlmSettings && dirtyFields.llmApiKey) {
         const value = normalizePrivateInput(data.llmApiKey);
         if (value !== undefined) envPayload.llmApiKey = value;
       }
-
       if (dirtyFields.rxresumeApiKey) {
         const value = normalizePrivateInput(data.rxresumeApiKey);
         if (value !== undefined) envPayload.rxresumeApiKey = value;
       }
-
       if (dirtyFields.ukvisajobsPassword) {
         const value = normalizePrivateInput(data.ukvisajobsPassword);
         if (value !== undefined) envPayload.ukvisajobsPassword = value;
       }
-
       if (dirtyFields.adzunaAppKey) {
         const value = normalizePrivateInput(data.adzunaAppKey);
         if (value !== undefined) envPayload.adzunaAppKey = value;
       }
-
       if (dirtyFields.webhookSecret) {
         const value = normalizePrivateInput(data.webhookSecret);
         if (value !== undefined) envPayload.webhookSecret = value;
       }
-
       const llmPayload: Partial<UpdateSettingsInput> = canEditLlmSettings
         ? {
             model: dirtyFields.llmProvider
@@ -1209,7 +1175,9 @@ export const SettingsPage: React.FC = () => {
                   modelProjectSelection: null,
                   llmPurposeOverrides: normalizePurposeOverrides(
                     data.llmPurposeOverrides,
-                    { dropInheritedProviderOverrides: true },
+                    {
+                      dropInheritedProviderOverrides: true,
+                    },
                   ),
                 }
               : {}),
@@ -1232,7 +1200,6 @@ export const SettingsPage: React.FC = () => {
               : {}),
           }
         : {};
-
       const payload: Partial<UpdateSettingsInput> = {
         ...llmPayload,
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
@@ -1251,7 +1218,9 @@ export const SettingsPage: React.FC = () => {
           reactiveResume.pdfPaperSize.default,
         ),
         ...(dirtyFields.rxresumeBaseResumeId
-          ? { rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId) }
+          ? {
+              rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
+            }
           : {}),
         showSponsorInfo: nullIfSame(
           data.showSponsorInfo,
@@ -1327,19 +1296,16 @@ export const SettingsPage: React.FC = () => {
         ),
         ...envPayload,
       };
-
       const shouldValidateRxResumeBeforeSave = Boolean(
         dirtyFields.rxresumeUrl || dirtyFields.rxresumeApiKey,
       );
       let rxResumeSaveWarningMessage: string | null = null;
-
       if (shouldValidateRxResumeBeforeSave) {
         const validationDraft = getRxResumeCredentialDrafts(data);
         const precheckFailure = getRxResumeCredentialPrecheckFailure({
           stored: storedRxResume,
           draft: validationDraft,
         });
-
         if (!precheckFailure) {
           const preserveBlankFields = [
             ...(dirtyFields.rxresumeApiKey ? (["apiKey"] as const) : []),
@@ -1352,9 +1318,7 @@ export const SettingsPage: React.FC = () => {
               >,
             }),
           });
-
           setRxResumeValidationStatus(validation);
-
           if (isRxResumeBlockingValidationFailure(validation)) {
             clearErrors(getRxResumeValidationFields());
             setError("rxresumeApiKey", {
@@ -1364,7 +1328,6 @@ export const SettingsPage: React.FC = () => {
             });
             return;
           }
-
           clearErrors(getRxResumeValidationFields());
           if (isRxResumeAvailabilityValidationFailure(validation)) {
             rxResumeSaveWarningMessage =
@@ -1372,7 +1335,6 @@ export const SettingsPage: React.FC = () => {
           }
         }
       }
-
       const updated = await updateSettingsMutation.mutateAsync(payload);
       setSettings(updated);
       reset(mapSettingsToForm(updated));
@@ -1386,7 +1348,6 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const handleClearDatabase = async () => {
     try {
       setIsSaving(true);
@@ -1400,7 +1361,6 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const handleClearByStatuses = async () => {
     if (statusesToClear.length === 0) {
       toast.error("No statuses selected");
@@ -1410,7 +1370,6 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(true);
       let totalDeleted = 0;
       const results: string[] = [];
-
       for (const status of statusesToClear) {
         const result = await api.deleteJobsByStatus(status);
         totalDeleted += result.count;
@@ -1418,7 +1377,6 @@ export const SettingsPage: React.FC = () => {
           results.push(`${result.count} ${status}`);
         }
       }
-
       if (totalDeleted > 0) {
         toast.success("Jobs cleared", {
           description: `Deleted ${totalDeleted} jobs: ${results.join(", ")}`,
@@ -1434,12 +1392,10 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const handleClearByScore = async (threshold: number) => {
     try {
       setIsSaving(true);
       const result = await api.deleteJobsBelowScore(threshold);
-
       if (result.count > 0) {
         toast.success("Jobs cleared", {
           description: `Deleted ${result.count} jobs with score below ${threshold}. Applied jobs were preserved.`,
@@ -1455,7 +1411,6 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const toggleStatusToClear = (status: JobStatus) => {
     setStatusesToClear((prev) =>
       prev.includes(status)
@@ -1478,13 +1433,11 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const handleDiscardChanges = () => {
     if (!settings) return;
     reset(mapSettingsToForm(settings));
     toast.success("Discarded unsaved changes");
   };
-
   const visibleNavGroups = useMemo(
     () =>
       SETTINGS_NAV_GROUPS.map((group) => ({
@@ -1497,7 +1450,6 @@ export const SettingsPage: React.FC = () => {
       })).filter((group) => group.items.length > 0),
     [canEditLlmSettings, isHostedMode],
   );
-
   const filteredNavGroups = useMemo(
     () =>
       visibleNavGroups
@@ -1510,7 +1462,6 @@ export const SettingsPage: React.FC = () => {
         .filter((group) => group.items.length > 0),
     [settingsSearch, visibleNavGroups],
   );
-
   useEffect(() => {
     const hash = location.hash.replace(/^#/, "");
     const allSectionIds = visibleNavGroups.flatMap((g) =>
@@ -1528,20 +1479,17 @@ export const SettingsPage: React.FC = () => {
       }
     }
   }, [location.hash, visibleNavGroups]);
-
   const visibleSectionIds = useMemo(
     () =>
       filteredNavGroups.flatMap((group) => group.items.map((item) => item.id)),
     [filteredNavGroups],
   );
-
   useEffect(() => {
     if (visibleSectionIds.length === 0) return;
     if (!visibleSectionIds.includes(activeSection)) {
       setActiveSection(visibleSectionIds[0]);
     }
   }, [activeSection, visibleSectionIds]);
-
   const firstVisibleGroup = visibleNavGroups[0] ?? SETTINGS_NAV_GROUPS[0];
   const firstVisibleSection = firstVisibleGroup.items[0];
   const activeSectionMeta =
@@ -1552,25 +1500,31 @@ export const SettingsPage: React.FC = () => {
     visibleNavGroups.find((group) =>
       group.items.some((item) => item.id === activeSection),
     ) ?? firstVisibleGroup;
-
   const sectionHasDirtyState = (sectionId: SettingsSectionId) =>
     SECTION_FIELD_MAP[sectionId].some((field) => Boolean(dirtyFields[field]));
   const sectionHasErrors = (sectionId: SettingsSectionId) =>
     SECTION_FIELD_MAP[sectionId].some((field) => Boolean(errors[field]));
-
   const getSectionBadge = (
     sectionId: SettingsSectionId,
   ): SectionWorkspaceBadge | null => {
     if (sectionId === "danger-zone") {
-      return { label: "Sensitive", variant: "destructive" as const };
+      return {
+        label: "Sensitive",
+        variant: "destructive" as const,
+      };
     }
     if (sectionHasErrors(sectionId)) {
-      return { label: "Needs attention", variant: "destructive" as const };
+      return {
+        label: "Needs attention",
+        variant: "destructive" as const,
+      };
     }
     if (sectionHasDirtyState(sectionId)) {
-      return { label: "Unsaved", variant: "secondary" as const };
+      return {
+        label: "Unsaved",
+        variant: "secondary" as const,
+      };
     }
-
     switch (sectionId) {
       case "billing":
         return billingQuery.data
@@ -1584,12 +1538,24 @@ export const SettingsPage: React.FC = () => {
           : null;
       case "model":
         return model.llmProvider
-          ? { label: "Configured", variant: "outline" as const }
-          : { label: "Using defaults", variant: "secondary" as const };
+          ? {
+              label: "Configured",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Using defaults",
+              variant: "secondary" as const,
+            };
       case "chat":
         return chat.tone.effective || chat.constraints.effective
-          ? { label: "Ready", variant: "outline" as const }
-          : { label: "Using defaults", variant: "secondary" as const };
+          ? {
+              label: "Ready",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Using defaults",
+              variant: "secondary" as const,
+            };
       case "prompt-templates":
         return promptTemplates.ghostwriterSystemPromptTemplate.effective !==
           promptTemplates.ghostwriterSystemPromptTemplate.default ||
@@ -1597,49 +1563,92 @@ export const SettingsPage: React.FC = () => {
             promptTemplates.tailoringPromptTemplate.default ||
           promptTemplates.scoringPromptTemplate.effective !==
             promptTemplates.scoringPromptTemplate.default
-          ? { label: "Customized", variant: "outline" as const }
-          : { label: "Using defaults", variant: "secondary" as const };
+          ? {
+              label: "Customized",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Using defaults",
+              variant: "secondary" as const,
+            };
       case "scoring":
         return scoring.autoSkipScoreThreshold.effective != null ||
           scoring.blockedCompanyKeywords.effective.length > 0
-          ? { label: "Customized", variant: "outline" as const }
-          : { label: "Default rules", variant: "secondary" as const };
+          ? {
+              label: "Customized",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Default rules",
+              variant: "secondary" as const,
+            };
       case "reactive-resume":
         return hasRxResumeAccess
-          ? { label: "Connected", variant: "outline" as const }
+          ? {
+              label: "Connected",
+              variant: "outline" as const,
+            }
           : null;
       case "webhooks":
         return pipelineWebhook.effective || jobCompleteWebhook.effective
-          ? { label: "Configured", variant: "outline" as const }
-          : { label: "Optional", variant: "secondary" as const };
+          ? {
+              label: "Configured",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Optional",
+              variant: "secondary" as const,
+            };
       case "tracer-links":
         return tracerReadiness?.status === "ready"
-          ? { label: "Ready", variant: "outline" as const }
+          ? {
+              label: "Ready",
+              variant: "outline" as const,
+            }
           : tracerReadiness
-            ? { label: "Check required", variant: "secondary" as const }
-            : { label: "Not configured", variant: "secondary" as const };
+            ? {
+                label: "Check required",
+                variant: "secondary" as const,
+              }
+            : {
+                label: "Not configured",
+                variant: "secondary" as const,
+              };
       case "environment":
         return envSettings.readable.ukvisajobsEmail ||
           envSettings.readable.adzunaAppId
-          ? { label: "Configured", variant: "outline" as const }
+          ? {
+              label: "Configured",
+              variant: "outline" as const,
+            }
           : null;
       case "display":
-        return { label: "Active", variant: "secondary" as const };
+        return {
+          label: "Active",
+          variant: "secondary" as const,
+        };
       case "backup":
         return backup.backupEnabled.effective
-          ? { label: "Scheduled", variant: "outline" as const }
-          : { label: "Manual only", variant: "secondary" as const };
+          ? {
+              label: "Scheduled",
+              variant: "outline" as const,
+            }
+          : {
+              label: "Manual only",
+              variant: "secondary" as const,
+            };
       default:
-        return { label: "Ready", variant: "outline" as const };
+        return {
+          label: "Ready",
+          variant: "outline" as const,
+        };
     }
   };
-
   const selectedSectionBadge = getSectionBadge(activeSection);
   const dirtySectionCount = visibleNavGroups
     .flatMap((group) => group.items)
     .filter((item) => sectionHasDirtyState(item.id)).length;
   const activeSectionIsDirty = sectionHasDirtyState(activeSection);
-
   let activeSectionContent: React.ReactNode;
   switch (activeSection) {
     case "billing":
@@ -1700,7 +1709,9 @@ export const SettingsPage: React.FC = () => {
           setRxResumeBaseResumeIdDraft={(value) => {
             setBaseResumeId(value);
             setRxResumeBaseResumeIdDraft(value);
-            setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
+            setValue("rxresumeBaseResumeId", value, {
+              shouldDirty: true,
+            });
           }}
           hasRxResumeAccess={hasRxResumeAccess}
           onCredentialFieldEdit={clearRxResumeValidationFeedback}
@@ -1795,13 +1806,14 @@ export const SettingsPage: React.FC = () => {
     default:
       activeSectionContent = null;
   }
-
   return (
     <FormProvider {...methods}>
       <PageHeader
         icon={Settings}
-        title="Settings"
-        subtitle="Configure AI, scoring, integrations, and recovery from one focused workspace."
+        title={uiT("Settings")}
+        subtitle={uiT(
+          "Configure AI, scoring, integrations, and recovery from one focused workspace.",
+        )}
       />
 
       <main className="container mx-auto px-4 py-6 pb-12">
@@ -1842,7 +1854,7 @@ export const SettingsPage: React.FC = () => {
                       onClick={handleDiscardChanges}
                       disabled={isLoading || isSaving || !isDirty}
                     >
-                      Discard changes
+                      {uiT("Discard changes")}
                     </Button>
                   ) : null}
                   <Button
@@ -1852,7 +1864,7 @@ export const SettingsPage: React.FC = () => {
                     onClick={handleReset}
                     disabled={isLoading || isSaving || !settings}
                   >
-                    Reset to defaults
+                    {uiT("Reset to defaults")}
                   </Button>
                   <Button
                     type="button"
@@ -1860,7 +1872,7 @@ export const SettingsPage: React.FC = () => {
                     onClick={handleSubmit(onSave)}
                     disabled={isLoading || isSaving || !canSave}
                   >
-                    {isSaving ? "Saving..." : "Save changes"}
+                    {isSaving ? uiT("Saving...") : uiT("Save changes")}
                   </Button>
                 </>
               )
@@ -1868,7 +1880,7 @@ export const SettingsPage: React.FC = () => {
             footer={
               Object.keys(errors).length > 0 ? (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/[0.03] px-4 py-3 text-sm text-destructive">
-                  Please fix the highlighted errors before saving.
+                  {uiT("Please fix the highlighted errors before saving.")}
                 </div>
               ) : null
             }

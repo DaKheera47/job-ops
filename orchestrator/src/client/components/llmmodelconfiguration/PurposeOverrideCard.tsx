@@ -2,6 +2,7 @@ import * as api from "@client/api";
 import { ClaudeCliSetupHint } from "@client/components/ClaudeCliSetupHint";
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type {
   LlmProviderId,
@@ -30,7 +31,6 @@ import {
   renderKeyHelper,
 } from "./llm-model-configuration-helpers";
 import ModelField from "./ModelField";
-
 export default function PurposeOverrideCard({
   purpose,
   defaultProvider,
@@ -62,6 +62,7 @@ export default function PurposeOverrideCard({
   ) => void;
   onApiKeyChange: (purpose: LlmPurpose, value: string) => void;
 }) {
+  const { t: uiT } = useUiTranslation();
   const selectedProvider = value?.provider
     ? normalizeLlmProvider(value.provider)
     : defaultProvider;
@@ -100,7 +101,6 @@ export default function PurposeOverrideCard({
     emptyValue: "",
     fallbackValue: modelValue,
   });
-
   useEffect(() => {
     if (!supportsModelSuggestions) {
       setAvailableModels([]);
@@ -108,18 +108,15 @@ export default function PurposeOverrideCard({
       setIsLoadingModels(false);
       return;
     }
-
     if (providerConfig.requiresApiKey && !apiKeyValue.trim() && !hasSavedKey) {
       setAvailableModels([]);
       setModelsError(null);
       setIsLoadingModels(false);
       return;
     }
-
     let cancelled = false;
     setIsLoadingModels(true);
     setModelsError(null);
-
     void api
       .getLlmModels({
         provider: selectedProvider,
@@ -146,7 +143,6 @@ export default function PurposeOverrideCard({
         if (cancelled) return;
         setIsLoadingModels(false);
       });
-
     return () => {
       cancelled = true;
     };
@@ -161,7 +157,6 @@ export default function PurposeOverrideCard({
     selectedProvider,
     supportsModelSuggestions,
   ]);
-
   const modelHelper = supportsModelSuggestions
     ? isLoadingModels
       ? "Loading available models..."
@@ -169,11 +164,10 @@ export default function PurposeOverrideCard({
         ? modelsError
         : "Leave blank to inherit the purpose default."
     : `Type the exact model name, or leave blank to use the default from ${providerConfig.label}.`;
-
   return (
     <div className="space-y-2">
       <label htmlFor={`${purpose}-provider`} className="text-sm font-medium">
-        Provider
+        {uiT("Provider")}
       </label>
       <Select
         value={value?.provider ?? "__inherit__"}
@@ -221,7 +215,7 @@ export default function PurposeOverrideCard({
 
       {hasProviderOverride && providerConfig.showBaseUrl ? (
         <SettingsInput
-          label="Base URL"
+          label={uiT("Base URL")}
           inputProps={{
             name: `${purpose}.baseUrl`,
             value: baseUrlValue,
@@ -238,7 +232,9 @@ export default function PurposeOverrideCard({
       {hasProviderOverride && providerConfig.showApiKey ? (
         <SettingsInput
           label={
-            providerConfig.requiresApiKey ? "API key" : "API key (optional)"
+            providerConfig.requiresApiKey
+              ? uiT("API key")
+              : "API key (optional)"
           }
           inputProps={{
             name: `${purpose}.apiKey`,

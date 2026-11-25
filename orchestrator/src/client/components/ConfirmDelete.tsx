@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type React from "react";
 import {
   AlertDialog,
@@ -17,7 +18,6 @@ interface ConfirmDeleteProps {
   title?: string;
   description?: string;
 }
-
 export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
   isOpen,
   onClose,
@@ -25,6 +25,7 @@ export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
   title = "Are you sure?",
   description = "This action cannot be undone. This will permanently delete this event from the timeline.",
 }) => {
+  const { t: uiT } = useUiTranslation();
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
@@ -33,7 +34,9 @@ export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>
+            {uiT("Cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
               onConfirm();
@@ -41,7 +44,7 @@ export const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
             }}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete
+            {uiT("Delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,4 +1,5 @@
 import { PageHeader, StatusIndicator } from "@client/components/layout";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { JobSource } from "@shared/types.js";
 import { FileText, Loader2, Search, Square, X } from "lucide-react";
 import type React from "react";
@@ -16,7 +17,6 @@ interface OrchestratorHeaderProps {
   onCancelPipeline: () => void;
   onOpenManualImport: () => void;
 }
-
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   navOpen,
   onNavOpenChange,
@@ -29,6 +29,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   onCancelPipeline,
   onOpenManualImport,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const primaryAction = hideRunAction ? null : isPipelineRunning ? (
     <Button
       size="sm"
@@ -59,7 +60,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
       ) : (
         <Search className="h-4 w-4" />
       )}
-      <span>{isSearchComposerOpen ? "Close search" : "Find jobs"}</span>
+      <span>
+        {isSearchComposerOpen ? uiT("Close search") : uiT("Find jobs")}
+      </span>
     </Button>
   );
   const actions = (
@@ -72,23 +75,22 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
         onClick={onOpenManualImport}
       >
         <FileText className="h-4 w-4" />
-        Add a job
+        {uiT("Add a job")}
       </Button>
     </div>
   );
-
   return (
     <PageHeader
       icon={() => (
         <img src="/favicon.png" alt="" className="size-8 rounded-lg" />
       )}
       title="Job Ops"
-      subtitle="Orchestrator"
+      subtitle={uiT("Orchestrator")}
       navOpen={navOpen}
       onNavOpenChange={onNavOpenChange}
       statusIndicator={
         isPipelineRunning ? (
-          <StatusIndicator label="Search running" variant="amber" />
+          <StatusIndicator label={uiT("Search running")} variant="amber" />
         ) : undefined
       }
       actions={actions}

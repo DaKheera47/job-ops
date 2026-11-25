@@ -1,4 +1,5 @@
 import * as clientApi from "@client/api";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import type { SsoIdentitySummary, SsoProviderInfo } from "@shared/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 export type ConnectedAccountsApi = {
   changeOwnPassword: typeof clientApi.changeOwnPassword;
   getCurrentAuthUser: typeof clientApi.getCurrentAuthUser;
@@ -30,13 +30,10 @@ export type ConnectedAccountsApi = {
   startSsoLink: typeof clientApi.startSsoLink;
   unlinkSsoIdentity: typeof clientApi.unlinkSsoIdentity;
 };
-
 type ConnectedAccountsSectionProps = {
   api?: ConnectedAccountsApi;
 };
-
 const MIN_PASSWORD_LENGTH = 8;
-
 const defaultConnectedAccountsApi: ConnectedAccountsApi = {
   changeOwnPassword: clientApi.changeOwnPassword,
   getCurrentAuthUser: clientApi.getCurrentAuthUser,
@@ -45,23 +42,21 @@ const defaultConnectedAccountsApi: ConnectedAccountsApi = {
   startSsoLink: clientApi.startSsoLink,
   unlinkSsoIdentity: clientApi.unlinkSsoIdentity,
 };
-
 function formatConnectedAt(createdAt: string): string {
   const connectedAt = new Date(createdAt);
   return Number.isNaN(connectedAt.getTime())
     ? createdAt
     : connectedAt.toLocaleDateString();
 }
-
 export const ConnectedAccountsSection: React.FC<
   ConnectedAccountsSectionProps
 > = ({ api = defaultConnectedAccountsApi }) => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-
   const meQuery = useQuery({
     queryKey: queryKeys.auth.currentUser(),
     queryFn: api.getCurrentAuthUser,
@@ -81,7 +76,6 @@ export const ConnectedAccountsSection: React.FC<
     queryFn: api.listSsoIdentities,
     retry: false,
   });
-
   const unlinkMutation = useMutation({
     mutationFn: (identity: SsoIdentitySummary) =>
       api.unlinkSsoIdentity(identity.id),
@@ -95,7 +89,6 @@ export const ConnectedAccountsSection: React.FC<
       showErrorToast(error, "Failed to remove connected account");
     },
   });
-
   const changePasswordMutation = useMutation({
     mutationFn: api.changeOwnPassword,
     onSuccess: async () => {
@@ -111,7 +104,6 @@ export const ConnectedAccountsSection: React.FC<
       showErrorToast(error, "Failed to update password");
     },
   });
-
   const hasPassword = meQuery.data?.hasPassword ?? true;
   const providers = providersQuery.data ?? [];
   const identities = identitiesQuery.data ?? [];
@@ -121,7 +113,6 @@ export const ConnectedAccountsSection: React.FC<
   const connectableProviders = providers.filter(
     (provider) => !linkedProviders.has(provider.id),
   );
-
   const handleConnect = async (provider: SsoProviderInfo) => {
     try {
       const start = await api.startSsoLink(provider.id);
@@ -137,7 +128,6 @@ export const ConnectedAccountsSection: React.FC<
       showErrorToast(error, `Failed to connect ${provider.displayName}`);
     }
   };
-
   const handleChangePassword = () => {
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setPasswordError(
@@ -149,15 +139,18 @@ export const ConnectedAccountsSection: React.FC<
       setPasswordError("New passwords do not match.");
       return;
     }
-
     setPasswordError(null);
     changePasswordMutation.mutate(
       hasPassword
-        ? { password: newPassword, currentPassword }
-        : { password: newPassword },
+        ? {
+            password: newPassword,
+            currentPassword,
+          }
+        : {
+            password: newPassword,
+          },
     );
   };
-
   return (
     <div className="space-y-6">
       {providers.length > 0 || identities.length > 0 ? (
@@ -212,7 +205,7 @@ export const ConnectedAccountsSection: React.FC<
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>{uiT("Cancel")}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => unlinkMutation.mutate(identity)}
                           >

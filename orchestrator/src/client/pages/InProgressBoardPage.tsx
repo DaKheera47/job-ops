@@ -3,6 +3,7 @@ import {
   LogEventModal,
 } from "@client/components/LogEventModal";
 import { PageHeader, PageMain } from "@client/components/layout";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import {
   APPLICATION_STAGES,
   type ApplicationStage,
@@ -46,7 +47,6 @@ type BoardCard = {
   stage: ApplicationStage;
   latestEventAt: number | null;
 };
-
 const sortByRecent = (a: BoardCard, b: BoardCard) => {
   if (a.latestEventAt != null && b.latestEventAt != null) {
     return b.latestEventAt - a.latestEventAt;
@@ -55,21 +55,15 @@ const sortByRecent = (a: BoardCard, b: BoardCard) => {
   if (b.latestEventAt != null) return 1;
   return Date.parse(b.job.discoveredAt) - Date.parse(a.job.discoveredAt);
 };
-
 const sortByTitle = (a: BoardCard, b: BoardCard) =>
   a.job.title.localeCompare(b.job.title);
-
 const sortByCompany = (a: BoardCard, b: BoardCard) =>
   a.job.employer.localeCompare(b.job.employer);
-
 const BOARD_STAGES = APPLICATION_STAGES;
-
 const getAppliedCollapsedStorageKey = () =>
   api.getAuthScopedStorageKey(IN_PROGRESS_BOARD_APPLIED_COLLAPSED_STORAGE_KEY);
-
 const readAppliedCollapsed = () =>
   localStorage.getItem(getAppliedCollapsedStorageKey()) === "1";
-
 const getCardLeftAccentClass = (stage: ApplicationStage) => {
   if (stage === "technical_interview") {
     return "border-l-2 border-l-amber-400/45";
@@ -82,26 +76,35 @@ const getCardLeftAccentClass = (stage: ApplicationStage) => {
   }
   return "";
 };
-
 const resolveCurrentStage = (
   events: StageEvent[] | null,
-): { stage: ApplicationStage; latestEventAt: number | null } => {
+): {
+  stage: ApplicationStage;
+  latestEventAt: number | null;
+} => {
   const latest = events?.at(-1) ?? null;
   if (latest) {
-    return { stage: latest.toStage, latestEventAt: latest.occurredAt };
+    return {
+      stage: latest.toStage,
+      latestEventAt: latest.occurredAt,
+    };
   }
-  return { stage: "applied", latestEventAt: null };
+  return {
+    stage: "applied",
+    latestEventAt: null,
+  };
 };
-
 export const InProgressBoardPage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
   const jobPageLinkState = React.useMemo(
-    () => ({ jobPageBackTo: `${location.pathname}${location.search}` }),
+    () => ({
+      jobPageBackTo: `${location.pathname}${location.search}`,
+    }),
     [location.pathname, location.search],
   );
-
   const [dragging, setDragging] = React.useState<{
     jobId: string;
     fromStage: ApplicationStage;
@@ -118,14 +121,12 @@ export const InProgressBoardPage: React.FC = () => {
   } | null>(null);
   const [isAppliedCollapsed, setIsAppliedCollapsed] =
     React.useState(readAppliedCollapsed);
-
   React.useEffect(() => {
     localStorage.setItem(
       getAppliedCollapsedStorageKey(),
       isAppliedCollapsed ? "1" : "0",
     );
   }, [isAppliedCollapsed]);
-
   const boardQuery = useQuery({
     queryKey: queryKeys.jobs.inProgressBoard(),
     queryFn: async () => {
@@ -133,12 +134,10 @@ export const InProgressBoardPage: React.FC = () => {
         statuses: ["applied", "in_progress"],
         view: "list",
       });
-
       const jobs = response.jobs;
       const eventResults = await Promise.allSettled(
         jobs.map((job) => api.getJobStageEvents(job.id)),
       );
-
       return jobs.map((job, index) => {
         const result = eventResults[index];
         const events =
@@ -154,7 +153,6 @@ export const InProgressBoardPage: React.FC = () => {
       });
     },
   });
-
   const transitionMutation = useMutation({
     mutationFn: ({
       jobId,
@@ -173,12 +171,9 @@ export const InProgressBoardPage: React.FC = () => {
         },
       }),
   });
-
   useQueryErrorToast(boardQuery.error, "Failed to load in-progress board");
-
   const cards = boardQuery.data ?? [];
   const isLoading = boardQuery.isPending;
-
   const lanes = React.useMemo(() => {
     const sortFn =
       sortMode === "title"
@@ -186,7 +181,6 @@ export const InProgressBoardPage: React.FC = () => {
         : sortMode === "company"
           ? sortByCompany
           : sortByRecent;
-
     const grouped: Record<ApplicationStage, BoardCard[]> = {
       applied: [],
       recruiter_screen: [],
@@ -197,45 +191,45 @@ export const InProgressBoardPage: React.FC = () => {
       offer: [],
       closed: [],
     };
-
     for (const card of cards) {
       grouped[card.stage].push(card);
     }
-
     for (const stage of BOARD_STAGES) {
       grouped[stage].sort(sortFn);
     }
-
     return grouped;
   }, [cards, sortMode]);
-
   const handleDropToStage = React.useCallback(
     async (toStage: ApplicationStage) => {
       if (!dragging || dragging.fromStage === toStage) {
         setDropTargetStage(null);
         return;
       }
-
       const { jobId } = dragging;
       const previousCards =
         queryClient.getQueryData<BoardCard[]>(
           queryKeys.jobs.inProgressBoard(),
         ) ?? [];
       const nowEpoch = Math.floor(Date.now() / 1000);
-
       setMovingJobId(jobId);
       queryClient.setQueryData<BoardCard[]>(
         queryKeys.jobs.inProgressBoard(),
         (current) =>
           (current ?? []).map((card) =>
             card.job.id === jobId
-              ? { ...card, stage: toStage, latestEventAt: nowEpoch }
+              ? {
+                  ...card,
+                  stage: toStage,
+                  latestEventAt: nowEpoch,
+                }
               : card,
           ),
       );
-
       try {
-        await transitionMutation.mutateAsync({ jobId, toStage });
+        await transitionMutation.mutateAsync({
+          jobId,
+          toStage,
+        });
         toast.success(`Moved to ${STAGE_LABELS[toStage]}`);
         await queryClient.invalidateQueries({
           queryKey: queryKeys.jobs.inProgressBoard(),
@@ -257,13 +251,10 @@ export const InProgressBoardPage: React.FC = () => {
     },
     [dragging, queryClient, transitionMutation],
   );
-
   const handleBoardLogEvent = React.useCallback(
     async (values: LogEventFormValues) => {
       if (!logEventTarget) return;
-
       const { job, stage: currentStage } = logEventTarget;
-
       try {
         const { effectiveStage } = await logJobStageEvent({
           jobId: job.id,
@@ -271,11 +262,9 @@ export const InProgressBoardPage: React.FC = () => {
           values,
           manualStageReasonCode: "in_progress_board_menu",
         });
-
         await invalidateJobData(queryClient, job.id);
         setLogEventTarget(null);
         toast.success("Event logged");
-
         if (effectiveStage === "offer") {
           celebrateOffer();
         }
@@ -285,7 +274,6 @@ export const InProgressBoardPage: React.FC = () => {
     },
     [logEventTarget, queryClient],
   );
-
   return (
     <>
       <PageHeader
@@ -306,7 +294,7 @@ export const InProgressBoardPage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="updated">Recent</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
+                <SelectItem value="title">{uiT("Title")}</SelectItem>
                 <SelectItem value="company">Company</SelectItem>
               </SelectContent>
             </Select>
@@ -316,7 +304,7 @@ export const InProgressBoardPage: React.FC = () => {
               onClick={() => navigate("/jobs/ready")}
             >
               <Plus className="h-3.5 w-3.5" />
-              Add
+              {uiT("Add")}
             </Button>
           </div>
         }
@@ -445,7 +433,10 @@ export const InProgressBoardPage: React.FC = () => {
                                 setDropTargetStage(null);
                               }}
                               onLogEvent={() =>
-                                setLogEventTarget({ job, stage })
+                                setLogEventTarget({
+                                  job,
+                                  stage,
+                                })
                               }
                             />
                           ))

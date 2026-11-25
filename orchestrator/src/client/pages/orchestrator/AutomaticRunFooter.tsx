@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,6 @@ interface AutomaticRunFooterProps {
   disabled: boolean;
   onRunSearch: () => void;
 }
-
 export function AutomaticRunFooter({
   searchTerms,
   locationCount,
@@ -38,15 +38,16 @@ export function AutomaticRunFooter({
   disabled,
   onRunSearch,
 }: AutomaticRunFooterProps) {
+  const { t: uiT } = useUiTranslation();
   const presetLabel =
     selectedPreset.charAt(0).toUpperCase() + selectedPreset.slice(1);
   return (
     <Card className="h-fit">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <CardTitle>Your search</CardTitle>
+          <CardTitle>{uiT("Your search")}</CardTitle>
           <Badge variant={disabled ? "outline" : "secondary"}>
-            {disabled ? "Review" : "Ready"}
+            {disabled ? uiT("Review") : uiT("Ready")}
           </Badge>
         </div>
         <CardDescription>
@@ -59,7 +60,7 @@ export function AutomaticRunFooter({
           value={searchTerms.length > 0 ? searchTerms.join(", ") : "Add a role"}
         />
         <Separator />
-        <SummaryRow label="Location" value={locationSummary} />
+        <SummaryRow label={uiT("Location")} value={locationSummary} />
         <Separator />
         <SummaryRow
           label="Arrangement"
@@ -101,7 +102,7 @@ export function AutomaticRunFooter({
           ) : (
             <Sparkles data-icon="inline-start" />
           )}
-          Run search
+          {uiT("Run search")}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
           You can leave this page after the run starts.
@@ -110,7 +111,6 @@ export function AutomaticRunFooter({
     </Card>
   );
 }
-
 function SummaryRow({
   label,
   value,
@@ -131,7 +131,6 @@ function SummaryRow({
     </div>
   );
 }
-
 function formatWorkplaceType(value: WorkplaceType): string {
   if (value === "onsite") return "On-site";
   return value.charAt(0).toUpperCase() + value.slice(1);

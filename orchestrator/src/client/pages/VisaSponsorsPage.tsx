@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { formatCountryLabel } from "@shared/location-support.js";
 import type {
   VisaSponsor,
@@ -56,22 +57,25 @@ const getScoreTokens = (score: number) => {
       badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
     };
   if (score >= 70)
-    return { badge: "border-amber-500/30 bg-amber-500/10 text-amber-200" };
+    return {
+      badge: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+    };
   if (score >= 50)
-    return { badge: "border-orange-500/30 bg-orange-500/10 text-orange-200" };
-  return { badge: "border-rose-500/30 bg-rose-500/10 text-rose-200" };
+    return {
+      badge: "border-orange-500/30 bg-orange-500/10 text-orange-200",
+    };
+  return {
+    badge: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+  };
 };
-
 const ALL_SOURCES_VALUE = "__all_sources__";
-
 const getSearchScopeLabel = (countryLabel: string) =>
   countryLabel === "All sources" ? "all sources" : `the ${countryLabel} source`;
-
 const getResultKey = (
   result: Pick<VisaSponsorSearchResult, "providerId" | "sponsor">,
 ) => `${result.providerId}::${result.sponsor.organisationName}`;
-
 export const VisaSponsorsPage: React.FC = () => {
+  const { t: uiT } = useUiTranslation();
   const queryClient = useQueryClient();
   // State
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,7 +92,6 @@ export const VisaSponsorsPage: React.FC = () => {
       ? window.matchMedia("(min-width: 1024px)").matches
       : false,
   );
-
   const statusQuery = useQuery<VisaSponsorStatusResponse>({
     queryKey: queryKeys.visaSponsors.status(),
     queryFn: api.getVisaSponsorStatus,
@@ -124,14 +127,12 @@ export const VisaSponsorsPage: React.FC = () => {
     },
     null,
   );
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
   const searchQueryResult = useQuery({
     queryKey: queryKeys.visaSponsors.search(
       debouncedSearchQuery.trim(),
@@ -149,18 +150,15 @@ export const VisaSponsorsPage: React.FC = () => {
     enabled: Boolean(debouncedSearchQuery.trim()),
   });
   useQueryErrorToast(searchQueryResult.error, "Search failed");
-
   const results = useMemo<VisaSponsorSearchResult[]>(() => {
     if (!debouncedSearchQuery.trim()) return [];
     return searchQueryResult.data?.results ?? [];
   }, [debouncedSearchQuery, searchQueryResult.data]);
-
   const selectedResult = useMemo(
     () => results.find((r) => getResultKey(r) === selectedResultKey) ?? null,
     [results, selectedResultKey],
   );
   const selectedOrg = selectedResult?.sponsor.organisationName ?? null;
-
   const orgDetailsQuery = useQuery<VisaSponsor[]>({
     queryKey: queryKeys.visaSponsors.organization(
       selectedOrg ?? "",
@@ -191,13 +189,11 @@ export const VisaSponsorsPage: React.FC = () => {
       setSelectedResultKey(getResultKey(results[0]));
     }
   }, [results, selectedResultKey]);
-
   useEffect(() => {
     if (!selectedResultKey) {
       setIsDetailDrawerOpen(false);
     }
   }, [selectedResultKey]);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const media = window.matchMedia("(min-width: 1024px)");
@@ -210,7 +206,6 @@ export const VisaSponsorsPage: React.FC = () => {
     media.addListener(handleChange);
     return () => media.removeListener(handleChange);
   }, []);
-
   useEffect(() => {
     if (isDesktop && isDetailDrawerOpen) {
       setIsDetailDrawerOpen(false);
@@ -238,31 +233,26 @@ export const VisaSponsorsPage: React.FC = () => {
       showErrorToast(error, "Update failed");
     },
   });
-
   const handleUpdate = () => {
     updateListMutation.mutate();
   };
-
   const handleSelectOrg = (resultKey: string) => {
     setSelectedResultKey(resultKey);
     if (!isDesktop) {
       setIsDetailDrawerOpen(true);
     }
   };
-
   const handleCountryChange = (value: string) => {
     setSelectedCountry(value === ALL_SOURCES_VALUE ? null : value);
     setSelectedResultKey(null);
     setIsDetailDrawerOpen(false);
   };
-
   const isUpdateInProgress =
     updateListMutation.isPending ||
     statusProviders.some((provider) => provider.isUpdating);
   const isLoadingStatus = statusQuery.isLoading;
   const isSearching = searchQueryResult.isFetching;
   const isLoadingDetails = orgDetailsQuery.isLoading;
-
   const detailPanelContent = !selectedResult ? (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <div className="text-base font-semibold">Select a company</div>
@@ -305,7 +295,7 @@ export const VisaSponsorsPage: React.FC = () => {
         (orgDetails[0].townCity || orgDetails[0].county) && (
           <div>
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
-              Location
+              {uiT("Location")}
             </div>
             <div className="flex items-center gap-2 text-sm text-foreground">
               <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -356,12 +346,11 @@ export const VisaSponsorsPage: React.FC = () => {
       </div>
     </div>
   );
-
   return (
     <>
       <PageHeader
         icon={Shield}
-        title="Visa Sponsors"
+        title={uiT("Visa Sponsors")}
         statusIndicator={
           isUpdateInProgress ? <StatusIndicator label="Updating" /> : undefined
         }
@@ -438,7 +427,7 @@ export const VisaSponsorsPage: React.FC = () => {
                 htmlFor="sponsor-source"
                 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
               >
-                Source
+                {uiT("Source")}
               </label>
               <Select
                 value={selectedCountry ?? ALL_SOURCES_VALUE}
@@ -454,7 +443,7 @@ export const VisaSponsorsPage: React.FC = () => {
                   <SelectItem value={ALL_SOURCES_VALUE}>All sources</SelectItem>
                   {providerOptions.map((option) => (
                     <SelectItem key={option.providerId} value={option.value}>
-                      {option.label}
+                      {uiT(option.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -580,7 +569,7 @@ export const VisaSponsorsPage: React.FC = () => {
             </div>
             <DrawerClose asChild>
               <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                Close
+                {uiT("Close")}
               </Button>
             </DrawerClose>
           </div>

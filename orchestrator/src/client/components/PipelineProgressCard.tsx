@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import NumberFlow from "@number-flow/react";
 import type { PipelineProgressState } from "@shared/types";
 import { useReducedMotion } from "framer-motion";
@@ -19,7 +20,6 @@ import { PipelineActionRequired } from "./PipelineActionRequired";
 import { PipelineFanoutCard } from "./PipelineFanoutCard";
 
 const noop = () => {};
-
 export interface PipelineProgressCardProps {
   progress: PipelineProgressState;
   elapsedSeconds?: number;
@@ -30,7 +30,6 @@ export interface PipelineProgressCardProps {
   resumingScoring?: boolean;
   onResumeScoring?: () => void;
 }
-
 const stepTitles: Record<PipelineProgressState["step"], string> = {
   idle: "Preparing search",
   crawling: "Searching jobs",
@@ -43,7 +42,6 @@ const stepTitles: Record<PipelineProgressState["step"], string> = {
   failed: "Pipeline failed",
   configuration_required: "Scoring paused",
 };
-
 const stepLabels: Record<PipelineProgressState["step"], string> = {
   idle: "Connecting",
   crawling: "Searching",
@@ -56,10 +54,8 @@ const stepLabels: Record<PipelineProgressState["step"], string> = {
   failed: "Failed",
   configuration_required: "Action needed",
 };
-
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
-
 const getPercentage = (progress: PipelineProgressState): number => {
   switch (progress.step) {
     case "challenge_required":
@@ -101,7 +97,6 @@ const getPercentage = (progress: PipelineProgressState): number => {
       return 0;
   }
 };
-
 const Metric = ({ label, value }: { label: string; value: number }) => (
   <div className="flex flex-col gap-1 px-4 py-3">
     <span className="text-xs text-muted-foreground">{label}</span>
@@ -113,12 +108,14 @@ const Metric = ({ label, value }: { label: string; value: number }) => (
     />
   </div>
 );
-
 const liveStageCopy = (
   progress: PipelineProgressState,
-): { before: string; title: string; after: string } | null => {
+): {
+  before: string;
+  title: string;
+  after: string;
+} | null => {
   if (!progress.currentJob) return null;
-
   switch (progress.step) {
     case "importing":
       return {
@@ -142,10 +139,8 @@ const liveStageCopy = (
       return null;
   }
 };
-
 const RollingStageText = ({ text }: { text: string }) => {
   const prefersReducedMotion = useReducedMotion();
-
   return (
     <span className="font-medium text-foreground" data-live-job-title="">
       {prefersReducedMotion ? (
@@ -165,7 +160,6 @@ const RollingStageText = ({ text }: { text: string }) => {
     </span>
   );
 };
-
 export const PipelineProgressCard = ({
   progress,
   elapsedSeconds,
@@ -176,6 +170,7 @@ export const PipelineProgressCard = ({
   resumingScoring = false,
   onResumeScoring,
 }: PipelineProgressCardProps) => {
+  const { t: uiT } = useUiTranslation();
   if (
     progress.fanout &&
     (progress.step === "crawling" || progress.step === "challenge_required")
@@ -193,7 +188,6 @@ export const PipelineProgressCard = ({
       />
     );
   }
-
   const percentage = getPercentage(progress);
   const remaining = Math.max(
     progress.totalToProcess - progress.jobsProcessed,
@@ -216,7 +210,6 @@ export const PipelineProgressCard = ({
       : progress.step === "completed"
         ? "secondary"
         : "outline";
-
   return (
     <Card className="w-full max-w-6xl overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="gap-4 p-6">
@@ -272,7 +265,10 @@ export const PipelineProgressCard = ({
           <CardContent className="flex flex-col gap-4 p-6">
             {showMetrics ? (
               <section className="grid overflow-hidden rounded-lg border divide-y sm:grid-cols-4 sm:divide-x sm:divide-y-0">
-                <Metric label="Discovered" value={progress.jobsDiscovered} />
+                <Metric
+                  label={uiT("Discovered")}
+                  value={progress.jobsDiscovered}
+                />
                 <Metric label="Scored" value={progress.jobsScored} />
                 <Metric
                   label={isScoring ? "Awaiting score" : "Prepared"}

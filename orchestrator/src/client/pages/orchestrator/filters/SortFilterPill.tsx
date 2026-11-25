@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { ArrowDownUp } from "lucide-react";
 import type React from "react";
 import {
@@ -14,7 +15,6 @@ import { FilterPill } from "./FilterPill";
 import { sortFieldOrder } from "./filterOptions";
 import { getDirectionOptions } from "./filterUtils";
 import type { SortFilterPillProps } from "./types";
-
 export const SortFilterPill: React.FC<SortFilterPillProps> = ({
   activeTab,
   sort,
@@ -22,11 +22,11 @@ export const SortFilterPill: React.FC<SortFilterPillProps> = ({
   filteredCount,
   sortDirectionLabel,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const applySortChange = (nextSort: JobSort) => {
     if (nextSort.key === sort.key && nextSort.direction === sort.direction) {
       return;
     }
-
     trackProductEvent("jobs_sort_changed", {
       sort_key: nextSort.key,
       sort_direction: nextSort.direction,
@@ -37,15 +37,12 @@ export const SortFilterPill: React.FC<SortFilterPillProps> = ({
     });
     onSortChange(nextSort);
   };
-
   return (
     <FilterPill
       icon={<ArrowDownUp />}
-      label="Sort"
+      label={uiT("Sort")}
       active={false}
-      summary={`${sortLabels[sort.key]}${
-        sortDirectionLabel ? ` · ${sortDirectionLabel}` : ""
-      }`}
+      summary={`${sortLabels[sort.key]}${sortDirectionLabel ? ` · ${sortDirectionLabel}` : ""}`}
       contentClassName="w-64"
     >
       <div className="space-y-3 text-sm text-muted-foreground">
@@ -98,7 +95,7 @@ export const SortFilterPill: React.FC<SortFilterPillProps> = ({
             <SelectContent>
               {getDirectionOptions(sort.key).map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                  {uiT(option.label)}
                 </SelectItem>
               ))}
             </SelectContent>

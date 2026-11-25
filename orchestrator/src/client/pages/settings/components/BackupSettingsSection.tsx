@@ -1,4 +1,5 @@
 import { EmptyState, ListItem, ListPanel } from "@client/components/layout";
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { BackupValues } from "@client/pages/settings/types";
@@ -24,13 +25,11 @@ type BackupSettingsSectionProps = {
   isDeletingBackup: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
-
 const formatBackupDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString("en-US", {
@@ -44,7 +43,6 @@ const formatBackupDate = (dateString: string): string => {
     timeZoneName: "short",
   });
 };
-
 export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
   values,
   backups,
@@ -57,14 +55,18 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
   isDeletingBackup,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const { backupEnabled, backupHour, backupMaxCount } = values;
   const { control, watch } = useFormContext<UpdateSettingsInput>();
 
   // Watch the current form value to conditionally show/hide fields
   const currentBackupEnabled = watch("backupEnabled") ?? backupEnabled.default;
-
   return (
-    <SettingsSectionFrame mode={layoutMode} title="Backup" value="backup">
+    <SettingsSectionFrame
+      mode={layoutMode}
+      title={uiT("Backup")}
+      value="backup"
+    >
       <div className="space-y-6">
         <div className="flex items-start space-x-3">
           <Controller
@@ -220,7 +222,7 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
                       variant={backup.type === "auto" ? "secondary" : "default"}
                       className="text-xs"
                     >
-                      {backup.type === "auto" ? "Auto" : "Manual"}
+                      {backup.type === "auto" ? "Auto" : uiT("Manual")}
                     </Badge>
                     <Button
                       variant="ghost"
@@ -242,7 +244,9 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
 
         <div className="grid gap-2 text-sm sm:grid-cols-3">
           <div>
-            <div className="text-xs text-muted-foreground">Enabled</div>
+            <div className="text-xs text-muted-foreground">
+              {uiT("Enabled")}
+            </div>
             <div className="break-words font-mono text-xs">
               Effective: {backupEnabled.effective ? "Yes" : "No"} | Default:{" "}
               {backupEnabled.default ? "Yes" : "No"}

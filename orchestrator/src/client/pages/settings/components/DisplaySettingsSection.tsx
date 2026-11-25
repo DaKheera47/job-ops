@@ -1,3 +1,4 @@
+import { useUiTranslation } from "@client/lib/i18n/language";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { DisplayValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
@@ -12,24 +13,23 @@ type DisplaySettingsSectionProps = {
   isSaving: boolean;
   layoutMode?: "accordion" | "panel";
 };
-
 export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
   values,
   isLoading,
   isSaving,
   layoutMode,
 }) => {
+  const { t: uiT } = useUiTranslation();
   const {
     showSponsorInfo,
     renderMarkdownInJobDescriptions,
     autoTailorOnManualImport,
   } = values;
   const { control } = useFormContext<UpdateSettingsInput>();
-
   return (
     <SettingsSectionFrame
       mode={layoutMode}
-      title="Display Settings"
+      title={uiT("Display Settings")}
       value="display"
     >
       <div className="space-y-4">
@@ -55,12 +55,12 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
               htmlFor="showSponsorInfo"
               className="text-sm font-medium leading-none cursor-pointer"
             >
-              Show visa sponsor information
+              {uiT("Show visa sponsor information")}
             </label>
             <p className="text-xs text-muted-foreground">
-              Display a badge next to the employer name showing the match
-              percentage with the UK visa sponsor list. This helps identify
-              employers that are licensed to sponsor work visas.
+              {uiT(
+                "Display a badge next to the employer name showing the match percentage with the UK visa sponsor list. This helps identify employers that are licensed to sponsor work visas.",
+              )}
             </p>
           </div>
         </div>
@@ -89,12 +89,12 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
               htmlFor="renderMarkdownInJobDescriptions"
               className="text-sm font-medium leading-none cursor-pointer"
             >
-              Render Markdown in job descriptions
+              {uiT("Render Markdown in job descriptions")}
             </label>
             <p className="text-xs text-muted-foreground">
-              Show headings, bold text, lists, and code blocks as formatted
-              content when you expand a full job description. Turn this off if
-              you prefer the raw source text.
+              {uiT(
+                "Show headings, bold text, lists, and code blocks as formatted content when you expand a full job description. Turn this off if you prefer the raw source text.",
+              )}
             </p>
           </div>
         </div>
@@ -123,13 +123,12 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
               htmlFor="autoTailorOnManualImport"
               className="text-sm font-medium leading-none cursor-pointer"
             >
-              Auto-tailor manually imported jobs
+              {uiT("Auto-tailor manually imported jobs")}
             </label>
             <p className="text-xs text-muted-foreground">
-              When enabled, jobs added via Manual Import are immediately scored
-              and have a tailored resume PDF generated. Turn off to save LLM
-              tokens and tailor later from the job detail view. You can override
-              this per import in the review step.
+              {uiT(
+                "When enabled, jobs added via Manual Import are immediately scored and have a tailored resume PDF generated. Turn off to save LLM tokens and tailor later from the job detail view. You can override this per import in the review step.",
+              )}
             </p>
           </div>
         </div>
@@ -139,52 +138,58 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">
-              Sponsor info effective
+              {uiT("Sponsor info effective")}
             </div>
             <div className="break-words font-mono text-xs">
-              {showSponsorInfo.effective ? "Enabled" : "Disabled"}
+              {showSponsorInfo.effective ? uiT("Enabled") : uiT("Disabled")}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">
-              Sponsor info default
+              {uiT("Sponsor info default")}
             </div>
             <div className="break-words font-mono text-xs font-semibold">
-              {showSponsorInfo.default ? "Enabled" : "Disabled"}
+              {showSponsorInfo.default ? uiT("Enabled") : uiT("Disabled")}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">
-              Markdown rendering effective
+              {uiT("Markdown rendering effective")}
             </div>
             <div className="break-words font-mono text-xs">
               {renderMarkdownInJobDescriptions.effective
-                ? "Enabled"
-                : "Disabled"}
+                ? uiT("Enabled")
+                : uiT("Disabled")}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">
-              Markdown rendering default
+              {uiT("Markdown rendering default")}
             </div>
             <div className="break-words font-mono text-xs font-semibold">
-              {renderMarkdownInJobDescriptions.default ? "Enabled" : "Disabled"}
+              {renderMarkdownInJobDescriptions.default
+                ? uiT("Enabled")
+                : uiT("Disabled")}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">
-              Auto-tailor on import effective
+              {uiT("Auto-tailor on import effective")}
             </div>
             <div className="break-words font-mono text-xs">
-              {autoTailorOnManualImport.effective ? "Enabled" : "Disabled"}
+              {autoTailorOnManualImport.effective
+                ? uiT("Enabled")
+                : uiT("Disabled")}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">
-              Auto-tailor on import default
+              {uiT("Auto-tailor on import default")}
             </div>
             <div className="break-words font-mono text-xs font-semibold">
-              {autoTailorOnManualImport.default ? "Enabled" : "Disabled"}
+              {autoTailorOnManualImport.default
+                ? uiT("Enabled")
+                : uiT("Disabled")}
             </div>
           </div>
         </div>
