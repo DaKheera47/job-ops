@@ -11,6 +11,12 @@ const pdfMocks = vi.hoisted(() => ({
   generatePdf: vi.fn(),
 }));
 
+const fetchPage = vi.hoisted(() => vi.fn<typeof import("undici").fetch>());
+vi.mock("undici", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("undici")>()),
+  fetch: fetchPage,
+}));
+
 vi.mock("@server/services/pdf", async () => {
   const actual = await vi.importActual<typeof import("@server/services/pdf")>(
     "@server/services/pdf",
@@ -92,6 +98,38 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.ok).toBe(true);
       expect(body.meta?.simulated).toBe(true);
       expect(body.data.message).toContain("simulated");
+    } finally {
+      await stopServer({ server, closeDb, tempDir });
+    }
+  });
+
+  it("enforces the public destination policy for anonymous manual URL imports", async () => {
+    const { server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        DEMO_MODE: "true",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+      },
+    });
+    try {
+      const response = await fetch(`${baseUrl}/api/manual-jobs/fetch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": "demo-manual-fetch-test",
+        },
+        body: JSON.stringify({ url: "http://[::1]/role" }),
+      });
+
+      expect(response.status).toBe(422);
+      expect(fetchPage).not.toHaveBeenCalled();
+      expect(response.headers.get("x-request-id")).toBe(
+        "demo-manual-fetch-test",
+      );
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: "UNPROCESSABLE_ENTITY" },
+        meta: { requestId: "demo-manual-fetch-test" },
+      });
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }
