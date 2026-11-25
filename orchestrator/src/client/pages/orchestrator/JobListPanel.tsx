@@ -16,6 +16,7 @@ import {
   emptyStateCopy,
   statusTokens,
 } from "./constants";
+import { ExportJobsCsvMenu } from "./ExportJobsCsvMenu";
 import { JobRowContent } from "./JobRowContent";
 
 interface EmptyStateAction {
@@ -125,7 +126,7 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
     return (
       <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
         <div className="divide-y divide-border/40">
-          <div className="flex items-center justify-between gap-3 px-4 py-2 opacity-100 transition-opacity sm:opacity-50 sm:hover:opacity-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 opacity-100 transition-opacity sm:opacity-50 sm:hover:opacity-100">
             <label
               htmlFor="job-list-select-all"
               className="flex items-center gap-2 text-xs text-muted-foreground"
@@ -146,9 +147,16 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
               />
               Select all filtered
             </label>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {selectedJobIds.size} selected
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {selectedJobIds.size} selected
+              </span>
+              <ExportJobsCsvMenu
+                jobs={activeJobs}
+                selectedJobIds={selectedJobIds}
+                disabled={isLoading}
+              />
+            </div>
           </div>
           <div
             ref={listRef}
