@@ -67,6 +67,10 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("API_ROUTE_API_KEY"));
   }
 
+  if (provider === "martllm") {
+    return toStringOrNull(getOriginalEnvValue("MARTLLM_API_KEY"));
+  }
+
   if (
     provider === "orcarouter" &&
     toStringOrNull(getOriginalEnvValue("ORCAROUTER_API_KEY"))

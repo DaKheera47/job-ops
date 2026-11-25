@@ -27,6 +27,7 @@ export const LLM_PROVIDERS = [
   "orcarouter",
   "requesty",
   "api_route",
+  "martllm",
   "lmstudio",
   "ollama",
   "openai",
@@ -52,6 +53,7 @@ export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "ollama",
   "requesty",
   "api_route",
+  "martllm",
   "orcarouter",
 ] as const;
 
@@ -62,6 +64,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   orcarouter: "OrcaRouter",
   requesty: "Requesty",
   api_route: "API Route",
+  martllm: "MartLLM",
   lmstudio: "LM Studio",
   ollama: "Ollama",
   openai: "OpenAI",
@@ -80,6 +83,7 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "orcarouter",
   "requesty",
   "api_route",
+  "martllm",
   "openai",
   "anthropic",
   "openai_compatible",
@@ -113,6 +117,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
     "Requesty uses your API key and routes requests across providers through an OpenAI-compatible endpoint.",
   api_route:
     "API Route uses your API key with an OpenAI-compatible endpoint. Select an exact model ID available to your key.",
+  martllm:
+    "MartLLM uses your API key with an OpenAI-compatible endpoint. Model IDs use the vendor/model form, such as deepseek/deepseek-v4.1-flash.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
   ollama:
     "Ollama typically runs locally. Add an API key only for Ollama-compatible endpoints protected by bearer auth.",
@@ -158,6 +164,10 @@ const PROVIDER_KEY_HELPERS: Record<
   api_route: {
     text: "Create a key at api-route.com/api-keys",
     href: "https://www.api-route.com/api-keys",
+  },
+  martllm: {
+    text: "Create a key at martllm.com/signup",
+    href: "https://martllm.com/signup",
   },
   lmstudio: { text: "No API key required for LM Studio" },
   ollama: {

@@ -12,6 +12,14 @@ describe("settingsRegistry helpers", () => {
       "claude-haiku-4-5",
     );
   });
+  it("gives MartLLM the shared vendor/model default", () => {
+    expect(getDefaultModelForProvider("martllm")).toBe(
+      "google/gemini-3-flash-preview",
+    );
+    expect(
+      getDefaultModelForProvider("martllm", "deepseek/deepseek-v4.1-flash"),
+    ).toBe("deepseek/deepseek-v4.1-flash");
+  });
   describe("searchCities defaults", () => {
     it("defaults to empty when no location env is configured", () => {
       const previousSearchCities = process.env.SEARCH_CITIES;
