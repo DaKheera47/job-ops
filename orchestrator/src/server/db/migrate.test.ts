@@ -59,6 +59,66 @@ describe.sequential("database migrations", () => {
     );
   });
 
+  it("preserves pipeline run details and owner across reboots", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const migrationUrl = pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href;
+      await import(\`\${migrationUrl}?run=initial\`);
+
+      const sqlite = new Database(dbPath);
+      sqlite.prepare("INSERT INTO users(id, username) VALUES (?, ?)").run("user-member", "member");
+      sqlite.prepare(\`INSERT INTO pipeline_runs(
+        id, tenant_id, status, config_snapshot, requested_config, effective_config, result_summary, user_id
+      ) VALUES (?, 'tenant_default', 'cancelled', ?, ?, ?, ?, ?)\`).run(
+        "run-1",
+        '{"snapshot":true}',
+        '{"sources":["hiringcafe"]}',
+        '{"country":"philippines"}',
+        '{"stage":"discovery"}',
+        "user-member",
+      );
+      sqlite.close();
+
+      await import(\`\${migrationUrl}?run=reboot\`);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+      const row = migratedDb.prepare(
+        "SELECT status, config_snapshot, requested_config, effective_config, result_summary, user_id FROM pipeline_runs WHERE id = ?",
+      ).get("run-1");
+      const expected = {
+        status: "cancelled",
+        config_snapshot: '{"snapshot":true}',
+        requested_config: '{"sources":["hiringcafe"]}',
+        effective_config: '{"country":"philippines"}',
+        result_summary: '{"stage":"discovery"}',
+        user_id: "user-member",
+      };
+      for (const [column, value] of Object.entries(expected)) {
+        if (row?.[column] !== value) {
+          throw new Error(\`pipeline_runs.\${column} was \${row?.[column]} after reboot, expected \${value}\`);
+        }
+      }
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
   it("creates tenant foreign keys for tenant-scoped core tables", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
     const script = `
