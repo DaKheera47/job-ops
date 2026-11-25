@@ -1,6 +1,13 @@
 import type { Server } from "node:http";
+import { Response } from "undici";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
+
+const fetchPage = vi.hoisted(() => vi.fn<typeof import("undici").fetch>());
+vi.mock("undici", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("undici")>()),
+  fetch: fetchPage,
+}));
 
 describe.sequential("Manual jobs API routes", () => {
   let server: Server;
@@ -50,6 +57,24 @@ describe.sequential("Manual jobs API routes", () => {
       expect(body.error.message).toContain(
         "Auto-fetch is not supported for LinkedIn links",
       );
+    });
+
+    it("extracts HTML for a public URL", async () => {
+      const url = "https://jobs.example/role";
+      fetchPage.mockResolvedValueOnce(
+        new Response("<title>Engineer</title><main>Work with us</main>"),
+      );
+      const res = await fetch(`${baseUrl}/api/manual-jobs/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({
+        ok: true,
+        data: { url, content: "Page Title: Engineer\n\n---\n\nWork with us" },
+      });
     });
   });
 

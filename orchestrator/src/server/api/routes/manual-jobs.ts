@@ -1,21 +1,16 @@
-import {
-  AppError,
-  conflict,
-  notFound,
-  requestTimeout,
-  toAppError,
-} from "@infra/errors";
+import { AppError, conflict, notFound, toAppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { processJob } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import { getSetting } from "@server/repositories/settings";
 import { inferManualJobDetails } from "@server/services/manualJob";
+import { fetchManualJobPage } from "@server/services/manualJobPage";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { settingsRegistry } from "@shared/settings-registry";
 import { type Request, type Response, Router } from "express";
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
 import { z } from "zod";
 
 export const manualJobsRouter = Router();
@@ -108,16 +103,6 @@ function getBlockedAutofetchLabel(url: string): string | null {
   return blocked?.label ?? null;
 }
 
-function buildFetchFailureMessage(status: number): string {
-  if (status === 401 || status === 403 || status === 429) {
-    return "This site blocks automated fetch requests. Paste the job description manually.";
-  }
-  if (status === 404) {
-    return "We couldn't find that page. Check the URL or paste the job description manually.";
-  }
-  return "Couldn't fetch this URL automatically. Paste the job description manually.";
-}
-
 /**
  * POST /api/manual-jobs/fetch - Fetch and extract job content from a URL
  */
@@ -139,30 +124,8 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
       );
     }
 
-    const response = await fetch(input.url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-
-    if (!response.ok) {
-      return fail(
-        res,
-        new AppError({
-          status: 502,
-          code: "UPSTREAM_ERROR",
-          message: buildFetchFailureMessage(response.status),
-          details: { upstreamStatus: response.status },
-        }),
-      );
-    }
-
-    const html = await response.text();
-    const dom = new JSDOM(html);
+    const html = await fetchManualJobPage(input.url, controller.signal);
+    const dom = new JSDOM(html, { virtualConsole: new VirtualConsole() });
     const document = dom.window.document;
 
     // Extract page title (often contains job title)
@@ -244,12 +207,6 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
       url: input.url,
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return fail(res, toAppError(error));
-    }
-    if (error instanceof Error && error.name === "AbortError") {
-      return fail(res, requestTimeout());
-    }
     fail(res, toAppError(error));
   } finally {
     clearTimeout(timeout);

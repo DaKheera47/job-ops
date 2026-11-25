@@ -31,7 +31,9 @@ For a URL list, JobOps fetches and analyzes each page one at a time, then shows
 the successful results and any failed URLs for review before importing. The
 existing single-job flow is unchanged.
 
-When a URL is provided, backend fetch attempts depend on whether the page can be resolved with `curl`. Some job sites block or heavily script content, so certain links will not resolve cleanly.
+JobOps can fetch public HTTP and HTTPS pages. Redirects must also lead to public pages. Each fetch has up to 15 seconds, five redirects, and 2 MiB of page content.
+
+Automatic URL fetching is unavailable when Node's environment proxy mode is enabled (`NODE_USE_ENV_PROXY=1` or `--use-env-proxy`). This applies to all URLs, including `NO_PROXY` entries. Use **Single job** and paste the description in this mode.
 
 If you enter a URL and paste the description manually, the URL you entered is preserved through AI inference and takes precedence over any inferred URL.
 
@@ -105,7 +107,7 @@ On import with tailoring skipped (`skipTailoring: true` or workspace setting off
 
 ## Common problems
 
-- If a job link cannot be fetched, paste the description instead.
+- If a job link is on a private network, requires sign-in, or blocks automated access, paste the description manually.
 - If PDF extraction fails or misses scanned text, use a text-based PDF or paste the description.
 - Review inferred fields before adding the job; a valid job URL is required in the review step.
 
