@@ -129,11 +129,47 @@ function formatValidationMessage(prefix: string, error: unknown): string {
   return `${prefix} ${detail}`;
 }
 
+function syncBasicsWebsiteLabel(
+  document: DesignResumeJson,
+  options?: { preserveExplicitLabel?: boolean },
+): DesignResumeJson {
+  if (options?.preserveExplicitLabel) {
+    return document;
+  }
+
+  const basics = asRecord(document.basics);
+  const website = asRecord(basics?.website);
+  if (!basics || !website) {
+    return document;
+  }
+
+  const url = toText(website.url);
+  const label = toText(website.label);
+  if (label === url) {
+    return document;
+  }
+
+  return {
+    ...document,
+    basics: {
+      ...basics,
+      website: {
+        ...website,
+        label: url,
+      },
+    } as DesignResumeJson["basics"],
+  };
+}
+
 function validateIncomingDesignResumeDocument(
   input: unknown,
+  options?: { preserveExplicitLabel?: boolean },
 ): DesignResumeJson {
   try {
-    return parseV5ResumeData(input) as DesignResumeJson;
+    return syncBasicsWebsiteLabel(
+      parseV5ResumeData(input) as DesignResumeJson,
+      options,
+    );
   } catch (error) {
     throw badRequest(formatValidationMessage(INVALID_V5_PREFIX, error));
   }
@@ -142,7 +178,7 @@ function validateIncomingDesignResumeDocument(
 function validateStoredDesignResumeDocument(input: unknown): DesignResumeJson {
   const parsed = safeParseV5ResumeData(input);
   if (parsed.success) {
-    return parsed.data as DesignResumeJson;
+    return syncBasicsWebsiteLabel(parsed.data as DesignResumeJson);
   }
   throw badRequest(LEGACY_REIMPORT_MESSAGE);
 }
@@ -658,10 +694,25 @@ function applyPatchOperation(
   }
 }
 
+function hasExplicitBasicsWebsiteLabelPatch(
+  operations?: JsonPatchOperation[],
+): boolean {
+  return Boolean(
+    operations?.some(
+      (operation) =>
+        operation.path === "/basics/website/label" ||
+        operation.from === "/basics/website/label",
+    ),
+  );
+}
+
 function validatePatchedDocument(
   document: Record<string, unknown>,
+  operations?: JsonPatchOperation[],
 ): DesignResumeJson {
-  return validateIncomingDesignResumeDocument(document);
+  return validateIncomingDesignResumeDocument(document, {
+    preserveExplicitLabel: hasExplicitBasicsWebsiteLabelPatch(operations),
+  });
 }
 
 function isMissingDesignResumeTableError(error: unknown): boolean {
@@ -714,10 +765,11 @@ export async function replaceCurrentDesignResumeDocument(input: {
 }): Promise<DesignResumeDocument> {
   const existingDocument = await getCurrentDesignResumeOrNullOnLegacy();
   const importedAt = input.importedAt ?? new Date().toISOString();
+  const resumeJson = syncBasicsWebsiteLabel(input.resumeJson);
   const saved = await designResumeRepo.upsertDesignResumeDocument({
     id: existingDocument?.id ?? buildTenantScopedDesignResumeDocumentId(),
-    title: buildDocumentTitle(input.resumeJson),
-    resumeJson: input.resumeJson,
+    title: buildDocumentTitle(resumeJson),
+    resumeJson,
     revision: 1,
     sourceResumeId: input.sourceResumeId,
     sourceMode: input.sourceMode,
@@ -883,7 +935,10 @@ export async function updateCurrentDesignResume(
     for (const operation of input.operations) {
       nextDocumentRecord = applyPatchOperation(nextDocumentRecord, operation);
     }
-    nextDocument = validatePatchedDocument(nextDocumentRecord);
+    nextDocument = validatePatchedDocument(
+      nextDocumentRecord,
+      input.operations,
+    );
   } else {
     throw badRequest(
       "Resume Studio update requires a document or patch operations.",
