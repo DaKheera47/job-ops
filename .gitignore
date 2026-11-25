@@ -32,3 +32,7 @@ tmp/
 
 # Runtime storage artifacts
 orchestrator/storage
+
+# Claude Code files meant for one person's machine
+.claude/settings.local.json
+CLAUDE.local.md
