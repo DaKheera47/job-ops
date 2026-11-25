@@ -460,6 +460,8 @@ export interface WatchlistJobResult {
   applicationLink: string | null;
   location: string | null;
   postedAt: string | null;
+  locationEvidence?: JobLocationEvidence;
+  isRemote?: boolean;
   rowState: WatchlistRowState;
   isNewSinceLastCheck: boolean;
   workspaceJob: WatchlistWorkspaceJobReference | null;

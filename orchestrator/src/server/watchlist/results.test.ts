@@ -50,6 +50,17 @@ const bamboohrSource: WatchlistSelectedSource = {
 };
 
 describe("watchlist results service", () => {
+  it("does not create or advance check history when every source fails", async () => {
+    vi.mocked(getWatchlistSourceAdapter).mockReturnValue({
+      fetchJobs: vi.fn().mockRejectedValue(new Error("HTTP 503")),
+    } as any);
+    const result = await getWatchlistResultsForSources([
+      { ...workdaySource, sourceType: "ashby" },
+    ]);
+    expect(result.checkedAt).toBeNull();
+    expect(result.sources[0]?.status).toBe("error");
+    expect(watchlistRepo.recordWatchlistCheck).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(watchlistRepo.recordWatchlistCheck).mockResolvedValue({

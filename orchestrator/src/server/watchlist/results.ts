@@ -66,6 +66,14 @@ export async function getWatchlistResultsForSources(
   );
   const checksBySource = new Map<string, Set<string>>();
 
+  if (successfulSources.length === 0) {
+    return {
+      checkedAt: null,
+      previousLastCheckedAt: null,
+      sources: fetchedSources,
+    };
+  }
+
   for (const item of successfulSources) {
     for (const job of item.jobs) {
       const sourceJobIds = checksBySource.get(job.source) ?? new Set<string>();

@@ -1,0 +1,12 @@
+[
+  { "label": "Ashby", "ashbyUrl": "https://jobs.ashbyhq.com/ashby" },
+  { "label": "Cursor", "ashbyUrl": "https://cursor.com/careers" },
+  { "label": "ElevenLabs", "ashbyUrl": "https://jobs.ashbyhq.com/elevenlabs" },
+  { "label": "Linear", "ashbyUrl": "https://jobs.ashbyhq.com/linear" },
+  { "label": "Lovable", "ashbyUrl": "https://jobs.ashbyhq.com/lovable" },
+  { "label": "Notion", "ashbyUrl": "https://jobs.ashbyhq.com/notion" },
+  { "label": "OpenAI", "ashbyUrl": "https://jobs.ashbyhq.com/openai" },
+  { "label": "Ramp", "ashbyUrl": "https://jobs.ashbyhq.com/ramp" },
+  { "label": "Supabase", "ashbyUrl": "https://jobs.ashbyhq.com/supabase" },
+  { "label": "Vanta", "ashbyUrl": "https://jobs.ashbyhq.com/vanta" }
+]

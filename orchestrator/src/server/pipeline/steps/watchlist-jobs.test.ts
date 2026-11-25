@@ -69,6 +69,45 @@ function watchlistJob(overrides: Partial<WatchlistJobResult>) {
 }
 
 describe("discoverWatchlistJobsForPipeline", () => {
+  it("preserves Ashby hybrid evidence when passing jobs into pipeline discovery", async () => {
+    const ashby = {
+      ...workdaySource,
+      sourceType: "ashby",
+      careersUrl: "https://jobs.ashbyhq.com/linear",
+    };
+    const locationEvidence = {
+      workplaceType: "hybrid" as const,
+      rawLocation: "London; Dublin",
+      source: "ashby",
+    };
+    vi.mocked(getWatchlistResultsForSources).mockResolvedValue({
+      checkedAt: "2026-10-30",
+      previousLastCheckedAt: null,
+      sources: [
+        {
+          status: "success",
+          source: ashby,
+          jobs: [
+            watchlistJob({
+              sourceType: "ashby",
+              isRemote: false,
+              locationEvidence,
+            }),
+          ],
+          total: 1,
+          fetched: 1,
+        },
+      ],
+    });
+    const result = await runWithRequestContext(
+      { tenantId: "tenant-a", userId: "alice" },
+      () => discoverWatchlistJobsForPipeline({ selectedSources: [ashby] }),
+    );
+    expect(result.discoveredJobs[0]).toMatchObject({
+      isRemote: false,
+      locationEvidence,
+    });
+  });
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(listHydratedWatchlistSelectedSources).mockResolvedValue([]);
