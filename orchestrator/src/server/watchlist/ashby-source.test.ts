@@ -10,6 +10,21 @@ const read = vi.mocked(readPublicAshbyUrl);
 const id = "d3bc1ced-3ce4-4086-a050-555055dbb1ff";
 describe("Ashby company page discovery", () => {
   beforeEach(() => vi.resetAllMocks());
+
+  it("recognizes a verified alias after a redirect even without a board link", async () => {
+    read.mockResolvedValue({
+      text: "<h1>Careers at Ashby</h1>",
+      url: "https://www.ashbyhq.com/careers",
+    });
+    await expect(
+      resolveAshbySource("https://ashbyhq.com/careers"),
+    ).resolves.toEqual({
+      board: "ashby",
+      careersUrl: "https://jobs.ashbyhq.com/ashby",
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     '<a href="https://jobs.ashbyhq.com/acme">Jobs</a>',
     '<iframe src="https://jobs.ashbyhq.com/acme"></iframe>',

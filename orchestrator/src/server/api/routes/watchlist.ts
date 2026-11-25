@@ -279,9 +279,15 @@ watchlistRouter.put(
       );
     }
 
-    const catalogSources = await listCareerBoardSources();
+    const [catalogSources, savedSources] = await Promise.all([
+      listCareerBoardSources(),
+      watchlistRepo.listWatchlistSelectedSources(),
+    ]);
     const catalogSourcesById = new Map(
       catalogSources.map((source) => [source.id, source]),
+    );
+    const savedSourcesByUrl = new Map(
+      savedSources.map((source) => [source.careersUrl, source]),
     );
     const normalizedSelections = [];
     const seenUrls = new Set<string>();
@@ -350,6 +356,24 @@ watchlistRouter.put(
             },
           ),
         );
+      }
+
+      const savedSource = savedSourcesByUrl.get(normalizedUrl);
+      if (
+        selection.sourceType === "ashby" &&
+        savedSource?.sourceType === selection.sourceType &&
+        savedSource.isCustom
+      ) {
+        normalizedSelections.push({
+          catalogSourceId: null,
+          sourceType: savedSource.sourceType,
+          label:
+            selection.label && selection.label !== normalizedUrl
+              ? selection.label
+              : savedSource.label,
+          careersUrl: savedSource.careersUrl,
+        });
+        continue;
       }
 
       try {

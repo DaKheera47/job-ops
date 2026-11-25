@@ -99,7 +99,9 @@ When you add a custom source URL, JobOps asks that source adapter to derive a re
 
 JobOps uses Ashby's public posting API without credentials. It reads all listed jobs, including their descriptions, primary and secondary locations, and available salary summaries. Hybrid roles stay distinct from fully remote roles. A board is fetched once and reused for up to 60 seconds for the same user and workspace when preparing descriptions and import drafts.
 
-For company URLs, JobOps uses verified catalog aliases or looks for an explicit Ashby board reference in the public page and at most two linked job pages on the same site. It does not execute page scripts, guess a board from the company name, or crawl the whole website. If the page references several boards, paste the exact Ashby board URL you want to watch.
+For company URLs, JobOps recognizes verified catalog aliases, including when a public page redirects to one. Otherwise, it looks for an explicit Ashby board reference in the public page and at most two linked job pages on the same site. It does not execute page scripts, guess a board from the company name, or crawl the whole website. If the page references several boards, paste the exact Ashby board URL you want to watch.
+
+JobOps checks a custom Ashby feed when you add its URL or change it. You can save other changes to your sources while an existing Ashby feed is unavailable.
 
 The built-in Ashby catalog includes Ashby, Cursor, ElevenLabs, Linear, Lovable, Notion, OpenAI, Ramp, Supabase, and Vanta. Cursor uses its own application pages; JobOps matches its public posting IDs to actual company job links instead of using unavailable Ashby-hosted links. If that mapping cannot be verified, the source shows an error.
 

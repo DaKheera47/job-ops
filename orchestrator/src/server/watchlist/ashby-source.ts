@@ -58,6 +58,11 @@ export async function resolveAshbySource(
     accept: "text/html,application/xhtml+xml",
   };
   const first = await readPublicAshbyUrl(page.href, options);
+  try {
+    return parseAshbyUrl(first.url);
+  } catch {
+    /* The final page may still contain an explicit board reference. */
+  }
   let boards = boardsInHtml(first.text);
   if (!boards.length) {
     const origin = new URL(first.url).origin;

@@ -160,6 +160,74 @@ describe.sequential("Watchlist API routes", () => {
       expect(body.data.selectedSources).toEqual([]);
     });
 
+    it("reuses an unchanged custom Ashby source and validates an edited URL", async () => {
+      const { ashbyWatchlistAdapter } = await import(
+        "@server/watchlist/adapters/ashby"
+      );
+      const ashby = {
+        sourceType: "ashby",
+        careersUrl: "https://jobs.ashbyhq.com/linear",
+      };
+      const normalize = vi
+        .spyOn(ashbyWatchlistAdapter, "normalizeCustomSelection")
+        .mockResolvedValue({
+          careersUrl: ashby.careersUrl,
+          label: "My Linear",
+        });
+      const save = (selections: Array<typeof ashby & { label?: string }>) =>
+        nativeFetch(`${baseUrl}/api/watchlist/sources`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selections }),
+        });
+
+      expect((await save([{ ...ashby, label: "My Linear" }])).status).toBe(200);
+      expect(normalize).toHaveBeenCalledOnce();
+      normalize.mockClear().mockRejectedValue(new Error("Feed unavailable"));
+
+      const workday = {
+        sourceType: "workday",
+        careersUrl: "https://example.wd1.myworkdayjobs.com/External",
+      };
+      const saved = await save([
+        workday,
+        { ...ashby, label: ashby.careersUrl },
+      ]);
+      expect(saved.status).toBe(200);
+      expect(normalize).not.toHaveBeenCalled();
+      const expectedSources = [
+        expect.objectContaining({ ...workday, sortOrder: 0 }),
+        expect.objectContaining({ ...ashby, label: "My Linear", sortOrder: 1 }),
+      ];
+      expect((await saved.json()).data.selectedSources).toEqual(
+        expectedSources,
+      );
+
+      const editedUrl = "https://jobs.ashbyhq.com/notion";
+      const edited = await save([{ ...ashby, careersUrl: editedUrl }, workday]);
+      expect(edited.status).toBe(422);
+      expect(normalize).toHaveBeenCalledExactlyOnceWith({
+        label: undefined,
+        careersUrl: editedUrl,
+      });
+
+      normalize.mockClear().mockResolvedValue({
+        careersUrl: ashby.careersUrl,
+        label: "Linear",
+      });
+      const alias = "https://linear.app/careers";
+      const duplicate = await save([ashby, { ...ashby, careersUrl: alias }]);
+      expect(duplicate.status).toBe(422);
+      expect(normalize).toHaveBeenCalledExactlyOnceWith({
+        label: undefined,
+        careersUrl: alias,
+      });
+      const current = await nativeFetch(`${baseUrl}/api/watchlist/sources`);
+      expect((await current.json()).data.selectedSources).toEqual(
+        expectedSources,
+      );
+    });
+
     it("stores only the user's selected watchlist sources", async () => {
       const firstRes = await fetch(`${baseUrl}/api/watchlist/sources`, {
         method: "PUT",
@@ -493,6 +561,54 @@ describe.sequential("Watchlist API routes", () => {
       ({ server, baseUrl, closeDb, tempDir } = await startServer({
         env: AUTH_ENV,
       }));
+    });
+
+    it("does not reuse custom Ashby selections from another user or tenant", async () => {
+      const { db, schema } = await import("@server/db");
+      const { ashbyWatchlistAdapter } = await import(
+        "@server/watchlist/adapters/ashby"
+      );
+      const token = await login(baseUrl, "admin", "secret");
+      const headers = authHeaders(token);
+      const currentUser = await nativeFetch(`${baseUrl}/api/auth/me`, {
+        headers,
+      });
+      expect(currentUser.status).toBe(200);
+      const { id: userId, workspaceId } = (await currentUser.json()).data.user;
+      const tenantId = "tenant-alt";
+      await db.insert(schema.tenants).values({
+        id: tenantId,
+        slug: tenantId,
+        name: "Other workspace",
+      });
+      const ashby = {
+        sourceType: "ashby",
+        careersUrl: "https://jobs.ashbyhq.com/linear",
+      };
+      const savedSource = { ...ashby, isCustom: true, label: "Other Linear" };
+      await db.insert(schema.watchlistSelectedSources).values([
+        {
+          ...savedSource,
+          id: "same-tenant",
+          tenantId: workspaceId,
+          userId: "another-user",
+        },
+        { ...savedSource, id: "same-user", tenantId, userId },
+      ]);
+      const normalize = vi
+        .spyOn(ashbyWatchlistAdapter, "normalizeCustomSelection")
+        .mockRejectedValue(new Error("Feed unavailable"));
+
+      const res = await nativeFetch(`${baseUrl}/api/watchlist/sources`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ selections: [ashby] }),
+      });
+      expect(res.status).toBe(422);
+      expect(normalize).toHaveBeenCalledExactlyOnceWith({
+        label: undefined,
+        careersUrl: ashby.careersUrl,
+      });
     });
 
     it("returns only the active user's state rows within the same tenant", async () => {
