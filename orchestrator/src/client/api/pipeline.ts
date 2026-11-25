@@ -101,6 +101,16 @@ export async function resumePipelineScoring(): Promise<{ resolved: boolean }> {
   });
 }
 
+export async function scoreUnscoredJobs(): Promise<{
+  started: boolean;
+  count: number;
+}> {
+  return fetchApi<{ started: boolean; count: number }>(
+    "/pipeline/score-unscored",
+    { method: "POST" },
+  );
+}
+
 export async function getPipelineRunInsights(
   id: string,
 ): Promise<PipelineRunInsights> {

@@ -12,7 +12,8 @@ import type { Job } from "@shared/types";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 
-const SCORING_CONCURRENCY = 4;
+const SCORING_CONCURRENCY =
+  Number.parseInt(process.env.JOBOPS_SCORING_CONCURRENCY ?? "", 10) || 4;
 
 /**
  * A lone job failing transiently should not stop the run, but when this many

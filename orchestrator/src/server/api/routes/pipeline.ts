@@ -28,6 +28,8 @@ import {
   skipPipelineChallengeSearch,
   subscribeToProgress,
 } from "@server/pipeline/index";
+import { scoreJobsStep } from "@server/pipeline/steps/score-jobs";
+import * as jobsRepo from "@server/repositories/jobs";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import * as pipelineSearchPresetsRepo from "@server/repositories/pipeline-search-presets";
 import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
@@ -47,6 +49,7 @@ import {
 import { reserveHostedUsage } from "@server/services/hosted-usage";
 import { planPipelineSearch } from "@server/services/pipeline-search-plan";
 import { ensurePipelineSearchTerms } from "@server/services/pipeline-search-terms";
+import { getProfile } from "@server/services/profile";
 import {
   resolveCountryAtPoint,
   resolveNearbyPlaceNames,
@@ -682,6 +685,50 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     if (error instanceof AppError) {
       return fail(res, error);
     }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+let isScoringUnscored = false;
+
+/**
+ * POST /api/pipeline/score-unscored - Score discovered jobs that have no score
+ * yet, without running a search. Scoring continues in the background.
+ */
+pipelineRouter.post("/score-unscored", async (_req: Request, res: Response) => {
+  try {
+    if (getPipelineStatus().isRunning || isScoringUnscored) {
+      return fail(
+        res,
+        conflict("A pipeline run or scoring is already in progress"),
+      );
+    }
+    const unscored = await jobsRepo.getUnscoredDiscoveredJobs();
+    if (unscored.length === 0) {
+      return ok(res, { started: false, count: 0 });
+    }
+    isScoringUnscored = true;
+    void (async () => {
+      try {
+        await scoreJobsStep({ profile: await getProfile() });
+      } catch (error) {
+        logger.warn("Scoring unscored jobs failed", {
+          route: "/api/pipeline/score-unscored",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        isScoringUnscored = false;
+      }
+    })();
+    ok(res, { started: true, count: unscored.length });
+  } catch (error) {
     fail(
       res,
       new AppError({

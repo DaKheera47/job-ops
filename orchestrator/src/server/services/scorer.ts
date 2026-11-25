@@ -183,6 +183,32 @@ Respond with ONLY valid JSON in this exact shape:
 }
 No markdown, code fences, or text outside the JSON.`.trim();
 
+// Opt-in lite mode (JOBOPS_SCORING_MODE=lite): only a rough score and a
+// one-sentence reason. Skips the job brief and fact-review output, which
+// dominates output tokens and latency. Default is the full behaviour.
+const SCORING_SCHEMA_LITE: JsonSchemaDefinition = {
+  name: "job_suitability_lite",
+  schema: {
+    type: "object",
+    properties: {
+      score: { type: "integer", minimum: 0, maximum: 100 },
+      reason: { type: "string" },
+    },
+    required: ["score", "reason"],
+    additionalProperties: false,
+  },
+};
+
+const SCORING_OUTPUT_INSTRUCTIONS_LITE = `
+Score how well the candidate fits this listing, following the scoring instructions. Be quick and rough; do not summarise the job or review its facts.
+
+Respond with ONLY valid JSON in this exact shape:
+{"score": <integer 0-100>, "reason": "<one short sentence>"}
+No markdown, code fences, or text outside the JSON.`.trim();
+
+const isLiteScoring = () =>
+  (process.env.JOBOPS_SCORING_MODE ?? "").trim().toLowerCase() === "lite";
+
 const NON_SOURCE_JOB_FIELDS = new Set<keyof Job>([
   "id",
   "locationMatch",
@@ -304,7 +330,7 @@ export async function scoreJobSuitability(
   }>({
     model,
     messages: [{ role: "user", content: prompt }],
-    jsonSchema: SCORING_SCHEMA,
+    jsonSchema: isLiteScoring() ? SCORING_SCHEMA_LITE : SCORING_SCHEMA,
     maxRetries: 2,
     jobId: job.id,
   });
@@ -508,7 +534,7 @@ function buildScoringPrompt(
     scoringInstructionsText: preferences.instructions
       ? preferences.instructions
       : "No additional custom scoring instructions.",
-  })}\n\nJOB DATA (JSON):\n${jobJson}\n\n${SCORING_OUTPUT_INSTRUCTIONS}`;
+  })}\n\nJOB DATA (JSON):\n${jobJson}\n\n${isLiteScoring() ? SCORING_OUTPUT_INSTRUCTIONS_LITE : SCORING_OUTPUT_INSTRUCTIONS}`;
 }
 
 function sanitizeProfileForPrompt(
