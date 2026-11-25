@@ -1,14 +1,23 @@
 import { logger } from "@infra/logger";
 
 export function stripMarkdownCodeFences(content: string): string {
+  // Remove only an enclosing Markdown fence, never backticks inside JSON values.
   return content
-    .replace(/```(?:json|JSON)?\s*/g, "")
-    .replace(/```/g, "")
+    .trim()
+    .replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1")
     .trim();
 }
 
 export function parseJsonContent<T>(content: string, jobId?: string): T {
   let candidate = stripMarkdownCodeFences(content);
+
+  // Prefer the complete value. Cropping to braces first corrupts valid arrays
+  // and JSON strings, even when the provider already returned valid JSON.
+  try {
+    return JSON.parse(candidate) as T;
+  } catch {
+    // Some providers surround an object with prose; retain that fallback.
+  }
 
   const firstBrace = candidate.indexOf("{");
   const lastBrace = candidate.lastIndexOf("}");
