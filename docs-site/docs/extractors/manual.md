@@ -33,6 +33,8 @@ existing single-job flow is unchanged.
 
 JobOps can fetch public HTTP and HTTPS pages. Redirects must also lead to public pages. Each fetch has up to 15 seconds, five redirects, and 2 MiB of page content.
 
+Automatic URL fetching is unavailable when Node's environment proxy mode is enabled (`NODE_USE_ENV_PROXY=1` or `--use-env-proxy`). This applies to all URLs, including `NO_PROXY` entries. Use **Single job** and paste the description in this mode.
+
 If you enter a URL and paste the description manually, the URL you entered is preserved through AI inference and takes precedence over any inferred URL.
 
 #### Import a PDF job description

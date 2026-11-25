@@ -1,8 +1,15 @@
 // @vitest-environment node
 
 import { type LookupAddress, lookup } from "node:dns";
-import type { LookupFunction } from "node:net";
-import { Agent, fetch, Response } from "undici";
+import net, { type LookupFunction, type Socket } from "node:net";
+import tls from "node:tls";
+import {
+  Agent,
+  buildConnector,
+  fetch,
+  getGlobalDispatcher,
+  Response,
+} from "undici";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchManualJobPage } from "./manualJobPage";
 
@@ -25,13 +32,8 @@ function resolveAs(addresses: LookupAddress[]) {
 
 function mockConnection(response: Response, all: boolean) {
   vi.mocked(fetch).mockImplementationOnce(async (input, options) => {
-    const connect = vi.mocked(Agent).mock.calls[0]?.[0]?.connect;
-    if (
-      !connect ||
-      typeof connect !== "object" ||
-      !("lookup" in connect) ||
-      !connect.lookup
-    ) {
+    const connect = vi.mocked(buildConnector).mock.calls[0]?.[0];
+    if (!connect || !("lookup" in connect) || !connect.lookup) {
       throw new Error("Expected a socket lookup policy");
     }
     const socketLookup = connect.lookup;
@@ -238,5 +240,82 @@ describe("manual job page fetch", () => {
     ).rejects.toMatchObject({
       code: "REQUEST_TIMEOUT",
     });
+  });
+
+  it("fails closed when Node uses an environment proxy dispatcher", async () => {
+    const { EnvHttpProxyAgent } =
+      await vi.importActual<typeof import("undici")>("undici");
+    const dispatcher = new EnvHttpProxyAgent({
+      httpProxy: "http://proxy.example:8080",
+      httpsProxy: "http://proxy.example:8080",
+    });
+    vi.mocked(getGlobalDispatcher).mockReturnValueOnce(dispatcher);
+    try {
+      await expect(fetchManualJobPage(url, signal)).rejects.toMatchObject({
+        code: "SERVICE_UNAVAILABLE",
+        message:
+          "Auto-fetch is unavailable while Node's outbound proxy mode is enabled. Paste the job description manually.",
+      });
+      expect(Agent).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(lookup).not.toHaveBeenCalled();
+    } finally {
+      await dispatcher.destroy();
+    }
+  });
+
+  it.each([
+    { scheme: "http", transport: net },
+    { scheme: "https", transport: tls },
+  ])("closes a pending $scheme socket before DNS completes", async ({
+    scheme,
+    transport,
+  }) => {
+    const actual = await vi.importActual<typeof import("undici")>("undici");
+    vi.mocked(fetch).mockImplementationOnce(actual.fetch);
+    const pendingLookup = new Promise<Parameters<LookupFunction>[2]>(
+      (resolve) => {
+        vi.mocked<LookupFunction>(lookup).mockImplementationOnce(
+          (_hostname, _options, callback) => resolve(callback),
+        );
+      },
+    );
+    const originalConnect = transport.connect;
+    let openedSocket: Socket | undefined;
+    const connect = vi
+      .spyOn(transport, "connect")
+      .mockImplementation((...args: Parameters<typeof originalConnect>) => {
+        const socket: Socket = Reflect.apply(originalConnect, transport, args);
+        openedSocket = socket;
+        return socket;
+      });
+    const controller = new AbortController();
+    const result = fetchManualJobPage(
+      `${scheme}://jobs.example/role`,
+      controller.signal,
+    ).catch((error: unknown) => error);
+    try {
+      const reply = await Promise.race([
+        pendingLookup,
+        result.then((error) => {
+          throw error;
+        }),
+      ]);
+      const socket = openedSocket;
+      if (!socket) throw new Error("Expected a pending socket");
+      const closed = new Promise((resolve) => socket.once("close", resolve));
+      const attempted = vi.fn();
+      socket.on("connectionAttempt", attempted);
+
+      controller.abort();
+      await expect(result).resolves.toMatchObject({ code: "REQUEST_TIMEOUT" });
+      expect(socket.destroyed).toBe(true);
+      await closed;
+      reply(null, publicAddresses);
+      expect(attempted).not.toHaveBeenCalled();
+    } finally {
+      connect.mockRestore();
+      openedSocket?.destroy();
+    }
   });
 });

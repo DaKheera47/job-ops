@@ -3,10 +3,11 @@ import { BlockList, isIP } from "node:net";
 import {
   AppError,
   requestTimeout,
+  serviceUnavailable,
   unprocessableEntity,
   upstreamError,
 } from "@infra/errors";
-import { Agent, fetch } from "undici";
+import { Agent, buildConnector, fetch, getGlobalDispatcher } from "undici";
 
 const MAX_REDIRECTS = 5;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -90,23 +91,36 @@ export async function fetchManualJobPage(
   inputUrl: string,
   signal: AbortSignal,
 ) {
+  // A proxy can resolve the destination independently of our socket lookup.
+  if (getGlobalDispatcher().constructor.name === "EnvHttpProxyAgent") {
+    throw serviceUnavailable(
+      "Auto-fetch is unavailable while Node's outbound proxy mode is enabled. Paste the job description manually.",
+    );
+  }
+
+  const connect = buildConnector({
+    signal,
+    // Return only vetted answers to the socket while retaining the URL's Host and TLS identity.
+    lookup(hostname, options, callback) {
+      lookup(hostname, { ...options, all: true }, (error, addresses) => {
+        if (signal.aborted) return callback(requestTimeout(), "", 0);
+        if (error) return callback(error, "", 0);
+        if (
+          !addresses.length ||
+          addresses.some(({ address }) => !isPublicAddress(address))
+        ) {
+          return callback(publicDestinationRequired(), "", 0);
+        }
+        if (options.all) return callback(null, addresses);
+        const { address, family } = addresses[0];
+        callback(null, address, family);
+      });
+    },
+  });
   const dispatcher = new Agent({
-    connect: {
-      // Return only vetted answers to the socket while retaining the URL's Host and TLS identity.
-      lookup(hostname, options, callback) {
-        lookup(hostname, { ...options, all: true }, (error, addresses) => {
-          if (error) return callback(error, "", 0);
-          if (
-            !addresses.length ||
-            addresses.some(({ address }) => !isPublicAddress(address))
-          ) {
-            return callback(publicDestinationRequired(), "", 0);
-          }
-          if (options.all) return callback(null, addresses);
-          const { address, family } = addresses[0];
-          callback(null, address, family);
-        });
-      },
+    connect(options, callback) {
+      if (signal.aborted) return callback(requestTimeout(), null);
+      connect(options, callback);
     },
   });
 
