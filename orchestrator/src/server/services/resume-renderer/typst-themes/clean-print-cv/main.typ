@@ -1,5 +1,45 @@
 #import "@preview/clean-print-cv:0.1.0": *
 
+// clean-print-cv 0.1.0 wraps each experience entry in block(breakable: false),
+// so an entry taller than the space left on a page moves whole to the next page
+// and leaves the page under "Professional Experience" blank. Redefine the entry
+// as breakable, keeping the role, company and first bullet together so a header
+// is never stranded at the bottom of a page. Styling matches the package.
+#let experience-entry(exp) = {
+  let bullet(item) = block(inset: (left: 6pt, bottom: 1.5pt))[
+    #bullet-marker(text(size: small-size, fill: body-color)[#item])
+  ]
+  let highlights = exp.highlights
+  block(width: 100%, breakable: true, inset: (left: 2pt, bottom: 1pt))[
+    #block(width: 100%, breakable: false)[
+      #grid(
+        columns: (1fr, auto),
+        align: (left, right),
+        text(size: body-size, weight: "bold", fill: body-color)[#exp.role],
+        text(size: small-size, fill: muted)[#exp.period],
+      )
+      #grid(
+        columns: (1fr, auto),
+        align: (left, right),
+        text(size: small-size, fill: accent, weight: "semibold")[#exp.company],
+        text(size: small-size, fill: muted, style: "italic")[#exp.location],
+      )
+      #v(2pt)
+      #if highlights.len() > 0 { bullet(highlights.first()) }
+    ]
+    #for item in highlights.slice(calc.min(1, highlights.len())) { bullet(item) }
+  ]
+  v(3pt)
+}
+
+// The package's cv-experience calls its own experience-entry, so redefine it too.
+#let cv-experience(experience) = {
+  section-heading("Professional Experience")
+  for exp in experience {
+    experience-entry(exp)
+  }
+}
+
 #let source = json(__RESUME_DATA_PATH__)
 
 #let with-default(value, fallback) = {
