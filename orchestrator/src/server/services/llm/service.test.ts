@@ -373,6 +373,60 @@ describe("LlmService provider normalization", () => {
     );
   });
 
+  it("discovers Runcrate text chat models with the supplied tenant key", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "zai-org/GLM-5.3",
+              input_modalities: ["text"],
+              output_modalities: ["text"],
+            },
+            {
+              id: "deepseek-ai/DeepSeek-V4.1-Flash",
+              input_modalities: ["text", "image"],
+              output_modalities: ["text"],
+            },
+            {
+              id: "Qwen/Qwen3-Embedding-8B",
+              input_modalities: ["text"],
+              output_modalities: ["embeddings"],
+            },
+            {
+              id: "black-forest-labs/FLUX.2-flex",
+              input_modalities: ["text"],
+              output_modalities: ["image"],
+            },
+            {
+              id: "openai/whisper-large-v3",
+              input_modalities: ["audio"],
+              output_modalities: ["text"],
+            },
+            { id: "legacy-chat-model" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const llm = new LlmService({
+      provider: "runcrate",
+      apiKey: "tenant-runcrate-test",
+      allowEnvironmentCredentials: false,
+    });
+    expect(llm.getProvider()).toBe("runcrate");
+    expect(await llm.listModels()).toEqual([
+      "deepseek-ai/DeepSeek-V4.1-Flash",
+      "legacy-chat-model",
+      "zai-org/GLM-5.3",
+    ]);
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(url)).toBe("https://api.runcrate.ai/v1/models");
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
+      "Bearer tenant-runcrate-test",
+    );
+  });
+
   it("lists console-visible Atlas Cloud text models", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

@@ -15,6 +15,7 @@ import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
+import { runcrateStrategy } from "./runcrate";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
   api_route: apiRouteStrategy,
@@ -23,6 +24,7 @@ export const strategies: Record<LlmProvider, ProviderStrategy> = {
   openrouter: openRouterStrategy,
   orcarouter: orcaRouterStrategy,
   requesty: requestyStrategy,
+  runcrate: runcrateStrategy,
   lmstudio: lmStudioStrategy,
   ollama: ollamaStrategy,
   openai: openAiStrategy,

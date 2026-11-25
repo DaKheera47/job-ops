@@ -275,6 +275,7 @@ export class LlmService {
       this.provider !== "ollama" &&
       this.provider !== "requesty" &&
       this.provider !== "api_route" &&
+      this.provider !== "runcrate" &&
       this.provider !== "orcarouter"
     ) {
       return [];
@@ -310,6 +311,9 @@ export class LlmService {
               model,
             ),
         );
+      }
+      if (this.provider === "runcrate") {
+        return this.listRuncrateModels();
       }
       if (this.provider === "orcarouter") {
         return this.listRequestyModels();
@@ -584,6 +588,39 @@ export class LlmService {
       .filter(Boolean);
   }
 
+  private async listRuncrateModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Runcrate returned ${response.status}.`);
+    }
+
+    // Each row lists its input and output modalities; keep the text-in,
+    // text-out chat models and leave embedding, image, video and speech out.
+    const payload = (await response.json()) as {
+      data?: Array<{
+        id?: string | null;
+        input_modalities?: string[] | null;
+        output_modalities?: string[] | null;
+      }>;
+    };
+    return (payload.data ?? [])
+      .filter(
+        (entry) =>
+          (entry.input_modalities ?? ["text"]).includes("text") &&
+          (entry.output_modalities ?? ["text"]).includes("text"),
+      )
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   private async listAtlasCloudModels(): Promise<string[]> {
     const response = await fetch(joinUrl(this.baseUrl, "/api/v1/models"), {
       method: "GET",
@@ -833,6 +870,7 @@ function normalizeProvider(
   if (normalized === "codex") return "codex";
   if (normalized === "requesty") return "requesty";
   if (normalized === "api_route") return "api_route";
+  if (normalized === "runcrate") return "runcrate";
   if (normalized === "orcarouter") return "orcarouter";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
@@ -887,6 +925,7 @@ function normalizeGeminiModelName(value: string): string {
 
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "api_route") return "gpt-6.1-sol";
+  if (provider === "runcrate") return "deepseek-ai/DeepSeek-V4.1-Flash";
   if (provider === "atlascloud") return "deepseek-ai/deepseek-v3.2";
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "anthropic") return "claude-sonnet-4-6";

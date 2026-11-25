@@ -5,6 +5,7 @@ export type LlmProvider =
   | "orcarouter"
   | "requesty"
   | "api_route"
+  | "runcrate"
   | "lmstudio"
   | "ollama"
   | "openai"

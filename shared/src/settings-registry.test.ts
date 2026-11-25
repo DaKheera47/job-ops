@@ -12,6 +12,14 @@ describe("settingsRegistry helpers", () => {
       "claude-haiku-4-5",
     );
   });
+  it("defaults Runcrate to an open-weight model and preserves explicit choices", () => {
+    expect(getDefaultModelForProvider("runcrate")).toBe(
+      "deepseek-ai/DeepSeek-V4.1-Flash",
+    );
+    expect(getDefaultModelForProvider("runcrate", "zai-org/GLM-5.3")).toBe(
+      "zai-org/GLM-5.3",
+    );
+  });
   describe("searchCities defaults", () => {
     it("defaults to empty when no location env is configured", () => {
       const previousSearchCities = process.env.SEARCH_CITIES;
