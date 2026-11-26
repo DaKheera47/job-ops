@@ -9,6 +9,7 @@ import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
+import { openDesignGoStrategy } from "./opendesign-go";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
@@ -38,6 +39,18 @@ describe("provider adapters", () => {
           model: "gpt-6.1-sol",
         },
         expectedUrl: "https://global.api-route.com/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "opendesign-go-json_schema",
+        strategy: openDesignGoStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://amr-link.open-design.ai/v1",
+          apiKey: "od-test",
+          model: "deepseek-v4.1-flash",
+        },
+        expectedUrl: "https://amr-link.open-design.ai/v1/chat/completions",
         expectedResponseFormat: "json_schema",
       },
       {

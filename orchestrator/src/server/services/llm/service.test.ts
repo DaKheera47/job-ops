@@ -373,6 +373,33 @@ describe("LlmService provider normalization", () => {
     );
   });
 
+  it("lists OpenDesign Go models from the /models endpoint and prioritizes deepseek-v4.1-flash", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: "qwen3.5-plus" }, { id: "deepseek-v4.1-flash" }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const llm = new LlmService({
+      provider: "opendesign-go",
+      apiKey: "od-test-key",
+      allowEnvironmentCredentials: false,
+    });
+    expect(llm.getProvider()).toBe("opendesign_go");
+    expect(llm.getBaseUrl()).toBe("https://amr-link.open-design.ai/v1");
+    expect(await llm.listModels()).toEqual([
+      "deepseek-v4.1-flash",
+      "qwen3.5-plus",
+    ]);
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(url)).toBe("https://amr-link.open-design.ai/v1/models");
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
+      "Bearer od-test-key",
+    );
+  });
+
   it("lists console-visible Atlas Cloud text models", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

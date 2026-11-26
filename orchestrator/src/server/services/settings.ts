@@ -68,6 +68,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "api_route") {
     return "https://global.api-route.com/v1";
   }
+  if (normalized === "opendesign_go") {
+    return "https://amr-link.open-design.ai/v1";
+  }
   if (normalized === "orcarouter") {
     return "https://api.orcarouter.ai/v1";
   }

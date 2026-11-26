@@ -67,6 +67,10 @@ export function resolveLlmApiKey(options: {
     return toStringOrNull(getOriginalEnvValue("API_ROUTE_API_KEY"));
   }
 
+  if (provider === "opendesign_go") {
+    return toStringOrNull(getOriginalEnvValue("OPENDESIGN_GO_API_KEY"));
+  }
+
   if (
     provider === "orcarouter" &&
     toStringOrNull(getOriginalEnvValue("ORCAROUTER_API_KEY"))

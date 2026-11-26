@@ -15,6 +15,15 @@ describe("settings utils", () => {
     expect(supportsLlmModelSuggestions("api_route")).toBe(true);
     expect(normalizeLlmProvider("api-route")).toBe("api_route");
   });
+  it("offers OpenDesign Go with authenticated model discovery", () => {
+    const config = getLlmProviderConfig("opendesign_go");
+    expect(config.label).toBe("OpenDesign Go");
+    expect(config.showApiKey).toBe(true);
+    expect(config.showBaseUrl).toBe(false);
+    expect(config.keyHelperHref).toBe("https://go.open-design.ai/");
+    expect(supportsLlmModelSuggestions("opendesign_go")).toBe(true);
+    expect(normalizeLlmProvider("opendesign-go")).toBe("opendesign_go");
+  });
   it("treats openai-compatible as a dedicated configurable provider", () => {
     const config = getLlmProviderConfig("openai_compatible");
 
