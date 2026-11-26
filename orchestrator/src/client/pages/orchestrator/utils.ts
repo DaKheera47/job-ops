@@ -179,8 +179,8 @@ const normalizeText = (value: string): string =>
   value
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/(?<=\p{Script=Latin})\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ")
     .trim();
 
 /**
@@ -235,6 +235,36 @@ export const matchesLocation = (job: JobListItem, query: string): boolean => {
   const haystack = normalizeText(job.location ?? "");
   if (!haystack) return false;
   return normalizedQuery.split(" ").every((token) => haystack.includes(token));
+};
+
+export const parseKeywordTerms = (value: string): string[] =>
+  value
+    .split(/[,\n]/)
+    .map((term) => normalizeText(term))
+    .filter(Boolean);
+
+/**
+ * Keyword include/exclude filter over the job's title, employer, location and
+ * job type/function. `include` and `exclude` are comma-separated lists: a job
+ * must contain at least one include term (when any are given) and none of the
+ * exclude terms. Matching is case- and accent-insensitive.
+ */
+export const matchesKeywords = (
+  job: JobListItem,
+  include: string,
+  exclude: string,
+): boolean => {
+  const includeTerms = parseKeywordTerms(include);
+  const excludeTerms = parseKeywordTerms(exclude);
+  if (includeTerms.length === 0 && excludeTerms.length === 0) return true;
+  const haystack = normalizeText(
+    [job.title, job.employer, job.location, job.jobType, job.jobFunction]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (excludeTerms.some((term) => haystack.includes(term))) return false;
+  if (includeTerms.length === 0) return true;
+  return includeTerms.some((term) => haystack.includes(term));
 };
 
 /**

@@ -45,6 +45,8 @@ interface OrchestratorJobsWorkspaceProps {
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   locationFilter: string;
+  includeKeywords: string;
+  excludeKeywords: string;
   dateFilter: JobDateFilter;
   sourcesWithJobs: JobSource[];
   sort: JobSort;
@@ -65,6 +67,8 @@ interface OrchestratorJobsWorkspaceProps {
   onPostedWithinChange: (value: number | null) => void;
   onEmploymentTypesChange: (value: EmploymentType[]) => void;
   onLocationFilterChange: (value: string) => void;
+  onIncludeKeywordsChange: (value: string) => void;
+  onExcludeKeywordsChange: (value: string) => void;
   onDateFilterChange: (value: JobDateFilter) => void;
   onSortChange: (sort: JobSort) => void;
   onResetFilters: () => void;
@@ -122,6 +126,10 @@ export const OrchestratorJobsWorkspace: React.FC<
   onPostedWithinChange,
   onEmploymentTypesChange,
   onLocationFilterChange,
+  includeKeywords,
+  excludeKeywords,
+  onIncludeKeywordsChange,
+  onExcludeKeywordsChange,
   onDateFilterChange,
   onSortChange,
   onResetFilters,
@@ -165,6 +173,10 @@ export const OrchestratorJobsWorkspace: React.FC<
         onEmploymentTypesChange={onEmploymentTypesChange}
         locationFilter={locationFilter}
         onLocationFilterChange={onLocationFilterChange}
+        includeKeywords={includeKeywords}
+        excludeKeywords={excludeKeywords}
+        onIncludeKeywordsChange={onIncludeKeywordsChange}
+        onExcludeKeywordsChange={onExcludeKeywordsChange}
         dateFilter={dateFilter}
         onDateFilterChange={onDateFilterChange}
         sourcesWithJobs={sourcesWithJobs}

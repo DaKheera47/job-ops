@@ -3,6 +3,7 @@ import { Tabs } from "@/components/ui/tabs";
 import type { FilterTab } from "./constants";
 import { DateFilterPill } from "./filters/DateFilterPill";
 import { EmploymentTypeFilterPill } from "./filters/EmploymentTypeFilterPill";
+import { KeywordFilterInputs } from "./filters/KeywordFilterInputs";
 import { LocationFilterInput } from "./filters/LocationFilterInput";
 import { OrchestratorFilterBar } from "./filters/OrchestratorFilterBar";
 import { OrchestratorTabRow } from "./filters/OrchestratorTabRow";
@@ -36,6 +37,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onEmploymentTypesChange,
   locationFilter,
   onLocationFilterChange,
+  includeKeywords,
+  onIncludeKeywordsChange,
+  excludeKeywords,
+  onExcludeKeywordsChange,
   dateFilter,
   onDateFilterChange,
   sourcesWithJobs,
@@ -64,6 +69,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     postedWithinDays,
     employmentTypes,
     locationFilter,
+    includeKeywords,
+    excludeKeywords,
     salaryFilter,
     scoreFilter,
     sort,
@@ -91,6 +98,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
             <LocationFilterInput
               locationFilter={locationFilter}
               onLocationFilterChange={onLocationFilterChange}
+            />
+
+            <KeywordFilterInputs
+              includeKeywords={includeKeywords}
+              onIncludeKeywordsChange={onIncludeKeywordsChange}
+              excludeKeywords={excludeKeywords}
+              onExcludeKeywordsChange={onExcludeKeywordsChange}
             />
 
             <SourceFilterPill

@@ -9,6 +9,7 @@ import type {
   SponsorFilter,
 } from "../constants";
 import { postedWithinOptions } from "../constants";
+import { parseKeywordTerms } from "../utils";
 import { sponsorOptions } from "./filterOptions";
 import {
   formatSalarySummary,
@@ -25,6 +26,8 @@ interface UseFilterBarDerivedStateArgs {
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   locationFilter: string;
+  includeKeywords: string;
+  excludeKeywords: string;
   salaryFilter: SalaryFilter;
   scoreFilter: ScoreFilter;
   sort: JobSort;
@@ -39,6 +42,8 @@ export const useFilterBarDerivedState = ({
   postedWithinDays,
   employmentTypes,
   locationFilter,
+  includeKeywords,
+  excludeKeywords,
   salaryFilter,
   scoreFilter,
   sort,
@@ -60,6 +65,8 @@ export const useFilterBarDerivedState = ({
       Number(postedWithinDays != null) +
       Number(employmentTypes.length > 0) +
       Number(locationFilter.trim() !== "") +
+      Number(parseKeywordTerms(includeKeywords).length > 0) +
+      Number(parseKeywordTerms(excludeKeywords).length > 0) +
       Number(salaryActive) +
       Number(scoreActive),
     [
@@ -69,6 +76,8 @@ export const useFilterBarDerivedState = ({
       postedWithinDays,
       employmentTypes.length,
       locationFilter,
+      includeKeywords,
+      excludeKeywords,
       salaryActive,
       scoreActive,
     ],

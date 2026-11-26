@@ -256,6 +256,10 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onTabChange,
     onOpenCommandBar,
     onSourceFilterChange,
+    includeKeywords,
+    excludeKeywords,
+    onIncludeKeywordsChange,
+    onExcludeKeywordsChange,
     onSponsorFilterChange,
     onSalaryFilterChange,
     onDateFilterChange,
@@ -267,6 +271,10 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onTabChange: (t: FilterTab) => void;
     onOpenCommandBar: () => void;
     onSourceFilterChange: (source: string) => void;
+    includeKeywords: string;
+    excludeKeywords: string;
+    onIncludeKeywordsChange: (value: string) => void;
+    onExcludeKeywordsChange: (value: string) => void;
     onSponsorFilterChange: (value: string) => void;
     onSalaryFilterChange: (value: {
       mode: "at_least" | "at_most" | "between";
@@ -285,6 +293,18 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     filteredCount: number;
   }) => (
     <div data-testid="filters">
+      <div data-testid="keyword-filters">
+        {includeKeywords}|{excludeKeywords}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          onIncludeKeywordsChange("secret");
+          onExcludeKeywordsChange("private");
+        }}
+      >
+        Set Keywords
+      </button>
       <div data-testid="sources-with-jobs">{sourcesWithJobs.join(",")}</div>
       <div data-testid="filtered-count">{filteredCount}</div>
       <button type="button" onClick={() => onTabChange("discovered")}>
@@ -787,7 +807,13 @@ describe("OrchestratorPage", () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(screen.getByText("Set Keywords"));
+    expect(screen.getByTestId("keyword-filters")).toHaveTextContent(
+      "secret|private",
+    );
+    expect(screen.getByTestId("location")).not.toHaveTextContent("secret");
     fireEvent.click(screen.getByText("Command Select Job"));
+    expect(screen.getByTestId("keyword-filters")).toHaveTextContent("|");
 
     await waitFor(() => {
       const locationText = screen.getByTestId("location").textContent || "";

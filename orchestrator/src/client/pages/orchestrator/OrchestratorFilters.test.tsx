@@ -76,6 +76,10 @@ const renderFilters = (
     onEmploymentTypesChange: vi.fn(),
     locationFilter: "",
     onLocationFilterChange: vi.fn(),
+    includeKeywords: "",
+    onIncludeKeywordsChange: vi.fn(),
+    excludeKeywords: "",
+    onExcludeKeywordsChange: vi.fn(),
     dateFilter: {
       dimensions: [],
       startDate: null,
@@ -128,6 +132,27 @@ describe("OrchestratorFilters", () => {
     expect(screen.getByRole("button", { name: /^filters/i })).toHaveTextContent(
       "1",
     );
+  });
+
+  it("counts only keyword filters with searchable terms", () => {
+    const { rerender, props } = renderFilters({
+      isFiltersOpen: false,
+      includeKeywords: " , , ",
+      excludeKeywords: "软件, ,",
+    });
+    expect(screen.getByRole("button", { name: /^filters/i })).toHaveTextContent(
+      "1",
+    );
+    rerender(
+      <OrchestratorFilters
+        {...props}
+        includeKeywords=" , "
+        excludeKeywords=" , "
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /^filters/i }),
+    ).not.toHaveTextContent("1");
   });
 
   it("notifies when tabs and command search shortcut are used", () => {

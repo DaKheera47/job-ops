@@ -1,5 +1,5 @@
 import type { JobSource } from "@shared/types.js";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   DateFilterDimension,
@@ -87,10 +87,13 @@ export const useOrchestratorFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    if (!searchParams.has("q")) return;
+    if (!["q", "include", "exclude"].some((key) => searchParams.has(key)))
+      return;
     setSearchParams(
       (prev) => {
         prev.delete("q");
+        prev.delete("include");
+        prev.delete("exclude");
         return prev;
       },
       { replace: true },
@@ -256,6 +259,10 @@ export const useOrchestratorFilters = () => {
     [setSearchParams],
   );
 
+  // Keep free text out of URLs, which analytics scripts may collect.
+  const [includeKeywords, setIncludeKeywords] = useState("");
+  const [excludeKeywords, setExcludeKeywords] = useState("");
+
   const location = searchParams.get("location") ?? "";
   const setLocation = useCallback(
     (value: string) => {
@@ -359,6 +366,8 @@ export const useOrchestratorFilters = () => {
   );
 
   const resetFilters = useCallback(() => {
+    setIncludeKeywords("");
+    setExcludeKeywords("");
     setSearchParams(
       (prev) => {
         prev.delete("source");
@@ -373,6 +382,8 @@ export const useOrchestratorFilters = () => {
         prev.delete("postedWithin");
         prev.delete("employment");
         prev.delete("location");
+        prev.delete("include");
+        prev.delete("exclude");
         prev.delete("sort");
         prev.delete("date");
         prev.delete("appliedStart");
@@ -400,6 +411,10 @@ export const useOrchestratorFilters = () => {
     setEmploymentTypes,
     location,
     setLocation,
+    includeKeywords,
+    setIncludeKeywords,
+    excludeKeywords,
+    setExcludeKeywords,
     dateFilter,
     setDateFilter,
     sort,

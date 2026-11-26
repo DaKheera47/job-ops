@@ -176,6 +176,8 @@ export interface JobFilters {
   postedWithinDays: number | null;
   employmentTypes: EmploymentType[];
   location: string;
+  includeKeywords: string;
+  excludeKeywords: string;
   sort: JobSort;
 }
 

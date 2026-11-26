@@ -25,6 +25,31 @@ const createWrapper = (initialEntry: string) => {
 };
 
 describe("useOrchestratorFilters", () => {
+  it("keeps keywords out of URLs and clears them on reset", () => {
+    const { Wrapper, getLocation } = createWrapper("/all?sort=title-asc");
+    const { result } = renderHook(() => useOrchestratorFilters(), {
+      wrapper: Wrapper,
+    });
+    act(() => {
+      result.current.setIncludeKeywords("软件工程师");
+      result.current.setExcludeKeywords("senior");
+    });
+    expect(result.current.includeKeywords).toBe("软件工程师");
+    expect(result.current.excludeKeywords).toBe("senior");
+    expect(getLocation()).toBe("/all?sort=title-asc");
+    act(() => result.current.resetFilters());
+    expect(result.current.includeKeywords).toBe("");
+    expect(result.current.excludeKeywords).toBe("");
+  });
+
+  it("removes legacy keyword URL parameters", () => {
+    const { Wrapper, getLocation } = createWrapper(
+      "/all?include=secret&exclude=private&sort=title-asc",
+    );
+    renderHook(() => useOrchestratorFilters(), { wrapper: Wrapper });
+    expect(getLocation()).toBe("/all?sort=title-asc");
+  });
+
   it("parses a valid sort query param", () => {
     const { Wrapper } = createWrapper("/ready?sort=datePosted-asc");
     const { result } = renderHook(() => useOrchestratorFilters(), {

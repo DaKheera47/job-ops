@@ -19,6 +19,8 @@ const commandSelectionFilterKeys = [
   "postedWithin",
   "employment",
   "location",
+  "include",
+  "exclude",
 ];
 
 interface UseOrchestratorNavigationArgs {
