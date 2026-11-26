@@ -1,5 +1,5 @@
 import type { JobSource } from "@shared/types.js";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   DateFilterDimension,
@@ -87,10 +87,13 @@ export const useOrchestratorFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    if (!searchParams.has("q")) return;
+    if (!["q", "include", "exclude"].some((key) => searchParams.has(key)))
+      return;
     setSearchParams(
       (prev) => {
         prev.delete("q");
+        prev.delete("include");
+        prev.delete("exclude");
         return prev;
       },
       { replace: true },
@@ -256,35 +259,9 @@ export const useOrchestratorFilters = () => {
     [setSearchParams],
   );
 
-  const includeKeywords = searchParams.get("include") ?? "";
-  const setIncludeKeywords = useCallback(
-    (value: string) => {
-      setSearchParams(
-        (prev) => {
-          if (!value.trim()) prev.delete("include");
-          else prev.set("include", value);
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const excludeKeywords = searchParams.get("exclude") ?? "";
-  const setExcludeKeywords = useCallback(
-    (value: string) => {
-      setSearchParams(
-        (prev) => {
-          if (!value.trim()) prev.delete("exclude");
-          else prev.set("exclude", value);
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
+  // Keep free text out of URLs, which analytics scripts may collect.
+  const [includeKeywords, setIncludeKeywords] = useState("");
+  const [excludeKeywords, setExcludeKeywords] = useState("");
 
   const location = searchParams.get("location") ?? "";
   const setLocation = useCallback(
@@ -389,6 +366,8 @@ export const useOrchestratorFilters = () => {
   );
 
   const resetFilters = useCallback(() => {
+    setIncludeKeywords("");
+    setExcludeKeywords("");
     setSearchParams(
       (prev) => {
         prev.delete("source");

@@ -323,6 +323,7 @@ describe("useFilteredJobs", () => {
         title: "Software Developer Co-op (Winter 2027)",
       },
       { ...baseJob, id: "summer", title: "Software Intern (Summer 2027)" },
+      { ...baseJob, id: "chinese", title: "软件工程师 实习" },
       { ...baseJob, id: "senior", title: "Senior Co-op Mentor (Winter 2027)" },
       {
         ...baseJob,
@@ -341,7 +342,12 @@ describe("useFilteredJobs", () => {
     expect(
       ids({ includeKeywords: "winter 2027", excludeKeywords: "senior" }),
     ).toEqual(["winter"]);
+    expect(ids({ includeKeywords: "软件工程师" })).toEqual(["chinese"]);
+    expect(ids({ includeKeywords: "软件", excludeKeywords: "实习" })).toEqual(
+      [],
+    );
     expect(ids({ excludeKeywords: "etudiant" }).sort()).toEqual([
+      "chinese",
       "senior",
       "summer",
       "winter",

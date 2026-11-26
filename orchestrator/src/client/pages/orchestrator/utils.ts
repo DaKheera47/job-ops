@@ -179,8 +179,8 @@ const normalizeText = (value: string): string =>
   value
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/(?<=\p{Script=Latin})\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ")
     .trim();
 
 /**
@@ -237,7 +237,7 @@ export const matchesLocation = (job: JobListItem, query: string): boolean => {
   return normalizedQuery.split(" ").every((token) => haystack.includes(token));
 };
 
-const parseKeywordTerms = (value: string): string[] =>
+export const parseKeywordTerms = (value: string): string[] =>
   value
     .split(/[,\n]/)
     .map((term) => normalizeText(term))

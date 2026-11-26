@@ -155,11 +155,19 @@ export const OrchestratorJobWorkspaceContainer: React.FC<
 
   const handleCommandSelectJob = useCallback(
     (targetTab: FilterTab, id: string) => {
+      filters.setIncludeKeywords("");
+      filters.setExcludeKeywords("");
       requestScrollToJob(id, { ensureSelected: true });
       navigation.navigateToCommandJob(targetTab, id);
       ui.openDetailDrawerForMobile();
     },
-    [navigation, requestScrollToJob, ui],
+    [
+      filters.setIncludeKeywords,
+      filters.setExcludeKeywords,
+      navigation,
+      requestScrollToJob,
+      ui,
+    ],
   );
 
   useEffect(() => {

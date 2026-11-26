@@ -9,6 +9,7 @@ import type {
   SponsorFilter,
 } from "../constants";
 import { postedWithinOptions } from "../constants";
+import { parseKeywordTerms } from "../utils";
 import { sponsorOptions } from "./filterOptions";
 import {
   formatSalarySummary,
@@ -64,8 +65,8 @@ export const useFilterBarDerivedState = ({
       Number(postedWithinDays != null) +
       Number(employmentTypes.length > 0) +
       Number(locationFilter.trim() !== "") +
-      Number(includeKeywords.trim() !== "") +
-      Number(excludeKeywords.trim() !== "") +
+      Number(parseKeywordTerms(includeKeywords).length > 0) +
+      Number(parseKeywordTerms(excludeKeywords).length > 0) +
       Number(salaryActive) +
       Number(scoreActive),
     [
