@@ -183,6 +183,7 @@ A system admin resets that user's password under **Settings → Environment & Wo
 
 ## Related pages
 
+- [Reverse Proxy Header Authentication](/docs/next/getting-started/proxy-auth)
 - [Self-Hosting (Docker Compose)](/docs/next/getting-started/self-hosting)
 - [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
 - [Settings](/docs/next/features/settings)

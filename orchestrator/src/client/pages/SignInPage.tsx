@@ -1,10 +1,12 @@
 import {
   getAppStatus,
   getAuthBootstrapStatus,
+  getProxyAuthStatus,
   getSsoProviders,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
   signInWithCredentials,
+  signInWithProxyHeader,
   signupWithCredentials,
   startSsoLogin,
 } from "@client/api";
@@ -93,6 +95,21 @@ export function SignInPage() {
         if (restored || hasAuthenticatedSession()) {
           navigate(nextPath, { replace: true });
           return;
+        }
+
+        // A trusted reverse proxy may already have authenticated this user. A
+        // failure here must not block the regular form, so it is not surfaced.
+        try {
+          const proxy = await getProxyAuthStatus();
+          if (cancelled) return;
+          if (proxy.enabled) {
+            await signInWithProxyHeader();
+            if (cancelled) return;
+            navigate(nextPath, { replace: true });
+            return;
+          }
+        } catch {
+          // Fall through to the password form.
         }
       } catch (error) {
         if (!cancelled) {

@@ -21,6 +21,10 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Redirect URI and reverse-proxy requirements
   - Account linking and just-in-time signup controls
 
+- **[Reverse Proxy Header Authentication](/docs/next/getting-started/proxy-auth)**
+  - Trust `X-Remote-User` from Authelia, Authentik, Caddy, or Traefik
+  - Trusted proxy allowlist and optional account creation
+
 - **[Database Backups](/docs/next/getting-started/database-backups)**
   - Automatic backup scheduling and retention
   - Manual backup creation/deletion
