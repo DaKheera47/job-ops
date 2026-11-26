@@ -117,6 +117,7 @@ JobOps works with the model provider you already use:
 - OpenRouter
 - Requesty
 - [API Route](https://www.api-route.com/)
+- [OpenDesign Go](https://go.open-design.ai/)
 - Any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
 
 ---

@@ -12,6 +12,7 @@ describe("resolveLlmApiKey", () => {
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.ORCAROUTER_API_KEY;
     delete process.env.API_ROUTE_API_KEY;
+    delete process.env.OPENDESIGN_GO_API_KEY;
   });
 
   afterEach(() => {
@@ -126,6 +127,27 @@ describe("resolveLlmApiKey", () => {
         allowEnvironmentCredentials: false,
       }),
     ).toBe("tenant-two-test");
+  });
+
+  it("uses the OpenDesign Go key only when environment credentials are allowed", async () => {
+    process.env.OPENDESIGN_GO_API_KEY = "od-platform-test";
+    const { resolveLlmApiKey } = await loadResolver();
+    expect(resolveLlmApiKey({ provider: "opendesign-go" })).toBe(
+      "od-platform-test",
+    );
+    expect(
+      resolveLlmApiKey({
+        provider: "opendesign_go",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveLlmApiKey({
+        provider: "opendesign_go",
+        storedApiKey: "tenant-od-test",
+        allowEnvironmentCredentials: false,
+      }),
+    ).toBe("tenant-od-test");
   });
 
   it("does not fall through to any environment key when disabled", async () => {

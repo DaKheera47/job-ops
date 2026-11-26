@@ -12,12 +12,14 @@ import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
 import { openAiCompatibleStrategy } from "./openai-compatible";
+import { openDesignGoStrategy } from "./opendesign-go";
 import { openRouterStrategy } from "./openrouter";
 import { orcaRouterStrategy } from "./orcarouter";
 import { requestyStrategy } from "./requesty";
 
 export const strategies: Record<LlmProvider, ProviderStrategy> = {
   api_route: apiRouteStrategy,
+  opendesign_go: openDesignGoStrategy,
   atlascloud: atlasCloudStrategy,
   litellm: liteLlmStrategy,
   openrouter: openRouterStrategy,

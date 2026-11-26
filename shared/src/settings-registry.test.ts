@@ -12,6 +12,17 @@ describe("settingsRegistry helpers", () => {
       "claude-haiku-4-5",
     );
   });
+  it("uses the OpenDesign Go default and preserves explicit model choices", () => {
+    expect(getDefaultModelForProvider("opendesign_go")).toBe(
+      "deepseek-v4.1-flash",
+    );
+    expect(
+      getDefaultModelForProvider("opendesign-go", "deepseek-v4.1-flash"),
+    ).toBe("deepseek-v4.1-flash");
+    expect(getDefaultModelForProvider("opendesign-go", "custom-model")).toBe(
+      "custom-model",
+    );
+  });
   describe("searchCities defaults", () => {
     it("defaults to empty when no location env is configured", () => {
       const previousSearchCities = process.env.SEARCH_CITIES;
