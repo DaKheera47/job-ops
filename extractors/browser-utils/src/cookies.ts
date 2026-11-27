@@ -170,6 +170,37 @@ export async function saveCookies(
   return relevant.length;
 }
 
+/** Persist API-solved clearance in the same scoped jar used by HTTP retries. */
+export async function saveClearanceCookies(
+  extractorId: string,
+  websiteUrl: string,
+  cookies: Record<string, string>,
+  userAgent: string,
+  storageDir: string,
+): Promise<void> {
+  const url = new URL(websiteUrl);
+  const jar: PersistedCookieJar = {
+    extractorId,
+    savedAt: new Date().toISOString(),
+    userAgent,
+    cookies: Object.entries(cookies)
+      .filter(([name, value]) => PERSIST_COOKIE_NAMES.has(name) && value)
+      .map(([name, value]) => ({
+        name,
+        value,
+        domain: url.hostname,
+        path: "/",
+        expires: -1,
+        httpOnly: true,
+        secure: url.protocol === "https:",
+        sameSite: "Lax",
+      })),
+  };
+  const path = cookiePath(storageDir, extractorId);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(jar, null, 2));
+}
+
 /**
  * Loads previously saved cookies into a browser context.
  * Skips expired cookies automatically.

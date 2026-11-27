@@ -4,12 +4,12 @@ import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import {
-  createPersistedFetchCookieJar,
+  createCloudflareFetch,
   getCloudflareCookieStorageDir,
+  isCapsolverConfigured,
 } from "browser-utils";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
-import { Impit } from "impit";
 
 type CreateJobInput = {
   source: "gradcracker";
@@ -498,22 +498,10 @@ export function parseGradcrackerDetailPage(
 }
 
 async function createImpitFetch(cookieStorageDir?: string): Promise<FetchLike> {
-  const persistedCookies = await createPersistedFetchCookieJar(
+  return createCloudflareFetch(
     EXTRACTOR_ID,
     getCloudflareCookieStorageDir(cookieStorageDir),
   );
-  const headers = persistedCookies.userAgent
-    ? { "user-agent": persistedCookies.userAgent }
-    : undefined;
-  const impit = new Impit({
-    browser: "firefox",
-    timeout: 30_000,
-    cookieJar: persistedCookies.cookieJar,
-    ...(headers ? { headers } : {}),
-  });
-
-  return (input, init) =>
-    impit.fetch(input, init as Parameters<Impit["fetch"]>[1]);
 }
 
 async function fetchHtml(args: {
@@ -898,12 +886,16 @@ async function runBrowserCrawler(
 export async function runCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
-  if (process.env.GRADCRACKER_FORCE_BROWSER === "1") {
+  if (
+    process.env.GRADCRACKER_FORCE_BROWSER === "1" &&
+    !isCapsolverConfigured()
+  ) {
     return runBrowserCrawler(options);
   }
 
   const httpResult = await runHttpCrawler(options);
   const shouldFallback =
+    !isCapsolverConfigured() &&
     options.browserFallback !== false &&
     !options.fetchImpl &&
     !httpResult.success &&

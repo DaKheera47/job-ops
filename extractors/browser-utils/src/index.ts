@@ -10,7 +10,12 @@
  */
 
 export {
+  getCapsolverProxyUrl,
+  isCapsolverConfigured,
+} from "./capsolver-config.js";
+export {
   type ChallengeResult,
+  isChallengeHtml,
   isChallengePage,
   isChallengeResponse,
   navigateWithChallenge,
@@ -26,8 +31,10 @@ export {
   loadCookies,
   type PersistedFetchCookieJarInfo,
   readCookieJar,
+  saveClearanceCookies,
   saveCookies,
 } from "./cookies.js";
+export { createCloudflareFetch } from "./fetch.js";
 export {
   type BrowserLaunchOptions,
   createLaunchOptions,

@@ -266,6 +266,10 @@ flowchart TD
 
 ## Persistent data
 
+For searches that should resolve Cloudflare checks without manual **Solve**
+prompts, see [automatic browser checks](/docs/next/getting-started/automatic-browser-checks).
+This optional integration requires a CapSolver key and a static or sticky proxy.
+
 `./data` bind-mount stores:
 
 - SQLite DB: `data/jobs.db`

@@ -21,10 +21,12 @@ import type {
   PipelineConfig,
   PipelineRunSavedDetails,
 } from "@shared/types";
+import { isCapsolverConfigured } from "browser-utils";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
+import { CapsolverError, solveWithCapsolver } from "../services/capsolver";
 import {
   refundHostedUsageReservation,
   reserveHostedUsage,
@@ -44,6 +46,7 @@ import {
 } from "../services/resumeProjects";
 import { LlmNotConfiguredError } from "../services/scorer";
 import { generateTailoring } from "../services/summary";
+import { getPrivateCloudflareCookieStorageDir } from "../tenancy/private-scope";
 import {
   type PendingChallenge,
   progressHelpers,
@@ -94,6 +97,7 @@ type TenantPipelineState = {
   activePipelineRunId: string | null;
   cancelRequestedAt: string | null;
   activeChallengeState: ChallengeState | null;
+  automaticChallengeAbort: AbortController | null;
   attemptedChallengeSearchStates: Set<string>;
   skippedChallengeSearchStates: Set<string>;
   activeLlmConfigState: LlmConfigState | null;
@@ -125,6 +129,7 @@ function getPipelineState(
       activePipelineRunId: null,
       cancelRequestedAt: null,
       activeChallengeState: null,
+      automaticChallengeAbort: null,
       attemptedChallengeSearchStates: new Set(),
       skippedChallengeSearchStates: new Set(),
       activeLlmConfigState: null,
@@ -444,32 +449,83 @@ export async function runPipeline(
       });
 
       // ---------- Challenge pause/resume ----------
+      const automaticChallengeAttempts = new Map<string, number>();
+      let automaticChallengeFailed = false;
       while (pendingChallenges.length > 0) {
-        pendingChallenges = pendingChallenges.map((challenge) => {
-          const searchState = hiringCafeSearchState(challenge);
-          return searchState
-            ? {
-                ...challenge,
-                canSkipSearch: true,
-                solveAttempted:
-                  tenantState.attemptedChallengeSearchStates.has(searchState),
+        const automatic = isCapsolverConfigured();
+        if (automatic) {
+          const solvedChallenges: PendingChallenge[] = [];
+          for (const challenge of pendingChallenges) {
+            ensureNotCancelled(scopeKey);
+            progressHelpers.challengeSolvingAutomatically(
+              challenge.extractorName,
+            );
+            const attempts =
+              automaticChallengeAttempts.get(challenge.extractorId) ?? 0;
+            const controller = new AbortController();
+            tenantState.automaticChallengeAbort = controller;
+            try {
+              // Bound costs even when a board keeps issuing fresh challenge URLs.
+              if (attempts >= 3) {
+                throw new CapsolverError(
+                  "CapSolver retry limit reached for this job board.",
+                );
               }
-            : challenge;
-        });
-        pipelineLogger.info("Challenges detected, pausing pipeline", {
-          challenges: pendingChallenges.map((c) => ({
-            extractorId: c.extractorId,
-            url: c.url,
-          })),
-        });
+              automaticChallengeAttempts.set(
+                challenge.extractorId,
+                attempts + 1,
+              );
+              await solveWithCapsolver({
+                extractorId: challenge.extractorId,
+                url: challenge.url,
+                storageDir: getPrivateCloudflareCookieStorageDir(),
+                signal: controller.signal,
+              });
+              solvedChallenges.push(challenge);
+            } catch (error) {
+              ensureNotCancelled(scopeKey);
+              automaticChallengeFailed = true;
+              const message =
+                error instanceof CapsolverError
+                  ? error.message
+                  : "Automatic browser check failed.";
+              sourceErrors.push(`${challenge.extractorName}: ${message}`);
+              pipelineLogger.warn("Automatic challenge solve failed", {
+                extractorId: challenge.extractorId,
+                message,
+              });
+            } finally {
+              tenantState.automaticChallengeAbort = null;
+            }
+          }
+          await persistResultSummary({ stage: "discovery", sourceErrors });
+          ensureNotCancelled(scopeKey);
+          pendingChallenges = solvedChallenges;
+          if (pendingChallenges.length === 0) break;
+        }
 
-        progressHelpers.challengeRequired(pendingChallenges);
+        if (!automatic) {
+          pendingChallenges = pendingChallenges.map((challenge) => {
+            const searchState = hiringCafeSearchState(challenge);
+            return searchState
+              ? {
+                  ...challenge,
+                  canSkipSearch: true,
+                  solveAttempted:
+                    tenantState.attemptedChallengeSearchStates.has(searchState),
+                }
+              : challenge;
+          });
+          pipelineLogger.info("Challenges detected, pausing pipeline", {
+            challenges: pendingChallenges.map((c) => ({
+              extractorId: c.extractorId,
+              url: c.url,
+            })),
+          });
 
-        // Block until all challenges are resolved by the solve-challenge API.
-        // The Promise is resolved by `resolvePipelineChallenge()`, which is
-        // called from the POST /api/pipeline/solve-challenge endpoint (4d).
-        // Cancellation still works: the cancel endpoint sets cancelRequestedAt,
-        // and ensureNotCancelled() fires after the Promise resolves.
+          progressHelpers.challengeRequired(pendingChallenges);
+        }
+
         const challengedSources = pendingChallenges.flatMap((c) => c.sources);
         const retryChallengeUrls = Object.fromEntries(
           pendingChallenges.map((challenge) => [
@@ -485,15 +541,19 @@ export async function runPipeline(
           ),
         );
 
-        await new Promise<void>((resolve) => {
-          tenantState.activeChallengeState = {
-            challenges: new Map(
-              pendingChallenges.map((c) => [c.extractorId, c]),
-            ),
-            solving: new Set(),
-            resolve,
-          };
-        });
+        // Only manual mode blocks on the solve-challenge API. Automatic mode
+        // has already saved clearance cookies and can retry immediately.
+        if (!automatic) {
+          await new Promise<void>((resolve) => {
+            tenantState.activeChallengeState = {
+              challenges: new Map(
+                pendingChallenges.map((c) => [c.extractorId, c]),
+              ),
+              solving: new Set(),
+              resolve,
+            };
+          });
+        }
         tenantState.activeChallengeState = null;
 
         ensureNotCancelled(scopeKey);
@@ -523,18 +583,25 @@ export async function runPipeline(
           retryResult.discoveredJobs,
         );
         sourceErrors = [...sourceErrors, ...retryResult.sourceErrors];
+        await persistResultSummary({ stage: "discovery", sourceErrors });
 
         // Keep the run paused until every challenged source finishes a retry
         // without another challenge. Jobs collected so far stay in memory and
         // are imported only after discovery is complete.
         pendingChallenges = retryResult.pendingChallenges;
         if (pendingChallenges.length > 0) {
-          pipelineLogger.warn("Challenge persists; pausing again", {
+          pipelineLogger.warn("Challenge persists; retry handling required", {
             retryPendingChallenges: pendingChallenges.map(
               (challenge) => challenge.extractorId,
             ),
           });
         }
+      }
+
+      if (automaticChallengeFailed && discoveredJobs.length === 0) {
+        throw new Error(
+          `No jobs discovered after automatic browser checks failed: ${sourceErrors.join("; ")}`,
+        );
       }
 
       progressHelpers.crawlingComplete(discoveredJobs.length);
@@ -704,6 +771,7 @@ export async function runPipeline(
       tenantState.activePipelineRunId = null;
       tenantState.cancelRequestedAt = null;
       tenantState.activeChallengeState = null;
+      tenantState.automaticChallengeAbort = null;
       tenantState.attemptedChallengeSearchStates.clear();
       tenantState.skippedChallengeSearchStates.clear();
       tenantState.activeLlmConfigState = null;
@@ -1163,6 +1231,7 @@ export function requestPipelineCancel(): {
   }
 
   state.cancelRequestedAt = new Date().toISOString();
+  state.automaticChallengeAbort?.abort();
 
   // Unblock any pause so cancellation can proceed. Without this the pipeline
   // would stay stuck in memory until the pause resolves or the server restarts.
