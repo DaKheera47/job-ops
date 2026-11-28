@@ -250,6 +250,12 @@ export function createAuthGuard() {
     )
       return true;
     if (
+      normalizedMethod === "POST" &&
+      (normalizedPath === "/api/auth/passkeys/login/options" ||
+        normalizedPath === "/api/auth/passkeys/login/verify")
+    )
+      return true;
+    if (
       ["GET", "HEAD"].includes(normalizedMethod) &&
       /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
     )
@@ -271,6 +277,7 @@ export function createAuthGuard() {
     // behind auth in demo mode. requiresAuth consults isPublicReadOnlyRoute
     // first, which keeps the sign-in routes reachable.
     if (normalizedPath.startsWith("/api/auth/sso/")) return true;
+    if (normalizedPath.startsWith("/api/auth/passkeys")) return true;
     if (normalizedPath.startsWith("/api/workspaces")) return true;
     if (normalizedPath === "/api/settings/codex-auth") return true;
     if (normalizedPath === "/api/settings/rx-resumes") return true;
